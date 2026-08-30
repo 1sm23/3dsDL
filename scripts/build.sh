@@ -92,6 +92,9 @@ cp "${PROJECT_ROOT}/3dsDL.smdh" "${DIST_DIR}/3dsDL.smdh"
     fi
 )
 
+step "Removing intermediate build files"
+run_builder make clean
+
 printf '\nBuild complete.\n'
 printf '  App:      %s\n' "${DIST_DIR}/3dsDL.3dsx"
 printf '  Metadata: %s\n' "${DIST_DIR}/3dsDL.smdh"

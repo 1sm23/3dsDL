@@ -45,7 +45,8 @@ The recommended build is a single command:
 The script performs each step explicitly: checks Docker, starts Colima when
 needed, obtains the pinned devkitPro image, cleans the old build, compiles the
 application, validates the artifacts, and writes release-ready files plus a
-SHA-256 checksum to `dist/`.
+SHA-256 checksum to `dist/`. Intermediate compiler outputs are removed after
+the package is created, keeping the repository root clean.
 
 Optional environment overrides:
 
