@@ -36,21 +36,27 @@ pages are not direct file URLs.
 
 ## Build
 
-Install current devkitARM, libctru, citro2d, citro3d, 3ds-curl, 3ds-mbedtls,
-and their dependencies, then run:
+The recommended build is a single command:
 
 ```sh
-make
+./scripts/build.sh
 ```
 
-The output is `3dsDL.3dsx`.
+The script performs each step explicitly: checks Docker, starts Colima when
+needed, obtains the pinned devkitPro image, cleans the old build, compiles the
+application, validates the artifacts, and writes release-ready files plus a
+SHA-256 checksum to `dist/`.
 
-With Docker or Colima:
+Optional environment overrides:
 
 ```sh
-docker run --rm -v "$PWD:/project" -w /project \
-  devkitpro/devkitarm:latest make -j2
+THREEDSDL_BUILD_JOBS=4 ./scripts/build.sh
+THREEDSDL_BUILD_IMAGE=devkitpro/devkitarm:20260610 ./scripts/build.sh
+THREEDSDL_KEEP_COLIMA=1 ./scripts/build.sh
 ```
+
+For a native build, install current devkitARM, libctru, citro2d, citro3d,
+3ds-curl, 3ds-mbedtls, and their dependencies, then run `make`.
 
 ## Licensing
 

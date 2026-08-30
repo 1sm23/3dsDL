@@ -1,5 +1,6 @@
 # devkitARM build output
 /build/
+/dist/
 *.elf
 *.map
 *.smdh
@@ -11,4 +12,3 @@
 .DS_Store
 .vscode/
 .idea/
-
