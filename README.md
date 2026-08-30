@@ -10,11 +10,14 @@ X: [@ankushKun_](https://x.com/ankushKun_)
 
 The modern download engine is functional on New Nintendo 3DS hardware. It uses
 libcurl and mbedTLS, follows redirects, verifies HTTPS with an embedded Mozilla
-CA bundle, streams downloads to the SD card, avoids overwriting files, and
-removes partial files after errors or cancellation.
+CA bundle, streams downloads to the SD card, and removes partial files after
+errors or cancellation.
 
-The camera preview and inherited console UI are being replaced. See
-[ROADMAP.md](ROADMAP.md) for the active work.
+The current development build includes a new Citro2D interface, button and
+touch navigation, URL review, download progress, corrected camera buffer
+handling, and an explicit Rename / Overwrite / Cancel dialog when a destination
+file already exists. Camera rendering and the new interface still require a
+final hardware verification pass.
 
 ## Install
 
@@ -33,8 +36,8 @@ pages are not direct file URLs.
 
 ## Build
 
-Install current devkitARM, libctru, 3ds-curl, 3ds-mbedtls, 3ds-libarchive, and
-their dependencies, then run:
+Install current devkitARM, libctru, citro2d, citro3d, 3ds-curl, 3ds-mbedtls,
+and their dependencies, then run:
 
 ```sh
 make
@@ -54,4 +57,3 @@ docker run --rm -v "$PWD:/project" -w /project \
 3dsDL is distributed under GPLv3. Bundled third-party components retain their
 respective notices; see [LICENSE](LICENSE) and
 [LICENSE-quirc.md](LICENSE-quirc.md).
-

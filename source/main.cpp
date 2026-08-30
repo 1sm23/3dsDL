@@ -1,59 +1,138 @@
 #include <3ds.h>
 #include <curl/curl.h>
 
+#include <cstdio>
 #include <cstdlib>
-#include <iostream>
+#include <dirent.h>
+#include <fstream>
 #include <malloc.h>
 #include <string>
 
-#include "common.h"
 #include "download.hpp"
-#include "fs.hpp"
-#include "gfx.hpp"
 #include "qrdec.h"
-#include "util.hpp"
+#include "ui.hpp"
 
 u32 __stacksize__ = 0x40000;
-
-using namespace std;
 
 namespace {
 
 constexpr size_t SocBufferSize = 0x100000;
+constexpr const char *ConfigPath = "sdmc:/3dsDL.cfg";
 
-void waitForAcknowledgement()
+std::string trim(std::string value)
 {
-    cout << "Press A to return to the menu." << endl;
-    while (aptMainLoop()) {
-        hidScanInput();
-        if (hidKeysDown() & (KEY_A | KEY_START)) {
-            break;
-        }
-        gspWaitForVBlank();
+    const char *whitespace = " \t\r\n";
+    const size_t first = value.find_first_not_of(whitespace);
+    if (first == std::string::npos) {
+        return "";
+    }
+    return value.substr(first, value.find_last_not_of(whitespace) - first + 1);
+}
+
+std::string normaliseFolder(std::string folder)
+{
+    folder = trim(folder);
+    if (folder.empty()) {
+        return "sdmc:/";
+    }
+    if (folder.back() != '/') {
+        folder += '/';
+    }
+    return folder;
+}
+
+bool folderExists(const std::string &folder)
+{
+    DIR *directory = opendir(folder.c_str());
+    if (directory == nullptr) {
+        return false;
+    }
+    closedir(directory);
+    return true;
+}
+
+std::string loadDestination()
+{
+    std::ifstream file(ConfigPath);
+    std::string destination;
+    if (file.is_open()) {
+        std::getline(file, destination);
+    }
+
+    destination = normaliseFolder(destination);
+    return folderExists(destination) ? destination : "sdmc:/";
+}
+
+bool saveDestination(const std::string &destination)
+{
+    std::ofstream file(ConfigPath, std::ios::trunc);
+    if (!file.is_open()) {
+        return false;
+    }
+    file << destination;
+    return file.good();
+}
+
+std::string keyboardInput(const std::string &hint,
+                          const std::string &initialText = "")
+{
+    SwkbdState keyboard;
+    swkbdInit(&keyboard, SWKBD_TYPE_NORMAL, 2, -1);
+    swkbdSetHintText(&keyboard, hint.c_str());
+    swkbdSetButton(&keyboard, SWKBD_BUTTON_LEFT, "Cancel", false);
+    swkbdSetButton(&keyboard, SWKBD_BUTTON_RIGHT, "Continue", true);
+    swkbdSetValidation(&keyboard, SWKBD_NOTEMPTY_NOTBLANK, 0, 0);
+
+    if (!initialText.empty()) {
+        swkbdSetInitialText(&keyboard, initialText.c_str());
+    }
+
+    char buffer[2048] = {0};
+    const SwkbdButton button =
+        swkbdInputText(&keyboard, buffer, sizeof(buffer));
+
+    return button == SWKBD_BUTTON_RIGHT ? std::string(buffer) : "";
+}
+
+void runDownload(const std::string &url, const std::string &destination)
+{
+    if (url.empty() || !ui::confirmUrl(url)) {
+        return;
+    }
+
+    const DownloadResult result = downloadFile(url, destination);
+    if (result.success) {
+        ui::showDialog("Download complete", result.message, false);
+    } else if (!result.cancelled) {
+        ui::showDialog("Download failed", result.message, true);
     }
 }
 
-bool initializeNetwork(u32 *socBuffer)
+bool initializeServices(u32 *socBuffer, std::string &error)
 {
     Result result = romfsInit();
     if (R_FAILED(result)) {
-        cout << "\x1b[31;1mromfsInit failed: 0x" << hex << result
-             << "\x1b[37;1m" << endl;
+        char buffer[80];
+        std::snprintf(buffer, sizeof(buffer), "romfsInit failed: 0x%08lX",
+                      static_cast<unsigned long>(result));
+        error = buffer;
         return false;
     }
 
     result = socInit(socBuffer, SocBufferSize);
     if (R_FAILED(result)) {
-        cout << "\x1b[31;1msocInit failed: 0x" << hex << result
-             << "\x1b[37;1m" << endl;
+        char buffer[80];
+        std::snprintf(buffer, sizeof(buffer), "socInit failed: 0x%08lX",
+                      static_cast<unsigned long>(result));
+        error = buffer;
         romfsExit();
         return false;
     }
 
     const CURLcode curlResult = curl_global_init(CURL_GLOBAL_DEFAULT);
     if (curlResult != CURLE_OK) {
-        cout << "\x1b[31;1mcurl initialization failed: "
-             << curl_easy_strerror(curlResult) << "\x1b[37;1m" << endl;
+        error = std::string("curl initialization failed: ") +
+                curl_easy_strerror(curlResult);
         socExit();
         romfsExit();
         return false;
@@ -63,112 +142,89 @@ bool initializeNetwork(u32 *socBuffer)
 
 } // namespace
 
-touchPosition touch;
-PrintConsole top;
-PrintConsole bottom;
-
-bool touchInBox(touchPosition position, int x, int y, int width, int height)
-{
-    const int touchX = position.px;
-    const int touchY = position.py;
-    const u32 pressed = hidKeysDown();
-    return (pressed & KEY_TOUCH) &&
-           touchX > x && touchX < x + width &&
-           touchY > y && touchY < y + height;
-}
-
 int main()
 {
     gfxInitDefault();
-    menu();
-    consoleSelect(&top);
+    gfxSet3D(false);
+
+    if (!ui::init()) {
+        gfxExit();
+        return 1;
+    }
 
     u32 *socBuffer = static_cast<u32 *>(memalign(0x1000, SocBufferSize));
     if (socBuffer == nullptr) {
-        cout << "\x1b[31;1mCould not allocate the network buffer.\x1b[37;1m" << endl;
-        waitForAcknowledgement();
+        ui::showDialog("Startup failed",
+                       "Could not allocate the network buffer.", true);
+        ui::shutdown();
         gfxExit();
         return 1;
     }
 
-    if (!initializeNetwork(socBuffer)) {
-        waitForAcknowledgement();
-        free(socBuffer);
+    std::string startupError;
+    if (!initializeServices(socBuffer, startupError)) {
+        ui::showDialog("Startup failed", startupError, true);
+        std::free(socBuffer);
+        ui::shutdown();
         gfxExit();
         return 1;
     }
 
-    while (aptMainLoop()) {
-        hidScanInput();
-        hidTouchRead(&touch);
+    std::string destination = loadDestination();
+    bool running = true;
 
-        const u32 pressed = hidKeysDown();
-        if (pressed & KEY_START) {
+    while (running && aptMainLoop()) {
+        const ui::HomeAction action = ui::homeFrame(destination);
+
+        switch (action) {
+        case ui::HomeAction::ScanQr: {
+            const std::string url = qr_dec();
+            runDownload(url, destination);
             break;
         }
-
-        bool handled = false;
-
-        if (touchInBox(touch, 5, 25, 300, 25)) {
-            const string url = tl(2, "Enter URL", "Download");
-            if (!url.empty()) {
-                const Result result = http_download(url, ab);
-                consoleSelect(&top);
-                cout << (result == 0
-                    ? "\x1b[33;1mDownload: \x1b[32;1mSuccess\x1b[37;1m"
-                    : "\x1b[33;1mDownload: \x1b[31;1mFailed\x1b[37;1m")
-                     << endl;
-                waitForAcknowledgement();
-            }
-            handled = true;
-        } else if (touchInBox(touch, 5, 60, 300, 25)) {
-            consoleSelect(&top);
-            cout << "Xplorer";
-            xplorer();
-            cout << "\x1b[2J";
-            const string path(current_path);
-            fs file;
-            file.writefile("sdmc:/multi.cfg", path);
-            cout << "Current path: " << current_path;
-            handled = true;
-        } else if (touchInBox(touch, 5, 100, 300, 30)) {
-            consoleSelect(&bottom);
-            cout << "\x1b[2J";
-
-            const string url = qr_dec();
-
-            cout << "\x1b[2J";
-            consoleInit(GFX_TOP, &top);
-            consoleSelect(&top);
-            draw_border(GFX_TOP, 0, 255, 255);
-            consoleSetWindow(&top, 1, 1, 47, 28);
-
-            if (!url.empty()) {
-                const Result result = http_download(url, ab);
-                consoleSelect(&top);
-                cout << (result == 0
-                    ? "\x1b[33;1mDownload: \x1b[32;1mSuccess\x1b[37;1m"
-                    : "\x1b[33;1mDownload: \x1b[31;1mFailed\x1b[37;1m")
-                     << endl;
-                waitForAcknowledgement();
-            }
-            handled = true;
+        case ui::HomeAction::EnterUrl: {
+            const std::string url =
+                keyboardInput("Enter a direct HTTP/HTTPS file URL");
+            runDownload(url, destination);
+            break;
         }
+        case ui::HomeAction::ChangeFolder: {
+            std::string selected =
+                keyboardInput("SD folder, for example sdmc:/downloads/",
+                              destination);
+            if (selected.empty()) {
+                break;
+            }
 
-        if (handled) {
-            ab.clear();
-            menu();
+            selected = normaliseFolder(selected);
+            if (selected.find("sdmc:/") != 0 || !folderExists(selected)) {
+                ui::showDialog("Folder not found",
+                               "Enter an existing folder beginning with sdmc:/.",
+                               true);
+                break;
+            }
+
+            destination = selected;
+            if (!saveDestination(destination)) {
+                ui::showDialog("Settings warning",
+                               "The folder works, but it could not be saved.",
+                               true);
+            }
+            break;
         }
-
-        gfxFlushBuffers();
-        gspWaitForVBlank();
-        gfxSwapBuffers();
+        case ui::HomeAction::Exit:
+            running = false;
+            break;
+        case ui::HomeAction::None:
+            break;
+        }
     }
 
     curl_global_cleanup();
     socExit();
     romfsExit();
-    free(socBuffer);
+    std::free(socBuffer);
+    ui::shutdown();
     gfxExit();
     return 0;
 }

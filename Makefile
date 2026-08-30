@@ -19,7 +19,7 @@ ROMFS           := romfs
 APP_TITLE       := 3dsDL
 APP_DESCRIPTION := Download files straight onto your 3DS
 APP_AUTHOR      := ankushKun
-ICON            := resources/icon.png
+ICON            := resources/icon-3dsdl.png
 
 #---------------------------------------------------------------------------------
 ARCH      := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
@@ -29,8 +29,8 @@ CXXFLAGS  := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS      := -lcurl -larchive -lmbedtls -lmbedx509 -lmbedcrypto \
-             -lz -lbz2 -llzma -llz4 -lzstd -lctru -lm
+LIBS      := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 \
+             -lmbedcrypto -lz -lctru -lm
 LIBDIRS   := $(CTRULIB) $(PORTLIBS)
 
 #---------------------------------------------------------------------------------
@@ -42,8 +42,8 @@ export TOPDIR  := $(CURDIR)
 export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
-CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+CFILES   := decode.c identify.c quirc.c version_db.c
+CPPFILES := main.cpp download.cpp qrdec.cpp ui.cpp
 SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 
 ifeq ($(strip $(CPPFILES)),)

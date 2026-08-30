@@ -1,18 +1,13 @@
 # Roadmap
 
-## 0.1 — Hardware stabilization
+## 0.2 — Hardware stabilization and new interface
 
-- Fix camera DMA allocation and cache coherency.
-- Correct camera orientation and pixel conversion.
-- Remove double-buffer ghosting from the inherited console UI.
-- Verify QR scanning on New and Old Nintendo 3DS hardware.
-
-## 0.2 — New interface
-
-- Replace the console UI with Citro2D.
-- Add Home, Scanner, Download, History, Settings, and Error screens.
-- Support touch, buttons, and clear focus states.
-- Add decoded-URL confirmation and editable filenames.
+- [x] Move camera DMA to linear memory and invalidate its CPU cache.
+- [x] Replace the inherited console UI with Citro2D.
+- [x] Add URL confirmation and file-conflict dialogs.
+- [x] Add touch and button navigation.
+- [ ] Verify camera orientation, colors, and QR decoding on hardware.
+- [ ] Verify the interface on New and Old Nintendo 3DS hardware.
 
 ## 0.3 — Download quality of life
 
@@ -28,4 +23,3 @@
 - Redirect, TLS, chunked-transfer, cancellation, and SD failure tests.
 - New/Old 3DS hardware compatibility matrix.
 - Reproducible CI builds, checksums, and release artifacts.
-

@@ -234,6 +234,7 @@ static void threshold(struct quirc *q)
 
 static void area_count(void *user_data, int y, int left, int right)
 {
+	(void)y;
 	((struct quirc_region *)user_data)->count += right - left + 1;
 }
 
@@ -427,7 +428,7 @@ static void finder_scan(struct quirc *q, int y)
 {
 	quirc_pixel_t *row = q->pixels + y * q->w;
 	int x;
-	int last_color;
+	int last_color = 0;
 	int run_length = 0;
 	int run_count = 0;
 	int pb[5];
@@ -858,8 +859,8 @@ static void rotate_capstone(struct quirc_capstone *cap,
 {
 	struct quirc_point copy[4];
 	int j;
-	int best;
-	int best_score;
+	int best = 0;
+	int best_score = 0;
 
 	for (j = 0; j < 4; j++) {
 		struct quirc_point *p = &cap->corners[j];

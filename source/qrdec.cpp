@@ -1,9 +1,10 @@
 #include "qrdec.h"
 
+#include "ui.hpp"
+
 #include <3ds.h>
 
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -18,6 +19,14 @@ constexpr u16 CameraHeight = 240;
 constexpr size_t CameraBufferSize = CameraWidth * CameraHeight * 2;
 constexpr u64 WaitTimeout = 300000000ULL;
 
+std::string resultMessage(const char *operation, Result result)
+{
+    char buffer[96];
+    std::snprintf(buffer, sizeof(buffer), "%s failed: 0x%08lX",
+                  operation, static_cast<unsigned long>(result));
+    return buffer;
+}
+
 void writePreview(void *framebuffer, const u16 *image)
 {
     u8 *pixels = static_cast<u8 *>(framebuffer);
@@ -28,7 +37,9 @@ void writePreview(void *framebuffer, const u16 *image)
             const u8 blue = ((value >> 11) & 0x1f) << 3;
             const u8 green = ((value >> 5) & 0x3f) << 2;
             const u8 red = (value & 0x1f) << 3;
-            const size_t offset = (x * CameraHeight + (CameraHeight - 1 - y)) * 3;
+            const size_t offset =
+                (x * CameraHeight + (CameraHeight - 1 - y)) * 3;
+
             pixels[offset] = red;
             pixels[offset + 1] = green;
             pixels[offset + 2] = blue;
@@ -38,41 +49,13 @@ void writePreview(void *framebuffer, const u16 *image)
 
 void writeIntensityMap(u8 *output, const u16 *image)
 {
-    for (u32 i = 0; i < CameraWidth * CameraHeight; ++i) {
-        const u16 value = image[i];
+    for (u32 index = 0; index < CameraWidth * CameraHeight; ++index) {
+        const u16 value = image[index];
         const u8 blue = ((value >> 11) & 0x1f) << 3;
         const u8 green = ((value >> 5) & 0x3f) << 2;
         const u8 red = (value & 0x1f) << 3;
-        output[i] = static_cast<u8>((red + green + blue) / 3);
+        output[index] = static_cast<u8>((red + green + blue) / 3);
     }
-}
-
-Result captureFrame(u16 *buffer, u32 transferBytes)
-{
-    Handle receiveEvent = 0;
-
-    Result result = CAMU_ClearBuffer(PORT_CAM1);
-    if (R_FAILED(result)) {
-        return result;
-    }
-
-    result = CAMU_StartCapture(PORT_CAM1);
-    if (R_FAILED(result)) {
-        return result;
-    }
-
-    result = CAMU_SetReceiving(&receiveEvent, reinterpret_cast<u8 *>(buffer),
-                               PORT_CAM1, CameraBufferSize,
-                               static_cast<s16>(transferBytes));
-    if (R_SUCCEEDED(result)) {
-        result = svcWaitSynchronization(receiveEvent, WaitTimeout);
-    }
-
-    CAMU_StopCapture(PORT_CAM1);
-    if (receiveEvent != 0) {
-        svcCloseHandle(receiveEvent);
-    }
-    return result;
 }
 
 void closeCamera()
@@ -86,15 +69,10 @@ void closeCamera()
 
 std::string qr_dec()
 {
-    extern PrintConsole bottom;
-    consoleSelect(&bottom);
-    printf("\x1b[2JScan an HTTP/HTTPS QR code.\n");
-    printf("Press B to cancel.\n");
-
     Result result = camInit();
     if (R_FAILED(result)) {
-        printf("\x1b[31;1mCamera init failed: 0x%08lX\x1b[37;1m\n",
-               static_cast<unsigned long>(result));
+        ui::showDialog("Camera unavailable",
+                       resultMessage("Camera initialization", result), true);
         return "";
     }
 
@@ -131,48 +109,73 @@ std::string qr_dec()
     }
 
     if (R_FAILED(result)) {
-        printf("\x1b[31;1mCamera setup failed: 0x%08lX\x1b[37;1m\n",
-               static_cast<unsigned long>(result));
+        const std::string message = resultMessage("Camera setup", result);
         closeCamera();
+        ui::showDialog("Camera unavailable", message, true);
         return "";
     }
 
     quirc *decoder = quirc_new();
     if (decoder == nullptr ||
         quirc_resize(decoder, CameraWidth, CameraHeight) < 0) {
-        printf("\x1b[31;1mNot enough memory for QR scanning.\x1b[37;1m\n");
         if (decoder != nullptr) {
             quirc_destroy(decoder);
         }
         closeCamera();
+        ui::showDialog("Scanner unavailable",
+                       "Not enough memory for QR decoding.", true);
         return "";
     }
 
-    u16 *cameraBuffer = static_cast<u16 *>(malloc(CameraBufferSize));
+    u16 *cameraBuffer =
+        static_cast<u16 *>(linearAlloc(CameraBufferSize));
     if (cameraBuffer == nullptr) {
-        printf("\x1b[31;1mNot enough camera memory.\x1b[37;1m\n");
         quirc_destroy(decoder);
         closeCamera();
+        ui::showDialog("Scanner unavailable",
+                       "Not enough linear memory for the camera.", true);
         return "";
+    }
+    std::memset(cameraBuffer, 0, CameraBufferSize);
+
+    result = CAMU_ClearBuffer(PORT_CAM1);
+    if (R_SUCCEEDED(result)) {
+        result = CAMU_StartCapture(PORT_CAM1);
     }
 
     std::string decodedUrl;
+    std::string cameraError = R_FAILED(result)
+        ? resultMessage("Starting camera capture", result)
+        : "";
 
-    while (aptMainLoop()) {
+    while (R_SUCCEEDED(result) && aptMainLoop()) {
         hidScanInput();
         if (hidKeysDown() & (KEY_B | KEY_START)) {
             break;
         }
 
-        result = captureFrame(cameraBuffer, transferBytes);
+        Handle receiveEvent = 0;
+        result = CAMU_SetReceiving(&receiveEvent,
+                                   reinterpret_cast<u8 *>(cameraBuffer),
+                                   PORT_CAM1, CameraBufferSize,
+                                   static_cast<s16>(transferBytes));
+
+        if (R_SUCCEEDED(result)) {
+            result = svcWaitSynchronization(receiveEvent, WaitTimeout);
+        }
+        if (receiveEvent != 0) {
+            svcCloseHandle(receiveEvent);
+        }
         if (R_FAILED(result)) {
-            printf("\x1b[31;1mCamera capture failed: 0x%08lX\x1b[37;1m\n",
-                   static_cast<unsigned long>(result));
+            cameraError = resultMessage("Camera capture", result);
             break;
         }
 
+        GSPGPU_InvalidateDataCache(cameraBuffer, CameraBufferSize);
+
         writePreview(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, nullptr, nullptr),
                      cameraBuffer);
+        gfxFlushBuffers();
 
         int width = CameraWidth;
         int height = CameraHeight;
@@ -181,35 +184,37 @@ std::string qr_dec()
         quirc_end(decoder);
 
         const int codeCount = quirc_count(decoder);
-        for (int i = 0; i < codeCount; ++i) {
+        for (int index = 0; index < codeCount; ++index) {
             quirc_code code;
             quirc_data data;
-            quirc_extract(decoder, i, &code);
+            quirc_extract(decoder, index, &code);
 
-            const quirc_decode_error_t error = quirc_decode(&code, &data);
-            if (error == QUIRC_SUCCESS) {
-                decodedUrl.assign(reinterpret_cast<const char *>(data.payload),
-                                  static_cast<size_t>(data.payload_len));
+            if (quirc_decode(&code, &data) == QUIRC_SUCCESS) {
+                decodedUrl.assign(
+                    reinterpret_cast<const char *>(data.payload),
+                    static_cast<size_t>(data.payload_len));
                 break;
             }
         }
 
-        gfxFlushBuffers();
-        gspWaitForVBlank();
-        gfxSwapBuffers();
+        ui::renderScannerControls(decodedUrl.empty()
+            ? "Looking for a QR code..."
+            : "QR code detected");
 
         if (!decodedUrl.empty()) {
             break;
         }
     }
 
-    free(cameraBuffer);
+    CAMU_StopCapture(PORT_CAM1);
+    linearFree(cameraBuffer);
     quirc_destroy(decoder);
-    closeCamera();
+    CAMU_Activate(SELECT_NONE);
+    camExit();
 
-    consoleSelect(&bottom);
-    if (!decodedUrl.empty()) {
-        printf("\x1b[32;1mQR decoded successfully.\x1b[37;1m\n");
+    if (!cameraError.empty()) {
+        ui::showDialog("Camera error", cameraError, true);
     }
+
     return decodedUrl;
 }

@@ -1,5 +1,7 @@
 #include "download.hpp"
 
+#include "ui.hpp"
+
 #include <3ds.h>
 #include <curl/curl.h>
 
@@ -8,133 +10,85 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <string>
-
-using namespace std;
-
-extern PrintConsole top;
-extern PrintConsole bottom;
 
 namespace {
 
 struct DownloadState {
-    FILE *file;
-    string contentDisposition;
-    curl_off_t lastDownloaded;
-    u64 lastUpdate;
-    bool cancelled;
+    CURL *curl = nullptr;
+    FILE *file = nullptr;
+    std::string url;
+    std::string destination;
+    std::string contentDisposition;
+    std::string filename;
+    std::string finalPath;
+    curl_off_t downloaded = 0;
+    curl_off_t total = 0;
+    u64 lastUpdate = 0;
+    bool targetResolved = false;
+    bool overwrite = false;
+    bool cancelled = false;
 };
 
-string trim(string value)
+std::string trim(std::string value)
 {
     const char *whitespace = " \t\r\n";
     const size_t first = value.find_first_not_of(whitespace);
-    if (first == string::npos) {
+    if (first == std::string::npos) {
         return "";
     }
-
     const size_t last = value.find_last_not_of(whitespace);
     return value.substr(first, last - first + 1);
 }
 
-string lower(string value)
+std::string lower(std::string value)
 {
-    transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
-        return static_cast<char>(tolower(c));
-    });
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) {
+                       return static_cast<char>(std::tolower(c));
+                   });
     return value;
 }
 
-string normaliseDestination(string destination)
+std::string normaliseDestination(std::string destination)
 {
     destination = trim(destination);
-    if (destination.empty() || destination == "Not set" || destination == "error") {
+    if (destination.empty()) {
         destination = "sdmc:/";
     }
-
     if (destination.back() != '/') {
         destination += '/';
     }
     return destination;
 }
 
-string contentDispositionFilename(const string &header)
+bool fileExists(const std::string &path)
 {
-    if (header.empty()) {
-        return "";
+    FILE *file = std::fopen(path.c_str(), "rb");
+    if (file == nullptr) {
+        return false;
     }
-
-    const string lowered = lower(header);
-    size_t pos = lowered.find("filename*=");
-    size_t prefixLength = 10;
-    if (pos == string::npos) {
-        pos = lowered.find("filename=");
-        prefixLength = 9;
-    }
-    if (pos == string::npos) {
-        return "";
-    }
-
-    string value = trim(header.substr(pos + prefixLength));
-    const size_t semicolon = value.find(';');
-    if (semicolon != string::npos) {
-        value.erase(semicolon);
-    }
-
-    value = trim(value);
-    if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-        value = value.substr(1, value.size() - 2);
-    }
-
-    const size_t encodingMarker = value.find("''");
-    if (encodingMarker != string::npos) {
-        value = value.substr(encodingMarker + 2);
-    }
-    return value;
+    std::fclose(file);
+    return true;
 }
 
-string urlFilename(CURL *curl, const char *effectiveUrl)
+std::string basename(const std::string &path)
 {
-    if (effectiveUrl == nullptr) {
-        return "";
-    }
-
-    string path(effectiveUrl);
-    const size_t query = path.find_first_of("?#");
-    if (query != string::npos) {
-        path.erase(query);
-    }
-
-    const size_t slash = path.find_last_of('/');
-    path = slash == string::npos ? path : path.substr(slash + 1);
-
-    int decodedLength = 0;
-    char *decoded = curl_easy_unescape(curl, path.c_str(),
-                                       static_cast<int>(path.size()), &decodedLength);
-    if (decoded == nullptr) {
-        return path;
-    }
-
-    string result(decoded, static_cast<size_t>(decodedLength));
-    curl_free(decoded);
-    return result;
+    const size_t slash = path.find_last_of("/\\");
+    return slash == std::string::npos ? path : path.substr(slash + 1);
 }
 
-string safeFilename(string filename)
+std::string safeFilename(std::string filename)
 {
-    filename = trim(filename);
+    filename = trim(basename(filename));
 
-    const size_t slash = filename.find_last_of("/\\");
-    if (slash != string::npos) {
-        filename = filename.substr(slash + 1);
-    }
-
-    for (char &c : filename) {
-        const unsigned char value = static_cast<unsigned char>(c);
-        if (value < 32 || c == ':' || c == '*' || c == '?' || c == '"' ||
-            c == '<' || c == '>' || c == '|' || c == '/' || c == '\\') {
-            c = '_';
+    for (char &character : filename) {
+        const unsigned char value = static_cast<unsigned char>(character);
+        if (value < 32 || character == ':' || character == '*' ||
+            character == '?' || character == '"' || character == '<' ||
+            character == '>' || character == '|' || character == '/' ||
+            character == '\\') {
+            character = '_';
         }
     }
 
@@ -147,11 +101,10 @@ string safeFilename(string filename)
         filename = "download.bin";
     }
 
-    // FAT supports long names, but keeping this bounded also keeps UI output sane.
     if (filename.size() > 180) {
         const size_t dot = filename.find_last_of('.');
-        if (dot != string::npos && filename.size() - dot <= 16) {
-            const string extension = filename.substr(dot);
+        if (dot != std::string::npos && filename.size() - dot <= 16) {
+            const std::string extension = filename.substr(dot);
             filename = filename.substr(0, 180 - extension.size()) + extension;
         } else {
             filename.resize(180);
@@ -160,33 +113,25 @@ string safeFilename(string filename)
     return filename;
 }
 
-bool fileExists(const string &path)
+std::string unusedPath(const std::string &directory,
+                       const std::string &filename)
 {
-    FILE *file = fopen(path.c_str(), "rb");
-    if (file == nullptr) {
-        return false;
-    }
-    fclose(file);
-    return true;
-}
-
-string unusedPath(const string &directory, const string &filename)
-{
-    string candidate = directory + filename;
+    std::string candidate = directory + filename;
     if (!fileExists(candidate)) {
         return candidate;
     }
 
     const size_t dot = filename.find_last_of('.');
-    const string stem = (dot == string::npos || dot == 0)
+    const std::string stem = dot == std::string::npos || dot == 0
         ? filename
         : filename.substr(0, dot);
-    const string extension = (dot == string::npos || dot == 0)
+    const std::string extension = dot == std::string::npos || dot == 0
         ? ""
         : filename.substr(dot);
 
-    for (unsigned int i = 1; i < 10000; ++i) {
-        candidate = directory + stem + " (" + to_string(i) + ")" + extension;
+    for (unsigned int index = 1; index < 10000; ++index) {
+        candidate = directory + stem + " (" + std::to_string(index) + ")" +
+                    extension;
         if (!fileExists(candidate)) {
             return candidate;
         }
@@ -194,20 +139,138 @@ string unusedPath(const string &directory, const string &filename)
     return "";
 }
 
+std::string contentDispositionFilename(const std::string &header)
+{
+    const std::string lowered = lower(header);
+    size_t position = lowered.find("filename*=");
+    size_t prefixLength = 10;
+
+    if (position == std::string::npos) {
+        position = lowered.find("filename=");
+        prefixLength = 9;
+    }
+    if (position == std::string::npos) {
+        return "";
+    }
+
+    std::string value = trim(header.substr(position + prefixLength));
+    const size_t semicolon = value.find(';');
+    if (semicolon != std::string::npos) {
+        value.erase(semicolon);
+    }
+    value = trim(value);
+
+    if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+        value = value.substr(1, value.size() - 2);
+    }
+
+    const size_t encoding = value.find("''");
+    if (encoding != std::string::npos) {
+        value = value.substr(encoding + 2);
+    }
+    return value;
+}
+
+std::string decodeUrlPart(CURL *curl, const std::string &value)
+{
+    int decodedLength = 0;
+    char *decoded = curl_easy_unescape(curl, value.c_str(),
+                                       static_cast<int>(value.size()),
+                                       &decodedLength);
+    if (decoded == nullptr) {
+        return value;
+    }
+
+    std::string result(decoded, static_cast<size_t>(decodedLength));
+    curl_free(decoded);
+    return result;
+}
+
+std::string effectiveUrlFilename(CURL *curl)
+{
+    char *effectiveUrl = nullptr;
+    curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effectiveUrl);
+    if (effectiveUrl == nullptr) {
+        return "";
+    }
+
+    std::string path(effectiveUrl);
+    const size_t query = path.find_first_of("?#");
+    if (query != std::string::npos) {
+        path.erase(query);
+    }
+    return decodeUrlPart(curl, basename(path));
+}
+
+bool resolveTarget(DownloadState &state)
+{
+    std::string filename =
+        contentDispositionFilename(state.contentDisposition);
+    if (!filename.empty()) {
+        filename = decodeUrlPart(state.curl, filename);
+    }
+    if (filename.empty()) {
+        filename = effectiveUrlFilename(state.curl);
+    }
+
+    state.filename = safeFilename(filename);
+    state.finalPath = state.destination + state.filename;
+
+    if (!fileExists(state.finalPath)) {
+        state.targetResolved = true;
+        return true;
+    }
+
+    const std::string suggestedPath =
+        unusedPath(state.destination, state.filename);
+    const std::string suggestedName = basename(suggestedPath);
+
+    const ui::ConflictChoice choice =
+        ui::askFileConflict(state.filename, suggestedName);
+
+    if (choice == ui::ConflictChoice::Cancel) {
+        state.cancelled = true;
+        return false;
+    }
+
+    if (choice == ui::ConflictChoice::Rename) {
+        if (suggestedPath.empty()) {
+            return false;
+        }
+        state.finalPath = suggestedPath;
+        state.filename = suggestedName;
+    } else {
+        state.overwrite = true;
+    }
+
+    state.targetResolved = true;
+    return true;
+}
+
 size_t writeCallback(char *data, size_t size, size_t count, void *userdata)
 {
-    DownloadState *state = static_cast<DownloadState *>(userdata);
+    DownloadState &state = *static_cast<DownloadState *>(userdata);
     const size_t bytes = size * count;
-    return fwrite(data, 1, bytes, state->file);
+
+    if (!state.targetResolved && !resolveTarget(state)) {
+        return 0;
+    }
+
+    return std::fwrite(data, 1, bytes, state.file);
 }
 
 size_t headerCallback(char *data, size_t size, size_t count, void *userdata)
 {
-    DownloadState *state = static_cast<DownloadState *>(userdata);
+    DownloadState &state = *static_cast<DownloadState *>(userdata);
     const size_t bytes = size * count;
-    string header(data, bytes);
-    if (lower(header).find("content-disposition:") == 0) {
-        state->contentDisposition = trim(header.substr(header.find(':') + 1));
+    const std::string header(data, bytes);
+    const std::string lowered = lower(header);
+
+    if (lowered.find("http/") == 0) {
+        state.contentDisposition.clear();
+    } else if (lowered.find("content-disposition:") == 0) {
+        state.contentDisposition =
+            trim(header.substr(header.find(':') + 1));
     }
     return bytes;
 }
@@ -215,175 +278,195 @@ size_t headerCallback(char *data, size_t size, size_t count, void *userdata)
 int progressCallback(void *userdata, curl_off_t total, curl_off_t downloaded,
                      curl_off_t, curl_off_t)
 {
-    DownloadState *state = static_cast<DownloadState *>(userdata);
+    DownloadState &state = *static_cast<DownloadState *>(userdata);
 
-    hidScanInput();
-    if (hidKeysDown() & KEY_B) {
-        state->cancelled = true;
+    if (!aptMainLoop()) {
+        state.cancelled = true;
         return 1;
     }
 
+    hidScanInput();
+    const u32 down = hidKeysDown();
+    touchPosition touch{};
+    hidTouchRead(&touch);
+
+    if ((down & KEY_B) ||
+        ((down & KEY_TOUCH) &&
+         touch.px >= 58 && touch.px <= 262 &&
+         touch.py >= 137 && touch.py <= 189)) {
+        state.cancelled = true;
+        return 1;
+    }
+
+    state.downloaded = downloaded;
+    state.total = total;
+
     const u64 now = osGetTime();
-    if (downloaded == state->lastDownloaded && now - state->lastUpdate < 250) {
+    if (now - state.lastUpdate < 100 &&
+        !(total > 0 && downloaded >= total)) {
         return 0;
     }
-    if (now - state->lastUpdate < 100 && total > 0 && downloaded < total) {
-        return 0;
-    }
+    state.lastUpdate = now;
 
-    state->lastDownloaded = downloaded;
-    state->lastUpdate = now;
-
-    consoleSelect(&bottom);
-
-    const double downloadedMiB = static_cast<double>(downloaded) / 1048576.0;
-    if (total > 0) {
-        const double totalMiB = static_cast<double>(total) / 1048576.0;
-        const int percent = static_cast<int>((downloaded * 100) / total);
-        printf("\x1b[13;1HDownloaded: %7.2f / %7.2f MiB  \n", downloadedMiB, totalMiB);
-        printf("\x1b[14;1HProgress:   %3d%%                  \n", percent);
-    } else {
-        printf("\x1b[13;1HDownloaded: %7.2f MiB             \n", downloadedMiB);
-        printf("\x1b[14;1HProgress: size unknown            \n");
-    }
-    printf("\x1b[16;1HPress B to cancel");
-    gfxFlushBuffers();
-    gfxSwapBuffers();
+    ui::DownloadView view;
+    view.url = state.url;
+    view.filename = state.filename;
+    view.destination = state.destination;
+    view.status = total > 0
+        ? std::to_string(static_cast<int>((downloaded * 100) / total)) + "%"
+        : "receiving";
+    view.downloaded = downloaded;
+    view.total = total;
+    ui::renderDownload(view);
     return 0;
 }
 
-void showError(const string &message)
+bool commitDownload(const std::string &temporaryPath,
+                    const DownloadState &state)
 {
-    consoleSelect(&top);
-    cout << "\x1b[31;1m" << message << "\x1b[37;1m" << endl;
+    if (!state.overwrite) {
+        if (fileExists(state.finalPath)) {
+            return false;
+        }
+        return std::rename(temporaryPath.c_str(), state.finalPath.c_str()) == 0;
+    }
+
+    const std::string backupPath =
+        unusedPath(state.destination, state.filename + ".3dsdl-backup");
+    if (backupPath.empty()) {
+        return false;
+    }
+
+    if (!fileExists(state.finalPath)) {
+        return std::rename(temporaryPath.c_str(), state.finalPath.c_str()) == 0;
+    }
+
+    if (std::rename(state.finalPath.c_str(), backupPath.c_str()) != 0) {
+        return false;
+    }
+
+    if (std::rename(temporaryPath.c_str(), state.finalPath.c_str()) != 0) {
+        std::rename(backupPath.c_str(), state.finalPath.c_str());
+        return false;
+    }
+
+    std::remove(backupPath.c_str());
+    return true;
 }
 
 } // namespace
 
-Result http_download(string url, string destination)
+DownloadResult downloadFile(const std::string &inputUrl,
+                            const std::string &inputDestination)
 {
-    url = trim(url);
-    destination = normaliseDestination(destination);
+    DownloadResult output;
+    DownloadState state;
 
-    consoleSelect(&top);
-    cout << "\x1b[2J";
-    consoleSelect(&bottom);
-    cout << "\x1b[2J";
-    consoleSelect(&top);
+    state.url = trim(inputUrl);
+    state.destination = normaliseDestination(inputDestination);
 
-    if (url.empty() || (lower(url).find("http://") != 0 &&
-                        lower(url).find("https://") != 0)) {
-        showError("QR code must contain an http:// or https:// URL.");
-        return 1;
+    const std::string loweredUrl = lower(state.url);
+    if (state.url.empty() ||
+        (loweredUrl.find("http://") != 0 &&
+         loweredUrl.find("https://") != 0)) {
+        output.message = "The URL must begin with http:// or https://.";
+        return output;
     }
 
-    if (lower(destination).find("sdmc:/") != 0) {
-        showError("Invalid download folder. Choose a folder on the SD card.");
-        return 1;
+    if (lower(state.destination).find("sdmc:/") != 0) {
+        output.message = "Choose a valid folder on the SD card.";
+        return output;
     }
 
-    cout << "\x1b[33;1mDownloading:\x1b[37;1m " << url << endl;
-    cout << "\x1b[33;1mDestination:\x1b[37;1m " << destination << endl;
-
-    const string temporaryPath = destination + ".multidownload.part";
-    FILE *output = fopen(temporaryPath.c_str(), "wb");
-    if (output == nullptr) {
-        showError("Cannot create a file in that folder (error " +
-                  to_string(errno) + ").");
-        return 1;
+    const std::string temporaryPath =
+        state.destination + ".3dsdl-download.part";
+    state.file = std::fopen(temporaryPath.c_str(), "wb");
+    if (state.file == nullptr) {
+        output.message = "Cannot create a file in that folder (error " +
+                         std::to_string(errno) + ").";
+        return output;
     }
 
-    CURL *curl = curl_easy_init();
-    if (curl == nullptr) {
-        fclose(output);
-        remove(temporaryPath.c_str());
-        showError("Could not initialize the HTTPS client.");
-        return 1;
+    state.curl = curl_easy_init();
+    if (state.curl == nullptr) {
+        std::fclose(state.file);
+        std::remove(temporaryPath.c_str());
+        output.message = "Could not initialize the HTTPS client.";
+        return output;
     }
 
-    DownloadState state = {output, "", -1, 0, false};
     char errorBuffer[CURL_ERROR_SIZE] = {0};
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "3dsDL/0.1.0 (Nintendo 3DS)");
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
-    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https");
-    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
-    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
-    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &state);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &state);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &state);
+    curl_easy_setopt(state.curl, CURLOPT_URL, state.url.c_str());
+    curl_easy_setopt(state.curl, CURLOPT_USERAGENT,
+                     "3dsDL/0.2.0 (Nintendo 3DS)");
+    curl_easy_setopt(state.curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(state.curl, CURLOPT_MAXREDIRS, 10L);
+    curl_easy_setopt(state.curl, CURLOPT_PROTOCOLS_STR, "http,https");
+    curl_easy_setopt(state.curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
+    curl_easy_setopt(state.curl, CURLOPT_FAILONERROR, 1L);
+    curl_easy_setopt(state.curl, CURLOPT_CONNECTTIMEOUT, 30L);
+    curl_easy_setopt(state.curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(state.curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(state.curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(state.curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(state.curl, CURLOPT_CAINFO, "romfs:/cacert.pem");
+    curl_easy_setopt(state.curl, CURLOPT_ERRORBUFFER, errorBuffer);
+    curl_easy_setopt(state.curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(state.curl, CURLOPT_WRITEDATA, &state);
+    curl_easy_setopt(state.curl, CURLOPT_HEADERFUNCTION, headerCallback);
+    curl_easy_setopt(state.curl, CURLOPT_HEADERDATA, &state);
+    curl_easy_setopt(state.curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(state.curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
+    curl_easy_setopt(state.curl, CURLOPT_XFERINFODATA, &state);
 
-    const CURLcode result = curl_easy_perform(curl);
-    long status = 0;
-    char *effectiveUrl = nullptr;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-    curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effectiveUrl);
+    ui::DownloadView initialView;
+    initialView.url = state.url;
+    initialView.destination = state.destination;
+    initialView.status = "connecting";
+    ui::renderDownload(initialView);
 
-    const int closeResult = fclose(output);
+    const CURLcode result = curl_easy_perform(state.curl);
+    curl_easy_getinfo(state.curl, CURLINFO_RESPONSE_CODE, &output.httpStatus);
+
+    const int closeResult = std::fclose(state.file);
     state.file = nullptr;
 
-    if (result != CURLE_OK || closeResult != 0) {
-        remove(temporaryPath.c_str());
+    if (result == CURLE_OK && !state.targetResolved) {
+        if (!resolveTarget(state)) {
+            state.cancelled = true;
+        }
+    }
+
+    if (result != CURLE_OK || closeResult != 0 || state.cancelled) {
+        std::remove(temporaryPath.c_str());
+        output.cancelled = state.cancelled;
 
         if (state.cancelled) {
-            showError("Download cancelled; the partial file was removed.");
+            output.message = "Download cancelled.";
         } else if (closeResult != 0) {
-            showError("Could not finish writing to the SD card.");
+            output.message = "Could not finish writing to the SD card.";
         } else {
-            const string detail = errorBuffer[0] != '\0'
+            output.message = errorBuffer[0] != '\0'
                 ? errorBuffer
                 : curl_easy_strerror(result);
-            showError("Download failed: " + detail);
-            if (status != 0) {
-                cout << "HTTP status: " << status << endl;
-            }
         }
 
-        curl_easy_cleanup(curl);
-        return 1;
+        curl_easy_cleanup(state.curl);
+        return output;
     }
 
-    string filename = contentDispositionFilename(state.contentDisposition);
-    if (!filename.empty()) {
-        int decodedLength = 0;
-        char *decoded = curl_easy_unescape(curl, filename.c_str(),
-                                           static_cast<int>(filename.size()),
-                                           &decodedLength);
-        if (decoded != nullptr) {
-            filename.assign(decoded, static_cast<size_t>(decodedLength));
-            curl_free(decoded);
-        }
-    }
-    if (filename.empty()) {
-        filename = urlFilename(curl, effectiveUrl);
-    }
-    filename = safeFilename(filename);
-
-    const string finalPath = unusedPath(destination, filename);
-    if (finalPath.empty() || rename(temporaryPath.c_str(), finalPath.c_str()) != 0) {
-        remove(temporaryPath.c_str());
-        curl_easy_cleanup(curl);
-        showError("Download finished, but the file could not be named.");
-        return 1;
+    if (!commitDownload(temporaryPath, state)) {
+        std::remove(temporaryPath.c_str());
+        output.message =
+            "The download finished, but the destination file could not be updated.";
+        curl_easy_cleanup(state.curl);
+        return output;
     }
 
-    curl_easy_cleanup(curl);
-
-    consoleSelect(&top);
-    cout << "\x1b[33;1mHTTP status:\x1b[37;1m " << status << endl;
-    cout << "\x1b[33;1mSaved as:\x1b[37;1m " << finalPath << endl;
-    return 0;
+    output.success = true;
+    output.path = state.finalPath;
+    output.message = "Saved as " + state.finalPath;
+    curl_easy_cleanup(state.curl);
+    return output;
 }
