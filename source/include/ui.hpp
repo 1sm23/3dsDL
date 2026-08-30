@@ -1,6 +1,7 @@
 #pragma once
 
 #include <3ds.h>
+#include <citro2d.h>
 #include <curl/curl.h>
 
 #include <string>
@@ -40,6 +41,6 @@ void showDialog(const std::string &title, const std::string &message,
 void renderDownload(const DownloadView &view);
 ConflictChoice askFileConflict(const std::string &filename,
                                const std::string &suggestedName);
-void renderScannerControls(const std::string &status);
+void renderScannerFrame(C2D_Image preview, const std::string &status);
 
 } // namespace ui

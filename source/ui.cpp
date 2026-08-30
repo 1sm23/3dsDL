@@ -118,15 +118,6 @@ void beginFullFrame()
     C2D_TargetClear(bottomTarget, Background);
 }
 
-void beginBottomOnlyFrame()
-{
-    C2D_TextBufClear(textBuffer);
-    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C2D_TargetClear(bottomTarget, Background);
-    C2D_SceneBegin(bottomTarget);
-    drawBackground(320);
-}
-
 void drawHomeTop(const std::string &destination)
 {
     C2D_SceneBegin(topTarget);
@@ -442,9 +433,36 @@ ConflictChoice askFileConflict(const std::string &filename,
     return ConflictChoice::Cancel;
 }
 
-void renderScannerControls(const std::string &status)
+void renderScannerFrame(C2D_Image preview, const std::string &status)
 {
-    beginBottomOnlyFrame();
+    beginFullFrame();
+
+    C2D_SceneBegin(topTarget);
+    C2D_DrawImageAt(preview, 0, 0, 0.4f);
+
+    const u32 shade = C2D_Color32(0x00, 0x00, 0x00, 0x78);
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, 34, shade);
+    drawText("POINT CAMERA AT QR CODE", 200, 8, 0.52f,
+             Text, C2D_AlignCenter);
+
+    const float left = 126;
+    const float top = 46;
+    const float right = 274;
+    const float bottom = 194;
+    const float line = 4;
+    const float arm = 25;
+
+    C2D_DrawRectSolid(left, top, 0.6f, arm, line, Primary);
+    C2D_DrawRectSolid(left, top, 0.6f, line, arm, Primary);
+    C2D_DrawRectSolid(right - arm, top, 0.6f, arm, line, Primary);
+    C2D_DrawRectSolid(right - line, top, 0.6f, line, arm, Primary);
+    C2D_DrawRectSolid(left, bottom - line, 0.6f, arm, line, Primary);
+    C2D_DrawRectSolid(left, bottom - arm, 0.6f, line, arm, Primary);
+    C2D_DrawRectSolid(right - arm, bottom - line, 0.6f, arm, line, Primary);
+    C2D_DrawRectSolid(right - line, bottom - arm, 0.6f, line, arm, Primary);
+
+    C2D_SceneBegin(bottomTarget);
+    drawBackground(320);
 
     drawText("QR SCANNER", 18, 17, 0.7f, Text);
     C2D_DrawRectSolid(18, 44, 0.4f, 52, 3, Primary);

@@ -16,8 +16,13 @@ namespace {
 
 constexpr u16 CameraWidth = 400;
 constexpr u16 CameraHeight = 240;
+constexpr u16 TextureWidth = 512;
+constexpr u16 TextureHeight = 256;
 constexpr size_t CameraBufferSize = CameraWidth * CameraHeight * 2;
 constexpr u64 WaitTimeout = 300000000ULL;
+constexpr Tex3DS_SubTexture PreviewSubTexture = {
+    TextureWidth, TextureHeight, 0.0f, 1.0f, 1.0f, 0.0f
+};
 
 std::string resultMessage(const char *operation, Result result)
 {
@@ -27,24 +32,28 @@ std::string resultMessage(const char *operation, Result result)
     return buffer;
 }
 
-void writePreview(void *framebuffer, const u16 *image)
+u32 mortonOffset(u32 x, u32 y)
 {
-    u8 *pixels = static_cast<u8 *>(framebuffer);
+    return (x & 1) | ((y & 1) << 1) |
+           ((x & 2) << 1) | ((y & 2) << 2) |
+           ((x & 4) << 2) | ((y & 4) << 3);
+}
 
+void updatePreviewTexture(C3D_Tex &texture, const u16 *image)
+{
+    u16 *pixels = static_cast<u16 *>(texture.data);
+
+    // PICA200 textures store pixels in Morton-ordered 8x8 tiles.
     for (u32 y = 0; y < CameraHeight; ++y) {
         for (u32 x = 0; x < CameraWidth; ++x) {
-            const u16 value = image[y * CameraWidth + x];
-            const u8 blue = ((value >> 11) & 0x1f) << 3;
-            const u8 green = ((value >> 5) & 0x3f) << 2;
-            const u8 red = (value & 0x1f) << 3;
-            const size_t offset =
-                (x * CameraHeight + (CameraHeight - 1 - y)) * 3;
-
-            pixels[offset] = red;
-            pixels[offset + 1] = green;
-            pixels[offset + 2] = blue;
+            const u32 tile =
+                ((y >> 3) * (TextureWidth >> 3) + (x >> 3)) << 6;
+            pixels[tile + mortonOffset(x & 7, y & 7)] =
+                image[y * CameraWidth + x];
         }
     }
+
+    C3D_TexFlush(&texture);
 }
 
 void writeIntensityMap(u8 *output, const u16 *image)
@@ -138,6 +147,22 @@ std::string qr_dec()
     }
     std::memset(cameraBuffer, 0, CameraBufferSize);
 
+    C3D_Tex previewTexture{};
+    if (!C3D_TexInit(&previewTexture, TextureWidth, TextureHeight,
+                     GPU_RGB565)) {
+        linearFree(cameraBuffer);
+        quirc_destroy(decoder);
+        closeCamera();
+        ui::showDialog("Scanner unavailable",
+                       "Not enough memory for the camera preview.", true);
+        return "";
+    }
+    std::memset(previewTexture.data, 0, previewTexture.size);
+    C3D_TexSetFilter(&previewTexture, GPU_LINEAR, GPU_LINEAR);
+    C3D_TexSetWrap(&previewTexture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    C3D_TexFlush(&previewTexture);
+    const C2D_Image previewImage = {&previewTexture, &PreviewSubTexture};
+
     result = CAMU_ClearBuffer(PORT_CAM1);
     if (R_SUCCEEDED(result)) {
         result = CAMU_StartCapture(PORT_CAM1);
@@ -150,7 +175,14 @@ std::string qr_dec()
 
     while (R_SUCCEEDED(result) && aptMainLoop()) {
         hidScanInput();
-        if (hidKeysDown() & (KEY_B | KEY_START)) {
+        const u32 pressed = hidKeysDown();
+        touchPosition touch{};
+        hidTouchRead(&touch);
+        const bool touchedCancel =
+            (pressed & KEY_TOUCH) &&
+            touch.px >= 58 && touch.px <= 262 &&
+            touch.py >= 159 && touch.py <= 207;
+        if ((pressed & (KEY_B | KEY_START)) || touchedCancel) {
             break;
         }
 
@@ -172,10 +204,7 @@ std::string qr_dec()
         }
 
         GSPGPU_InvalidateDataCache(cameraBuffer, CameraBufferSize);
-
-        writePreview(gfxGetFramebuffer(GFX_TOP, GFX_LEFT, nullptr, nullptr),
-                     cameraBuffer);
-        gfxFlushBuffers();
+        updatePreviewTexture(previewTexture, cameraBuffer);
 
         int width = CameraWidth;
         int height = CameraHeight;
@@ -197,7 +226,7 @@ std::string qr_dec()
             }
         }
 
-        ui::renderScannerControls(decodedUrl.empty()
+        ui::renderScannerFrame(previewImage, decodedUrl.empty()
             ? "Looking for a QR code..."
             : "QR code detected");
 
@@ -207,6 +236,7 @@ std::string qr_dec()
     }
 
     CAMU_StopCapture(PORT_CAM1);
+    C3D_TexDelete(&previewTexture);
     linearFree(cameraBuffer);
     quirc_destroy(decoder);
     CAMU_Activate(SELECT_NONE);
