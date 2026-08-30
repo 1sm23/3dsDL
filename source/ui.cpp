@@ -438,6 +438,9 @@ void renderScannerFrame(C2D_Image preview, const std::string &status)
     beginFullFrame();
 
     C2D_SceneBegin(topTarget);
+    // Rebinding another texture unit invalidates the PICA200 texture cache.
+    // Without this, CPU-updated camera textures can remain stuck on frame one.
+    C3D_TexBind(1, preview.tex);
     C2D_DrawImageAt(preview, 0, 0, 0.4f);
 
     const u32 shade = C2D_Color32(0x00, 0x00, 0x00, 0x78);
