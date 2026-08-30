@@ -58,7 +58,7 @@ without powering down the console or removing its SD card.
 
 - A Nintendo 3DS capable of launching `.3dsx` homebrew
 - A network connection configured on the console
-- The `3dsDL.3dsx` release artifact
+- The `3dsDL.3dsx` or `3dsDL.cia` release artifact
 
 ### SD-card layout
 
@@ -70,6 +70,10 @@ sdmc:/3ds/3dsDL/3dsDL.3dsx
 
 Launch **3dsDL** from the Homebrew Launcher. If you already run an FTP server
 such as FTPD on the console, you can transfer new builds wirelessly.
+
+Alternatively, install `3dsDL.cia` with FBI to launch 3dsDL directly from the
+HOME Menu. The CIA uses the stable Title ID `0004000003D5D100`, so future CIA
+builds upgrade the same installed title rather than creating duplicates.
 
 ## Using 3dsDL
 
@@ -115,18 +119,21 @@ cd 3dsDL
 The script performs the complete build in order:
 
 1. Checks Docker and starts Colima when necessary.
-2. Obtains the pinned `devkitpro/devkitarm:20260610` image.
+2. Obtains the pinned `devkitpro/devkitarm:20260610` image and builds the
+   checksum-verified CIA tools image when it is not cached.
 3. Validates that the launcher PNG contains a real alpha channel.
 4. Cleans previous build outputs.
 5. Compiles 3dsDL and validates the generated artifacts.
-6. Packages the executable, SMDH metadata, and SHA-256 checksum in `dist/`.
-7. Removes intermediate files so the repository root remains clean.
+6. Creates the HOME Menu banner and packages both 3DSX and CIA builds.
+7. Writes release artifacts and their SHA-256 checksums to `dist/`.
+8. Removes intermediate files so the repository root remains clean.
 
 The resulting package contains:
 
 ```text
 dist/
 ├── 3dsDL.3dsx
+├── 3dsDL.cia
 ├── 3dsDL.smdh
 └── 3dsDL.sha256
 ```
@@ -139,6 +146,9 @@ THREEDSDL_BUILD_JOBS=4 ./scripts/build.sh
 
 # Select another devkitPro image
 THREEDSDL_BUILD_IMAGE=devkitpro/devkitarm:20260610 ./scripts/build.sh
+
+# Select another CIA packaging image
+THREEDSDL_CIA_IMAGE=3dsdl-cia-tools:1.0.1 ./scripts/build.sh
 
 # Leave a Colima instance started by the script running afterward
 THREEDSDL_KEEP_COLIMA=1 ./scripts/build.sh
