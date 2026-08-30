@@ -1,0 +1,14 @@
+# devkitARM build output
+/build/
+*.elf
+*.map
+*.smdh
+*.3dsx
+*.cia
+*.3ds
+
+# Local development
+.DS_Store
+.vscode/
+.idea/
+
