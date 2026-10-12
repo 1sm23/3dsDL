@@ -87,6 +87,27 @@ and (on New 3DS) CPU speed.
     FOLDER / NO, asks about existing files, shows progress, and DELETE ZIP
     removes the archive. With it off, nothing is offered.
 
+### HOME Menu banner and icon
+
+The banner is an animated 3D model (see `resources/banner/README.md`), and a
+bad one can freeze the HOME Menu, so check this on a console before every
+release that changes it.
+
+25. After installing the CIA, the HOME Menu shows 3dsDL's icon (a cyan card
+    with a yellow arrow). The Homebrew Launcher shows the same icon for the
+    `.3dsx`.
+26. Selecting 3dsDL plays the jingle once and shows the banner: the arrow
+    drops into the card, the card squashes, sparkles burst and the wordmark
+    bobs. It loops without a jump, and nothing is black or flickers.
+27. With the 3D slider up, the wordmark and sparkles stand in front of the
+    screen and the card sits behind them.
+28. Moving the cursor on and off 3dsDL several times, and opening and closing
+    the app, never freezes the HOME Menu. If it does, hold POWER to switch
+    off, uninstall 3dsDL with FBI, and install a build made with
+    `THREEDSDL_FLAT_BANNER=1` instead. If the HOME Menu starts with 3dsDL
+    already highlighted and freezes again, starting once without the SD card
+    should move the cursor elsewhere.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over

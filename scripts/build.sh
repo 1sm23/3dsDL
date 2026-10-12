@@ -105,9 +105,18 @@ step "Compiling 3dsDL with ${BUILD_JOBS} job(s)"
 run_builder make -j"${BUILD_JOBS}"
 
 step "Creating Home Menu metadata and banner"
+# The HOME Menu banner is the animated 3D model from resources/banner/ (see
+# scripts/make-banner.sh). THREEDSDL_FLAT_BANNER=1 packs the flat picture
+# instead, should the 3D banner ever misbehave on a console.
+if [[ "${THREEDSDL_FLAT_BANNER:-0}" == "1" ]]; then
+    BANNER_ART=(-i resources/banner-3dsdl.png)
+    printf 'Using the flat banner picture.\n'
+else
+    BANNER_ART=(-ci resources/banner/3dsDL.cgfx)
+fi
 run_cia_tool bannertool makebanner \
-    -i resources/banner-3dsdl.png \
-    -a resources/banner-silence.wav \
+    "${BANNER_ART[@]}" \
+    -a resources/banner/jingle.wav \
     -o build/3dsDL.bnr
 run_cia_tool bannertool makesmdh \
     -s "3dsDL" \

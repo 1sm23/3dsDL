@@ -21,8 +21,9 @@ The static site published at https://ankush.one/3dsDL/ by
 - `fonts/`: M PLUS Rounded 1c and M PLUS 1 Code (text), DotGothic16 (the
   pixel face for system labels) and Gaegu (the handwriting on the doodles),
   Latin subsets, all under the SIL Open Font License (the `OFL-*.txt` files).
-- `assets/`: the icon and banner resized from `resources/`, plus the two
-  console images below.
+- `assets/`: the icons and the social image (`banner.jpg`), rendered from the
+  3D banner model by `resources/banner/render.sh`, plus the two console
+  images below.
 
 ## Console images
 
