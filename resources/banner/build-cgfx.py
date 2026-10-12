@@ -11,6 +11,13 @@ wrapper then fixes or adjusts what it leaves at defaults:
   call it required for a banner that doesn't crash. Mesh and shape names
   are made unique at the same time (nodes sharing a mesh, like the
   sparkles, would otherwise all be called the same).
+- pycgfx moves the bones of see-through (BLEND) materials, here the
+  wordmark, to the end of the bone table so they draw last, but doesn't
+  rebuild the table's search tree. The HOME Menu then finds the wrong bone
+  when it looks one up by name and crashes (a null pointer read in "menu";
+  this is what crashed 3dsDL's second test build). The tree is rebuilt, and
+  BLEND materials are marked translucent so they draw in the right pass.
+  Both fixes are described by CBC for YANBF too.
 
 - Its one light shines straight from the camera, and materials get no
   ambient light, so anything turned away from the viewer goes black. The
@@ -33,15 +40,52 @@ AMBIENT = 0.42
 LIGHT = (0.35, -0.5, -0.8)  # direction the light travels: down, right, into the screen
 
 
+def lookup_failures(info):
+    """Names that a console lookup in this DICT would not find.
+
+    Walks the Patricia tree the way NintendoWare does: from the root (whose
+    reference bit counts as the highest), follow left or right by the bit of
+    the name at each node's reference bit, until the bit index stops falling.
+    """
+    nodes = info.dict.nodes
+
+    def bit(name, index):
+        data = name.encode()
+        return index // 8 < len(data) and (data[index // 8] >> (index & 7)) & 1
+
+    def refbit(i):
+        return float("inf") if i == 0 else nodes[i].refbit
+
+    failures = []
+    for entry in nodes[1:]:
+        current, nxt = 0, nodes[0].left_index
+        while refbit(current) > refbit(nxt):
+            current = nxt
+            nxt = nodes[current].right_index if bit(entry.name, nodes[current].refbit) else nodes[current].left_index
+        if nodes[nxt] is not entry:
+            failures.append(entry.name)
+    return failures
+
+
 def main(pycgfx_dir, gltf_path, out_path):
     sys.path.insert(0, pycgfx_dir)
     import gltflib
     import main as pycgfx
     from cgfx.shared import ColorFloat, Vector3
 
-    cgfx = pycgfx.convert_gltf(gltflib.GLTF.load(gltf_path, load_file_resources=True))
+    gltf = gltflib.GLTF.load(gltf_path, load_file_resources=True)
+    cgfx = pycgfx.convert_gltf(gltf)
 
     model = cgfx.data.models["COMMON"]
+
+    # The bone order pycgfx chose stays; only the lookup tree is rebuilt.
+    broken = lookup_failures(model.skeleton.bones)
+    model.skeleton.bones.dict.regenerate()
+    print("bone lookups broken by pycgfx's sort: %s" % (", ".join(broken) or "none"))
+
+    for material in gltf.model.materials:
+        if material.alphaMode == "BLEND":
+            model.materials[material.name].transluscency_kind = 1  # translucent
 
     bones = list(model.skeleton.bones)
     materials = list(model.materials)
@@ -57,6 +101,18 @@ def main(pycgfx_dir, gltf_path, out_path):
     length = math.sqrt(sum(c * c for c in LIGHT))
     for name in cgfx.data.lights:
         cgfx.data.lights[name].position_or_direction = Vector3(*(c / length for c in LIGHT))
+
+    tables = {
+        "models": cgfx.data.models, "textures": cgfx.data.textures, "luts": cgfx.data.lookup_tables,
+        "lights": cgfx.data.lights, "scenes": cgfx.data.scenes, "animations": cgfx.data.skeletal_animations,
+        "bones": model.skeleton.bones, "materials": model.materials,
+        "animation groups": model.animation_group_descriptions,
+    }
+    for label, info in tables.items():
+        failures = lookup_failures(info)
+        if failures:
+            sys.exit("lookup in %s would not find: %s" % (label, ", ".join(failures)))
+    print("every name lookup resolves (%s)" % ", ".join(tables))
 
     data = pycgfx.write(cgfx)
     if len(data) > LIMIT:

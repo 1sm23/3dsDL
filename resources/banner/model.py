@@ -222,15 +222,15 @@ def sd_card():
     """An SD card outline, 8.6 by 11 units, with the clipped top-right corner."""
     w, h, cut = 8.6, 11.0, 2.6
     corners = [(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2 - cut), (w / 2 - cut, h / 2), (-w / 2, h / 2)]
-    return rounded(corners, [1.0, 1.0, 0.45, 0.45, 1.0], 7)
+    return rounded(corners, [1.0, 1.0, 0.45, 0.45, 1.0], 4)
 
 
-def arrow():
+def arrow(segments=4):
     """A fat download arrow pointing down; the origin is where the head
     meets the shaft, the tip is 3.4 below and the shaft top 3.6 above."""
     shaft, head = 1.35, 3.1
     corners = [(0, -3.4), (head, 0), (shaft, 0), (shaft, 3.6), (-shaft, 3.6), (-shaft, 0), (-head, 0)]
-    return rounded(corners, [0.55, 0.45, 0.3, 0.45, 0.45, 0.3, 0.45], 6)
+    return rounded(corners, [0.55, 0.45, 0.3, 0.45, 0.45, 0.3, 0.45], segments)
 
 
 def star(outer, inner, points=5):
@@ -239,13 +239,13 @@ def star(outer, inner, points=5):
         r = outer if k % 2 == 0 else inner
         a = math.pi / 2 + k * math.pi / points
         corners.append((r * math.cos(a), r * math.sin(a)))
-    return rounded(corners, [outer * 0.2 if k % 2 == 0 else inner * 0.25 for k in range(points * 2)], 4)
+    return rounded(corners, [outer * 0.2 if k % 2 == 0 else 0 for k in range(points * 2)], 2)
 
 
 def card_label():
     """The white label on the card's face, like a real SD card's."""
     w, h = 6.6, 4.4
-    outline = rounded([(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)], 0.7, 5)
+    outline = rounded([(-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)], 0.7, 3)
     return merge((extrude(outline, 0.3, 0.1), (-0.25, 1.55, 0.82)))
 
 
@@ -253,8 +253,8 @@ def label_glyph():
     """A small navy download mark embossed on the label: the arrow, and the
     line it lands on."""
     k = 0.42
-    mark = [(x * k, y * k) for x, y in arrow()]
-    line = rounded([(-1.6, -0.26), (1.6, -0.26), (1.6, 0.26), (-1.6, 0.26)], 0.24, 4)
+    mark = [(x * k, y * k) for x, y in arrow(2)]
+    line = rounded([(-1.6, -0.26), (1.6, -0.26), (1.6, 0.26), (-1.6, 0.26)], 0.24, 2)
     return merge(
         (extrude(mark, 0.22, 0.06), (-0.25, 1.95, 1.08)),
         (extrude(line, 0.22, 0.06), (-0.25, -0.1, 1.08)),
@@ -269,7 +269,7 @@ def contact_bars():
     total = 5 * width + 4 * gap
     for k in range(5):
         x = -total / 2 + width / 2 + k * (width + gap)
-        bar = rounded([(-width / 2, -height / 2), (width / 2, -height / 2), (width / 2, height / 2), (-width / 2, height / 2)], 0.32, 4)
+        bar = rounded([(-width / 2, -height / 2), (width / 2, -height / 2), (width / 2, height / 2), (-width / 2, height / 2)], 0.32, 1)
         bars.append((extrude(bar, 0.36, 0.1), (x, -3.35, 0.82)))
     return merge(*bars)
 

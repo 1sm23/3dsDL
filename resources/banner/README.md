@@ -4,9 +4,9 @@ When 3dsDL is selected on the HOME Menu, the top screen shows its banner,
 with a short jingle. This folder holds an animated 3D banner model, like the
 ones official games have, and everything it is made from, as code.
 
-> **Status: experimental.** The first build of the 3D banner crashed the
-> HOME Menu on a console as soon as 3dsDL was selected. `build-cgfx.py` now
-> applies the fix described below, but until a build passes the banner
+> **Status: experimental.** The first two builds of the 3D banner crashed
+> the HOME Menu on a console as soon as 3dsDL was selected. `build-cgfx.py`
+> now applies the fixes described below, but until a build passes the banner
 > checks in `docs/HARDWARE.md`, `scripts/build.sh` packs the flat picture
 > (`resources/banner-3dsdl.png`, rendered from the same model) and only uses
 > the model with `THREEDSDL_3D_BANNER=1`.
@@ -63,8 +63,21 @@ HOME Menu on a real console even when an emulator shows the banner fine.
   `build-cgfx.py` fills the names in (and makes mesh names unique), the fix
   that [CBC for YANBF](https://github.com/daaaaavia/CBC-for-YANBF)'s pycgfx
   patch notes call required for a banner that doesn't crash.
-- **Under 512 KiB.** The CGFX is about 190 KiB, most of it the wordmark
+- **Every name lookup must resolve.** The HOME Menu finds bones, materials
+  and animations by name through a Patricia tree in each table. pycgfx
+  reorders the bones of see-through (BLEND) materials, like the wordmark,
+  without rebuilding the bones' tree, so lookups land on the wrong bone; the
+  second 3D build crashed this way (a null pointer read in `menu`).
+  `build-cgfx.py` rebuilds the tree, marks BLEND materials translucent, and
+  then walks every table's tree the way the console does, refusing to write
+  a CGFX in which any name would not be found.
+- **About 2,000 triangles at most**, the limit CBC for YANBF uses. The model
+  is 1,934; arcs are kept to a few segments each.
+- **Under 512 KiB.** The CGFX is about 150 KiB, most of it the wordmark
   texture. `build-cgfx.py` refuses to write anything over the limit.
+- **Short stereo sound.** Banner sound must be two channels and at most 3
+  seconds. The jingle is 1.6 seconds at 22.05 kHz, so the whole banner stays
+  small.
 - **Small power-of-two textures**, at most 256 pixels on a side.
 - **The camera is fixed:** at (0, 1, 44.786), looking down -z with a 30°
   vertical field of view. The plane z = 0 shows x from -20 to 20 and y from

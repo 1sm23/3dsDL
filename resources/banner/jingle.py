@@ -3,8 +3,9 @@
 
 An original little tune, timed to the banner animation: a quick rising
 arpeggio while the arrow falls, a soft bop when it lands in the card at
-0.7 s, and three sparkle chimes as the stars burst. 44.1 kHz, 16-bit stereo,
-like the silent clip it replaces; about 1.6 seconds.
+0.7 s, and three sparkle chimes as the stars burst. About 1.6 seconds of
+22.05 kHz 16-bit stereo (banner sound must be stereo and at most 3 seconds,
+and a small one leaves room for the model).
 
 Usage: python3 jingle.py jingle.wav
 """
@@ -14,7 +15,7 @@ import struct
 import sys
 import wave
 
-RATE = 44100
+RATE = 22050
 LENGTH = 1.6
 
 
@@ -31,7 +32,9 @@ def tone(buffer, start, duration, freq, volume, kind="triangle", end_freq=None, 
         if kind == "triangle":
             wave_value = 2 / math.pi * math.asin(math.sin(phase))
         elif kind == "bell":
-            wave_value = math.sin(phase) + 0.3 * math.sin(phase * 2.76) + 0.12 * math.sin(phase * 5.4)
+            # A bell: the fundamental plus an inharmonic partial, kept
+            # below the Nyquist limit of the low sample rate.
+            wave_value = math.sin(phase) + (0.3 * math.sin(phase * 2.76) if f * 2.76 < RATE * 0.45 else 0.0)
         else:
             wave_value = math.sin(phase)
         attack = min(1.0, t / 0.004)

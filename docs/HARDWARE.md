@@ -119,7 +119,12 @@ below is still open.
 The same day, the first 3D banner build (commit 539b3d8) crashed the HOME
 Menu every time 3dsDL was selected (item 28). Its CGFX left every mesh's node
 name blank; `build-cgfx.py` now fills them in, and the flat banner is the
-default until a 3D build passes items 26 to 28.
+default until a 3D build passes items 26 to 28. The second 3D build (with the
+node names) still crashed: Luma reported a data abort in `menu` (HOME Menu)
+reading address 0x8 through a null pointer. Its bone lookup tree was stale
+after pycgfx moved the wordmark's bone last, so lookups for five bones landed
+on the wrong entries. `build-cgfx.py` now rebuilds the tree and checks every
+lookup; the third build is the first with that fix.
 
 ## Compatibility matrix
 
