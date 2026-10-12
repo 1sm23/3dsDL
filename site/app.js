@@ -31,7 +31,7 @@
     return value.toFixed(value < 10 ? 2 : 1) + " " + units[unit];
   }
 
-  // Latest release: version, date and file sizes.
+  // Latest release: the version on the hero sticker, and the file sizes.
   function showRelease() {
     fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {
       headers: { Accept: "application/vnd.github+json" }
@@ -41,13 +41,6 @@
         return response.json();
       })
       .then(function (release) {
-        var date = new Date(release.published_at);
-        var when = isNaN(date)
-          ? ""
-          : ", " + new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
-        document.querySelectorAll("[data-release]").forEach(function (element) {
-          element.textContent = "latest release " + release.tag_name + when;
-        });
         document.querySelectorAll("[data-release-tag]").forEach(function (element) {
           element.textContent = "New! " + release.tag_name;
           element.hidden = false;

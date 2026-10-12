@@ -478,49 +478,7 @@ symbol .fill {
 }
 
 .cta {
-  margin-bottom: 18px;
-}
-
-.cta-note {
-  display: inline-block;
-  margin: 0 0 12px;
-  padding: 5px 14px;
-  border-radius: 999px;
-  border: 1px solid #d3dce4;
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 0.82rem;
-  color: var(--mute);
-}
-
-.cta-alt {
-  margin: 0 0 14px;
-  font-size: 0.88rem;
-  color: var(--dim);
-}
-
-.release:not(:empty)::before {
-  content: " · ";
-}
-
-.trust {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 10px;
-  margin: 0 0 18px;
-  padding: 0;
-  list-style: none;
-  font-size: 0.84rem;
-  color: var(--mute);
-}
-
-.trust li {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 13px;
-  border-radius: 999px;
-  border: 1px solid #d3dce4;
-  background: rgba(255, 255, 255, 0.8);
+  margin-bottom: 26px;
 }
 
 /* ------------------------------------------------------------- The device
