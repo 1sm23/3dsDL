@@ -12,3 +12,6 @@
 .DS_Store
 .vscode/
 .idea/
+
+# Host test build output
+/tests/build/
