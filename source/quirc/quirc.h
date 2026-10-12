@@ -78,7 +78,9 @@ typedef enum {
 const char *quirc_strerror(quirc_decode_error_t err);
 
 /* Limits on the maximum size of QR-codes and their content. */
-#define QUIRC_MAX_BITMAP	3917
+#define QUIRC_MAX_VERSION	40
+#define QUIRC_MAX_GRID_SIZE	(QUIRC_MAX_VERSION * 4 + 17)
+#define QUIRC_MAX_BITMAP	(((QUIRC_MAX_GRID_SIZE * QUIRC_MAX_GRID_SIZE) + 7) / 8)
 #define QUIRC_MAX_PAYLOAD	8896
 
 /* QR-code ECC types. */
@@ -121,7 +123,7 @@ struct quirc_code {
 	 * is a bitmask giving the actual values of cells. If the cell
 	 * at (x, y) is black, then the following bit is set:
 	 *
-	 *     cell_bitmap[i << 3] & (1 << (i & 7))
+	 *     cell_bitmap[i >> 3] & (1 << (i & 7))
 	 *
 	 * where i = (y * size) + x.
 	 */
@@ -165,6 +167,9 @@ void quirc_extract(const struct quirc *q, int index,
 /* Decode a QR-code, returning the payload data. */
 quirc_decode_error_t quirc_decode(const struct quirc_code *code,
 				  struct quirc_data *data);
+
+/* Flip a QR-code according to optional mirror feature of ISO 18004:2015 */
+void quirc_flip(struct quirc_code *code);
 
 #ifdef __cplusplus
 }
