@@ -1,180 +1,232 @@
 <p align="center">
-  <img src="resources/icon-3dsdl-source.png" width="160" alt="3dsDL icon">
-</p>
-
-<h1 align="center">3dsDL</h1>
-
-<p align="center">
-  Download files directly to your Nintendo 3DS from a URL or QR code.<br>
-  No SD-card juggling required.
+  <img src="resources/banner-3dsdl-source.png" width="640" alt="3dsDL: download directly to your 3DS">
 </p>
 
 <p align="center">
-  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-34d6e8?style=flat-square">
-  <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=flat-square">
-  <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=flat-square">
-  <img alt="Active development" src="https://img.shields.io/badge/status-active%20development-ffc857?style=flat-square">
+  <b>Download files straight onto your Nintendo 3DS from a URL or a QR code.</b><br>
+  No pulling the SD card, no powering down, no computer in the loop.
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> ·
-  <a href="#install">Install</a> ·
-  <a href="#using-3dsdl">Usage</a> ·
-  <a href="#building">Build</a> ·
-  <a href="ROADMAP.md">Roadmap</a>
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-34d6e8?style=for-the-badge">
+  <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=for-the-badge">
+  <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=for-the-badge">
+  <img alt="Active development" src="https://img.shields.io/badge/status-in%20development-ffc857?style=for-the-badge">
 </p>
 
----
+<p align="center">
+  <a href="#-features">Features</a> &nbsp;•&nbsp;
+  <a href="#-install">Install</a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-using-3dsdl">Usage</a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-building">Build</a> &nbsp;•&nbsp;
+  <a href="ROADMAP.md">Roadmap</a> &nbsp;•&nbsp;
+  <a href="#-credits">Credits</a>
+</p>
 
-3dsDL is a modernized Nintendo 3DS homebrew downloader. Scan a QR code or
-enter a direct HTTP/HTTPS URL, choose an SD-card destination, and save the file
-without powering down the console or removing its SD card.
+<br>
+
+Getting a file onto a 3DS usually means powering it off, pulling the SD card and finding a card reader. 3dsDL skips all of that. Point the camera at a QR code, or type a direct link with the on-screen keyboard, pick a folder, and the file streams straight onto the SD card while the console stays on.
+
+It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownload), the 2017 homebrew downloader, rebuilt around libcurl and mbedTLS with a new Citro2D interface.
 
 > [!IMPORTANT]
-> Version 0.2.0 is a development build. The download engine has been verified
-> on New Nintendo 3DS hardware. The redesigned interface and corrected camera
-> renderer still need their final New/Old 3DS hardware compatibility pass.
+> Version 0.2.0 is a development build. The download engine has been verified on New Nintendo 3DS hardware, while the redesigned interface and the corrected camera renderer are still waiting on their final New and Old 3DS compatibility pass.
 
-## Features
+## ✨ Features
 
-- QR-code scanning through the console camera
-- Manual URL entry using the Nintendo 3DS software keyboard
-- Verified HTTPS using an embedded Mozilla CA certificate bundle
-- HTTP redirects with HTTP/HTTPS-only protocol restrictions
-- Streaming downloads that do not hold the complete file in memory
-- Persistent, user-selectable download folder on the SD card
-- Download progress display and cancellation with <kbd>B</kbd>
-- Server-provided filename support through `Content-Disposition`
-- Automatic cleanup of incomplete downloads
-- A safe file-conflict prompt with three choices:
-    - **Rename** keeps both files using names such as `file (1).zip`
-    - **Overwrite** replaces the old file with rollback protection
-    - **Cancel** leaves the existing file untouched
-- Citro2D interface with both button and touch input
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>📷 Scan or type</h4>
+      Scan a QR code with the console camera, or enter a URL with the 3DS software keyboard.
+    </td>
+    <td width="50%" valign="top">
+      <h4>🔒 Real HTTPS</h4>
+      Certificates are verified against a bundled Mozilla CA store, and redirects are followed but kept to HTTP and HTTPS.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h4>💾 Streams to the SD card</h4>
+      Big files are written as they arrive instead of being held in memory, and half-finished downloads are cleaned up automatically.
+    </td>
+    <td valign="top">
+      <h4>🏷️ Proper filenames</h4>
+      Uses the name the server sends through <code>Content-Disposition</code>, and remembers the folder you picked last time.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h4>🤝 Never clobbers your files</h4>
+      If a file already exists you choose: <b>Rename</b> keeps both as <code>file (1).zip</code>, <b>Overwrite</b> replaces it with rollback protection, or <b>Cancel</b> leaves it alone.
+    </td>
+    <td valign="top">
+      <h4>🎮 Buttons or touch</h4>
+      A Citro2D interface that works with the D-Pad and buttons or the touch screen, with live progress you can cancel any time with <kbd>B</kbd>.
+    </td>
+  </tr>
+</table>
 
-## Install
+## 🔄 How it works
 
-### What you need
+```mermaid
+flowchart LR
+    A["📷 QR code<br>or ⌨️ typed URL"] --> B["Confirm the link"]
+    B --> C["libcurl + mbedTLS<br>verified HTTPS"]
+    C --> D{"File already<br>on the SD card?"}
+    D -- no --> F["💾 Stream to<br>sdmc:/your/folder"]
+    D -- yes --> E["Rename, Overwrite<br>or Cancel"]
+    E --> F
+```
 
-- A Nintendo 3DS capable of launching `.3dsx` homebrew
-- A network connection configured on the console
-- The `3dsDL.3dsx` or `3dsDL.cia` release artifact
+## 📦 Install
 
-### SD-card layout
+**You'll need**
 
-Create the application folder and place the executable here:
+- A Nintendo 3DS that can run homebrew
+- A working Wi-Fi connection set up on the console
+- `3dsDL.3dsx` or `3dsDL.cia` from the [releases page](https://github.com/ankushKun/3dsDL/releases), or your own build (see [Building](#%EF%B8%8F-building))
+
+**Homebrew Launcher (.3dsx)**
+
+Copy the executable to this path on the SD card and launch **3dsDL** from the Homebrew Launcher:
 
 ```text
 sdmc:/3ds/3dsDL/3dsDL.3dsx
 ```
 
-Launch **3dsDL** from the Homebrew Launcher. If you already run an FTP server
-such as FTPD on the console, you can transfer new builds wirelessly.
+If you already run an FTP server such as FTPD on the console, you can send new builds over Wi-Fi instead.
 
-Alternatively, install `3dsDL.cia` with FBI to launch 3dsDL directly from the
-HOME Menu. The CIA uses the stable Title ID `0004000003D5D100`, so future CIA
-builds upgrade the same installed title rather than creating duplicates.
+**HOME Menu (.cia)**
 
-## Using 3dsDL
+Install `3dsDL.cia` with FBI to launch it straight from the HOME Menu. The CIA uses the stable Title ID `0004000003D5D100`, so newer builds upgrade the installed title instead of adding a duplicate.
 
-1. Launch 3dsDL and check the download location shown on the top screen.
-2. Select **Scan QR Code** or **Enter URL**.
-3. Review the detected URL and confirm the download.
-4. If the filename already exists, choose **Rename**, **Overwrite**, or
-   **Cancel**.
-5. Wait for the completion dialog before leaving the application.
+## 🕹️ Using 3dsDL
 
-Use **Change Folder** to enter an existing path beginning with `sdmc:/`.
-3dsDL remembers the selected destination in `sdmc:/3dsDL.cfg`.
+1. Launch 3dsDL and check the download folder shown on the top screen.
+2. Pick **Scan QR Code** or **Enter URL**.
+3. Check the link it found and confirm the download.
+4. If a file with that name already exists, choose **Rename**, **Overwrite** or **Cancel**.
+5. Wait for the completion dialog before closing the app.
 
-### QR-code requirements
+Use **Change Folder** to pick any existing path that starts with `sdmc:/`. Your choice is saved in `sdmc:/3dsDL.cfg`.
 
-The QR code must contain a direct URL beginning with `http://` or `https://`.
-Links to JavaScript download pages, authentication forms, confirmation pages,
-or websites that require browser interaction are not direct file URLs.
+> [!TIP]
+> The quickest way to send a link from your computer is to turn it into a QR code right in the terminal and scan it off the screen:
+>
+> ```sh
+> qrencode -t ansiutf8 "https://example.com/some-homebrew.3dsx"
+> ```
+
+The QR code has to contain a **direct** link starting with `http://` or `https://`. Links to download pages that need JavaScript, a login, a confirmation click or anything else that needs a browser won't work, because 3dsDL only fetches the file itself.
 
 ### Controls
 
-| Context | Control | Action |
+| Where | Input | What it does |
 | --- | --- | --- |
 | Main menu | D-Pad / Touch | Choose an action |
 | Main menu | <kbd>A</kbd> | Open the selected action |
 | Main menu | <kbd>START</kbd> | Exit 3dsDL |
-| Confirmation | Left / Right + <kbd>A</kbd> | Choose and confirm |
-| QR scanner | <kbd>B</kbd> | Cancel scanning |
-| Download | <kbd>B</kbd> | Cancel and remove the partial file |
+| Confirmation | Left / Right, then <kbd>A</kbd> | Choose and confirm |
+| QR scanner | <kbd>B</kbd> | Stop scanning |
+| Download | <kbd>B</kbd> | Cancel and delete the partial file |
 | Dialog | <kbd>B</kbd> | Go back or cancel |
 
-## Building
+## 🛠️ Building
 
-The reproducible container build is the recommended path. It requires Docker
-Desktop, or Docker CLI with Colima on macOS:
+The recommended way is the reproducible container build. All it needs is Docker Desktop, or the Docker CLI with Colima on macOS:
 
 ```sh
-git clone git@github.com:ankushKun/3dsDL.git
+git clone https://github.com/ankushKun/3dsDL.git
 cd 3dsDL
 ./scripts/build.sh
 ```
 
-The script performs the complete build in order:
-
-1. Checks Docker and starts Colima when necessary.
-2. Obtains the pinned `devkitpro/devkitarm:20260610` image and builds the
-   checksum-verified CIA tools image when it is not cached.
-3. Validates that the launcher PNG contains a real alpha channel.
-4. Cleans previous build outputs.
-5. Compiles 3dsDL and validates the generated artifacts.
-6. Creates the HOME Menu banner and packages both 3DSX and CIA builds.
-7. Writes release artifacts and their SHA-256 checksums to `dist/`.
-8. Removes intermediate files so the repository root remains clean.
-
-The resulting package contains:
+When it finishes, everything you need is in `dist/`:
 
 ```text
 dist/
-├── 3dsDL.3dsx
-├── 3dsDL.cia
-├── 3dsDL.smdh
-└── 3dsDL.sha256
+├── 3dsDL.3dsx     Homebrew Launcher build
+├── 3dsDL.cia      HOME Menu install
+├── 3dsDL.smdh     icon and title metadata
+└── 3dsDL.sha256   checksums for all of the above
 ```
 
-### Build options
+<details>
+<summary><b>What the build script does</b></summary>
+
+<br>
+
+1. Checks that Docker is available and starts Colima if it needs to.
+2. Pulls the pinned `devkitpro/devkitarm:20260610` image and builds the checksum-verified CIA tools image if it isn't cached yet.
+3. Makes sure the launcher icon PNG has a real alpha channel.
+4. Cleans out previous build output.
+5. Compiles 3dsDL and validates what it produced.
+6. Creates the HOME Menu banner and packages both the 3DSX and CIA builds.
+7. Writes the release files and their SHA-256 checksums to `dist/`.
+8. Removes intermediate files so the repository root stays clean.
+
+</details>
+
+<details>
+<summary><b>Build options</b></summary>
+
+<br>
 
 ```sh
 # Use more compiler jobs
 THREEDSDL_BUILD_JOBS=4 ./scripts/build.sh
 
-# Select another devkitPro image
+# Use another devkitPro image
 THREEDSDL_BUILD_IMAGE=devkitpro/devkitarm:20260610 ./scripts/build.sh
 
-# Select another CIA packaging image
+# Use another CIA packaging image
 THREEDSDL_CIA_IMAGE=3dsdl-cia-tools:1.0.1 ./scripts/build.sh
 
-# Leave a Colima instance started by the script running afterward
+# Leave a Colima instance the script started running afterwards
 THREEDSDL_KEEP_COLIMA=1 ./scripts/build.sh
 ```
 
-For a native build, install devkitARM, libctru, Citro2D, Citro3D, 3ds-curl,
-3ds-mbedTLS, and their dependencies, then run `make`.
+</details>
 
-## Project status
+<details>
+<summary><b>Building without Docker</b></summary>
 
-Version **0.2.0** focuses on hardware stabilization, the Citro2D interface,
-camera correctness, and safe download behavior. Planned quality-of-life work
-includes speed and ETA reporting, download history, retries, destination
-presets, sleep prevention, and optional resumable downloads. See the full
-[roadmap](ROADMAP.md).
+<br>
 
-Bug reports and focused pull requests are welcome through
-[GitHub Issues](https://github.com/ankushKun/3dsDL/issues).
+Install devkitARM, libctru, Citro2D, Citro3D, 3ds-curl, 3ds-mbedTLS and their dependencies through devkitPro's pacman, then run `make` in the repository root.
 
-## Maintainer
+</details>
 
-**ankushKun** — [GitHub](https://github.com/ankushKun) ·
-[X / Twitter](https://x.com/ankushKun_)
+## 🗺️ Roadmap
 
-## License
+Version **0.2.0** is all about hardware stability, the new Citro2D interface, a camera that renders correctly and downloads that are safe by default. Next up:
 
-3dsDL is distributed under the [GNU General Public License v3.0](LICENSE).
-Bundled third-party components retain their respective notices; see
-[LICENSE-quirc.md](LICENSE-quirc.md).
+- [ ] Hardware check of the camera and QR decoding on New and Old 3DS
+- [ ] Download speed, ETA, transferred size and free SD space
+- [ ] Download history, retries and destination presets
+- [ ] Keeping the console awake during a download
+- [ ] Optional resumable downloads over HTTP ranges
+
+The full plan up to 1.0 lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull requests are very welcome over in [Issues](https://github.com/ankushKun/3dsDL/issues).
+
+## 💙 Credits
+
+3dsDL stands on the shoulders of these projects:
+
+- [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
+- [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
+- [**libcurl**](https://curl.se/) and [**Mbed TLS**](https://github.com/Mbed-TLS/mbedtls), for downloads and HTTPS
+- The [Mozilla CA certificate bundle](https://curl.se/docs/caextract.html), for checking who you're talking to
+- [**devkitPro**](https://devkitpro.org/), **libctru** and **Citro2D**, which make 3DS homebrew possible at all
+
+## 📄 License
+
+3dsDL is released under the [GNU General Public License v3.0](LICENSE). Bundled third-party components keep their own notices.
+
+<br>
+
+<p align="center">
+  <img src="resources/icon-3dsdl.png" width="48" alt="3dsDL icon"><br>
+  Made by <a href="https://ankush.one">ankushKun</a> &nbsp;•&nbsp; <a href="https://github.com/ankushKun">GitHub</a> &nbsp;•&nbsp; <a href="https://x.com/ankushKun_">X</a>
+</p>
