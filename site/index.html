@@ -57,9 +57,9 @@
       </a>
       <nav class="tabs" aria-label="Sections">
         <a href="#features" style="--tone: var(--x)"><span>Features</span></a>
+        <a href="#install" style="--tone: var(--a)"><span>Install</span></a>
         <a href="#send" style="--tone: var(--y)"><span>Send<span class="tab-more"> a link</span></span></a>
         <a href="#faq" style="--tone: var(--b)"><span>FAQ</span></a>
-        <a href="#install" style="--tone: var(--a)"><span>Install</span></a>
       </nav>
       <div class="tray" aria-hidden="true">
         <svg class="wifi" viewBox="0 0 22 16"><rect x="1" y="11" width="3.5" height="4" rx="1"/><rect x="6.5" y="8" width="3.5" height="7" rx="1"/><rect x="12" y="5" width="3.5" height="10" rx="1"/><rect x="17.5" y="1" width="3.5" height="14" rx="1"/></svg>
@@ -239,90 +239,6 @@
         <p class="also">Also: history of the last 50 downloads, sleep mode paused during transfers, plain-http warnings, and QR codes that aren't links are pointed out instead of ending the scan.</p>
       </section>
 
-      <!-- Send a link, as a PictoChat room: you post the link, 3dsDL answers
-           with the QR code. -->
-      <section id="send" class="section panel tone-y reveal">
-        <header class="section-head">
-          <p class="eyebrow">Send a link</p>
-          <h2>Turn any download link into a QR code</h2>
-          <p class="section-sub">Paste a direct link, then scan the code with <strong>Scan QR Code</strong> in 3dsDL. Much nicer than typing a long link on the 3DS keyboard.</p>
-        </header>
-        <div class="chat">
-          <div class="chat-bar" aria-hidden="true">
-            <span class="chat-room">A</span>
-            <span class="chat-title">Chat Room A</span>
-            <span class="chat-who">You + 3dsDL</span>
-          </div>
-          <div class="chat-log">
-            <form class="msg msg-you send-form" id="send-form" autocomplete="off">
-              <span class="msg-name" aria-hidden="true">You</span>
-              <label for="send-url">Download link</label>
-              <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
-              <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
-              <div class="row">
-                <button class="btn" type="button" id="send-big" disabled>
-                  <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
-                </button>
-                <button class="btn" type="button" id="send-copy" disabled>
-                  <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
-                </button>
-              </div>
-              <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
-            </form>
-            <figure class="msg msg-app" id="send-reply">
-              <span class="msg-name" aria-hidden="true">3dsDL</span>
-              <div class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
-                <div class="qr-placeholder">
-                  <svg class="icon"><use href="#i-qr"/></svg>
-                  <span>Your QR code</span>
-                </div>
-              </div>
-            </figure>
-          </div>
-        </div>
-        <p class="fine fine-center">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
-      </section>
-
-      <!-- The FAQ, as the Notifications app: unread ones are marked new until
-           opened, and the browser remembers which were read. -->
-      <section id="faq" class="section panel tone-b reveal">
-        <header class="section-head">
-          <p class="eyebrow">Questions</p>
-          <h2>Common questions</h2>
-        </header>
-        <div class="faq">
-          <div class="faq-bar" aria-hidden="true">
-            <svg class="icon"><use href="#i-mail"/></svg>
-            <span>Notifications</span>
-            <span class="faq-count" data-unread></span>
-          </div>
-          <details id="q-cert">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Downloads fail with a certificate error</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>Almost always the console's date. Open <strong>Settings → Console clock</strong> in 3dsDL: it shows the console's time next to internet time and can set it for your time zone (the HOME Menu app can; the .3dsx may not be allowed to). Rosalina can also do it: <kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd> → <strong>Miscellaneous options → Update time and date via NTP</strong>. The error message also says why the certificate was rejected.</p>
-          </details>
-          <details id="q-link">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">It says "Not a download link"</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>3dsDL only fetches links that start with <code>http://</code> or <code>https://</code> and point straight at a file. Pages that need JavaScript, a login or a confirmation click won't work, because 3dsDL isn't a browser. On GitHub, use the links under a release's <em>Assets</em>.</p>
-          </details>
-          <details id="q-where">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Where do my files go?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>To the folder shown on the home screen, <code>sdmc:/</code> unless you changed it. Use <strong>Folder</strong> on the home screen or on the confirm screen to pick a preset, browse the SD card or type a path. Settings and history live in <code>sdmc:/3ds/3dsDL/</code>.</p>
-          </details>
-          <details id="q-stopped">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">A download stopped halfway</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>Choose <strong>Retry</strong> in the error dialog, or find it later under <strong>History</strong> and choose <strong>Resume</strong>. 3dsDL continues from where it stopped when the server allows it, and starts over safely when it doesn't.</p>
-          </details>
-          <details id="q-cia">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Can it install CIAs or unzip archives?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>It downloads anything, including CIA files, which you then install with FBI. ZIP extraction is built in: turn on <strong>Settings → Offer to extract ZIP files</strong> and 3dsDL asks after each ZIP download.</p>
-          </details>
-          <details id="q-safe">
-            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Is it safe?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
-            <p>3dsDL verifies HTTPS certificates, refuses ZIP entries that would escape their folder, and never overwrites a file without asking. It is open source, every release is built by GitHub Actions from the tagged code, and checksums are published with each release.</p>
-          </details>
-        </div>
-      </section>
-
       <section id="install" class="section panel tone-a">
         <header class="section-head">
           <p class="eyebrow">Install</p>
@@ -434,6 +350,91 @@
           older versions on the <a href="https://github.com/ankushKun/3dsDL/releases">releases page</a>.
         </p>
       </section>
+
+      <!-- Send a link, as a PictoChat room: you post the link, 3dsDL answers
+           with the QR code. -->
+      <section id="send" class="section panel tone-y reveal">
+        <header class="section-head">
+          <p class="eyebrow">Send a link</p>
+          <h2>Turn any download link into a QR code</h2>
+          <p class="section-sub">Paste a direct link, then scan the code with <strong>Scan QR Code</strong> in 3dsDL. Much nicer than typing a long link on the 3DS keyboard.</p>
+        </header>
+        <div class="chat">
+          <div class="chat-bar" aria-hidden="true">
+            <span class="chat-room">A</span>
+            <span class="chat-title">Chat Room A</span>
+            <span class="chat-who">You + 3dsDL</span>
+          </div>
+          <div class="chat-log">
+            <form class="msg msg-you send-form" id="send-form" autocomplete="off">
+              <span class="msg-name" aria-hidden="true">You</span>
+              <label for="send-url">Download link</label>
+              <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
+              <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
+              <div class="row">
+                <button class="btn" type="button" id="send-big" disabled>
+                  <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
+                </button>
+                <button class="btn" type="button" id="send-copy" disabled>
+                  <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
+                </button>
+              </div>
+              <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
+            </form>
+            <figure class="msg msg-app" id="send-reply">
+              <span class="msg-name" aria-hidden="true">3dsDL</span>
+              <div class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
+                <div class="qr-placeholder">
+                  <svg class="icon"><use href="#i-qr"/></svg>
+                  <span>Your QR code</span>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </div>
+        <p class="fine fine-center">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
+      </section>
+
+      <!-- The FAQ, as the Notifications app: unread ones are marked new until
+           opened, and the browser remembers which were read. -->
+      <section id="faq" class="section panel tone-b reveal">
+        <header class="section-head">
+          <p class="eyebrow">Questions</p>
+          <h2>Common questions</h2>
+        </header>
+        <div class="faq">
+          <div class="faq-bar" aria-hidden="true">
+            <svg class="icon"><use href="#i-mail"/></svg>
+            <span>Notifications</span>
+            <span class="faq-count" data-unread></span>
+          </div>
+          <details id="q-cert">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Downloads fail with a certificate error</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>Almost always the console's date. Open <strong>Settings → Console clock</strong> in 3dsDL: it shows the console's time next to internet time and can set it for your time zone (the HOME Menu app can; the .3dsx may not be allowed to). Rosalina can also do it: <kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd> → <strong>Miscellaneous options → Update time and date via NTP</strong>. The error message also says why the certificate was rejected.</p>
+          </details>
+          <details id="q-link">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">It says "Not a download link"</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>3dsDL only fetches links that start with <code>http://</code> or <code>https://</code> and point straight at a file. Pages that need JavaScript, a login or a confirmation click won't work, because 3dsDL isn't a browser. On GitHub, use the links under a release's <em>Assets</em>.</p>
+          </details>
+          <details id="q-where">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Where do my files go?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>To the folder shown on the home screen, <code>sdmc:/</code> unless you changed it. Use <strong>Folder</strong> on the home screen or on the confirm screen to pick a preset, browse the SD card or type a path. Settings and history live in <code>sdmc:/3ds/3dsDL/</code>.</p>
+          </details>
+          <details id="q-stopped">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">A download stopped halfway</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>Choose <strong>Retry</strong> in the error dialog, or find it later under <strong>History</strong> and choose <strong>Resume</strong>. 3dsDL continues from where it stopped when the server allows it, and starts over safely when it doesn't.</p>
+          </details>
+          <details id="q-cia">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Can it install CIAs or unzip archives?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>It downloads anything, including CIA files, which you then install with FBI. ZIP extraction is built in: turn on <strong>Settings → Offer to extract ZIP files</strong> and 3dsDL asks after each ZIP download.</p>
+          </details>
+          <details id="q-safe">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Is it safe?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
+            <p>3dsDL verifies HTTPS certificates, refuses ZIP entries that would escape their folder, and never overwrites a file without asking. It is open source, every release is built by GitHub Actions from the tagged code, and checksums are published with each release.</p>
+          </details>
+        </div>
+      </section>
+
     </main>
 
     <!-- The back of the box: a (made-up) rating, the links and the small
