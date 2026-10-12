@@ -1,6 +1,6 @@
 # Website
 
-The static site published at https://ankushkun.github.io/3dsDL/ by
+The static site published at https://ankush.one/3dsDL/ by
 `.github/workflows/pages.yml` whenever `site/` changes on `main`.
 
 - `index.html`, `styles.css`, `app.js`: the page. It works without JavaScript
