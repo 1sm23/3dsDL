@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3dsDL: download files straight onto your Nintendo 3DS</title>
+  <meta name="description" content="3dsDL downloads files from a link or a QR code straight onto your Nintendo 3DS SD card over verified HTTPS. Install it with FBI in under a minute.">
+  <meta name="theme-color" content="#050b16">
+  <link rel="canonical" href="https://ankushkun.github.io/3dsDL/">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icon-64.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="3dsDL: download files straight onto your 3DS">
+  <meta property="og:description" content="Scan a QR code or type a link, and the file streams onto the SD card. Install with FBI in under a minute.">
+  <meta property="og:url" content="https://ankushkun.github.io/3dsDL/">
+  <meta property="og:image" content="https://ankushkun.github.io/3dsDL/assets/banner.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.5 18a9 9 0 1 1 17 0"/></symbol>
+    <symbol id="i-resume" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
+  </svg>
+
+  <a class="skip" href="#install">Skip to install</a>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="3dsDL home">
+        <img src="assets/icon-64.png" width="32" height="32" alt="">
+        <span><span class="brand-3ds">3ds</span>DL</span>
+      </a>
+      <nav aria-label="Sections">
+        <a href="#install">Install</a>
+        <a href="#send">Send a link</a>
+        <a href="#features">Features</a>
+        <a href="#help">Help</a>
+        <a class="nav-github" href="https://github.com/ankushKun/3dsDL" aria-label="3dsDL on GitHub">
+          <svg class="icon"><use href="#i-github"/></svg><span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <img class="hero-banner" src="assets/banner.jpg" width="1200" height="600"
+             alt="3dsDL logo: an SD card with a download arrow, and the words Download directly to your 3DS">
+        <h1>Download files straight onto your Nintendo&nbsp;3DS.</h1>
+        <p class="lead">Scan a QR code or type a link, and the file streams onto the SD card over verified HTTPS. No card reader, no computer, no powering down.</p>
+        <div class="actions">
+          <a class="button primary" href="#install">Install with FBI</a>
+          <a class="button" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
+            <svg class="icon"><use href="#i-download"/></svg>3dsDL.cia
+          </a>
+          <a class="button" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
+            <svg class="icon"><use href="#i-download"/></svg>3dsDL.3dsx
+          </a>
+        </div>
+        <p class="meta">
+          <span data-release>Latest release</span> · Free and open source (GPLv3)
+        </p>
+      </div>
+    </section>
+
+    <section id="install" class="section">
+      <div class="wrap">
+        <h2>Install</h2>
+        <p class="section-lead">You need a 3DS running custom firmware (Luma3DS) with FBI or the Homebrew Launcher. If you don't have that yet, follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
+
+        <div class="install-grid">
+          <article class="card install-card">
+            <div class="card-head">
+              <h3>HOME Menu app</h3>
+              <span class="pill">Recommended</span>
+            </div>
+            <div class="install-body">
+              <figure class="qr">
+                <img src="qr/install-cia.svg" width="200" height="200"
+                     alt="QR code that installs the latest 3dsDL CIA with FBI">
+              </figure>
+              <ol class="steps">
+                <li>Open <strong>FBI</strong> on your 3DS.</li>
+                <li>Choose <strong>Remote Install</strong>, then <strong>Scan QR Code</strong>.</li>
+                <li>Point the camera at this code and confirm.</li>
+                <li>3dsDL appears on the HOME Menu. Installing it again later updates it in place.</li>
+              </ol>
+            </div>
+            <div class="link-row">
+              <code>releases/latest/download/3dsDL.cia</code>
+              <span class="size" data-asset-size="3dsDL.cia"></span>
+              <button class="ghost" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
+                <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
+              </button>
+            </div>
+          </article>
+
+          <article class="card install-card">
+            <div class="card-head">
+              <h3>Homebrew Launcher</h3>
+              <span class="pill muted">.3dsx</span>
+            </div>
+            <div class="install-body">
+              <figure class="qr">
+                <img src="qr/download-3dsx.svg" width="200" height="200"
+                     alt="QR code that downloads the latest 3dsDL.3dsx">
+              </figure>
+              <ol class="steps">
+                <li><strong>Updating?</strong> Scan this code with 3dsDL, save it to <code>sdmc:/3ds/3dsDL/</code> and choose <strong>Overwrite</strong>.</li>
+                <li><strong>First time?</strong> Download the file and copy it to <code>sdmc:/3ds/3dsDL/3dsDL.3dsx</code> on the SD card.</li>
+                <li>Open the Homebrew Launcher and start <strong>3dsDL</strong>.</li>
+              </ol>
+            </div>
+            <div class="link-row">
+              <code>releases/latest/download/3dsDL.3dsx</code>
+              <span class="size" data-asset-size="3dsDL.3dsx"></span>
+              <button class="ghost" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
+                <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <aside class="note">
+          <svg class="icon"><use href="#i-clock"/></svg>
+          <p><strong>Certificate errors?</strong> HTTPS needs the console's date to be right. In 3dsDL open <strong>Settings → Console clock</strong> to set it from internet time, or use Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd>) → <strong>Miscellaneous options → Update time and date via NTP</strong>.</p>
+        </aside>
+        <p class="fineprint">
+          Every release lists SHA-256 checksums in
+          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.sha256">3dsDL.sha256</a>.
+          Older versions are on the <a href="https://github.com/ankushKun/3dsDL/releases">releases page</a>.
+        </p>
+      </div>
+    </section>
+
+    <section id="send" class="section alt">
+      <div class="wrap send-grid">
+        <div>
+          <h2>Send any link to your 3DS</h2>
+          <p class="section-lead">Paste a direct download link and scan the code with 3dsDL's <strong>Scan QR Code</strong>. Typing long links on the 3DS keyboard is no fun.</p>
+          <form class="send-form" id="send-form" autocomplete="off">
+            <label for="send-url">Download link</label>
+            <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false"
+                   placeholder="https://example.com/homebrew.3dsx">
+            <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
+            <div class="actions left">
+              <button class="ghost" type="button" id="send-big" disabled>
+                <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
+              </button>
+              <button class="ghost" type="button" id="send-copy" disabled>
+                <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
+              </button>
+            </div>
+          </form>
+          <p class="fineprint">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself: pages that need a login, a captcha or a "click to download" button won't work.</p>
+        </div>
+        <figure class="qr qr-large" id="send-qr" aria-label="QR code preview">
+          <div class="qr-placeholder">
+            <svg class="icon"><use href="#i-qr"/></svg>
+            <span>Your QR code</span>
+          </div>
+        </figure>
+        <noscript><p class="fineprint">This tool needs JavaScript.</p></noscript>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="wrap">
+        <h2>What it does</h2>
+        <div class="feature-grid">
+          <article class="feature">
+            <svg class="icon"><use href="#i-qr"/></svg>
+            <h3>Scan or type</h3>
+            <p>Read a link from a QR code with the camera, or type it on the keyboard. Codes that aren't links are pointed out instead of ending the scan.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-lock"/></svg>
+            <h3>Real HTTPS</h3>
+            <p>Certificates are checked against Mozilla's CA store, redirects stay on HTTP and HTTPS, and plain http links get a warning first.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-gauge"/></svg>
+            <h3>Live progress</h3>
+            <p>Speed, time left, size and percentage, with free space checked before anything is written.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-resume"/></svg>
+            <h3>Resume and retry</h3>
+            <p>A dropped connection keeps what arrived. Retry carries on from there, but only if the server confirms the file hasn't changed.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-shield"/></svg>
+            <h3>Never clobbers files</h3>
+            <p>Rename, overwrite with rollback, or cancel when a file exists. A finished download is never lost to an awkward filename.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-folder"/></svg>
+            <h3>Folders made easy</h3>
+            <p>Presets like <code>sdmc:/cias/</code>, recent folders, a browser that can make new folders, or any path you type.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-archive"/></svg>
+            <h3>Optional unzip</h3>
+            <p>Off by default. Turn it on to extract a downloaded ZIP into the same folder or a new one, safely.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-list"/></svg>
+            <h3>History</h3>
+            <p>The last 50 downloads, with their links and where they went. Download again, resume or remove any of them.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-moon"/></svg>
+            <h3>Stays awake</h3>
+            <p>Sleep mode is paused during a download, so closing the lid doesn't cut the Wi-Fi halfway through.</p>
+          </article>
+          <article class="feature">
+            <svg class="icon"><use href="#i-clock"/></svg>
+            <h3>Fixes the clock</h3>
+            <p>Compares the console's clock with internet time and sets it for your time zone, so HTTPS keeps working.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="help" class="section alt">
+      <div class="wrap narrow">
+        <h2>Help</h2>
+        <div class="faq">
+          <details>
+            <summary>Downloads fail with a certificate error</summary>
+            <p>Almost always the console's date. Open <strong>Settings → Console clock</strong> in 3dsDL: it shows the console's time next to internet time and can set it for your time zone (the HOME Menu app can; the .3dsx may not be allowed to). Rosalina can also do it: <kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd> → <strong>Miscellaneous options → Update time and date via NTP</strong>. The error message also says why the certificate was rejected.</p>
+          </details>
+          <details>
+            <summary>It says "Not a download link"</summary>
+            <p>3dsDL only fetches links that start with <code>http://</code> or <code>https://</code> and point straight at a file. Pages that need JavaScript, a login or a confirmation click won't work, because 3dsDL isn't a browser. On GitHub, use the links under a release's <em>Assets</em>.</p>
+          </details>
+          <details>
+            <summary>Where do my files go?</summary>
+            <p>To the folder shown on the home screen, <code>sdmc:/</code> unless you changed it. Use <strong>Folder</strong> on the home screen or on the confirm screen to pick a preset, browse the SD card or type a path. Settings and history live in <code>sdmc:/3ds/3dsDL/</code>.</p>
+          </details>
+          <details>
+            <summary>A download stopped halfway</summary>
+            <p>Choose <strong>Retry</strong> in the error dialog, or find it later under <strong>History</strong> and choose <strong>Resume</strong>. 3dsDL continues from where it stopped when the server allows it, and starts over safely when it doesn't.</p>
+          </details>
+          <details>
+            <summary>Can it install CIAs or unzip archives?</summary>
+            <p>It downloads anything, including CIA files, which you then install with FBI. ZIP extraction is built in: turn on <strong>Settings → Offer to extract ZIP files</strong> and 3dsDL asks after each ZIP download.</p>
+          </details>
+          <details>
+            <summary>The camera won't read my code</summary>
+            <p>Make the code bigger on screen (the <em>Show bigger</em> button above helps), hold the console still about 15 to 25 cm away, and avoid glare. If it still won't scan, use <strong>Enter URL</strong> instead.</p>
+          </details>
+          <details>
+            <summary>Why can't I download files of 4 GB or more?</summary>
+            <p>The 3DS SD card uses FAT32, which can't store files that big. 3dsDL checks the size before it starts.</p>
+          </details>
+          <details>
+            <summary>Is it safe?</summary>
+            <p>3dsDL verifies HTTPS certificates, refuses ZIP entries that would escape their folder, and never overwrites a file without asking. It is open source, every release is built by GitHub Actions from the tagged code, and checksums are published with each release.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/icon-64.png" width="40" height="40" alt="">
+        <p>3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D.</p>
+      </div>
+      <nav class="footer-links" aria-label="Project links">
+        <a href="https://github.com/ankushKun/3dsDL">Source code</a>
+        <a href="https://github.com/ankushKun/3dsDL/releases">Releases</a>
+        <a href="https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md">Roadmap</a>
+        <a href="https://github.com/ankushKun/3dsDL/issues">Report a bug</a>
+      </nav>
+      <p class="fineprint">Not affiliated with Nintendo. Nintendo 3DS is a trademark of Nintendo.</p>
+    </div>
+  </footer>
+
+  <dialog id="qr-dialog" aria-label="Large QR code">
+    <div id="qr-dialog-code" class="qr qr-dialog"></div>
+    <p id="qr-dialog-url" class="dialog-url"></p>
+    <form method="dialog"><button class="button primary" type="submit">Close</button></form>
+  </dialog>
+
+  <script src="vendor/qrcode.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

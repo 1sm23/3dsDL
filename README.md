@@ -15,6 +15,7 @@
 </p>
 
 <p align="center">
+  <a href="https://ankushkun.github.io/3dsDL/"><b>Website</b></a> &nbsp;•&nbsp;
   <a href="#-features">Features</a> &nbsp;•&nbsp;
   <a href="#-install">Install</a> &nbsp;•&nbsp;
   <a href="#%EF%B8%8F-using-3dsdl">Usage</a> &nbsp;•&nbsp;
@@ -120,6 +121,8 @@ flowchart LR
 - A Nintendo 3DS that can run homebrew
 - A working Wi-Fi connection set up on the console
 - `3dsDL.3dsx` or `3dsDL.cia` from the [releases page](https://github.com/ankushKun/3dsDL/releases), or your own build (see [Building](#%EF%B8%8F-building))
+
+The [website](https://ankushkun.github.io/3dsDL/) has QR codes that install the latest release straight from FBI, and a tool that turns any download link into a QR code for 3dsDL.
 
 **Homebrew Launcher (.3dsx)**
 
@@ -290,6 +293,7 @@ source/core/   portable logic: naming, links, settings, history, ZIP, image math
 source/net/    portable download engine on libcurl
 source/quirc/  vendored QR decoder (see VENDORED.md)
 tests/         host tests, fixture server and ZIP fixtures
+site/          the website, deployed to GitHub Pages
 ```
 
 </details>
