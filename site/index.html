@@ -42,8 +42,8 @@
         <span><span class="brand-3ds">3ds</span>DL</span>
       </a>
       <nav class="tabs" aria-label="Sections">
-        <a href="#screens">Screens</a>
         <a href="#features">Features</a>
+        <a href="#send">Send a link</a>
         <a href="#faq">FAQ</a>
         <a href="#install">Install</a>
       </nav>
@@ -68,13 +68,13 @@
           <li>Free and open source</li>
         </ul>
 
-        <!-- A real New Nintendo 3DS (photo: PhilipTerryGraham, CC0). Its two
-             screens are live HTML, drawn in 3DS pixels and mapped onto the
-             photographed screens with a perspective matrix, so the demo on
+        <!-- A real New Nintendo 3DS (photo: PantheraLeo1359531, CC BY 4.0).
+             Its two screens are live HTML, drawn in 3DS pixels and mapped onto
+             the photographed screens with a perspective matrix, so the demo on
              them can animate. -->
-        <div class="device reveal" data-tilt>
+        <div class="device device-angled reveal" data-tilt>
           <div class="device-stage">
-            <img class="device-photo" src="assets/new-3ds.png" width="1400" height="1323" alt="An open white New Nintendo 3DS running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button." decoding="async">
+            <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="An open white New Nintendo 3DS, seen from the front at an angle, running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button." decoding="async" fetchpriority="high">
             <div class="screen screen-top" aria-hidden="true">
               <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
               <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
@@ -104,117 +104,6 @@
               <span class="t t-mid t-muted" style="--x:160;--y:222;--s:.42">B: Cancel</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Screens: the app's real screens in a Cover Flow, drawn from the
-           same coordinates ui.cpp uses. -->
-      <section id="screens" class="section reveal">
-        <header class="section-head">
-          <p class="eyebrow">Screens</p>
-          <h2>What it looks like</h2>
-        </header>
-        <div class="flow" data-flow tabindex="0" aria-label="Screens of 3dsDL. Use the arrow keys or click a screen to bring it to the front.">
-          <div class="flow-stage">
-            <figure class="shot" data-title="Home" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">ready</span>
-                <span class="r" style="--x:18;--y:56;--w:364;--h:78;background:#102638"></span>
-                <span class="r" style="--x:18;--y:56;--w:4;--h:78;background:#18788a"></span>
-                <span class="t t-muted" style="--x:34;--y:65;--s:.44">DOWNLOAD FOLDER</span>
-                <span class="t" style="--x:34;--y:84;--s:.66">sdmc:/cias/</span>
-                <span class="t t-muted" style="--x:34;--y:110;--s:.46">12.3 GiB free on the SD card</span>
-                <span class="r" style="--x:18;--y:146;--w:364;--h:70;background:#102638"></span>
-                <span class="r" style="--x:18;--y:146;--w:4;--h:70;background:#18788a"></span>
-                <span class="t t-green" style="--x:34;--y:157;--s:.58">Wi-Fi connected</span>
-                <span class="t t-muted" style="--x:34;--y:184;--s:.46">Scan a QR code or type a direct file link.</span>
-              </div>
-              <figcaption>Home</figcaption>
-            </figure>
-            <figure class="shot" data-title="Confirm" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">confirm</span>
-                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
-                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
-                <span class="t" style="--x:34;--y:64;--s:.68">Download this link?</span>
-                <span class="t" style="--x:34;--y:92;--s:.62">github.com</span>
-                <span class="t t-muted" style="--x:34;--y:116;--s:.44">https://github.com/Universal-Team/Universal-</span>
-                <span class="t t-muted" style="--x:34;--y:131;--s:.44">Updater/releases/latest/download/Universal-Updater.cia</span>
-                <span class="t" style="--x:34;--y:156;--s:.48">Save to sdmc:/cias/</span>
-                <span class="t t-green" style="--x:34;--y:178;--s:.44">Continues the earlier download from 1.20 MiB.</span>
-              </div>
-              <figcaption>Confirm</figcaption>
-            </figure>
-            <figure class="shot" data-title="Downloading" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">downloading</span>
-                <span class="r" style="--x:18;--y:54;--w:364;--h:84;background:#102638"></span>
-                <span class="r" style="--x:18;--y:54;--w:4;--h:84;background:#18788a"></span>
-                <span class="t" style="--x:34;--y:64;--s:.68">Universal-Updater.cia</span>
-                <span class="t t-muted" style="--x:34;--y:94;--s:.46">github.com</span>
-                <span class="r" style="--x:24;--y:150;--w:352;--h:16;background:#173449"></span>
-                <span class="r" style="--x:24;--y:150;--w:246;--h:16;background:#34d6e8"></span>
-                <span class="t" style="--x:24;--y:174;--s:.52">3.10 MiB of 4.42 MiB (70%)</span>
-                <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48">downloading</span>
-                <span class="t t-muted" style="--x:24;--y:198;--s:.48">1.24 MiB/s, 1s left</span>
-              </div>
-              <figcaption>Downloading</figcaption>
-            </figure>
-            <figure class="shot" data-title="File exists" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">file exists</span>
-                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
-                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
-                <span class="t t-warn" style="--x:34;--y:64;--s:.68">A file with this name already exists</span>
-                <span class="t" style="--x:34;--y:96;--s:.56">Universal-Updater.cia</span>
-                <span class="t t-muted" style="--x:34;--y:124;--s:.46">Rename saves the new download as</span>
-                <span class="t t-muted" style="--x:34;--y:140;--s:.46">Universal-Updater (1).cia and keeps the old file.</span>
-                <span class="t t-muted" style="--x:34;--y:166;--s:.46">Overwrite replaces the old file.</span>
-              </div>
-              <figcaption>File exists</figcaption>
-            </figure>
-            <figure class="shot" data-title="History" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">history</span>
-                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
-                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
-                <span class="t t-green" style="--x:34;--y:63;--s:.6">Saved</span>
-                <span class="t t-end t-muted" style="--x:366;--y:66;--s:.44">2026-10-12 11:40</span>
-                <span class="t t-muted" style="--x:34;--y:88;--s:.44">https://github.com/Universal-Team/Universal-Updater/</span>
-                <span class="t t-muted" style="--x:34;--y:103;--s:.44">releases/latest/download/Universal-Updater.cia</span>
-                <span class="t" style="--x:34;--y:128;--s:.48">sdmc:/cias/Universal-Updater.cia</span>
-                <span class="t t-muted" style="--x:34;--y:156;--s:.44">Folder: sdmc:/cias/</span>
-              </div>
-              <figcaption>History</figcaption>
-            </figure>
-            <figure class="shot" data-title="Console clock" data-sound>
-              <div class="s400">
-                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">clock</span>
-                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
-                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
-                <span class="t t-warn" style="--x:34;--y:64;--s:.68">The console clock is off</span>
-                <span class="t" style="--x:34;--y:96;--s:.52">Console:  2025-10-12 11:40</span>
-                <span class="t t-green" style="--x:34;--y:116;--s:.52">Actual:   2026-10-12 11:40</span>
-                <span class="t t-warn" style="--x:34;--y:142;--s:.46">The console clock is about 365 days behind.</span>
-                <span class="t t-muted" style="--x:34;--y:166;--s:.42">Time zone UTC+05:30, India, Sri Lanka. Time from time.cloudflare.com.</span>
-              </div>
-              <figcaption>Console clock</figcaption>
-            </figure>
-          </div>
-          <p class="flow-title" data-flow-title>Downloading</p>
-          <div class="dots" data-dots aria-hidden="true"></div>
         </div>
       </section>
 
@@ -346,15 +235,59 @@
         </div>
       </section>
 
-      <section id="install" class="section reveal">
+      <section id="install" class="section">
         <header class="section-head">
           <p class="eyebrow">Install</p>
           <h2>Add it to your 3DS</h2>
           <p class="section-sub">You need a 3DS running custom firmware (Luma3DS) with FBI or the Homebrew Launcher. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
         </header>
 
-        <div class="install">
-          <div class="install-cards">
+        <!-- After installing: the home screen, on a head-on New 3DS
+             (photo: PhilipTerryGraham, CC0). -->
+        <div class="device device-flat install-device reveal">
+          <div class="device-stage">
+            <img class="device-photo" src="assets/new-3ds.png" width="1400" height="1323" alt="A white New Nintendo 3DS showing 3dsDL's home screen: the download folder, free space and Wi-Fi status on top, and the Scan QR Code, Enter URL, History, Folder and Settings buttons on the touch screen." loading="lazy" decoding="async">
+              <div class="screen screen-top" aria-hidden="true">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">ready</span>
+                <span class="r" style="--x:20;--y:59;--w:364;--h:78;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:56;--w:364;--h:78;background:#102638"></span>
+                <span class="r" style="--x:18;--y:56;--w:4;--h:78;background:#18788a"></span>
+                <span class="t t-muted" style="--x:34;--y:65;--s:.44">DOWNLOAD FOLDER</span>
+                <span class="t" style="--x:34;--y:84;--s:.66">sdmc:/cias/</span>
+                <span class="t t-muted" style="--x:34;--y:110;--s:.46">12.3 GiB free on the SD card</span>
+                <span class="r" style="--x:20;--y:149;--w:364;--h:70;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:146;--w:364;--h:70;background:#102638"></span>
+                <span class="r" style="--x:18;--y:146;--w:4;--h:70;background:#18788a"></span>
+                <span class="t t-green" style="--x:34;--y:157;--s:.58">Wi-Fi connected</span>
+                <span class="t t-muted" style="--x:34;--y:184;--s:.46">Scan a QR code or type a direct file link.</span>
+                <span class="t t-end t-muted" style="--x:382;--y:224;--s:.4">v0.3.0</span>
+              </div>
+              <div class="screen screen-bottom" aria-hidden="true">
+                <span class="t t-muted" style="--x:18;--y:10;--s:.46">Choose an action</span>
+                <span class="t t-end t-muted" style="--x:302;--y:10;--s:.46">START: Exit</span>
+                <span class="r" style="--x:20;--y:37;--w:284;--h:44;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:34;--w:284;--h:44;background:#34d6e8"></span>
+                <span class="r" style="--x:18;--y:34;--w:5;--h:44;background:#c5f8fc"></span>
+                <span class="t t-mid" style="--x:160;--y:47;--s:.58;color:#08131f">SCAN QR CODE</span>
+                <span class="r" style="--x:20;--y:87;--w:284;--h:44;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:84;--w:284;--h:44;background:#173449"></span>
+                <span class="t t-mid" style="--x:160;--y:97;--s:.58">ENTER URL</span>
+                <span class="r" style="--x:20;--y:137;--w:284;--h:40;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:134;--w:284;--h:40;background:#173449"></span>
+                <span class="t t-mid" style="--x:160;--y:145;--s:.58">HISTORY</span>
+                <span class="r" style="--x:20;--y:185;--w:138;--h:40;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:18;--y:182;--w:138;--h:40;background:#173449"></span>
+                <span class="t t-mid" style="--x:87;--y:193;--s:.58">FOLDER</span>
+                <span class="r" style="--x:166;--y:185;--w:138;--h:40;background:rgba(0,0,0,.33)"></span>
+                <span class="r" style="--x:164;--y:182;--w:138;--h:40;background:#173449"></span>
+                <span class="t t-mid" style="--x:233;--y:193;--s:.58">SETTINGS</span>
+              </div>
+          </div>
+        </div>
+
+        <div class="install-cards reveal">
             <article class="install-card">
               <header class="install-head">
                 <h3>HOME Menu app</h3>
@@ -404,11 +337,6 @@
                 </a>
               </footer>
             </article>
-          </div>
-
-          <figure class="studio">
-            <img src="assets/new-3ds-studio.png" width="1400" height="1116" alt="A white New Nintendo 3DS, open, photographed from the front at an angle." loading="lazy" decoding="async">
-          </figure>
         </div>
 
         <aside class="notice">
@@ -434,7 +362,7 @@
           <svg class="icon"><use href="#i-sound"/></svg><span>Menu sounds on</span>
         </button>
       </nav>
-      <p class="legal">3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D. Not affiliated with Nintendo; Nintendo 3DS is a trademark of Nintendo. Console photos: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS.png">PhilipTerryGraham</a> (CC0) and <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>). Fonts: M PLUS Rounded 1c and M PLUS 1 Code (OFL).</p>
+      <p class="legal">3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D. Not affiliated with Nintendo; Nintendo 3DS is a trademark of Nintendo. Console photos: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, with the screens replaced) and <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS.png">PhilipTerryGraham</a> (CC0). Fonts: M PLUS Rounded 1c and M PLUS 1 Code (OFL).</p>
     </footer>
   </div>
 

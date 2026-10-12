@@ -267,20 +267,21 @@
   // by (rendered width / 1400). CSS cannot turn a length into a number, so
   // the factor is set here and kept current as the stage resizes.
   function setUpScreenScale() {
-    var stage = document.querySelector(".device-stage");
-    if (!stage) return;
-    var photoWidth = parseFloat(getComputedStyle(stage).getPropertyValue("--photo-w")) || 1400;
-    function update() {
-      var width = stage.getBoundingClientRect().width;
-      if (width > 0) stage.style.setProperty("--k", (width / photoWidth).toFixed(5));
-    }
-    update();
-    if ("ResizeObserver" in window) {
-      new ResizeObserver(update).observe(stage);
-    } else {
-      window.addEventListener("resize", update);
-    }
-    stage.classList.add("is-mapped");
+    document.querySelectorAll(".device-stage").forEach(function (stage) {
+      var photoWidth = parseFloat(getComputedStyle(stage).getPropertyValue("--photo-w"));
+      if (!photoWidth) return;
+      function update() {
+        var width = stage.offsetWidth;
+        if (width > 0) stage.style.setProperty("--k", (width / photoWidth).toFixed(5));
+      }
+      update();
+      if ("ResizeObserver" in window) {
+        new ResizeObserver(update).observe(stage);
+      } else {
+        window.addEventListener("resize", update);
+      }
+      stage.classList.add("is-mapped");
+    });
   }
 
   // A slight tilt of the device towards the pointer. Pointer only (no touch),
@@ -308,63 +309,62 @@
     });
   }
 
-  // Cover Flow of the app's screens. Each figure gets --d (signed distance
-  // from the centre) and --ad (absolute distance); the CSS does the rest.
-  function setUpFlow() {
-    var flow = document.querySelector("[data-flow]");
-    if (!flow) return;
-    var shots = Array.prototype.slice.call(flow.querySelectorAll(".shot"));
-    var title = flow.querySelector("[data-flow-title]");
-    var dots = flow.querySelector("[data-dots]");
-    if (!shots.length) return;
-    var index = Math.min(2, shots.length - 1);
-    var timer = null;
+  // FAQ rows open and close with an eased height animation and a short fade
+  // of the answer. Without the script, or with reduced motion, <details>
+  // simply opens and closes on its own.
+  function setUpFaq() {
+    if (reduceMotion || !("animate" in Element.prototype)) return;
+    var timing = { duration: 320, easing: "cubic-bezier(0.23, 1, 0.32, 1)" };
 
-    shots.forEach(function () {
-      var dot = document.createElement("i");
-      dots.appendChild(dot);
-    });
+    document.querySelectorAll(".faq details").forEach(function (details) {
+      var summary = details.querySelector("summary");
+      var answer = summary && summary.nextElementSibling;
+      if (!answer) return;
+      var running = null;
 
-    function render() {
-      shots.forEach(function (shot, i) {
-        var d = i - index;
-        shot.style.setProperty("--d", d);
-        shot.style.setProperty("--ad", Math.abs(d));
-        shot.classList.toggle("is-center", d === 0);
-        shot.setAttribute("aria-hidden", d === 0 ? "false" : "true");
+      function settle(open) {
+        details.open = open;
+        details.classList.remove("is-closing");
+        details.style.overflow = "";
+        running = null;
+      }
+
+      function animate(from, to, opening) {
+        if (running) running.cancel();
+        details.style.overflow = "hidden";
+        running = details.animate({ height: [from + "px", to + "px"] }, timing);
+        answer.animate(
+          opening
+            ? { opacity: [0, 1], transform: ["translateY(-6px)", "none"] }
+            : { opacity: [1, 0], transform: ["none", "translateY(-4px)"] },
+          { duration: opening ? 280 : 200, easing: timing.easing, fill: "none" }
+        );
+        var current = running;
+        // finished rejects when a later click cancels this animation; the
+        // newer animation then owns the cleanup.
+        running.finished.then(function () {
+          if (running === current) settle(opening);
+        }, function () {});
+      }
+
+      summary.addEventListener("click", function (event) {
+        event.preventDefault();
+        // Start from the height on screen, even mid-animation. Fractional
+        // sizes avoid a 1px snap when the animation hands over.
+        var height = function (element) { return element.getBoundingClientRect().height; };
+        var style = getComputedStyle(details);
+        var frame = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        var from = height(details);
+        if (details.open && !details.classList.contains("is-closing")) {
+          details.classList.add("is-closing");
+          animate(from, height(summary) + frame, false);
+        } else {
+          details.classList.remove("is-closing");
+          details.open = true;
+          animate(from, height(summary) + height(answer) + frame, true);
+        }
       });
-      Array.prototype.forEach.call(dots.children, function (dot, i) {
-        dot.classList.toggle("is-on", i === index);
-      });
-      if (title) title.textContent = shots[index].getAttribute("data-title") || "";
-    }
-
-    function go(next, byUser) {
-      index = (next + shots.length) % shots.length;
-      render();
-      if (byUser) restart();
-    }
-
-    function restart() {
-      clearInterval(timer);
-      if (reduceMotion) return;
-      timer = setInterval(function () {
-        if (!document.hidden) go(index + 1, false);
-      }, 4200);
-    }
-
-    shots.forEach(function (shot, i) {
-      shot.addEventListener("click", function () { go(i, true); });
     });
-    flow.addEventListener("keydown", function (event) {
-      if (event.key === "ArrowRight") { go(index + 1, true); event.preventDefault(); }
-      if (event.key === "ArrowLeft") { go(index - 1, true); event.preventDefault(); }
-    });
-    flow.addEventListener("mouseenter", function () { clearInterval(timer); });
-    flow.addEventListener("mouseleave", restart);
-
-    render();
-    restart();
   }
 
   // Scroll reveals. The reveal-ready class is added only here, so sections
@@ -485,7 +485,7 @@
   setUpScreenScale();
   setUpDeviceDemo();
   setUpTilt();
-  setUpFlow();
+  setUpFaq();
   setUpReveals();
   setUpTabs();
   setUpSounds();
