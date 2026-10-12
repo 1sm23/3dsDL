@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3dsDL: download files straight onto your Nintendo 3DS</title>
   <meta name="description" content="3dsDL downloads files from a link or a QR code straight onto your Nintendo 3DS SD card over verified HTTPS. Install it with FBI in under a minute.">
-  <meta name="theme-color" content="#f4f7f9">
+  <meta name="theme-color" content="#9aa6b5">
   <meta name="color-scheme" content="light">
   <link rel="canonical" href="https://ankush.one/3dsDL/">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/icon-64.png">
@@ -27,356 +27,205 @@
     <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
     <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 10l4 4M21 10l-4 4"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
   </svg>
 
   <a class="skip" href="#install">Skip to install</a>
 
-  <header class="menubar">
-    <div class="wrap menubar-inner">
+  <div class="page">
+    <header class="head">
       <a class="brand" href="#top" aria-label="3dsDL home">
-        <img src="assets/icon-64.png" width="34" height="34" alt="">
+        <img src="assets/icon-64.png" width="28" height="28" alt="">
         <span><span class="brand-3ds">3ds</span>DL</span>
       </a>
-      <nav class="menubar-nav" aria-label="Sections">
+      <nav class="tabs" aria-label="Sections">
+        <a href="#screens">Screens</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
         <a href="#install">Install</a>
-        <a href="#send">Send<span class="hide-small"> a link</span></a>
-        <a class="hide-small" href="#channels">Channels</a>
-        <a href="#help">Help</a>
-        <a class="nav-icon" href="https://github.com/ankushKun/3dsDL" aria-label="3dsDL on GitHub">
-          <svg class="icon"><use href="#i-github"/></svg>
-        </a>
       </nav>
-    </div>
-  </header>
+    </header>
 
-  <main id="top">
-    <!-- The hero is laid out like a Wii channel's start screen: a framed
-         banner with two wide buttons underneath. -->
-    <section class="hero">
-      <div class="wrap">
-        <div class="banner-frame">
-          <div class="banner">
-            <div class="banner-copy">
-              <p class="lockup">
-                <img src="assets/icon-256.png" width="72" height="72" alt="">
-                <span class="lockup-name"><span class="brand-3ds">3ds</span>DL</span>
-              </p>
-              <h1>Download files straight onto your Nintendo&nbsp;3DS.</h1>
-              <p class="lead">Scan a QR code or type a link, and the file streams onto the SD card over verified HTTPS. No card reader, no computer, no powering down.</p>
+    <main id="top">
+      <section class="hero">
+        <h1>Download files <span class="accent">straight onto your 3DS</span></h1>
+        <p class="sub">Scan a QR code or type a link, and the file streams onto the SD card over verified HTTPS. <br>No card reader, no computer, no powering down.</p>
+        <div class="cta">
+          <a class="btn btn-aqua" href="#install" data-sound>Install with FBI</a>
+        </div>
+        <p class="cta-note">Scan one QR code in FBI and 3dsDL is on your HOME Menu.</p>
+        <p class="cta-alt">
+          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">3dsDL.cia</a> ·
+          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">3dsDL.3dsx</a>
+          <span class="release" data-release></span>
+        </p>
+        <ul class="trust">
+          <li>Verified HTTPS, every time</li>
+          <li>Resumes interrupted downloads</li>
+          <li>Free and open source</li>
+        </ul>
+
+        <!-- A real New Nintendo 3DS (photo: PhilipTerryGraham, CC0). Its two
+             screens are live HTML, drawn in 3DS pixels and mapped onto the
+             photographed screens with a perspective matrix, so the demo on
+             them can animate. -->
+        <div class="device reveal" data-tilt>
+          <div class="device-stage">
+            <img class="device-photo" src="assets/new-3ds.png" width="1400" height="1323" alt="An open white New Nintendo 3DS running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button." decoding="async">
+            <div class="screen screen-top" aria-hidden="true">
+              <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+              <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+              <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6" data-demo-state>downloading</span>
+              <span class="r" style="--x:20;--y:57;--w:364;--h:84;background:rgba(0,0,0,.33)"></span>
+              <span class="r" style="--x:18;--y:54;--w:364;--h:84;background:#102638"></span>
+              <span class="r" style="--x:18;--y:54;--w:4;--h:84;background:#18788a"></span>
+              <span class="t" style="--x:34;--y:64;--s:.68">Universal-Updater.cia</span>
+              <span class="t t-muted" style="--x:34;--y:94;--s:.46">github.com</span>
+              <span class="r" style="--x:24;--y:150;--w:352;--h:16;background:#173449"></span>
+              <span class="r r-fill" style="--x:24;--y:150;--w:352;--h:16" data-demo-bar></span>
+              <span class="t" style="--x:24;--y:174;--s:.52" data-demo-amount>3.10 MiB of 4.42 MiB (70%)</span>
+              <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48" data-demo-phase>downloading</span>
+              <span class="t t-muted" style="--x:24;--y:198;--s:.48" data-demo-speed>1.24 MiB/s, 1s left</span>
             </div>
+            <div class="screen screen-bottom" aria-hidden="true">
+              <span class="t t-muted" style="--x:18;--y:14;--s:.48">Saving to</span>
+              <span class="r" style="--x:20;--y:41;--w:284;--h:54;background:rgba(0,0,0,.33)"></span>
+              <span class="r" style="--x:18;--y:38;--w:284;--h:54;background:#102638"></span>
+              <span class="r" style="--x:18;--y:38;--w:4;--h:54;background:#18788a"></span>
+              <span class="t" style="--x:32;--y:55;--s:.52">sdmc:/cias/</span>
+              <span class="r" style="--x:60;--y:140;--w:204;--h:50;background:rgba(0,0,0,.33)"></span>
+              <span class="r" style="--x:58;--y:137;--w:204;--h:50;background:#173449"></span>
+              <span class="r" style="--x:58;--y:184;--w:204;--h:3;background:#ff5d73"></span>
+              <span class="t t-mid" style="--x:160;--y:153;--s:.58">CANCEL</span>
+              <span class="t t-mid t-muted" style="--x:160;--y:204;--s:.42">Sleep mode is paused until this finishes.</span>
+              <span class="t t-mid t-muted" style="--x:160;--y:222;--s:.42">B: Cancel</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-            <div class="console" role="img" aria-label="An open New Nintendo 3DS XL style handheld running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button.">
-              <svg class="console-body" viewBox="0 0 400 540" aria-hidden="true" focusable="false">
-                <defs>
-                  <linearGradient id="g-shell" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#ffffff"/>
-                    <stop offset="1" stop-color="#dfe7ed"/>
-                  </linearGradient>
-                  <linearGradient id="g-face" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stop-color="#fbfcfd"/>
-                    <stop offset="1" stop-color="#e9eff3"/>
-                  </linearGradient>
-                  <linearGradient id="g-bezel" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#2b333b"/>
-                    <stop offset="1" stop-color="#14191e"/>
-                  </linearGradient>
-                  <linearGradient id="g-hinge" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#e9eef2"/>
-                    <stop offset="0.45" stop-color="#bcc8d2"/>
-                    <stop offset="1" stop-color="#d7e0e7"/>
-                  </linearGradient>
-                  <radialGradient id="g-button" cx="0.4" cy="0.32" r="0.75">
-                    <stop offset="0" stop-color="#ffffff"/>
-                    <stop offset="1" stop-color="#cfd9e0"/>
-                  </radialGradient>
-                  <radialGradient id="g-pad" cx="0.5" cy="0.4" r="0.6">
-                    <stop offset="0" stop-color="#e9eef2"/>
-                    <stop offset="1" stop-color="#b9c5ce"/>
-                  </radialGradient>
-                  <linearGradient id="g-dpad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stop-color="#5b6670"/>
-                    <stop offset="1" stop-color="#3a434b"/>
-                  </linearGradient>
-                  <linearGradient id="g-gloss" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
-                    <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
-                  </linearGradient>
-                  <pattern id="p-speaker" width="5" height="5" patternUnits="userSpaceOnUse">
-                    <circle cx="2.5" cy="2.5" r="1.05" fill="#9fadb9"/>
-                  </pattern>
-                </defs>
-
-                <!-- Top half -->
-                <rect x="1" y="1" width="398" height="252" rx="26" fill="url(#g-shell)" stroke="#b7c4ce" stroke-width="1.5"/>
-                <rect x="7" y="7" width="386" height="240" rx="21" fill="url(#g-face)"/>
-                <path d="M30 9h200a26 26 0 0 0-1 2H32c-12 0-21 9-21 21v60H9V32C9 19 18 9 30 9z" fill="url(#g-gloss)" opacity="0.8"/>
-                <circle cx="200" cy="22" r="4.2" fill="#1d242b"/>
-                <circle cx="198.9" cy="20.9" r="1.2" fill="#6f8aa0"/>
-                <rect x="46" y="34" width="308" height="194" rx="10" fill="url(#g-bezel)"/>
-                <rect x="46.5" y="34.5" width="307" height="193" rx="9.5" fill="none" stroke="#000000" stroke-opacity="0.35"/>
-                <!-- 3D depth slider and its indicator -->
-                <rect x="364" y="64" width="7" height="86" rx="3.5" fill="#cfd8df" stroke="#b5c1cb"/>
-                <rect x="362.5" y="72" width="10" height="16" rx="3" fill="#ffffff" stroke="#a7b4bf"/>
-                <text x="367.5" y="164" text-anchor="middle" class="svg-label">3D</text>
-                <circle cx="367.5" cy="56" r="2.2" fill="#b9c4cd"/>
-                <!-- Speakers -->
-                <rect x="14" y="186" width="24" height="34" fill="url(#p-speaker)"/>
-                <rect x="362" y="186" width="24" height="34" fill="url(#p-speaker)"/>
-
-                <!-- Hinge with its status lights -->
-                <rect x="22" y="250" width="356" height="26" rx="13" fill="url(#g-hinge)" stroke="#aebbc6"/>
-                <rect x="70" y="258" width="260" height="10" rx="5" fill="#c9d3db" opacity="0.7"/>
-                <circle cx="350" cy="263" r="2.3" fill="#36c3ee"/>
-                <circle cx="358" cy="263" r="2.3" fill="#9aa8b3"/>
-
-                <!-- Bottom half -->
-                <rect x="1" y="273" width="398" height="266" rx="30" fill="url(#g-shell)" stroke="#b7c4ce" stroke-width="1.5"/>
-                <rect x="7" y="279" width="386" height="254" rx="25" fill="url(#g-face)"/>
-                <rect x="84" y="286" width="232" height="176" rx="8" fill="url(#g-bezel)"/>
-                <!-- Circle Pad -->
-                <circle cx="45" cy="323" r="21" fill="#a9b6c0"/>
-                <circle cx="45" cy="323" r="17" fill="url(#g-pad)" stroke="#9eacb7"/>
-                <circle cx="45" cy="323" r="11" fill="none" stroke="#ffffff" stroke-opacity="0.7"/>
-                <!-- D-pad -->
-                <path d="M38 382h14v12h12v14H52v12H38v-12H26v-14h12z" fill="url(#g-dpad)"/>
-                <circle cx="45" cy="401" r="3.2" fill="#2f373e"/>
-                <!-- C Stick -->
-                <circle cx="330" cy="302" r="5" fill="#3c454d"/>
-                <circle cx="329" cy="301" r="1.6" fill="#6b7883"/>
-                <!-- A B X Y -->
-                <g class="svg-button-letters">
-                  <circle cx="358" cy="320" r="9" fill="url(#g-button)" stroke="#a5b2bd"/>
-                  <text x="358" y="323.4" text-anchor="middle">X</text>
-                  <circle cx="377" cy="339" r="9" fill="url(#g-button)" stroke="#a5b2bd"/>
-                  <text x="377" y="342.4" text-anchor="middle">A</text>
-                  <circle cx="358" cy="358" r="9" fill="url(#g-button)" stroke="#a5b2bd"/>
-                  <text x="358" y="361.4" text-anchor="middle">B</text>
-                  <circle cx="339" cy="339" r="9" fill="url(#g-button)" stroke="#a5b2bd"/>
-                  <text x="339" y="342.4" text-anchor="middle">Y</text>
-                </g>
-                <!-- SELECT and START -->
-                <circle cx="346" cy="392" r="4.5" fill="url(#g-button)" stroke="#a5b2bd"/>
-                <circle cx="368" cy="392" r="4.5" fill="url(#g-button)" stroke="#a5b2bd"/>
-                <text x="346" y="405" text-anchor="middle" class="svg-label svg-tiny">SELECT</text>
-                <text x="368" y="405" text-anchor="middle" class="svg-label svg-tiny">START</text>
-                <!-- HOME button -->
-                <rect x="180" y="474" width="40" height="14" rx="7" fill="url(#g-button)" stroke="#a5b2bd"/>
-                <path d="M195 483.5v-4l5-3.6 5 3.6v4z" fill="none" stroke="#8796a3" stroke-width="1.3" stroke-linejoin="round"/>
-                <!-- Power -->
-                <circle cx="368" cy="508" r="6" fill="url(#g-button)" stroke="#a5b2bd"/>
-                <path d="M368 504.6v3.2M365.6 506a3.4 3.4 0 1 0 4.8 0" fill="none" stroke="#8796a3" stroke-width="1.1" stroke-linecap="round"/>
-                <!-- Microphone -->
-                <circle cx="245" cy="481" r="1.4" fill="#8f9eaa"/>
-              </svg>
-
-              <!-- The two screens draw 3dsDL's real download screen, using the
-                   same coordinates as drawProgress() in source/app/ui.cpp. -->
-              <div class="screen screen-top" aria-hidden="true">
+      <!-- Screens: the app's real screens in a Cover Flow, drawn from the
+           same coordinates ui.cpp uses. -->
+      <section id="screens" class="section reveal">
+        <header class="section-head">
+          <p class="eyebrow">Screens</p>
+          <h2>What it looks like</h2>
+        </header>
+        <div class="flow" data-flow tabindex="0" aria-label="Screens of 3dsDL. Use the arrow keys or click a screen to bring it to the front.">
+          <div class="flow-stage">
+            <figure class="shot" data-title="Home" data-sound>
+              <div class="s400">
                 <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
                 <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6" data-demo-state>downloading</span>
-                <span class="r" style="--x:20;--y:57;--w:364;--h:84;background:rgba(0,0,0,.33)"></span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">ready</span>
+                <span class="r" style="--x:18;--y:56;--w:364;--h:78;background:#102638"></span>
+                <span class="r" style="--x:18;--y:56;--w:4;--h:78;background:#18788a"></span>
+                <span class="t t-muted" style="--x:34;--y:65;--s:.44">DOWNLOAD FOLDER</span>
+                <span class="t" style="--x:34;--y:84;--s:.66">sdmc:/cias/</span>
+                <span class="t t-muted" style="--x:34;--y:110;--s:.46">12.3 GiB free on the SD card</span>
+                <span class="r" style="--x:18;--y:146;--w:364;--h:70;background:#102638"></span>
+                <span class="r" style="--x:18;--y:146;--w:4;--h:70;background:#18788a"></span>
+                <span class="t t-green" style="--x:34;--y:157;--s:.58">Wi-Fi connected</span>
+                <span class="t t-muted" style="--x:34;--y:184;--s:.46">Scan a QR code or type a direct file link.</span>
+              </div>
+              <figcaption>Home</figcaption>
+            </figure>
+            <figure class="shot" data-title="Confirm" data-sound>
+              <div class="s400">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">confirm</span>
+                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
+                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
+                <span class="t" style="--x:34;--y:64;--s:.68">Download this link?</span>
+                <span class="t" style="--x:34;--y:92;--s:.62">github.com</span>
+                <span class="t t-muted" style="--x:34;--y:116;--s:.44">https://github.com/Universal-Team/Universal-</span>
+                <span class="t t-muted" style="--x:34;--y:131;--s:.44">Updater/releases/latest/download/Universal-Updater.cia</span>
+                <span class="t" style="--x:34;--y:156;--s:.48">Save to sdmc:/cias/</span>
+                <span class="t t-green" style="--x:34;--y:178;--s:.44">Continues the earlier download from 1.20 MiB.</span>
+              </div>
+              <figcaption>Confirm</figcaption>
+            </figure>
+            <figure class="shot" data-title="Downloading" data-sound>
+              <div class="s400">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">downloading</span>
                 <span class="r" style="--x:18;--y:54;--w:364;--h:84;background:#102638"></span>
                 <span class="r" style="--x:18;--y:54;--w:4;--h:84;background:#18788a"></span>
                 <span class="t" style="--x:34;--y:64;--s:.68">Universal-Updater.cia</span>
                 <span class="t t-muted" style="--x:34;--y:94;--s:.46">github.com</span>
-                <span class="t t-green" style="--x:34;--y:113;--s:.44" data-demo-note></span>
                 <span class="r" style="--x:24;--y:150;--w:352;--h:16;background:#173449"></span>
-                <span class="r r-fill" style="--x:24;--y:150;--w:352;--h:16" data-demo-bar></span>
-                <span class="t" style="--x:24;--y:174;--s:.52" data-demo-amount>3.10 MiB of 4.42 MiB (70%)</span>
-                <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48" data-demo-phase>downloading</span>
-                <span class="t t-muted" style="--x:24;--y:198;--s:.48" data-demo-speed>1.24 MiB/s, 1s left</span>
+                <span class="r" style="--x:24;--y:150;--w:246;--h:16;background:#34d6e8"></span>
+                <span class="t" style="--x:24;--y:174;--s:.52">3.10 MiB of 4.42 MiB (70%)</span>
+                <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48">downloading</span>
+                <span class="t t-muted" style="--x:24;--y:198;--s:.48">1.24 MiB/s, 1s left</span>
               </div>
-              <div class="screen screen-bottom" aria-hidden="true">
-                <span class="t t-muted" style="--x:18;--y:14;--s:.48">Saving to</span>
-                <span class="r" style="--x:20;--y:41;--w:284;--h:54;background:rgba(0,0,0,.33)"></span>
-                <span class="r" style="--x:18;--y:38;--w:284;--h:54;background:#102638"></span>
-                <span class="r" style="--x:18;--y:38;--w:4;--h:54;background:#18788a"></span>
-                <span class="t" style="--x:32;--y:55;--s:.52">sdmc:/cias/</span>
-                <span class="r" style="--x:60;--y:140;--w:204;--h:50;background:rgba(0,0,0,.33)"></span>
-                <span class="r" style="--x:58;--y:137;--w:204;--h:50;background:#173449"></span>
-                <span class="r" style="--x:58;--y:184;--w:204;--h:3;background:#ff5d73"></span>
-                <span class="t t-mid" style="--x:160;--y:153;--s:.58">CANCEL</span>
-                <span class="t t-mid t-muted" style="--x:160;--y:204;--s:.42">Sleep mode is paused until this finishes.</span>
-                <span class="t t-mid t-muted" style="--x:160;--y:222;--s:.42">B: Cancel</span>
+              <figcaption>Downloading</figcaption>
+            </figure>
+            <figure class="shot" data-title="File exists" data-sound>
+              <div class="s400">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">file exists</span>
+                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
+                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
+                <span class="t t-warn" style="--x:34;--y:64;--s:.68">A file with this name already exists</span>
+                <span class="t" style="--x:34;--y:96;--s:.56">Universal-Updater.cia</span>
+                <span class="t t-muted" style="--x:34;--y:124;--s:.46">Rename saves the new download as</span>
+                <span class="t t-muted" style="--x:34;--y:140;--s:.46">Universal-Updater (1).cia and keeps the old file.</span>
+                <span class="t t-muted" style="--x:34;--y:166;--s:.46">Overwrite replaces the old file.</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <nav class="channel-nav" aria-label="Get started">
-          <a class="wii-btn" href="https://github.com/ankushKun/3dsDL" data-sound>
-            <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>Source code
-          </a>
-          <a class="wii-btn wii-btn-start" href="#install" data-sound>Install</a>
-        </nav>
-        <p class="hero-files">
-          Or grab the files directly:
-          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">3dsDL.cia</a> ·
-          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">3dsDL.3dsx</a>
-          <span class="hero-release" data-release></span>
-        </p>
-      </div>
-    </section>
-
-    <section id="install" class="section">
-      <div class="wrap">
-        <header class="section-head">
-          <h2>Install</h2>
-          <p>You need a 3DS running custom firmware (Luma3DS) with FBI or the Homebrew Launcher. Haven't set that up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
-        </header>
-
-        <div class="install-grid">
-          <article class="install-card">
-            <header class="install-banner">
-              <img src="assets/icon-64.png" width="44" height="44" alt="">
-              <div>
-                <h3>HOME Menu app</h3>
-                <p>3dsDL.cia, installs with FBI</p>
+              <figcaption>File exists</figcaption>
+            </figure>
+            <figure class="shot" data-title="History" data-sound>
+              <div class="s400">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">history</span>
+                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
+                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
+                <span class="t t-green" style="--x:34;--y:63;--s:.6">Saved</span>
+                <span class="t t-end t-muted" style="--x:366;--y:66;--s:.44">2026-10-12 11:40</span>
+                <span class="t t-muted" style="--x:34;--y:88;--s:.44">https://github.com/Universal-Team/Universal-Updater/</span>
+                <span class="t t-muted" style="--x:34;--y:103;--s:.44">releases/latest/download/Universal-Updater.cia</span>
+                <span class="t" style="--x:34;--y:128;--s:.48">sdmc:/cias/Universal-Updater.cia</span>
+                <span class="t t-muted" style="--x:34;--y:156;--s:.44">Folder: sdmc:/cias/</span>
               </div>
-              <span class="badge">Recommended</span>
-            </header>
-            <div class="install-body">
-              <figure class="qr-frame">
-                <img src="qr/install-cia.svg" width="176" height="176" alt="QR code that installs the latest 3dsDL CIA with FBI">
-              </figure>
-              <ol class="steps">
-                <li>Open <strong>FBI</strong> on your 3DS.</li>
-                <li>Choose <strong>Remote Install</strong>, then <strong>Scan QR Code</strong>.</li>
-                <li>Point the camera at this code and confirm.</li>
-                <li>3dsDL appears on the HOME Menu. Installing again later updates it in place.</li>
-              </ol>
-            </div>
-            <footer class="install-buttons">
-              <button class="btn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
-                <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
-              </button>
-              <a class="btn btn-start" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
-                Download<span class="size" data-asset-size="3dsDL.cia"></span>
-              </a>
-            </footer>
-          </article>
-
-          <article class="install-card">
-            <header class="install-banner">
-              <img src="assets/icon-64.png" width="44" height="44" alt="">
-              <div>
-                <h3>Homebrew Launcher</h3>
-                <p>3dsDL.3dsx, runs from the SD card</p>
+              <figcaption>History</figcaption>
+            </figure>
+            <figure class="shot" data-title="Console clock" data-sound>
+              <div class="s400">
+                <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
+                <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
+                <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6">clock</span>
+                <span class="r" style="--x:18;--y:54;--w:364;--h:172;background:#102638"></span>
+                <span class="r" style="--x:18;--y:54;--w:4;--h:172;background:#18788a"></span>
+                <span class="t t-warn" style="--x:34;--y:64;--s:.68">The console clock is off</span>
+                <span class="t" style="--x:34;--y:96;--s:.52">Console:  2025-10-12 11:40</span>
+                <span class="t t-green" style="--x:34;--y:116;--s:.52">Actual:   2026-10-12 11:40</span>
+                <span class="t t-warn" style="--x:34;--y:142;--s:.46">The console clock is about 365 days behind.</span>
+                <span class="t t-muted" style="--x:34;--y:166;--s:.42">Time zone UTC+05:30, India, Sri Lanka. Time from time.cloudflare.com.</span>
               </div>
-            </header>
-            <div class="install-body">
-              <figure class="qr-frame">
-                <img src="qr/download-3dsx.svg" width="176" height="176" alt="QR code that downloads the latest 3dsDL.3dsx">
-              </figure>
-              <ol class="steps">
-                <li><strong>Updating?</strong> Scan this code with 3dsDL, save it to <code>sdmc:/3ds/3dsDL/</code> and choose <strong>Overwrite</strong>.</li>
-                <li><strong>First time?</strong> Copy the file to <code>sdmc:/3ds/3dsDL/3dsDL.3dsx</code> on the SD card.</li>
-                <li>Open the Homebrew Launcher and start <strong>3dsDL</strong>.</li>
-              </ol>
-            </div>
-            <footer class="install-buttons">
-              <button class="btn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
-                <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
-              </button>
-              <a class="btn btn-start" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
-                Download<span class="size" data-asset-size="3dsDL.3dsx"></span>
-              </a>
-            </footer>
-          </article>
-        </div>
-
-        <aside class="notice">
-          <span class="notice-icon" aria-hidden="true"><svg class="icon"><use href="#i-clock"/></svg></span>
-          <p><strong>Certificate errors?</strong> HTTPS needs the console's date to be right. In 3dsDL open <strong>Settings → Console clock</strong> to set it from internet time, or open Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd>) and choose <strong>Miscellaneous options → Update time and date via NTP</strong>.</p>
-        </aside>
-        <p class="fine">
-          Each release lists SHA-256 checksums in
-          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.sha256">3dsDL.sha256</a>.
-          Older versions are on the <a href="https://github.com/ankushKun/3dsDL/releases">releases page</a>.
-        </p>
-      </div>
-    </section>
-
-    <section id="send" class="section">
-      <div class="wrap">
-        <div class="app-window">
-          <div class="app-window-bar">
-            <svg class="icon" aria-hidden="true"><use href="#i-qr"/></svg>
-            <h2>Send any link to your 3DS</h2>
-          </div>
-          <div class="app-window-body send-grid">
-            <div>
-              <p class="send-lead">Paste a direct download link, then scan the code with <strong>Scan QR Code</strong> in 3dsDL. Much nicer than typing a long link on the 3DS keyboard.</p>
-              <form class="send-form" id="send-form" autocomplete="off">
-                <label for="send-url">Download link</label>
-                <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
-                <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
-                <div class="actions">
-                  <button class="btn" type="button" id="send-big" disabled>
-                    <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
-                  </button>
-                  <button class="btn" type="button" id="send-copy" disabled>
-                    <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
-                  </button>
-                </div>
-              </form>
-              <p class="fine">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
-              <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
-            </div>
-            <figure class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
-              <div class="qr-placeholder">
-                <svg class="icon"><use href="#i-qr"/></svg>
-                <span>Your QR code</span>
-              </div>
+              <figcaption>Console clock</figcaption>
             </figure>
           </div>
+          <p class="flow-title" data-flow-title>Downloading</p>
+          <div class="dots" data-dots aria-hidden="true"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Channels: each tile previews the real 3dsDL screen for a feature.
-         On wide screens the highlighted tile's description shows in the
-         panel above, like the top screen of the 3DS HOME Menu. -->
-    <section id="channels" class="section">
-      <div class="wrap">
+      <section id="features" class="section section-well reveal">
         <header class="section-head">
-          <h2>What it does</h2>
-          <p>Every feature is a channel. Point at one to read about it.</p>
+          <p class="eyebrow">Features</p>
+          <h2>The bits that make it easy</h2>
         </header>
-
-        <div class="top-screen" aria-hidden="true">
-          <span class="top-screen-name" data-channel-name>Scan or type</span>
-          <span class="top-screen-text" data-channel-text>Read a link from a QR code with the camera, or type it on the keyboard. Codes that aren't links are pointed out instead of ending the scan.</span>
-        </div>
-
-        <div class="channel-grid">
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
-              <span class="m-finder"><span class="m-qr"></span><i></i><i></i><i></i><i></i></span>
-              <span class="m-line m-green">QR code found</span>
-            </div>
-            <h3>Scan or type</h3>
-            <p>Read a link from a QR code with the camera, or type it on the keyboard. Codes that aren't links are pointed out instead of ending the scan.</p>
-          </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
-              <svg class="m-glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"/></svg>
-              <span class="m-line">github.com</span>
-              <span class="m-line m-muted">Certificate verified</span>
-            </div>
-            <h3>Real HTTPS</h3>
-            <p>Certificates are checked against Mozilla's CA store, redirects stay on HTTP and HTTPS, and plain http links get a warning first.</p>
-          </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
+        <div class="features">
+          <article class="feature">
+            <div class="feature-demo demo-dark">
               <span class="m-line">homebrew.3dsx</span>
               <span class="m-bar"><i style="width:62%"></i></span>
               <span class="m-line m-muted">1.24 MiB/s, 27s left</span>
@@ -384,103 +233,90 @@
             <h3>Live progress</h3>
             <p>Speed, time left, size and percentage, with free space checked before anything is written.</p>
           </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
+          <article class="feature">
+            <div class="feature-demo demo-dark">
               <span class="m-line m-green">Continuing from 12.0 MiB</span>
               <span class="m-bar"><i style="width:48%"></i></span>
               <span class="m-line m-muted">1.62 MiB/s, 9s left</span>
             </div>
             <h3>Resume and retry</h3>
-            <p>A dropped connection keeps what arrived. Retry, or Resume from History, carries on from there when the server confirms the file hasn't changed.</p>
+            <p>A dropped connection keeps what arrived. Retry carries on from there when the server confirms the file hasn't changed.</p>
           </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
+          <article class="feature">
+            <div class="feature-demo demo-dark">
               <span class="m-line m-warn m-small">A file with this name already exists</span>
               <span class="m-buttons"><b class="on">RENAME</b><b>OVERWRITE</b><b>CANCEL</b></span>
             </div>
             <h3>Never clobbers files</h3>
-            <p>Rename keeps both as "file (1).zip", Overwrite rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
+            <p>Rename keeps both, Overwrite rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
           </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark m-list">
+          <article class="feature">
+            <div class="feature-demo demo-dark m-list">
               <span class="m-row m-cyan">Browse the SD card...</span>
               <span class="m-row on">CIA installers</span>
               <span class="m-row">Homebrew apps</span>
               <span class="m-row">Luma3DS payloads</span>
             </div>
             <h3>Folders made easy</h3>
-            <p>Presets like sdmc:/cias/ and sdmc:/3ds/, recent folders, a folder browser that can make new folders, or any path you type.</p>
+            <p>Presets like <code>sdmc:/cias/</code>, recent folders, a browser that can make new folders, or any path you type.</p>
           </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
-              <span class="m-line m-green">Archive extracted</span>
-              <span class="m-line">6 files extracted into</span>
-              <span class="m-line m-muted">sdmc:/3ds/Checkpoint/</span>
-            </div>
-            <h3>Optional unzip</h3>
-            <p>Off by default. Turn it on and 3dsDL offers to extract a downloaded ZIP into the same folder or a new one, refusing any path that would escape it.</p>
-          </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark m-list">
-              <span class="m-row on">Checkpoint.cia<em>1.21 MiB</em></span>
-              <span class="m-row m-red">rom-hack.zip<em>failed</em></span>
-              <span class="m-row">theme.zip<em>can resume</em></span>
-              <span class="m-row m-muted">old-build.3dsx<em>cancelled</em></span>
-            </div>
-            <h3>History</h3>
-            <p>The last 50 downloads with their links and where they went. Download one again, resume it or remove it.</p>
-          </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-night">
-              <svg class="m-glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
-              <span class="m-line m-muted">Sleep mode is paused</span>
-              <span class="m-line m-muted">until this finishes.</span>
-            </div>
-            <h3>Stays awake</h3>
-            <p>Sleep mode is paused while a download or extraction runs, so closing the lid doesn't cut the Wi-Fi halfway through.</p>
-          </article>
-
-          <article class="channel" tabindex="0" data-sound>
-            <div class="art art-dark">
+          <article class="feature">
+            <div class="feature-demo demo-dark">
               <span class="m-line">Console: 2025-10-12</span>
               <span class="m-line m-green">Actual:&nbsp; 2026-10-12</span>
               <span class="m-buttons"><b class="on">SET CLOCK</b><b>TIME ZONE</b></span>
             </div>
             <h3>Fixes the clock</h3>
-            <p>HTTPS fails when the date is wrong. 3dsDL compares the console's clock with internet time and sets it for the time zone you pick.</p>
+            <p>HTTPS fails when the date is wrong. 3dsDL compares the console's clock with internet time and sets it for your time zone.</p>
           </article>
-
-          <a class="channel" href="#help" data-sound>
-            <div class="art art-light">
-              <span class="m-bubble">?</span>
+          <article class="feature">
+            <div class="feature-demo demo-dark">
+              <span class="m-line m-green">Archive extracted</span>
+              <span class="m-line">6 files extracted into</span>
+              <span class="m-line m-muted">sdmc:/3ds/Checkpoint/</span>
             </div>
-            <h3>Help</h3>
-            <p>Certificate errors, links that won't download, where files go and other common questions.</p>
-          </a>
-
-          <a class="channel" href="https://github.com/ankushKun/3dsDL" data-sound>
-            <div class="art art-light">
-              <svg class="m-glyph m-ink" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-github"/></svg>
-              <span class="m-line m-ink">GPLv3</span>
-            </div>
-            <h3>Source code</h3>
-            <p>3dsDL is free and open source. Every release is built by GitHub Actions; issues and pull requests are welcome.</p>
-          </a>
+            <h3>Optional unzip</h3>
+            <p>Off by default. Turn it on and 3dsDL offers to extract a downloaded ZIP, refusing any path that would escape its folder.</p>
+          </article>
         </div>
-      </div>
-    </section>
+        <p class="also">Also: history of the last 50 downloads, sleep mode paused during transfers, plain-http warnings, and QR codes that aren't links are pointed out instead of ending the scan.</p>
+      </section>
 
-    <section id="help" class="section">
-      <div class="wrap narrow">
+      <section id="send" class="section reveal">
         <header class="section-head">
-          <h2>Help</h2>
-          <p>Answers to the questions people run into most.</p>
+          <p class="eyebrow">Send a link</p>
+          <h2>Turn any download link into a QR code</h2>
+          <p class="section-sub">Paste a direct link, then scan the code with <strong>Scan QR Code</strong> in 3dsDL. Much nicer than typing a long link on the 3DS keyboard.</p>
+        </header>
+        <div class="send">
+          <form class="send-form" id="send-form" autocomplete="off">
+            <label for="send-url">Download link</label>
+            <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
+            <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
+            <div class="row">
+              <button class="btn" type="button" id="send-big" disabled>
+                <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
+              </button>
+              <button class="btn" type="button" id="send-copy" disabled>
+                <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
+              </button>
+            </div>
+            <p class="fine">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
+            <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
+          </form>
+          <figure class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
+            <div class="qr-placeholder">
+              <svg class="icon"><use href="#i-qr"/></svg>
+              <span>Your QR code</span>
+            </div>
+          </figure>
+        </div>
+      </section>
+
+      <section id="faq" class="section section-well reveal">
+        <header class="section-head">
+          <p class="eyebrow">Questions</p>
+          <h2>Common questions</h2>
         </header>
         <div class="faq">
           <details>
@@ -504,60 +340,108 @@
             <p>It downloads anything, including CIA files, which you then install with FBI. ZIP extraction is built in: turn on <strong>Settings → Offer to extract ZIP files</strong> and 3dsDL asks after each ZIP download.</p>
           </details>
           <details>
-            <summary>The camera won't read my code</summary>
-            <p>Make the code bigger on screen (the <em>Show bigger</em> button above helps), hold the console still about 15 to 25 cm away, and avoid glare. If it still won't scan, use <strong>Enter URL</strong> instead.</p>
-          </details>
-          <details>
-            <summary>Why can't I download files of 4 GB or more?</summary>
-            <p>The 3DS SD card uses FAT32, which can't store files that big. 3dsDL checks the size before it starts.</p>
-          </details>
-          <details>
             <summary>Is it safe?</summary>
             <p>3dsDL verifies HTTPS certificates, refuses ZIP entries that would escape their folder, and never overwrites a file without asking. It is open source, every release is built by GitHub Actions from the tagged code, and checksums are published with each release.</p>
           </details>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
 
-  <footer class="dock">
-    <div class="dock-bar">
-      <div class="wrap dock-inner">
-        <a class="round-btn" href="https://github.com/ankushKun/3dsDL" aria-label="3dsDL on GitHub" data-sound>
-          <svg class="icon"><use href="#i-github"/></svg>
-        </a>
-        <div class="dock-clock">
-          <time id="dock-time" class="dock-time">--:--</time>
-          <span id="dock-date" class="dock-date">&nbsp;</span>
+      <section id="install" class="section reveal">
+        <header class="section-head">
+          <p class="eyebrow">Install</p>
+          <h2>Add it to your 3DS</h2>
+          <p class="section-sub">You need a 3DS running custom firmware (Luma3DS) with FBI or the Homebrew Launcher. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
+        </header>
+
+        <div class="install">
+          <div class="install-cards">
+            <article class="install-card">
+              <header class="install-head">
+                <h3>HOME Menu app</h3>
+                <span class="badge badge-go">Recommended</span>
+              </header>
+              <div class="install-body">
+                <figure class="qr-frame">
+                  <img src="qr/install-cia.svg" width="150" height="150" alt="QR code that installs the latest 3dsDL CIA with FBI">
+                </figure>
+                <ol class="steps">
+                  <li>Open <strong>FBI</strong> on your 3DS.</li>
+                  <li>Choose <strong>Remote Install</strong>, then <strong>Scan QR Code</strong>.</li>
+                  <li>Point the camera at this code and confirm.</li>
+                </ol>
+              </div>
+              <footer class="install-foot">
+                <button class="btn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
+                  <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
+                </button>
+                <a class="btn btn-aqua" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">
+                  3dsDL.cia<span class="size" data-asset-size="3dsDL.cia"></span>
+                </a>
+              </footer>
+            </article>
+
+            <article class="install-card">
+              <header class="install-head">
+                <h3>Homebrew Launcher</h3>
+                <span class="badge">.3dsx</span>
+              </header>
+              <div class="install-body">
+                <figure class="qr-frame">
+                  <img src="qr/download-3dsx.svg" width="150" height="150" alt="QR code that downloads the latest 3dsDL.3dsx">
+                </figure>
+                <ol class="steps">
+                  <li><strong>Updating?</strong> Scan this with 3dsDL, save to <code>sdmc:/3ds/3dsDL/</code>, choose <strong>Overwrite</strong>.</li>
+                  <li><strong>First time?</strong> Copy the file to <code>sdmc:/3ds/3dsDL/3dsDL.3dsx</code>.</li>
+                  <li>Open the Homebrew Launcher and start <strong>3dsDL</strong>.</li>
+                </ol>
+              </div>
+              <footer class="install-foot">
+                <button class="btn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
+                  <svg class="icon"><use href="#i-copy"/></svg><span>Copy link</span>
+                </button>
+                <a class="btn btn-aqua" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">
+                  3dsDL.3dsx<span class="size" data-asset-size="3dsDL.3dsx"></span>
+                </a>
+              </footer>
+            </article>
+          </div>
+
+          <figure class="studio">
+            <img src="assets/new-3ds-studio.png" width="1400" height="1116" alt="A white New Nintendo 3DS, open, photographed from the front at an angle." loading="lazy" decoding="async">
+          </figure>
         </div>
-        <a class="round-btn" href="https://github.com/ankushKun/3dsDL/releases" aria-label="All releases" data-sound>
-          <svg class="icon"><use href="#i-download"/></svg>
-        </a>
-      </div>
-      <p class="wrap dock-caption">That's your device's time. Your 3DS clock should match it; <strong>Settings → Console clock</strong> in 3dsDL fixes it.</p>
-    </div>
-    <div class="wrap dock-foot">
-      <div class="dock-brand">
-        <img src="assets/icon-64.png" width="40" height="40" alt="">
-        <p>3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D.</p>
-      </div>
-      <nav class="dock-links" aria-label="Project links">
-        <a href="https://github.com/ankushKun/3dsDL">Source code</a>
+
+        <aside class="notice">
+          <svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>
+          <p><strong>Certificate errors?</strong> HTTPS needs the console's date to be right. Open <strong>Settings → Console clock</strong> in 3dsDL, or in Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd>) choose <strong>Miscellaneous options → Update time and date via NTP</strong>.</p>
+        </aside>
+        <p class="fine">
+          Each release lists SHA-256 checksums in
+          <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.sha256">3dsDL.sha256</a>.
+          Older versions are on the <a href="https://github.com/ankushKun/3dsDL/releases">releases page</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <nav class="foot-links" aria-label="Project links">
+        <a href="https://github.com/ankushKun/3dsDL"><svg class="icon"><use href="#i-github"/></svg>Source code</a>
         <a href="https://github.com/ankushKun/3dsDL/releases">Releases</a>
         <a href="https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md">Roadmap</a>
         <a href="https://github.com/ankushKun/3dsDL/issues">Report a bug</a>
+        <a href="https://ankush.one">ankush.one</a>
         <button class="sound-toggle" type="button" id="sound-toggle" aria-pressed="true">
           <svg class="icon"><use href="#i-sound"/></svg><span>Menu sounds on</span>
         </button>
       </nav>
-      <p class="fine">Not affiliated with Nintendo. Nintendo 3DS and Wii are trademarks of Nintendo. The look is a fan homage.</p>
-    </div>
-  </footer>
+      <p class="legal">3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D. Not affiliated with Nintendo; Nintendo 3DS is a trademark of Nintendo. Console photos: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS.png">PhilipTerryGraham</a> (CC0) and <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>). Fonts: M PLUS Rounded 1c and M PLUS 1 Code (OFL).</p>
+    </footer>
+  </div>
 
   <dialog id="qr-dialog" aria-label="Large QR code">
     <div id="qr-dialog-code" class="qr-dialog"></div>
     <p id="qr-dialog-url" class="dialog-url"></p>
-    <form method="dialog"><button class="btn btn-start" type="submit">Close</button></form>
+    <form method="dialog"><button class="btn btn-aqua" type="submit">Close</button></form>
   </dialog>
 
   <script src="vendor/qrcode.js" defer></script>

@@ -1,12 +1,16 @@
 // Progressive enhancements for the 3dsDL website. The page works without
-// this file, except for the "send a link" QR tool.
+// this file except for the "send a link" QR tool. Motion follows the
+// conventions of ankush.one/mixtunes: short eased transitions, reveals on
+// scroll, and nothing hidden until the script has confirmed it is running.
 (function () {
   "use strict";
 
-  document.documentElement.classList.add("js");
+  var root = document.documentElement;
+  root.classList.add("js");
 
   var REPO = "ankushKun/3dsDL";
   var PAGE_URL = location.origin + location.pathname;
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function formatBytes(bytes) {
     if (bytes < 1024) return Math.round(bytes) + " B";
@@ -138,11 +142,11 @@
     var dialog = document.getElementById("qr-dialog");
     var dialogCode = document.getElementById("qr-dialog-code");
     var dialogUrl = document.getElementById("qr-dialog-url");
+    if (!input || typeof qrcode !== "function") return;
     var placeholder = preview.innerHTML;
     var current = "";
     var timer = null;
 
-    if (typeof qrcode !== "function") return;
     // Encode non-ASCII characters as UTF-8, like the 3DS keyboard does.
     if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs["UTF-8"]) {
       qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
@@ -206,33 +210,15 @@
     }
   }
 
-  // The bottom bar's clock, like the Wii Menu's.
-  function setUpClock() {
-    var time = document.getElementById("dock-time");
-    var date = document.getElementById("dock-date");
-    if (!time || !date) return;
-    var timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-    var dateFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "numeric", day: "numeric" });
-    function tick() {
-      var now = new Date();
-      time.textContent = timeFormat.format(now);
-      time.setAttribute("datetime", now.toISOString());
-      date.textContent = dateFormat.format(now);
-    }
-    tick();
-    setInterval(tick, 1000);
-  }
-
-  // The handheld plays a download on a loop, using the same wording as
-  // 3dsDL's progress screen.
-  function setUpConsoleDemo() {
+  // The download on the 3DS's screens plays on a loop, using the same
+  // wording as 3dsDL's progress screen.
+  function setUpDeviceDemo() {
     var bar = document.querySelector("[data-demo-bar]");
     var amount = document.querySelector("[data-demo-amount]");
     var speed = document.querySelector("[data-demo-speed]");
     var state = document.querySelector("[data-demo-state]");
     var phase = document.querySelector("[data-demo-phase]");
-    if (!bar || !amount || !speed || !state || !phase) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!bar || !amount || !speed || !state || !phase || reduceMotion) return;
 
     var total = 4.42 * 1048576;
     var received = 0.3 * total;
@@ -276,26 +262,147 @@
     }, step);
   }
 
-  // Channels: the highlighted channel's description shows on the "top screen".
-  function setUpChannels() {
-    var name = document.querySelector("[data-channel-name]");
-    var text = document.querySelector("[data-channel-text]");
-    var channels = document.querySelectorAll(".channel");
-    if (!name || !text || !channels.length) return;
+  // The screens are drawn at native 3DS size and projected onto the photo by
+  // fixed matrices computed for a 1400 px wide image, so they need scaling
+  // by (rendered width / 1400). CSS cannot turn a length into a number, so
+  // the factor is set here and kept current as the stage resizes.
+  function setUpScreenScale() {
+    var stage = document.querySelector(".device-stage");
+    if (!stage) return;
+    var photoWidth = parseFloat(getComputedStyle(stage).getPropertyValue("--photo-w")) || 1400;
+    function update() {
+      var width = stage.getBoundingClientRect().width;
+      if (width > 0) stage.style.setProperty("--k", (width / photoWidth).toFixed(5));
+    }
+    update();
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(update).observe(stage);
+    } else {
+      window.addEventListener("resize", update);
+    }
+    stage.classList.add("is-mapped");
+  }
 
-    function select(channel) {
-      channels.forEach(function (other) {
-        other.classList.toggle("is-active", other === channel);
+  // A slight tilt of the device towards the pointer. Pointer only (no touch),
+  // and off when reduced motion is requested.
+  function setUpTilt() {
+    var device = document.querySelector("[data-tilt]");
+    var stage = device && device.querySelector(".device-stage");
+    if (!device || !stage || reduceMotion) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    var frame = null;
+    function apply(x, y) {
+      stage.style.transform = "rotateX(" + (y * -4).toFixed(2) + "deg) rotateY(" + (x * 6).toFixed(2) + "deg)";
+    }
+    device.addEventListener("pointermove", function (event) {
+      var box = device.getBoundingClientRect();
+      var x = (event.clientX - box.left) / box.width - 0.5;
+      var y = (event.clientY - box.top) / box.height - 0.5;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(function () { apply(x, y); });
+    });
+    device.addEventListener("pointerleave", function () {
+      if (frame) cancelAnimationFrame(frame);
+      stage.style.transform = "";
+    });
+  }
+
+  // Cover Flow of the app's screens. Each figure gets --d (signed distance
+  // from the centre) and --ad (absolute distance); the CSS does the rest.
+  function setUpFlow() {
+    var flow = document.querySelector("[data-flow]");
+    if (!flow) return;
+    var shots = Array.prototype.slice.call(flow.querySelectorAll(".shot"));
+    var title = flow.querySelector("[data-flow-title]");
+    var dots = flow.querySelector("[data-dots]");
+    if (!shots.length) return;
+    var index = Math.min(2, shots.length - 1);
+    var timer = null;
+
+    shots.forEach(function () {
+      var dot = document.createElement("i");
+      dots.appendChild(dot);
+    });
+
+    function render() {
+      shots.forEach(function (shot, i) {
+        var d = i - index;
+        shot.style.setProperty("--d", d);
+        shot.style.setProperty("--ad", Math.abs(d));
+        shot.classList.toggle("is-center", d === 0);
+        shot.setAttribute("aria-hidden", d === 0 ? "false" : "true");
       });
-      name.textContent = channel.querySelector("h3").textContent;
-      text.textContent = channel.querySelector("p").textContent;
+      Array.prototype.forEach.call(dots.children, function (dot, i) {
+        dot.classList.toggle("is-on", i === index);
+      });
+      if (title) title.textContent = shots[index].getAttribute("data-title") || "";
     }
 
-    channels.forEach(function (channel) {
-      channel.addEventListener("pointerenter", function () { select(channel); });
-      channel.addEventListener("focus", function () { select(channel); });
+    function go(next, byUser) {
+      index = (next + shots.length) % shots.length;
+      render();
+      if (byUser) restart();
+    }
+
+    function restart() {
+      clearInterval(timer);
+      if (reduceMotion) return;
+      timer = setInterval(function () {
+        if (!document.hidden) go(index + 1, false);
+      }, 4200);
+    }
+
+    shots.forEach(function (shot, i) {
+      shot.addEventListener("click", function () { go(i, true); });
     });
-    select(channels[0]);
+    flow.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowRight") { go(index + 1, true); event.preventDefault(); }
+      if (event.key === "ArrowLeft") { go(index - 1, true); event.preventDefault(); }
+    });
+    flow.addEventListener("mouseenter", function () { clearInterval(timer); });
+    flow.addEventListener("mouseleave", restart);
+
+    render();
+    restart();
+  }
+
+  // Scroll reveals. The reveal-ready class is added only here, so sections
+  // are never hidden unless this code is running and can show them again.
+  function setUpReveals() {
+    var items = document.querySelectorAll(".reveal");
+    if (!items.length || reduceMotion || !("IntersectionObserver" in window)) return;
+    root.classList.add("reveal-ready");
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-in");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    items.forEach(function (item) { observer.observe(item); });
+  }
+
+  // Highlight the tab for the section in view.
+  function setUpTabs() {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tabs a"));
+    if (!tabs.length || !("IntersectionObserver" in window)) return;
+    var byId = {};
+    tabs.forEach(function (tab) { byId[tab.getAttribute("href").slice(1)] = tab; });
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var tab = byId[entry.target.id];
+        if (!tab) return;
+        if (entry.isIntersecting) {
+          tabs.forEach(function (other) { other.classList.toggle("is-active", other === tab); });
+        }
+      });
+    }, { rootMargin: "-40% 0px -50% 0px" });
+    Object.keys(byId).forEach(function (id) {
+      var section = document.getElementById(id);
+      if (section) observer.observe(section);
+    });
   }
 
   // Menu sounds, synthesised on the fly. On by default; browsers only allow
@@ -357,9 +464,8 @@
       blip(660, 990, 0.08, 0.06);
     });
 
-    // A soft tick when the pointer moves onto something, like the Wii Menu.
     document.addEventListener("pointerover", function (event) {
-      var target = event.target.closest("[data-sound], .btn");
+      var target = event.target.closest("[data-sound], .btn, .tabs a");
       if (!target || target.contains(event.relatedTarget)) return;
       var now = Date.now();
       if (now - lastHover < 70) return;
@@ -367,7 +473,7 @@
       blip(1800, 1500, 0.03, 0.03);
     });
     document.addEventListener("click", function (event) {
-      if (event.target.closest("[data-sound], .btn, summary")) {
+      if (event.target.closest("[data-sound], .btn, summary, .tabs a")) {
         blip(520, 880, 0.09, 0.06);
       }
     });
@@ -376,8 +482,11 @@
   showRelease();
   setUpCopyButtons();
   setUpSendTool();
-  setUpClock();
-  setUpConsoleDemo();
-  setUpChannels();
+  setUpScreenScale();
+  setUpDeviceDemo();
+  setUpTilt();
+  setUpFlow();
+  setUpReveals();
+  setUpTabs();
   setUpSounds();
 })();
