@@ -1,13 +1,15 @@
-// Progressive enhancements for the 3dsDL website. Everything on the page
-// works without this file except the "send a link" QR tool.
+// Progressive enhancements for the 3dsDL website. The page works without
+// this file, except for the "send a link" QR tool.
 (function () {
   "use strict";
+
+  document.documentElement.classList.add("js");
 
   var REPO = "ankushKun/3dsDL";
   var PAGE_URL = location.origin + location.pathname;
 
   function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024) return Math.round(bytes) + " B";
     var units = ["KiB", "MiB", "GiB"];
     var value = bytes / 1024;
     var unit = 0;
@@ -31,9 +33,9 @@
         var date = new Date(release.published_at);
         var when = isNaN(date)
           ? ""
-          : " · " + new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+          : ", " + new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
         document.querySelectorAll("[data-release]").forEach(function (element) {
-          element.textContent = "Latest release " + release.tag_name + when;
+          element.textContent = "latest release " + release.tag_name + when;
         });
         (release.assets || []).forEach(function (asset) {
           document
@@ -204,7 +206,178 @@
     }
   }
 
+  // The bottom bar's clock, like the Wii Menu's.
+  function setUpClock() {
+    var time = document.getElementById("dock-time");
+    var date = document.getElementById("dock-date");
+    if (!time || !date) return;
+    var timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+    var dateFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "numeric", day: "numeric" });
+    function tick() {
+      var now = new Date();
+      time.textContent = timeFormat.format(now);
+      time.setAttribute("datetime", now.toISOString());
+      date.textContent = dateFormat.format(now);
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // The handheld plays a download on a loop, using the same wording as
+  // 3dsDL's progress screen.
+  function setUpConsoleDemo() {
+    var bar = document.querySelector("[data-demo-bar]");
+    var amount = document.querySelector("[data-demo-amount]");
+    var speed = document.querySelector("[data-demo-speed]");
+    var state = document.querySelector("[data-demo-state]");
+    var phase = document.querySelector("[data-demo-phase]");
+    if (!bar || !amount || !speed || !state || !phase) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var total = 4.42 * 1048576;
+    var received = 0.3 * total;
+    var pauseUntil = 0;
+    var step = 250;
+    var smoothed = 0.65 * 1048576;
+
+    function show(fraction) {
+      bar.style.setProperty("--p", fraction.toFixed(4));
+      amount.textContent =
+        formatBytes(received) + " of " + formatBytes(total) + " (" + Math.floor(fraction * 100) + "%)";
+    }
+
+    setInterval(function () {
+      if (document.hidden) return;
+      var now = Date.now();
+      if (now < pauseUntil) return;
+      if (received >= total) {
+        received = 0;
+        phase.textContent = "connecting";
+        speed.textContent = "";
+        show(0);
+        pauseUntil = now + 900;
+        return;
+      }
+      var rate = (0.5 + Math.random() * 0.3) * 1048576;
+      smoothed += 0.3 * (rate - smoothed);
+      received = Math.min(total, received + rate * (step / 1000));
+      show(received / total);
+      if (received >= total) {
+        state.textContent = "done";
+        phase.textContent = "complete";
+        speed.textContent = "Saved as sdmc:/cias/Universal-Updater.cia";
+        pauseUntil = now + 2800;
+      } else {
+        state.textContent = "downloading";
+        phase.textContent = "downloading";
+        var left = Math.max(1, Math.round((total - received) / smoothed));
+        speed.textContent = formatBytes(smoothed) + "/s, " + left + "s left";
+      }
+    }, step);
+  }
+
+  // Channels: the highlighted channel's description shows on the "top screen".
+  function setUpChannels() {
+    var name = document.querySelector("[data-channel-name]");
+    var text = document.querySelector("[data-channel-text]");
+    var channels = document.querySelectorAll(".channel");
+    if (!name || !text || !channels.length) return;
+
+    function select(channel) {
+      channels.forEach(function (other) {
+        other.classList.toggle("is-active", other === channel);
+      });
+      name.textContent = channel.querySelector("h3").textContent;
+      text.textContent = channel.querySelector("p").textContent;
+    }
+
+    channels.forEach(function (channel) {
+      channel.addEventListener("pointerenter", function () { select(channel); });
+      channel.addEventListener("focus", function () { select(channel); });
+    });
+    select(channels[0]);
+  }
+
+  // Menu sounds, synthesised on the fly. On by default; browsers only allow
+  // audio after the first click or key press, so they start from then.
+  function setUpSounds() {
+    var toggle = document.getElementById("sound-toggle");
+    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!toggle || !AudioContextClass) {
+      if (toggle) toggle.hidden = true;
+      return;
+    }
+    var context = null;
+    var enabled = true;
+    var lastHover = 0;
+
+    try {
+      enabled = localStorage.getItem("3dsdl-sounds") !== "off";
+    } catch (error) {
+      enabled = true;
+    }
+
+    function unlock() {
+      if (!context) context = new AudioContextClass();
+      if (context.state === "suspended") context.resume();
+    }
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+
+    function blip(frequency, endFrequency, duration, volume) {
+      if (!enabled || !context || context.state !== "running") return;
+      var now = context.currentTime;
+      var oscillator = context.createOscillator();
+      var gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now);
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration + 0.02);
+    }
+
+    function render() {
+      toggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+      toggle.querySelector("use").setAttribute("href", enabled ? "#i-sound" : "#i-mute");
+      toggle.querySelector("span").textContent = enabled ? "Menu sounds on" : "Menu sounds off";
+    }
+    render();
+
+    toggle.addEventListener("click", function () {
+      enabled = !enabled;
+      try {
+        localStorage.setItem("3dsdl-sounds", enabled ? "on" : "off");
+      } catch (error) {
+        // Remembering the choice is a nicety; it still applies to this visit.
+      }
+      render();
+      blip(660, 990, 0.08, 0.06);
+    });
+
+    // A soft tick when the pointer moves onto something, like the Wii Menu.
+    document.addEventListener("pointerover", function (event) {
+      var target = event.target.closest("[data-sound], .btn");
+      if (!target || target.contains(event.relatedTarget)) return;
+      var now = Date.now();
+      if (now - lastHover < 70) return;
+      lastHover = now;
+      blip(1800, 1500, 0.03, 0.03);
+    });
+    document.addEventListener("click", function (event) {
+      if (event.target.closest("[data-sound], .btn, summary")) {
+        blip(520, 880, 0.09, 0.06);
+      }
+    });
+  }
+
   showRelease();
   setUpCopyButtons();
   setUpSendTool();
+  setUpClock();
+  setUpConsoleDemo();
+  setUpChannels();
+  setUpSounds();
 })();
