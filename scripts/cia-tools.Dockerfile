@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04@sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc
 
 ARG MAKEROM_URL="https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip"
 ARG MAKEROM_SHA256="6f36f77946742d2b8286a92d887e845e06d430998ed4a9c4856d8ea2d4eebd6f"

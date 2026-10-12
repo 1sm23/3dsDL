@@ -4,8 +4,9 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-BUILD_IMAGE="${THREEDSDL_BUILD_IMAGE:-devkitpro/devkitarm:20260610}"
-CIA_IMAGE="${THREEDSDL_CIA_IMAGE:-3dsdl-cia-tools:1.0.1}"
+# Pinned by digest so a re-pushed tag cannot silently change the toolchain.
+BUILD_IMAGE="${THREEDSDL_BUILD_IMAGE:-devkitpro/devkitarm:20260610@sha256:116afba8df8453961de2936ffab20dd441edf4d682856c1ec8b0e53d7ed0bbf5}"
+CIA_IMAGE="${THREEDSDL_CIA_IMAGE:-3dsdl-cia-tools:1.0.2}"
 BUILD_JOBS="${THREEDSDL_BUILD_JOBS:-2}"
 KEEP_COLIMA="${THREEDSDL_KEEP_COLIMA:-0}"
 DIST_DIR="${PROJECT_ROOT}/dist"
@@ -29,8 +30,14 @@ cleanup() {
     fi
 }
 
+# Containers run as the calling user so build output is not owned by root on
+# Linux hosts.
+DOCKER_USER="$(id -u):$(id -g)"
+
 run_builder() {
     docker run --rm \
+        --user "${DOCKER_USER}" \
+        --env HOME=/tmp \
         --volume "${PROJECT_ROOT}:/project" \
         --workdir /project \
         "${BUILD_IMAGE}" "$@"
@@ -38,6 +45,7 @@ run_builder() {
 
 run_cia_tool() {
     docker run --rm --platform linux/amd64 \
+        --user "${DOCKER_USER}" \
         --volume "${PROJECT_ROOT}:/project" \
         --workdir /project \
         "${CIA_IMAGE}" "$@"
@@ -46,6 +54,14 @@ run_cia_tool() {
 trap cleanup EXIT
 
 [[ "${BUILD_JOBS}" =~ ^[1-9][0-9]*$ ]] || fail "THREEDSDL_BUILD_JOBS must be a positive integer."
+
+VERSION="$(tr -d '[:space:]' < "${PROJECT_ROOT}/VERSION")"
+[[ "${VERSION}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || \
+    fail "VERSION must look like MAJOR.MINOR.PATCH, found '${VERSION}'."
+VERSION_MAJOR="${BASH_REMATCH[1]}"
+VERSION_MINOR="${BASH_REMATCH[2]}"
+VERSION_MICRO="${BASH_REMATCH[3]}"
+printf 'Building 3dsDL %s\n' "${VERSION}"
 
 step "Checking the container tools"
 command -v docker >/dev/null 2>&1 || fail "Docker is required. Install Docker Desktop or Docker CLI with Colima."
@@ -108,7 +124,7 @@ run_cia_tool makerom \
     -rsf resources/3dsDL.rsf \
     -banner build/3dsDL.bnr \
     -icon build/3dsDL.icn \
-    -major 0 -minor 2 -micro 0
+    -major "${VERSION_MAJOR}" -minor "${VERSION_MINOR}" -micro "${VERSION_MICRO}"
 
 step "Validating build artifacts"
 for artifact in 3dsDL.3dsx 3dsDL.smdh 3dsDL.cia; do
@@ -135,7 +151,7 @@ cp "${PROJECT_ROOT}/3dsDL.cia" "${DIST_DIR}/3dsDL.cia"
 step "Removing intermediate build files"
 run_builder make clean
 
-printf '\nBuild complete.\n'
+printf '\nBuild of 3dsDL %s complete.\n' "${VERSION}"
 printf '  3DSX:     %s\n' "${DIST_DIR}/3dsDL.3dsx"
 printf '  CIA:      %s\n' "${DIST_DIR}/3dsDL.cia"
 printf '  Metadata: %s\n' "${DIST_DIR}/3dsDL.smdh"
