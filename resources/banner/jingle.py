@@ -4,8 +4,8 @@
 An original little tune, timed to the banner animation: a quick rising
 arpeggio while the arrow falls, a soft bop when it lands in the card at
 0.7 s, and three sparkle chimes as the stars burst. About 1.6 seconds of
-22.05 kHz 16-bit stereo (banner sound must be stereo and at most 3 seconds,
-and a small one leaves room for the model).
+44.1 kHz 16-bit stereo, the format of the silent clip 3dsDL's banner used
+before (banner sound must be stereo and at most 3 seconds).
 
 Usage: python3 jingle.py jingle.wav
 """
@@ -15,7 +15,7 @@ import struct
 import sys
 import wave
 
-RATE = 22050
+RATE = 44100
 LENGTH = 1.6
 
 

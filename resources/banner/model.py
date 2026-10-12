@@ -15,12 +15,17 @@ larger z sit in front of the screen when the 3D slider is up.
 
 Only rigid node animation (translation, rotation and scale keys) is used:
 skinned animation has been reported to freeze the HOME Menu on real
-hardware. The loop is four seconds and ends where it starts.
+hardware. Nothing is ever scaled to (nearly) nothing: parts that should
+vanish hide inside the card instead. The wordmark is a hard-edged cut-out
+(alpha MASK), not a blended transparency. The loop is four seconds and ends
+where it starts.
 
 Colours are given as the 3DS will show them (pycgfx passes them to the GPU
 unchanged), not as linear values.
 
-Usage: python3 model.py logo.png banner.glb
+Usage: python3 model.py logo.png banner.glb [--static SECONDS]
+
+--static writes the scene as it is at that moment, with no animation.
 """
 
 import json
@@ -300,18 +305,16 @@ def wave(t, period=LOOP, phase=0.0):
     return math.sin(2 * math.pi * t / period + phase)
 
 
-HIDDEN = 0.001  # scale for "not there"; zero would leave no usable normals
-
-
 def arrow_track():
     """Falls in from above the screen, lands with its tip in the card,
-    bounces, sinks in and vanishes inside, then waits above the screen."""
+    bounces and sinks all the way in (the card hides it), then jumps back
+    above the screen."""
     y = [
         (0.0, 22.0), (0.25, 19.6), (0.45, 15.2), (0.6, 10.6), (0.7, 6.8),
         (0.8, 7.5), (0.92, 6.9), (1.05, 3.6), (1.18, 0.9), (3.7, 0.9),
         (3.71, 22.0), (LOOP, 22.0),
     ]
-    s = [(0.0, 1.0), (0.7, 1.0), (0.76, 1.12), (0.86, 0.95), (1.18, 1.0), (1.25, HIDDEN), (3.7, HIDDEN), (3.75, 1.0), (LOOP, 1.0)]
+    s = [(0.0, 1.0), (0.7, 1.0), (0.76, 1.12), (0.86, 0.95), (1.18, 1.0), (LOOP, 1.0)]
     squash = {0.76: (1.14, 0.84), 0.86: (0.94, 1.08)}
     translation = [(t, (0.0, v, 0.0)) for t, v in y]
     scale = []
@@ -335,10 +338,14 @@ def card_tracks():
 
 
 def sparkle_tracks(start, end, size, delay, spin):
+    """Pops out of the top of the card, flies off and shrinks, then waits
+    tucked inside the card, which hides it, until the next landing."""
     t0 = 0.95 + delay
-    translation = [(0.0, start), (t0, start), (t0 + 0.55, end), (LOOP, end)]
-    scale = [(0.0, (HIDDEN,) * 3), (t0, (HIDDEN,) * 3), (t0 + 0.18, (size * 1.15,) * 3), (t0 + 0.45, (size,) * 3), (t0 + 0.7, (HIDDEN,) * 3), (LOOP, (HIDDEN,) * 3)]
-    rotation = [(0.0, euler_quat(0, 0, 0)), (t0, euler_quat(0, 0, 0)), (t0 + 0.7, euler_quat(0, 0, math.radians(spin))), (LOOP, euler_quat(0, 0, math.radians(spin)))]
+    tucked = (start[0] * 0.5, 3.4, 0.0)
+    small = (0.35,) * 3
+    translation = [(0.0, tucked), (t0, tucked), (t0 + 0.12, start), (t0 + 0.55, end), (t0 + 0.7, end), (t0 + 0.71, tucked), (LOOP, tucked)]
+    scale = [(0.0, small), (t0, small), (t0 + 0.18, (size * 1.15,) * 3), (t0 + 0.45, (size,) * 3), (t0 + 0.7, (0.3,) * 3), (t0 + 0.71, small), (LOOP, small)]
+    rotation = [(0.0, euler_quat(0, 0, 0)), (t0, euler_quat(0, 0, 0)), (t0 + 0.7, euler_quat(0, 0, math.radians(spin))), (t0 + 0.71, euler_quat(0, 0, 0)), (LOOP, euler_quat(0, 0, 0))]
     return translation, rotation, scale
 
 
@@ -357,8 +364,27 @@ def logo_tracks():
 # ---------------------------------------------------------------- glTF out
 
 
+def sample(keys, t):
+    """A track's value at time t, interpolated linearly (rotations are
+    normalised after blending, which is close enough between dense keys)."""
+    if t <= keys[0][0]:
+        return keys[0][1]
+    for (t0, a), (t1, b) in zip(keys, keys[1:]):
+        if t0 <= t <= t1:
+            f = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+            if len(a) == 4 and sum(x * y for x, y in zip(a, b)) < 0:
+                b = tuple(-x for x in b)
+            v = tuple(x + (y - x) * f for x, y in zip(a, b))
+            if len(v) == 4:
+                n = math.sqrt(sum(x * x for x in v))
+                v = tuple(x / n for x in v)
+            return v
+    return keys[-1][1]
+
+
 class Gltf:
-    def __init__(self):
+    def __init__(self, static=None):
+        self.static = static
         self.doc = {
             "asset": {"version": "2.0", "generator": "3dsDL resources/banner/model.py"},
             "scene": 0,
@@ -403,7 +429,10 @@ class Gltf:
         }
         if texture is not None:
             mat["pbrMetallicRoughness"]["baseColorTexture"] = {"index": texture}
-            mat["alphaMode"] = "BLEND"
+            # A cut-out, not a blend: blended materials make pycgfx reorder
+            # bones and need a separate drawing pass.
+            mat["alphaMode"] = "MASK"
+            mat["alphaCutoff"] = 0.5
         self.doc["materials"].append(mat)
         return len(self.doc["materials"]) - 1
 
@@ -445,6 +474,9 @@ class Gltf:
         for path, keys, kind in (("translation", translation, "VEC3"), ("rotation", rotation, "VEC4"), ("scale", scale, "VEC3")):
             if not keys:
                 continue
+            if self.static is not None:
+                self.doc["nodes"][node][path] = list(sample(keys, self.static))
+                continue
             times = self.accessor([t for t, _ in keys], "SCALAR", bounds=True)
             values = self.accessor([v for _, v in keys], kind)
             self.samplers.append({"input": times, "output": values, "interpolation": "LINEAR"})
@@ -464,8 +496,8 @@ class Gltf:
             out.write(struct.pack("<I4s", len(self.blob), b"BIN\0") + self.blob)
 
 
-def build(logo_png, out_path):
-    g = Gltf()
+def build(logo_png, out_path, static=None):
+    g = Gltf(static)
     cyan = g.material("Card", (0.05, 0.66, 0.9), 0.3)
     label = g.material("Label", (0.93, 0.98, 1.0), 0.5)
     navy = g.material("Glyph", (0.09, 0.2, 0.31), 0.4)
@@ -507,7 +539,13 @@ def build(logo_png, out_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    static = None
+    if "--static" in args:
+        i = args.index("--static")
+        static = float(args[i + 1])
+        del args[i:i + 2]
+    if len(args) != 2:
         sys.exit(__doc__)
-    with open(sys.argv[1], "rb") as source:
-        build(source.read(), sys.argv[2])
+    with open(args[0], "rb") as source:
+        build(source.read(), args[1], static)

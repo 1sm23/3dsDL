@@ -49,7 +49,7 @@ gltf.scene.traverse((object) => {
   const source = object.material;
   const c = source.color;
   if (source.map) {
-    object.material = new THREE.MeshBasicMaterial({ map: source.map, transparent: true });
+    object.material = new THREE.MeshBasicMaterial({ map: source.map, alphaTest: 0.5 });
     object.renderOrder = 10;
   } else {
     const material = new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x5a5a5a });

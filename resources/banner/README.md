@@ -5,8 +5,9 @@ with a short jingle. This folder holds an animated 3D banner model, like the
 ones official games have, and everything it is made from, as code.
 
 > **Status: experimental.** The first two builds of the 3D banner crashed
-> the HOME Menu on a console as soon as 3dsDL was selected. `build-cgfx.py`
-> now applies the fixes described below, but until a build passes the banner
+> the HOME Menu on a console as soon as 3dsDL was selected; the third drew
+> its first frame and then froze it. `build-cgfx.py` and `model.py` now
+> follow the rules below, but until a build passes the banner
 > checks in `docs/HARDWARE.md`, `scripts/build.sh` packs the flat picture
 > (`resources/banner-3dsdl.png`, rendered from the same model) and only uses
 > the model with `THREEDSDL_3D_BANNER=1`.
@@ -71,13 +72,17 @@ HOME Menu on a real console even when an emulator shows the banner fine.
   `build-cgfx.py` rebuilds the tree, marks BLEND materials translucent, and
   then walks every table's tree the way the console does, refusing to write
   a CGFX in which any name would not be found.
+- **No blended transparency.** The wordmark is a hard-edged cut-out (alpha
+  MASK), which needs no bone reordering and no extra drawing pass.
+- **Nothing scales to (nearly) nothing.** Parts that should vanish hide
+  inside the card instead. The third build shrank them to 0.001 and froze.
 - **About 2,000 triangles at most**, the limit CBC for YANBF uses. The model
   is 1,934; arcs are kept to a few segments each.
 - **Under 512 KiB.** The CGFX is about 150 KiB, most of it the wordmark
   texture. `build-cgfx.py` refuses to write anything over the limit.
 - **Short stereo sound.** Banner sound must be two channels and at most 3
-  seconds. The jingle is 1.6 seconds at 22.05 kHz, so the whole banner stays
-  small.
+  seconds. The jingle is 1.6 seconds of 44.1 kHz stereo, the format the
+  working flat banner uses.
 - **Small power-of-two textures**, at most 256 pixels on a side.
 - **The camera is fixed:** at (0, 1, 44.786), looking down -z with a 30°
   vertical field of view. The plane z = 0 shows x from -20 to 20 and y from
@@ -88,6 +93,8 @@ HOME Menu on a real console even when an emulator shows the banner fine.
 
 ```sh
 THREEDSDL_3D_BANNER=1 ./scripts/build.sh
+# or with another CGFX, such as a still made with model.py --static 0.8
+THREEDSDL_3D_BANNER=1 THREEDSDL_BANNER_CGFX=path/to/banner.cgfx ./scripts/build.sh
 ```
 
 `docs/HARDWARE.md` has the checks to run on a console, and what to do if the

@@ -110,7 +110,7 @@ step "Creating Home Menu metadata and banner"
 # the HOME Menu on a console, so it stays opt-in until a build of it has
 # passed the banner checks in docs/HARDWARE.md.
 if [[ "${THREEDSDL_3D_BANNER:-0}" == "1" ]]; then
-    BANNER_ART=(-ci resources/banner/3dsDL.cgfx)
+    BANNER_ART=(-ci "${THREEDSDL_BANNER_CGFX:-resources/banner/3dsDL.cgfx}")
     printf 'Using the 3D banner model (experimental).\n'
 else
     BANNER_ART=(-i resources/banner-3dsdl.png)

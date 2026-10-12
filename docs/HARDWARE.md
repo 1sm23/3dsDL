@@ -124,7 +124,12 @@ node names) still crashed: Luma reported a data abort in `menu` (HOME Menu)
 reading address 0x8 through a null pointer. Its bone lookup tree was stale
 after pycgfx moved the wordmark's bone last, so lookups for five bones landed
 on the wrong entries. `build-cgfx.py` now rebuilds the tree and checks every
-lookup; the third build is the first with that fix.
+lookup. The third 3D build (commit 155e8a5) got further: the banner drew its
+first frame correctly, then the HOME Menu froze (no input, music still
+playing). That build was also the first with a blended wordmark marked
+translucent, parts scaled to 0.001 and 22.05 kHz sound; the fourth reverts
+all three, and a still version of it (no animation) was built alongside to
+tell an animation problem from anything else.
 
 ## Compatibility matrix
 
