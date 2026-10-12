@@ -89,10 +89,10 @@ and (on New 3DS) CPU speed.
 
 ### HOME Menu banner and icon
 
-Release builds use the flat banner picture. The animated 3D banner (see
-`resources/banner/README.md`) is built with `THREEDSDL_3D_BANNER=1`, and a bad
-one crashes or freezes the HOME Menu, so check it on a console before making
-it the default. Items 26 to 28 apply to the 3D banner.
+Release builds use the animated 3D banner (see `resources/banner/README.md`).
+A bad one crashes or freezes the HOME Menu, so check these on a console
+whenever the banner changes. `THREEDSDL_FLAT_BANNER=1` builds with the flat
+picture instead.
 
 25. After installing the CIA, the HOME Menu shows 3dsDL's icon (a cyan card
     with a yellow arrow). The Homebrew Launcher shows the same icon for the
@@ -105,7 +105,7 @@ it the default. Items 26 to 28 apply to the 3D banner.
 28. Moving the cursor on and off 3dsDL several times, and opening and closing
     the app, never crashes or freezes the HOME Menu. If it does, hold POWER
     to switch off if needed, then open FBI without highlighting 3dsDL and
-    install a normal (flat banner) build over it. If the HOME Menu starts
+    install a flat banner build (`THREEDSDL_FLAT_BANNER=1`) over it. If the HOME Menu starts
     with 3dsDL already highlighted and crashes again, starting once without
     the SD card should move the cursor elsewhere.
 
@@ -132,7 +132,10 @@ all three, and a still version of it (no animation) was built alongside to
 tell an animation problem from anything else. The fourth, animated
 (test-banner-5), worked: no crash or freeze, and the banner animates. Its one
 flaw was the wordmark vanishing when seen from behind, so the wordmark is now
-a billboard that always faces the viewer.
+a billboard that always faces the viewer. That build (test-banner-7, commit
+c9bd54f) passed: the banner animates, the wordmark stays visible,
+and the HOME Menu neither crashes nor freezes. It became the default for
+0.3.1.
 
 ## Compatibility matrix
 

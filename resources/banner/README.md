@@ -4,13 +4,11 @@ When 3dsDL is selected on the HOME Menu, the top screen shows its banner,
 with a short jingle. This folder holds an animated 3D banner model, like the
 ones official games have, and everything it is made from, as code.
 
-> **Status: experimental.** The first two builds of the 3D banner crashed
-> the HOME Menu on a console as soon as 3dsDL was selected; the third drew
-> its first frame and then froze it. `build-cgfx.py` and `model.py` now
-> follow the rules below, but until a build passes the banner
-> checks in `docs/HARDWARE.md`, `scripts/build.sh` packs the flat picture
-> (`resources/banner-3dsdl.png`, rendered from the same model) and only uses
-> the model with `THREEDSDL_3D_BANNER=1`.
+> **Status: confirmed on a console** and packed by `scripts/build.sh` since
+> 0.3.1. Getting there took five test builds: the first two crashed the HOME
+> Menu as soon as 3dsDL was selected, the third drew its first frame and then
+> froze it, and the fourth worked but its wordmark vanished when seen from
+> behind. The rules below are what fixed each of those; keep to them.
 
 The scene is a glossy SD card in 3dsDL's cyan. A yellow download arrow drops
 in from above the screen, lands with its tip in the card, bounces and sinks
@@ -44,8 +42,8 @@ container, with pycgfx's files fetched at a pinned commit and checked against
 known SHA-256 hashes. pycgfx has no licence file, so it is fetched to a
 temporary folder for each run and never stored in this repository.
 
-With `THREEDSDL_3D_BANNER=1`, `scripts/build.sh` then packs the model and
-jingle into the CIA with `bannertool makebanner -ci`. A banner only appears
+`scripts/build.sh` then packs the model and jingle into the CIA with
+`bannertool makebanner -ci`. A banner only appears
 for the CIA, because the Homebrew Launcher shows the icon from the `.smdh`
 and has no banners.
 
@@ -93,13 +91,17 @@ HOME Menu on a real console even when an emulator shows the banner fine.
   -11 to 13, so one unit is ten pixels of the top screen. Anything with a
   larger z comes out of the screen in 3D.
 
-## Trying the 3D banner
+## Testing changes
+
+Check every change to the model on a console before releasing it: a bad
+banner crashes or freezes the HOME Menu as soon as 3dsDL is selected.
 
 ```sh
-THREEDSDL_3D_BANNER=1 ./scripts/build.sh
-# or with another CGFX, such as a still made with model.py --static 0.8
-THREEDSDL_3D_BANNER=1 THREEDSDL_BANNER_CGFX=path/to/banner.cgfx ./scripts/build.sh
+./scripts/build.sh                          # the 3D banner (the default)
+THREEDSDL_FLAT_BANNER=1 ./scripts/build.sh  # the flat picture instead
+# another CGFX, such as a still made with model.py --static 0.8
+THREEDSDL_BANNER_CGFX=path/to/banner.cgfx ./scripts/build.sh
 ```
 
-`docs/HARDWARE.md` has the checks to run on a console, and what to do if the
-HOME Menu crashes: install a normal (flat banner) build over it with FBI.
+`docs/HARDWARE.md` has the checks to run, and what to do if the HOME Menu
+crashes: install a flat banner build over it with FBI.
