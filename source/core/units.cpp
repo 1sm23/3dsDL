@@ -1,0 +1,102 @@
+#include "units.hpp"
+
+#include <cstdio>
+#include <ctime>
+
+namespace units {
+
+std::string bytes(uint64_t count)
+{
+    static const char *const suffixes[] = {"KiB", "MiB", "GiB", "TiB"};
+    if (count < 1024) {
+        return std::to_string(count) + " B";
+    }
+
+    double value = static_cast<double>(count) / 1024.0;
+    size_t suffix = 0;
+    while (value >= 1024.0 && suffix + 1 < sizeof(suffixes) / sizeof(*suffixes)) {
+        value /= 1024.0;
+        ++suffix;
+    }
+
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), value < 10.0 ? "%.2f %s" : "%.1f %s",
+                  value, suffixes[suffix]);
+    return buffer;
+}
+
+std::string rate(double bytesPerSecond)
+{
+    if (bytesPerSecond < 0.0) {
+        bytesPerSecond = 0.0;
+    }
+    return bytes(static_cast<uint64_t>(bytesPerSecond)) + "/s";
+}
+
+std::string duration(uint64_t seconds)
+{
+    char buffer[32];
+    if (seconds < 60) {
+        std::snprintf(buffer, sizeof(buffer), "%us",
+                      static_cast<unsigned>(seconds));
+    } else if (seconds < 3600) {
+        std::snprintf(buffer, sizeof(buffer), "%um %02us",
+                      static_cast<unsigned>(seconds / 60),
+                      static_cast<unsigned>(seconds % 60));
+    } else {
+        std::snprintf(buffer, sizeof(buffer), "%uh %02um",
+                      static_cast<unsigned>(seconds / 3600),
+                      static_cast<unsigned>((seconds / 60) % 60));
+    }
+    return buffer;
+}
+
+std::string dateTime(int64_t unixSeconds)
+{
+    const time_t value = static_cast<time_t>(unixSeconds);
+    struct tm parts {};
+    if (gmtime_r(&value, &parts) == nullptr) {
+        return "";
+    }
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", &parts);
+    return buffer;
+}
+
+void RateMeter::reset()
+{
+    *this = RateMeter();
+}
+
+void RateMeter::sample(uint64_t milliseconds, uint64_t totalBytes)
+{
+    if (!started_ || totalBytes < lastBytes_ || milliseconds < lastTime_) {
+        started_ = true;
+        lastTime_ = milliseconds;
+        lastBytes_ = totalBytes;
+        return;
+    }
+
+    const uint64_t elapsed = milliseconds - lastTime_;
+    if (elapsed < MinimumIntervalMs) {
+        return;
+    }
+
+    const double instant = static_cast<double>(totalBytes - lastBytes_) *
+                           1000.0 / static_cast<double>(elapsed);
+    rate_ = hasRate_ ? rate_ + Smoothing * (instant - rate_) : instant;
+    hasRate_ = true;
+    lastTime_ = milliseconds;
+    lastBytes_ = totalBytes;
+}
+
+int64_t RateMeter::secondsLeft(uint64_t remainingBytes) const
+{
+    if (!hasRate_ || rate_ < 1.0) {
+        return -1;
+    }
+    return static_cast<int64_t>(static_cast<double>(remainingBytes) / rate_ +
+                                0.5);
+}
+
+} // namespace units

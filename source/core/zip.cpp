@@ -1,0 +1,556 @@
+#include "zip.hpp"
+
+#include "fs_util.hpp"
+#include "naming.hpp"
+#include "text.hpp"
+
+#include <zlib.h>
+
+#include <algorithm>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
+#include <memory>
+#include <sys/types.h>
+
+namespace zip {
+namespace {
+
+constexpr uint32_t LocalHeaderSignature = 0x04034b50;
+constexpr uint32_t CentralHeaderSignature = 0x02014b50;
+constexpr uint32_t EndSignature = 0x06054b50;
+constexpr uint32_t Zip64LocatorSignature = 0x07064b50;
+constexpr uint32_t Zip64EndSignature = 0x06064b50;
+
+constexpr size_t EndRecordSize = 22;
+constexpr size_t MaxCommentSize = 0xffff;
+constexpr size_t CentralHeaderSize = 46;
+constexpr size_t LocalHeaderSize = 30;
+constexpr uint64_t MaxCentralDirectorySize = 16 * 1024 * 1024;
+constexpr size_t MaxEntries = 100000;
+constexpr size_t ChunkSize = 64 * 1024;
+
+constexpr uint16_t FlagEncrypted = 1u << 0;
+constexpr uint16_t MethodStored = 0;
+constexpr uint16_t MethodDeflated = 8;
+
+struct FileCloser {
+    void operator()(FILE *file) const
+    {
+        if (file != nullptr) {
+            std::fclose(file);
+        }
+    }
+};
+using File = std::unique_ptr<FILE, FileCloser>;
+
+uint16_t read16(const unsigned char *data)
+{
+    return static_cast<uint16_t>(data[0] | (data[1] << 8));
+}
+
+uint32_t read32(const unsigned char *data)
+{
+    return static_cast<uint32_t>(data[0]) |
+           (static_cast<uint32_t>(data[1]) << 8) |
+           (static_cast<uint32_t>(data[2]) << 16) |
+           (static_cast<uint32_t>(data[3]) << 24);
+}
+
+uint64_t read64(const unsigned char *data)
+{
+    return static_cast<uint64_t>(read32(data)) |
+           (static_cast<uint64_t>(read32(data + 4)) << 32);
+}
+
+bool seek(FILE *file, uint64_t offset)
+{
+    if (offset > static_cast<uint64_t>(INT64_MAX) ||
+        static_cast<uint64_t>(static_cast<off_t>(offset)) != offset) {
+        return false;
+    }
+    return fseeko(file, static_cast<off_t>(offset), SEEK_SET) == 0;
+}
+
+bool readAt(FILE *file, uint64_t offset, unsigned char *buffer, size_t size)
+{
+    return seek(file, offset) && std::fread(buffer, 1, size, file) == size;
+}
+
+bool fileLength(FILE *file, uint64_t &length)
+{
+    if (fseeko(file, 0, SEEK_END) != 0) {
+        return false;
+    }
+    const off_t end = ftello(file);
+    if (end < 0) {
+        return false;
+    }
+    length = static_cast<uint64_t>(end);
+    return true;
+}
+
+struct Directory {
+    uint64_t entries = 0;
+    uint64_t size = 0;
+    uint64_t offset = 0;
+};
+
+bool findDirectory(FILE *file, Directory &directory, std::string &error)
+{
+    uint64_t length = 0;
+    if (!fileLength(file, length) || length < EndRecordSize) {
+        error = "The file is too small to be a ZIP archive.";
+        return false;
+    }
+
+    const uint64_t window = std::min<uint64_t>(length,
+                                               EndRecordSize + MaxCommentSize);
+    std::vector<unsigned char> tail(static_cast<size_t>(window));
+    if (!readAt(file, length - window, tail.data(), tail.size())) {
+        error = "Could not read the end of the archive.";
+        return false;
+    }
+
+    size_t found = std::string::npos;
+    for (size_t index = tail.size() - EndRecordSize + 1; index-- > 0;) {
+        if (read32(&tail[index]) == EndSignature &&
+            index + EndRecordSize + read16(&tail[index + 20]) <= tail.size()) {
+            found = index;
+            break;
+        }
+    }
+    if (found == std::string::npos) {
+        error = "This is not a ZIP archive, or it is incomplete.";
+        return false;
+    }
+
+    const unsigned char *end = &tail[found];
+    const uint64_t endOffset = length - window + found;
+    directory.entries = read16(end + 10);
+    directory.size = read32(end + 12);
+    directory.offset = read32(end + 16);
+
+    if (directory.entries == 0xffff || directory.size == 0xffffffff ||
+        directory.offset == 0xffffffff) {
+        unsigned char locator[20];
+        if (endOffset < sizeof(locator) ||
+            !readAt(file, endOffset - sizeof(locator), locator,
+                    sizeof(locator)) ||
+            read32(locator) != Zip64LocatorSignature) {
+            error = "The archive's ZIP64 directory is missing.";
+            return false;
+        }
+        unsigned char record[56];
+        if (!readAt(file, read64(locator + 8), record, sizeof(record)) ||
+            read32(record) != Zip64EndSignature) {
+            error = "The archive's ZIP64 directory is damaged.";
+            return false;
+        }
+        directory.entries = read64(record + 32);
+        directory.size = read64(record + 40);
+        directory.offset = read64(record + 48);
+    }
+
+    if (directory.entries > MaxEntries ||
+        directory.size > MaxCentralDirectorySize ||
+        directory.offset + directory.size > length) {
+        error = "The archive's directory is damaged or too large.";
+        return false;
+    }
+    return true;
+}
+
+// Applies the ZIP64 extended information extra field (id 0x0001), which holds
+// 64-bit values for whichever 32-bit fields were set to 0xffffffff.
+void applyZip64(Entry &entry, const unsigned char *extra, size_t length,
+                bool sizeMissing, bool compressedMissing, bool offsetMissing)
+{
+    size_t position = 0;
+    while (position + 4 <= length) {
+        const uint16_t id = read16(extra + position);
+        const uint16_t size = read16(extra + position + 2);
+        const unsigned char *data = extra + position + 4;
+        if (position + 4 + size > length) {
+            return;
+        }
+        if (id == 0x0001) {
+            size_t field = 0;
+            if (sizeMissing && field + 8 <= size) {
+                entry.size = read64(data + field);
+                field += 8;
+            }
+            if (compressedMissing && field + 8 <= size) {
+                entry.compressedSize = read64(data + field);
+                field += 8;
+            }
+            if (offsetMissing && field + 8 <= size) {
+                entry.localHeaderOffset = read64(data + field);
+            }
+            return;
+        }
+        position += 4 + size;
+    }
+}
+
+std::string parentOf(const std::string &path)
+{
+    const size_t slash = path.find_last_of('/');
+    return slash == std::string::npos ? "" : path.substr(0, slash + 1);
+}
+
+std::string writeError(const std::string &path)
+{
+    if (errno == ENOSPC) {
+        return "The SD card is full.";
+    }
+    return "Could not write " + path + " (" + std::strerror(errno) + ").";
+}
+
+// Streams one entry's data into output, checking size and CRC.
+bool copyEntry(FILE *archive, const Entry &entry, FILE *output,
+               uint64_t &done, uint64_t total, Observer &observer,
+               bool &cancelled, std::string &error)
+{
+    unsigned char header[LocalHeaderSize];
+    if (!readAt(archive, entry.localHeaderOffset, header, sizeof(header)) ||
+        read32(header) != LocalHeaderSignature) {
+        error = entry.name + " is damaged (bad local header).";
+        return false;
+    }
+    const uint64_t dataOffset = entry.localHeaderOffset + LocalHeaderSize +
+                                read16(header + 26) + read16(header + 28);
+    if (!seek(archive, dataOffset)) {
+        error = entry.name + " is damaged (bad data offset).";
+        return false;
+    }
+
+    std::vector<unsigned char> input(ChunkSize);
+    std::vector<unsigned char> buffer(ChunkSize);
+    uint64_t remainingInput = entry.compressedSize;
+    uint64_t produced = 0;
+    uLong crc = crc32(0L, Z_NULL, 0);
+
+    const auto emit = [&](const unsigned char *data, size_t size) {
+        produced += size;
+        if (produced > entry.size) {
+            error = entry.name + " is larger than the archive says.";
+            return false;
+        }
+        crc = crc32(crc, data, static_cast<uInt>(size));
+        if (std::fwrite(data, 1, size, output) != size) {
+            error = writeError(entry.path);
+            return false;
+        }
+        done += size;
+        observer.onProgress(done, total, entry.path);
+        if (observer.cancelRequested()) {
+            cancelled = true;
+            return false;
+        }
+        return true;
+    };
+
+    if (entry.method == MethodStored) {
+        if (entry.compressedSize != entry.size) {
+            error = entry.name + " is damaged (size mismatch).";
+            return false;
+        }
+        while (remainingInput > 0) {
+            const size_t want = static_cast<size_t>(
+                std::min<uint64_t>(remainingInput, input.size()));
+            if (std::fread(input.data(), 1, want, archive) != want) {
+                error = entry.name + " is truncated.";
+                return false;
+            }
+            remainingInput -= want;
+            if (!emit(input.data(), want)) {
+                return false;
+            }
+        }
+    } else {
+        z_stream stream {};
+        if (inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
+            error = "Not enough memory to decompress " + entry.name + ".";
+            return false;
+        }
+        bool finished = false;
+        bool ok = true;
+        while (ok && !finished) {
+            if (stream.avail_in == 0) {
+                if (remainingInput == 0) {
+                    error = entry.name + " is truncated.";
+                    ok = false;
+                    break;
+                }
+                const size_t want = static_cast<size_t>(
+                    std::min<uint64_t>(remainingInput, input.size()));
+                if (std::fread(input.data(), 1, want, archive) != want) {
+                    error = entry.name + " is truncated.";
+                    ok = false;
+                    break;
+                }
+                remainingInput -= want;
+                stream.next_in = input.data();
+                stream.avail_in = static_cast<uInt>(want);
+            }
+
+            stream.next_out = buffer.data();
+            stream.avail_out = static_cast<uInt>(buffer.size());
+            const int status = inflate(&stream, Z_NO_FLUSH);
+            if (status != Z_OK && status != Z_STREAM_END &&
+                status != Z_BUF_ERROR) {
+                error = entry.name + " is damaged (" +
+                        (stream.msg != nullptr ? stream.msg : "inflate error") +
+                        ").";
+                ok = false;
+                break;
+            }
+            const size_t size = buffer.size() - stream.avail_out;
+            if (size > 0 && !emit(buffer.data(), size)) {
+                ok = false;
+                break;
+            }
+            finished = status == Z_STREAM_END;
+        }
+        inflateEnd(&stream);
+        if (!ok) {
+            return false;
+        }
+    }
+
+    if (produced != entry.size) {
+        error = entry.name + " is smaller than the archive says.";
+        return false;
+    }
+    if (static_cast<uint32_t>(crc) != entry.crc) {
+        error = entry.name + " is damaged (checksum mismatch).";
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+bool readArchive(const std::string &zipPath, Archive &archive,
+                 std::string &error)
+{
+    archive = Archive();
+    File file(std::fopen(zipPath.c_str(), "rb"));
+    if (!file) {
+        error = "Could not open the archive.";
+        return false;
+    }
+
+    Directory directory;
+    if (!findDirectory(file.get(), directory, error)) {
+        return false;
+    }
+
+    std::vector<unsigned char> data(static_cast<size_t>(directory.size));
+    if (!data.empty() &&
+        !readAt(file.get(), directory.offset, data.data(), data.size())) {
+        error = "Could not read the archive's directory.";
+        return false;
+    }
+
+    size_t position = 0;
+    for (uint64_t index = 0; index < directory.entries; ++index) {
+        if (position + CentralHeaderSize > data.size() ||
+            read32(&data[position]) != CentralHeaderSignature) {
+            error = "The archive's directory is damaged.";
+            return false;
+        }
+        const unsigned char *header = &data[position];
+        const size_t nameLength = read16(header + 28);
+        const size_t extraLength = read16(header + 30);
+        const size_t commentLength = read16(header + 32);
+        const size_t next = position + CentralHeaderSize + nameLength +
+                            extraLength + commentLength;
+        if (next > data.size()) {
+            error = "The archive's directory is damaged.";
+            return false;
+        }
+
+        Entry entry;
+        entry.flags = read16(header + 8);
+        entry.method = read16(header + 10);
+        entry.crc = read32(header + 16);
+        entry.compressedSize = read32(header + 20);
+        entry.size = read32(header + 24);
+        entry.localHeaderOffset = read32(header + 42);
+        applyZip64(entry, header + CentralHeaderSize + nameLength, extraLength,
+                   entry.size == 0xffffffff,
+                   entry.compressedSize == 0xffffffff,
+                   entry.localHeaderOffset == 0xffffffff);
+
+        const std::string raw(
+            reinterpret_cast<const char *>(header + CentralHeaderSize),
+            nameLength);
+        // Names without the UTF-8 flag are officially CP437, but most tools
+        // write UTF-8 anyway, so valid UTF-8 is kept and anything else replaced.
+        entry.name = text::sanitizeUtf8(raw);
+        entry.directory = !raw.empty() &&
+                          (raw.back() == '/' || raw.back() == '\\');
+        entry.path = safeRelativePath(entry.name);
+
+        if (!entry.directory) {
+            archive.totalSize += entry.size;
+            ++archive.fileCount;
+        }
+        archive.entries.push_back(entry);
+        position = next;
+    }
+    return true;
+}
+
+std::string safeRelativePath(const std::string &name)
+{
+    std::string normalised = name;
+    for (char &character : normalised) {
+        if (character == '\\') {
+            character = '/';
+        }
+    }
+    if (normalised.empty() || normalised[0] == '/') {
+        return "";
+    }
+
+    std::string output;
+    size_t start = 0;
+    bool first = true;
+    while (start <= normalised.size()) {
+        const size_t slash = normalised.find('/', start);
+        const size_t end = slash == std::string::npos ? normalised.size()
+                                                      : slash;
+        const std::string component = normalised.substr(start, end - start);
+
+        if (component == "..") {
+            return "";
+        }
+        if (first && component.find(':') != std::string::npos) {
+            return "";
+        }
+        if (!component.empty() && component != ".") {
+            if (!output.empty()) {
+                output += '/';
+            }
+            output += naming::safeFilename(component);
+            first = false;
+        }
+
+        if (slash == std::string::npos) {
+            break;
+        }
+        start = slash + 1;
+    }
+    return output;
+}
+
+std::vector<std::string> existingFiles(const Archive &archive,
+                                       const std::string &folder)
+{
+    std::vector<std::string> existing;
+    for (const Entry &entry : archive.entries) {
+        if (!entry.directory && !entry.path.empty() &&
+            fs::fileExists(folder + entry.path)) {
+            existing.push_back(entry.path);
+        }
+    }
+    return existing;
+}
+
+Result extract(const std::string &zipPath, const Archive &archive,
+               const std::string &folder, Existing existing,
+               Observer &observer)
+{
+    Result result;
+    File file(std::fopen(zipPath.c_str(), "rb"));
+    if (!file) {
+        result.message = "Could not open the archive.";
+        return result;
+    }
+    if (!fs::makeDirectories(folder)) {
+        result.message = "Could not create " + folder + ".";
+        return result;
+    }
+
+    uint64_t done = 0;
+    for (const Entry &entry : archive.entries) {
+        if (observer.cancelRequested()) {
+            result.cancelled = true;
+            result.message = "Extraction cancelled.";
+            return result;
+        }
+        if (entry.path.empty()) {
+            if (!entry.directory) {
+                ++result.skippedUnsafe;
+            }
+            continue;
+        }
+        if (entry.directory) {
+            if (!fs::makeDirectories(folder + entry.path + "/")) {
+                result.message = "Could not create the folder " + entry.path +
+                                 ".";
+                return result;
+            }
+            continue;
+        }
+        if ((entry.flags & FlagEncrypted) != 0 ||
+            (entry.method != MethodStored && entry.method != MethodDeflated)) {
+            ++result.skippedUnsupported;
+            done += entry.size;
+            continue;
+        }
+
+        const std::string target = folder + entry.path;
+        if (fs::fileExists(target) && existing == Existing::Skip) {
+            ++result.skippedExisting;
+            done += entry.size;
+            observer.onProgress(done, archive.totalSize, entry.path);
+            continue;
+        }
+        if (!fs::makeDirectories(folder + parentOf(entry.path))) {
+            result.message = "Could not create the folder for " + entry.path +
+                             ".";
+            return result;
+        }
+
+        const std::string temporary = target + ".3dsdl-tmp";
+        File output(std::fopen(temporary.c_str(), "wb"));
+        if (!output) {
+            result.message = writeError(entry.path);
+            return result;
+        }
+
+        bool cancelled = false;
+        std::string error;
+        const bool copied = copyEntry(file.get(), entry, output.get(), done,
+                                      archive.totalSize, observer, cancelled,
+                                      error);
+        const bool closed = std::fclose(output.release()) == 0;
+        if (!copied || !closed) {
+            fs::removeFile(temporary);
+            result.cancelled = cancelled;
+            result.message = cancelled ? "Extraction cancelled."
+                           : !copied   ? error
+                                       : writeError(entry.path);
+            return result;
+        }
+
+        if (fs::fileExists(target)) {
+            fs::removeFile(target);
+        }
+        if (!fs::renameFile(temporary, target)) {
+            fs::removeFile(temporary);
+            result.message = "Could not save " + entry.path + ".";
+            return result;
+        }
+        ++result.extracted;
+    }
+
+    result.ok = true;
+    return result;
+}
+
+} // namespace zip
