@@ -356,9 +356,11 @@ def twinkle_tracks(position, size, phase):
 
 
 def logo_tracks():
+    """Bobs gently. It never turns: build-cgfx.py makes it a billboard, so
+    the 3DS keeps it facing the viewer (a flat plane seen from behind would
+    vanish)."""
     translation = sampled(lambda t: (8.6, 1.0 + 0.35 * wave(t, phase=math.pi / 2), 2.4))
-    rotation = sampled(lambda t: euler_quat(0, math.radians(-4) * wave(t), math.radians(2) * wave(t, phase=0.8)))
-    return translation, rotation, None
+    return translation, None, None
 
 
 # ---------------------------------------------------------------- glTF out

@@ -18,6 +18,9 @@ wrapper then fixes or adjusts what it leaves at defaults:
   this is what crashed 3dsDL's second test build). The tree is rebuilt, and
   BLEND materials are marked translucent so they draw in the right pass.
   Both fixes are described by CBC for YANBF too.
+- The wordmark is a flat picture, drawn from the front only, so seen from
+  behind it vanishes. Its bone is made a Y-axis billboard, which the 3DS
+  keeps turned towards the viewer (CBC for YANBF does the same for logos).
 
 - Its one light shines straight from the camera, and materials get no
   ambient light, so anything turned away from the viewer goes black. The
@@ -72,6 +75,7 @@ def main(pycgfx_dir, gltf_path, out_path):
     import gltflib
     import main as pycgfx
     from cgfx.shared import ColorFloat, Vector3
+    from cgfx.sobj import BillboardMode
 
     gltf = gltflib.GLTF.load(gltf_path, load_file_resources=True)
     cgfx = pycgfx.convert_gltf(gltf)
@@ -82,6 +86,8 @@ def main(pycgfx_dir, gltf_path, out_path):
     broken = lookup_failures(model.skeleton.bones)
     model.skeleton.bones.dict.regenerate()
     print("bone lookups broken by pycgfx's sort: %s" % (", ".join(broken) or "none"))
+
+    model.skeleton.bones["Logo"].billboard_mode = BillboardMode.YAxial
 
     for material in gltf.model.materials:
         if material.alphaMode == "BLEND":

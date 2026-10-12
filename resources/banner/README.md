@@ -72,6 +72,10 @@ HOME Menu on a real console even when an emulator shows the banner fine.
   `build-cgfx.py` rebuilds the tree, marks BLEND materials translucent, and
   then walks every table's tree the way the console does, refusing to write
   a CGFX in which any name would not be found.
+- **The wordmark is a billboard.** It is a flat picture, invisible from
+  behind, so its bone uses the 3DS's Y-axis billboard mode and always turns
+  to face the viewer. (Without it, the wordmark vanished whenever the banner
+  was seen from the side.)
 - **No blended transparency.** The wordmark is a hard-edged cut-out (alpha
   MASK), which needs no bone reordering and no extra drawing pass.
 - **Nothing scales to (nearly) nothing.** Parts that should vanish hide

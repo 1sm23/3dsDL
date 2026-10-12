@@ -129,7 +129,10 @@ first frame correctly, then the HOME Menu froze (no input, music still
 playing). That build was also the first with a blended wordmark marked
 translucent, parts scaled to 0.001 and 22.05 kHz sound; the fourth reverts
 all three, and a still version of it (no animation) was built alongside to
-tell an animation problem from anything else.
+tell an animation problem from anything else. The fourth, animated
+(test-banner-5), worked: no crash or freeze, and the banner animates. Its one
+flaw was the wordmark vanishing when seen from behind, so the wordmark is now
+a billboard that always faces the viewer.
 
 ## Compatibility matrix
 
