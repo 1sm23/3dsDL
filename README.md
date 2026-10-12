@@ -223,7 +223,7 @@ dist/
 3. Makes sure the launcher icon PNG has a real alpha channel.
 4. Cleans out previous build output.
 5. Compiles 3dsDL, running the containers as your user so nothing in the repository ends up owned by root.
-6. Creates the HOME Menu banner (an animated 3D model with a jingle, from [`resources/banner/`](resources/banner/README.md)) and packages both the 3DSX and CIA builds, taking the version from the `VERSION` file.
+6. Creates the HOME Menu banner and its jingle (see [`resources/banner/`](resources/banner/README.md)) and packages both the 3DSX and CIA builds, taking the version from the `VERSION` file.
 7. Writes the release files and their SHA-256 checksums to `dist/`.
 8. Removes intermediate files so the repository root stays clean.
 
@@ -238,8 +238,8 @@ dist/
 # Use more compiler jobs
 THREEDSDL_BUILD_JOBS=4 ./scripts/build.sh
 
-# Pack the flat banner picture instead of the 3D model
-THREEDSDL_FLAT_BANNER=1 ./scripts/build.sh
+# Pack the experimental 3D banner model instead of the flat picture
+THREEDSDL_3D_BANNER=1 ./scripts/build.sh
 
 # Use another devkitPro image (the default is pinned by digest)
 THREEDSDL_BUILD_IMAGE=devkitpro/devkitarm:20260610 ./scripts/build.sh

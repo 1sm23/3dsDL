@@ -89,9 +89,10 @@ and (on New 3DS) CPU speed.
 
 ### HOME Menu banner and icon
 
-The banner is an animated 3D model (see `resources/banner/README.md`), and a
-bad one can freeze the HOME Menu, so check this on a console before every
-release that changes it.
+Release builds use the flat banner picture. The animated 3D banner (see
+`resources/banner/README.md`) is built with `THREEDSDL_3D_BANNER=1`, and a bad
+one crashes or freezes the HOME Menu, so check it on a console before making
+it the default. Items 26 to 28 apply to the 3D banner.
 
 25. After installing the CIA, the HOME Menu shows 3dsDL's icon (a cyan card
     with a yellow arrow). The Homebrew Launcher shows the same icon for the
@@ -102,11 +103,11 @@ release that changes it.
 27. With the 3D slider up, the wordmark and sparkles stand in front of the
     screen and the card sits behind them.
 28. Moving the cursor on and off 3dsDL several times, and opening and closing
-    the app, never freezes the HOME Menu. If it does, hold POWER to switch
-    off, uninstall 3dsDL with FBI, and install a build made with
-    `THREEDSDL_FLAT_BANNER=1` instead. If the HOME Menu starts with 3dsDL
-    already highlighted and freezes again, starting once without the SD card
-    should move the cursor elsewhere.
+    the app, never crashes or freezes the HOME Menu. If it does, hold POWER
+    to switch off if needed, then open FBI without highlighting 3dsDL and
+    install a normal (flat banner) build over it. If the HOME Menu starts
+    with 3dsDL already highlighted and crashes again, starting once without
+    the SD card should move the cursor elsewhere.
 
 ## Results so far
 
@@ -114,6 +115,11 @@ On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over
 the internet (items 11 and 12), installing the CIA with FBI, and ZIP
 extraction (item 24). The console model was not recorded, so the matrix
 below is still open.
+
+The same day, the first 3D banner build (commit 539b3d8) crashed the HOME
+Menu every time 3dsDL was selected (item 28). Its CGFX left every mesh's node
+name blank; `build-cgfx.py` now fills them in, and the flat banner is the
+default until a 3D build passes items 26 to 28.
 
 ## Compatibility matrix
 

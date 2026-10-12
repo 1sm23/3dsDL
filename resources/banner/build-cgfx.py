@@ -2,7 +2,15 @@
 """Converts banner.glb to the CGFX model the HOME Menu banner holds.
 
 pycgfx (https://github.com/skyfloogle/pycgfx) does the conversion; this
-wrapper then adjusts two things it leaves at defaults:
+wrapper then fixes or adjusts what it leaves at defaults:
+
+- Each mesh must name the node (bone) it hangs from. pycgfx leaves the name
+  blank, and a banner like that crashed the HOME Menu on a real console the
+  moment 3dsDL was selected. The same fix is in the pycgfx patch carried by
+  CBC for YANBF (https://github.com/daaaaavia/CBC-for-YANBF), whose notes
+  call it required for a banner that doesn't crash. Mesh and shape names
+  are made unique at the same time (nodes sharing a mesh, like the
+  sparkles, would otherwise all be called the same).
 
 - Its one light shines straight from the camera, and materials get no
   ambient light, so anything turned away from the viewer goes black. The
@@ -34,6 +42,14 @@ def main(pycgfx_dir, gltf_path, out_path):
     cgfx = pycgfx.convert_gltf(gltflib.GLTF.load(gltf_path, load_file_resources=True))
 
     model = cgfx.data.models["COMMON"]
+
+    bones = list(model.skeleton.bones)
+    materials = list(model.materials)
+    for mesh in model.meshes.data.contents:
+        shape = model.shapes.data.contents[mesh.shape_index]
+        bone = shape.primitive_sets.data.contents[0].related_bones.data.contents[0]
+        mesh.mesh_node_name = bones[bone]
+        mesh.name = shape.name = "%s_%s" % (bones[bone], materials[mesh.material_index])
     for name in model.materials:
         level = 1.0 if name == "Logo" else AMBIENT
         model.materials[name].material_color.ambient = ColorFloat(level, level, level, 1)
@@ -48,6 +64,8 @@ def main(pycgfx_dir, gltf_path, out_path):
     with open(out_path, "wb") as out:
         out.write(data)
     print("%s: %d bytes (limit %d), materials: %s" % (out_path, len(data), LIMIT, ", ".join(model.materials)))
+    for mesh in model.meshes.data.contents:
+        print("  mesh %s on node %s" % (mesh.name, mesh.mesh_node_name))
 
 
 if __name__ == "__main__":
