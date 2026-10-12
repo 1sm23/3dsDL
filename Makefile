@@ -12,10 +12,11 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET          := 3dsDL
 BUILD           := build
-SOURCES         := source
-INCLUDES        := source/include
+SOURCES         := source/app source/core source/net source/quirc
+INCLUDES        := $(SOURCES)
 ROMFS           := romfs
 
+APP_VERSION     := $(strip $(shell cat $(TOPDIR)/VERSION))
 APP_TITLE       := 3dsDL
 APP_DESCRIPTION := Download files straight onto your 3DS
 APP_AUTHOR      := ankushKun
@@ -24,7 +25,7 @@ ICON            := resources/icon-3dsdl.png
 #---------------------------------------------------------------------------------
 ARCH      := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS    := -g -Wall -Wextra -O2 -mword-relocations -ffunction-sections $(ARCH)
-CFLAGS    += $(INCLUDE) -D__3DS__
+CFLAGS    += $(INCLUDE) -D__3DS__ -DAPP_VERSION=\"$(APP_VERSION)\" -Wno-psabi
 CXXFLAGS  := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
@@ -42,8 +43,8 @@ export TOPDIR  := $(CURDIR)
 export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
-CFILES   := decode.c identify.c quirc.c version_db.c
-CPPFILES := main.cpp download.cpp qrdec.cpp ui.cpp
+CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 
 ifeq ($(strip $(CPPFILES)),)
@@ -61,7 +62,7 @@ export _3DSXDEPS := $(OUTPUT).smdh
 export APP_ICON := $(TOPDIR)/$(ICON)
 export _3DSXFLAGS += --smdh=$(OUTPUT).smdh --romfs=$(CURDIR)/$(ROMFS)
 
-.PHONY: all clean
+.PHONY: all clean version
 
 all: $(BUILD)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
@@ -73,12 +74,19 @@ clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).smdh $(TARGET).elf $(TARGET).cia
 
+version:
+	@echo $(APP_VERSION)
+
 #---------------------------------------------------------------------------------
 else
 #---------------------------------------------------------------------------------
 
 $(OUTPUT).3dsx: $(OUTPUT).elf $(OUTPUT).smdh
 $(OUTPUT).elf: $(OFILES)
+
+# quirc is vendored unmodified; keep its upstream warnings out of the build log.
+QUIRC_OFILES := $(patsubst %.c,%.o,$(notdir $(wildcard $(TOPDIR)/source/quirc/*.c)))
+$(QUIRC_OFILES): CFLAGS += -Wno-sign-compare -Wno-unused-parameter -Wno-type-limits
 
 -include $(DEPSDIR)/*.d
 
