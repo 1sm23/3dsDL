@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3dsDL: download files straight onto your Nintendo 3DS</title>
   <meta name="description" content="3dsDL downloads files from a link or a QR code straight onto your Nintendo 3DS SD card over verified HTTPS. Install it with FBI in under a minute.">
-  <meta name="theme-color" content="#9aa6b5">
+  <meta name="theme-color" content="#e7edf2">
   <meta name="color-scheme" content="light">
   <link rel="canonical" href="https://ankush.one/3dsDL/">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/icon-64.png">
@@ -16,45 +16,66 @@
   <meta property="og:url" content="https://ankush.one/3dsDL/">
   <meta property="og:image" content="https://ankush.one/3dsDL/assets/banner.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="preload" href="fonts/m-plus-rounded-1c-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/m-plus-rounded-1c-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/dotgothic16-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="styles.css">
+  <!-- Set before first paint so the enhanced layouts don't flash the
+       no-script ones. -->
+  <script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
   <svg class="sprite" aria-hidden="true">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
-    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
     <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
     <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h4v-4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 10l4 4M21 10l-4 4"/></symbol>
     <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></symbol>
+    <symbol id="i-mail-open" viewBox="0 0 24 24"><path d="M3 10l9-6.5 9 6.5v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/><path d="M3.5 10.5l8.5 5.5 8.5-5.5"/></symbol>
+    <symbol id="g-download" viewBox="0 0 24 24"><path d="M12 3.5v10.5M7.5 9.5 12 14l4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="g-resume" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4.5H15"/></symbol>
+    <symbol id="g-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.8v5.4c0 4.4-2.9 7.8-7 9.8-4.1-2-7-5.4-7-9.8V5.8z"/><path d="M8.8 12l2.3 2.3 4.2-4.4"/></symbol>
+    <symbol id="g-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h3.8l2 2h7.2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 10.5h17"/></symbol>
+    <symbol id="g-clock" viewBox="0 0 24 24"><circle cx="12" cy="12.5" r="8"/><path d="M12 8.5v4.5l3 1.8M9 2.5h6"/></symbol>
+    <symbol id="g-zip" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M12 3.5v1.5M12 7v1.5M12 10.5V12"/><rect x="10" y="13.5" width="4" height="4" rx="1"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
   </svg>
 
   <a class="skip" href="#install">Skip to install</a>
 
-  <div class="page">
-    <header class="head">
+  <!-- The top of the page is a 3DS status bar: the app, the sections as
+       ABXY buttons, and the console's Wi-Fi, clock and battery. -->
+  <header class="head">
+    <div class="head-in">
       <a class="brand" href="#top" aria-label="3dsDL home">
-        <img src="assets/icon-64.png" width="28" height="28" alt="">
-        <span><span class="brand-3ds">3ds</span>DL</span>
+        <img src="assets/icon-64.png" width="30" height="30" alt="">
+        <span class="brand-name"><span class="brand-3ds">3ds</span>DL</span>
       </a>
       <nav class="tabs" aria-label="Sections">
-        <a href="#features">Features</a>
-        <a href="#send">Send a link</a>
-        <a href="#faq">FAQ</a>
-        <a href="#install">Install</a>
+        <a href="#features" style="--tone: var(--x)"><span>Features</span></a>
+        <a href="#send" style="--tone: var(--y)"><span>Send<span class="tab-more"> a link</span></span></a>
+        <a href="#faq" style="--tone: var(--b)"><span>FAQ</span></a>
+        <a href="#install" style="--tone: var(--a)"><span>Install</span></a>
       </nav>
-    </header>
+      <div class="tray" aria-hidden="true">
+        <svg class="wifi" viewBox="0 0 22 16"><rect x="1" y="11" width="3.5" height="4" rx="1"/><rect x="6.5" y="8" width="3.5" height="7" rx="1"/><rect x="12" y="5" width="3.5" height="10" rx="1"/><rect x="17.5" y="1" width="3.5" height="14" rx="1"/></svg>
+        <span class="clock" data-clock><span data-hours>--</span><span class="colon">:</span><span data-minutes>--</span></span>
+        <svg class="battery" viewBox="0 0 30 16"><rect class="shell" x="1" y="1.5" width="25" height="13" rx="3"/><rect class="nub" x="26.5" y="5" width="2.5" height="6" rx="1"/><rect class="cell" x="4" y="4.5" width="4.4" height="7" rx="1"/><rect class="cell" x="9.4" y="4.5" width="4.4" height="7" rx="1"/><rect class="cell" x="14.8" y="4.5" width="4.4" height="7" rx="1"/><rect class="cell" x="20.2" y="4.5" width="3.3" height="7" rx="1"/></svg>
+      </div>
+    </div>
+  </header>
 
+  <div class="page">
     <main id="top">
       <section class="hero">
+        <p class="sticker" data-release-tag hidden></p>
         <h1>Download files <span class="accent">straight onto your 3DS</span></h1>
         <p class="sub">Scan a QR code or type a link, and the file streams onto the SD card over verified HTTPS. <br>No card reader, no computer, no powering down.</p>
         <div class="cta">
-          <a class="btn btn-aqua" href="#install" data-sound>Install with FBI</a>
+          <a class="btn btn-go" href="#install">Install with FBI</a>
         </div>
         <p class="cta-note">Scan one QR code in FBI and 3dsDL is on your HOME Menu.</p>
         <p class="cta-alt">
@@ -70,8 +91,9 @@
 
         <!-- A real New Nintendo 3DS (photo: PantheraLeo1359531, CC BY 4.0).
              Its two screens are live HTML, drawn in 3DS pixels and mapped onto
-             the photographed screens with a perspective matrix, so the demo on
-             them can animate. -->
+             the photographed screens with a perspective matrix. They power on
+             with a short boot screen, then play a download. The doodles are
+             drawn in the photo's own coordinates (1356 x 1177). -->
         <div class="device device-angled reveal" data-tilt>
           <div class="device-stage">
             <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="An open white New Nintendo 3DS, seen from the front at an angle, running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button." decoding="async" fetchpriority="high">
@@ -89,6 +111,7 @@
               <span class="t" style="--x:24;--y:174;--s:.52" data-demo-amount>3.10 MiB of 4.42 MiB (70%)</span>
               <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48" data-demo-phase>downloading</span>
               <span class="t t-muted" style="--x:24;--y:198;--s:.48" data-demo-speed>1.24 MiB/s, 1s left</span>
+              <div class="boot boot-top"><img src="assets/icon-64.png" width="64" height="64" alt=""><span>3dsDL</span></div>
             </div>
             <div class="screen screen-bottom" aria-hidden="true">
               <span class="t t-muted" style="--x:18;--y:14;--s:.48">Saving to</span>
@@ -102,223 +125,306 @@
               <span class="t t-mid" style="--x:160;--y:153;--s:.58">CANCEL</span>
               <span class="t t-mid t-muted" style="--x:160;--y:204;--s:.42">Sleep mode is paused until this finishes.</span>
               <span class="t t-mid t-muted" style="--x:160;--y:222;--s:.42">B: Cancel</span>
+              <div class="boot boot-bottom"><i></i><i></i><i></i></div>
             </div>
+            <svg class="doodles" viewBox="0 0 1356 1177" aria-hidden="true">
+              <g class="doodle pen-blue" style="--d: 0">
+                <text x="62" y="236" transform="rotate(-6 62 236)">live speed</text>
+                <text x="84" y="294" transform="rotate(-6 84 294)">&amp; time left!</text>
+                <path pathLength="1" d="M330 318C420 304 480 330 556 372"/>
+                <path pathLength="1" d="M538 343L556 372L522 373"/>
+              </g>
+              <g class="doodle pen-red" style="--d: 1">
+                <text x="40" y="1012" transform="rotate(4 40 1012)">cancel any</text>
+                <text x="70" y="1068" transform="rotate(4 70 1068)">time with B</text>
+                <path pathLength="1" d="M300 985C350 930 420 880 486 832"/>
+                <path pathLength="1" d="M452 836L486 832L472 863"/>
+              </g>
+              <g class="doodle pen-green" style="--d: 2">
+                <text x="1046" y="1016" transform="rotate(-4 1046 1016)">resumes if</text>
+                <text x="1040" y="1072" transform="rotate(-4 1040 1072)">Wi-Fi drops!</text>
+                <path pathLength="1" d="M1160 952C1230 820 1170 660 1046 568"/>
+                <path pathLength="1" d="M1060 599L1046 568L1080 572"/>
+              </g>
+              <g class="doodle doodle-stars pen-yellow" style="--d: 3">
+                <path pathLength="1" d="M1180 58L1188 92L1222 100L1188 108L1180 142L1172 108L1138 100L1172 92Z"/>
+                <path pathLength="1" d="M1272 150L1277 170L1297 175L1277 180L1272 200L1267 180L1247 175L1267 170Z"/>
+              </g>
+            </svg>
           </div>
         </div>
       </section>
 
-      <section id="features" class="section section-well reveal">
+      <!-- Features, as a HOME Menu: icons on the touch screen, the selected
+           one's demo and description on the top screen. Without the script
+           the features are a plain grid of cards. -->
+      <section id="features" class="section panel tone-x reveal">
         <header class="section-head">
-          <p class="eyebrow">Features</p>
+          <p class="eyebrow"><span class="key key-x" aria-hidden="true">X</span>Features</p>
           <h2>The bits that make it easy</h2>
         </header>
-        <div class="features">
-          <article class="feature">
-            <div class="feature-demo demo-dark">
-              <span class="m-line">homebrew.3dsx</span>
-              <span class="m-bar"><i style="width:62%"></i></span>
-              <span class="m-line m-muted">1.24 MiB/s, 27s left</span>
+        <div class="home" data-home>
+          <div class="home-top">
+            <div class="home-screen">
+              <div class="home-app-bar" aria-hidden="true"><span>3dsDL</span><span class="home-app-state">home</span></div>
+              <article class="feature is-on" id="feat-progress" role="tabpanel" aria-labelledby="feat-progress-title">
+                <div class="feature-demo">
+                  <span class="m-line">homebrew.3dsx</span>
+                  <span class="m-bar"><i style="width:62%"></i></span>
+                  <span class="m-line m-muted">1.24 MiB/s, 27s left</span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-progress-title">Live progress</h3>
+                  <p>Speed, time left, size and percentage, with free space checked before anything is written.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-resume" role="tabpanel" aria-labelledby="feat-resume-title">
+                <div class="feature-demo">
+                  <span class="m-line m-green">Continuing from 12.0 MiB</span>
+                  <span class="m-bar"><i style="width:48%"></i></span>
+                  <span class="m-line m-muted">1.62 MiB/s, 9s left</span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-resume-title">Resume and retry</h3>
+                  <p>A dropped connection keeps what arrived. Retry carries on from there when the server confirms the file hasn't changed.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-safe" role="tabpanel" aria-labelledby="feat-safe-title">
+                <div class="feature-demo">
+                  <span class="m-line m-warn m-small">A file with this name already exists</span>
+                  <span class="m-buttons"><b class="on">RENAME</b><b>OVERWRITE</b><b>CANCEL</b></span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-safe-title">Never clobbers files</h3>
+                  <p>Rename keeps both, Overwrite rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-folders" role="tabpanel" aria-labelledby="feat-folders-title">
+                <div class="feature-demo m-list">
+                  <span class="m-row m-cyan">Browse the SD card...</span>
+                  <span class="m-row on">CIA installers</span>
+                  <span class="m-row">Homebrew apps</span>
+                  <span class="m-row">Luma3DS payloads</span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-folders-title">Folders made easy</h3>
+                  <p>Presets like <code>sdmc:/cias/</code>, recent folders, a browser that can make new folders, or any path you type.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-clock" role="tabpanel" aria-labelledby="feat-clock-title">
+                <div class="feature-demo">
+                  <span class="m-line">Console: 2025-10-12</span>
+                  <span class="m-line m-green">Actual:&nbsp; 2026-10-12</span>
+                  <span class="m-buttons"><b class="on">SET CLOCK</b><b>TIME ZONE</b></span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-clock-title">Fixes the clock</h3>
+                  <p>HTTPS fails when the date is wrong. 3dsDL compares the console's clock with internet time and sets it for your time zone.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-unzip" role="tabpanel" aria-labelledby="feat-unzip-title">
+                <div class="feature-demo">
+                  <span class="m-line m-green">Archive extracted</span>
+                  <span class="m-line">6 files extracted into</span>
+                  <span class="m-line m-muted">sdmc:/3ds/Checkpoint/</span>
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-unzip-title">Optional unzip</h3>
+                  <p>Off by default. Turn it on and 3dsDL offers to extract a downloaded ZIP, refusing any path that would escape its folder.</p>
+                </div>
+              </article>
             </div>
-            <h3>Live progress</h3>
-            <p>Speed, time left, size and percentage, with free space checked before anything is written.</p>
-          </article>
-          <article class="feature">
-            <div class="feature-demo demo-dark">
-              <span class="m-line m-green">Continuing from 12.0 MiB</span>
-              <span class="m-bar"><i style="width:48%"></i></span>
-              <span class="m-line m-muted">1.62 MiB/s, 9s left</span>
+          </div>
+          <div class="home-bottom">
+            <div class="home-grid" role="tablist" aria-label="Features">
+              <span class="home-cursor" aria-hidden="true"></span>
+              <button class="app-icon" type="button" role="tab" id="tab-progress" aria-controls="feat-progress" aria-selected="true" style="--tint:#2fb6e8"><span class="app-glyph"><svg class="icon"><use href="#g-download"/></svg></span><span class="app-label">Progress</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-resume" aria-controls="feat-resume" aria-selected="false" tabindex="-1" style="--tint:#3fb45f"><span class="app-glyph"><svg class="icon"><use href="#g-resume"/></svg></span><span class="app-label">Resume</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-safe" aria-controls="feat-safe" aria-selected="false" tabindex="-1" style="--tint:#f08a3c"><span class="app-glyph"><svg class="icon"><use href="#g-shield"/></svg></span><span class="app-label">Safe saves</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-folders" aria-controls="feat-folders" aria-selected="false" tabindex="-1" style="--tint:#eab526"><span class="app-glyph"><svg class="icon"><use href="#g-folder"/></svg></span><span class="app-label">Folders</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-clock" aria-controls="feat-clock" aria-selected="false" tabindex="-1" style="--tint:#6a75e8"><span class="app-glyph"><svg class="icon"><use href="#g-clock"/></svg></span><span class="app-label">Clock</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-unzip" aria-controls="feat-unzip" aria-selected="false" tabindex="-1" style="--tint:#e8577a"><span class="app-glyph"><svg class="icon"><use href="#g-zip"/></svg></span><span class="app-label">Unzip</span></button>
             </div>
-            <h3>Resume and retry</h3>
-            <p>A dropped connection keeps what arrived. Retry carries on from there when the server confirms the file hasn't changed.</p>
-          </article>
-          <article class="feature">
-            <div class="feature-demo demo-dark">
-              <span class="m-line m-warn m-small">A file with this name already exists</span>
-              <span class="m-buttons"><b class="on">RENAME</b><b>OVERWRITE</b><b>CANCEL</b></span>
-            </div>
-            <h3>Never clobbers files</h3>
-            <p>Rename keeps both, Overwrite rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
-          </article>
-          <article class="feature">
-            <div class="feature-demo demo-dark m-list">
-              <span class="m-row m-cyan">Browse the SD card...</span>
-              <span class="m-row on">CIA installers</span>
-              <span class="m-row">Homebrew apps</span>
-              <span class="m-row">Luma3DS payloads</span>
-            </div>
-            <h3>Folders made easy</h3>
-            <p>Presets like <code>sdmc:/cias/</code>, recent folders, a browser that can make new folders, or any path you type.</p>
-          </article>
-          <article class="feature">
-            <div class="feature-demo demo-dark">
-              <span class="m-line">Console: 2025-10-12</span>
-              <span class="m-line m-green">Actual:&nbsp; 2026-10-12</span>
-              <span class="m-buttons"><b class="on">SET CLOCK</b><b>TIME ZONE</b></span>
-            </div>
-            <h3>Fixes the clock</h3>
-            <p>HTTPS fails when the date is wrong. 3dsDL compares the console's clock with internet time and sets it for your time zone.</p>
-          </article>
-          <article class="feature">
-            <div class="feature-demo demo-dark">
-              <span class="m-line m-green">Archive extracted</span>
-              <span class="m-line">6 files extracted into</span>
-              <span class="m-line m-muted">sdmc:/3ds/Checkpoint/</span>
-            </div>
-            <h3>Optional unzip</h3>
-            <p>Off by default. Turn it on and 3dsDL offers to extract a downloaded ZIP, refusing any path that would escape its folder.</p>
-          </article>
+          </div>
         </div>
         <p class="also">Also: history of the last 50 downloads, sleep mode paused during transfers, plain-http warnings, and QR codes that aren't links are pointed out instead of ending the scan.</p>
       </section>
 
-      <section id="send" class="section reveal">
+      <!-- Send a link, as a PictoChat room: you post the link, 3dsDL answers
+           with the QR code. -->
+      <section id="send" class="section panel tone-y reveal">
         <header class="section-head">
-          <p class="eyebrow">Send a link</p>
+          <p class="eyebrow"><span class="key key-y" aria-hidden="true">Y</span>Send a link</p>
           <h2>Turn any download link into a QR code</h2>
           <p class="section-sub">Paste a direct link, then scan the code with <strong>Scan QR Code</strong> in 3dsDL. Much nicer than typing a long link on the 3DS keyboard.</p>
         </header>
-        <div class="send">
-          <form class="send-form" id="send-form" autocomplete="off">
-            <label for="send-url">Download link</label>
-            <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
-            <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
-            <div class="row">
-              <button class="btn" type="button" id="send-big" disabled>
-                <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
-              </button>
-              <button class="btn" type="button" id="send-copy" disabled>
-                <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
-              </button>
-            </div>
-            <p class="fine">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
-            <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
-          </form>
-          <figure class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
-            <div class="qr-placeholder">
-              <svg class="icon"><use href="#i-qr"/></svg>
-              <span>Your QR code</span>
-            </div>
-          </figure>
+        <div class="chat">
+          <div class="chat-bar" aria-hidden="true">
+            <span class="chat-room">A</span>
+            <span class="chat-title">Chat Room A</span>
+            <span class="chat-who">You + 3dsDL</span>
+          </div>
+          <div class="chat-log">
+            <form class="msg msg-you send-form" id="send-form" autocomplete="off">
+              <span class="msg-name" aria-hidden="true">You</span>
+              <label for="send-url">Download link</label>
+              <input id="send-url" name="url" type="url" inputmode="url" spellcheck="false" placeholder="https://example.com/homebrew.3dsx">
+              <p class="status" id="send-status" aria-live="polite">The code appears as you type.</p>
+              <div class="row">
+                <button class="btn" type="button" id="send-big" disabled>
+                  <svg class="icon"><use href="#i-expand"/></svg><span>Show bigger</span>
+                </button>
+                <button class="btn" type="button" id="send-copy" disabled>
+                  <svg class="icon"><use href="#i-copy"/></svg><span>Copy share link</span>
+                </button>
+              </div>
+              <noscript><p class="fine">This tool needs JavaScript.</p></noscript>
+            </form>
+            <figure class="msg msg-app" id="send-reply">
+              <span class="msg-name" aria-hidden="true">3dsDL</span>
+              <div class="qr-frame qr-large" id="send-qr" aria-label="QR code preview">
+                <div class="qr-placeholder">
+                  <svg class="icon"><use href="#i-qr"/></svg>
+                  <span>Your QR code</span>
+                </div>
+              </div>
+            </figure>
+          </div>
         </div>
+        <p class="fine fine-center">The code is made in your browser; the link isn't sent anywhere. It has to point at the file itself, so pages that need a login, a captcha or a "click to download" button won't work.</p>
       </section>
 
-      <section id="faq" class="section section-well reveal">
+      <!-- The FAQ, as the Notifications app: unread ones are marked new until
+           opened, and the browser remembers which were read. -->
+      <section id="faq" class="section panel tone-b reveal">
         <header class="section-head">
-          <p class="eyebrow">Questions</p>
+          <p class="eyebrow"><span class="key key-b" aria-hidden="true">B</span>Questions</p>
           <h2>Common questions</h2>
         </header>
         <div class="faq">
-          <details>
-            <summary>Downloads fail with a certificate error</summary>
+          <div class="faq-bar" aria-hidden="true">
+            <svg class="icon"><use href="#i-mail"/></svg>
+            <span>Notifications</span>
+            <span class="faq-count" data-unread></span>
+          </div>
+          <details id="q-cert">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Downloads fail with a certificate error</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>Almost always the console's date. Open <strong>Settings → Console clock</strong> in 3dsDL: it shows the console's time next to internet time and can set it for your time zone (the HOME Menu app can; the .3dsx may not be allowed to). Rosalina can also do it: <kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd> → <strong>Miscellaneous options → Update time and date via NTP</strong>. The error message also says why the certificate was rejected.</p>
           </details>
-          <details>
-            <summary>It says "Not a download link"</summary>
+          <details id="q-link">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">It says "Not a download link"</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>3dsDL only fetches links that start with <code>http://</code> or <code>https://</code> and point straight at a file. Pages that need JavaScript, a login or a confirmation click won't work, because 3dsDL isn't a browser. On GitHub, use the links under a release's <em>Assets</em>.</p>
           </details>
-          <details>
-            <summary>Where do my files go?</summary>
+          <details id="q-where">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Where do my files go?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>To the folder shown on the home screen, <code>sdmc:/</code> unless you changed it. Use <strong>Folder</strong> on the home screen or on the confirm screen to pick a preset, browse the SD card or type a path. Settings and history live in <code>sdmc:/3ds/3dsDL/</code>.</p>
           </details>
-          <details>
-            <summary>A download stopped halfway</summary>
+          <details id="q-stopped">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">A download stopped halfway</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>Choose <strong>Retry</strong> in the error dialog, or find it later under <strong>History</strong> and choose <strong>Resume</strong>. 3dsDL continues from where it stopped when the server allows it, and starts over safely when it doesn't.</p>
           </details>
-          <details>
-            <summary>Can it install CIAs or unzip archives?</summary>
+          <details id="q-cia">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Can it install CIAs or unzip archives?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>It downloads anything, including CIA files, which you then install with FBI. ZIP extraction is built in: turn on <strong>Settings → Offer to extract ZIP files</strong> and 3dsDL asks after each ZIP download.</p>
           </details>
-          <details>
-            <summary>Is it safe?</summary>
+          <details id="q-safe">
+            <summary><span class="note-icon" aria-hidden="true"><svg class="icon i-closed"><use href="#i-mail"/></svg><svg class="icon i-open"><use href="#i-mail-open"/></svg></span><span class="note-title">Is it safe?</span><span class="note-new" aria-hidden="true">NEW</span></summary>
             <p>3dsDL verifies HTTPS certificates, refuses ZIP entries that would escape their folder, and never overwrites a file without asking. It is open source, every release is built by GitHub Actions from the tagged code, and checksums are published with each release.</p>
           </details>
         </div>
       </section>
 
-      <section id="install" class="section">
+      <section id="install" class="section panel tone-a">
         <header class="section-head">
-          <p class="eyebrow">Install</p>
+          <p class="eyebrow"><span class="key key-a" aria-hidden="true">A</span>Install</p>
           <h2>Add it to your 3DS</h2>
           <p class="section-sub">You need a 3DS running custom firmware (Luma3DS) with FBI or the Homebrew Launcher. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
         </header>
 
         <!-- Pick a method; the 3DS below shows its QR code on the top screen
-             and what to do with it on the touch screen. -->
+             and what to do with it on the touch screen. On narrow screens the
+             steps move out of the console into .install-steps, where they can
+             be read. -->
         <div class="installer reveal">
           <div class="picker" role="tablist" aria-label="How to install 3dsDL" data-active="cia">
-            <button class="pick" type="button" role="tab" id="pick-cia" aria-selected="true" aria-controls="install-screens" data-method="cia" data-sound>
+            <button class="pick" type="button" role="tab" id="pick-cia" aria-selected="true" aria-controls="install-screens" data-method="cia">
               <span class="pick-title">HOME Menu app</span>
               <span class="pick-sub">3dsDL.cia, installs with FBI</span>
             </button>
-            <button class="pick" type="button" role="tab" id="pick-3dsx" aria-selected="false" aria-controls="install-screens" data-method="3dsx" tabindex="-1" data-sound>
+            <button class="pick" type="button" role="tab" id="pick-3dsx" aria-selected="false" aria-controls="install-screens" data-method="3dsx" tabindex="-1">
               <span class="pick-title">Homebrew Launcher</span>
               <span class="pick-sub">3dsDL.3dsx, runs from the SD card</span>
             </button>
           </div>
 
-          <div class="device device-front" id="install-screens" role="tabpanel" aria-labelledby="pick-cia">
-            <div class="device-stage">
-              <img class="device-photo" src="assets/new-3ds-front.png" width="736" height="736" alt="" loading="lazy" decoding="async">
+          <div class="install-panel" id="install-screens" role="tabpanel" aria-labelledby="pick-cia">
+            <div class="device device-front">
+              <div class="device-stage">
+                <img class="device-photo" src="assets/new-3ds-front.png" width="736" height="736" alt="" loading="lazy" decoding="async">
+                <span class="led" aria-hidden="true"></span>
 
-              <div class="screen screen-top">
-                <div class="view qr-view" data-view="cia">
-                  <figure class="qr-tile">
-                    <img src="qr/install-cia.svg" width="184" height="184" alt="QR code that installs the latest 3dsDL CIA with FBI">
-                  </figure>
-                  <div class="qr-side">
-                    <span class="qr-kicker">Scan with</span>
-                    <span class="qr-app">FBI</span>
-                    <span class="qr-path">Remote Install, then Scan QR Code</span>
-                    <span class="qr-file">3dsDL.cia</span>
+                <div class="screen screen-top">
+                  <div class="view qr-view" data-view="cia">
+                    <figure class="qr-tile">
+                      <img src="qr/install-cia.svg" width="184" height="184" alt="QR code that installs the latest 3dsDL CIA with FBI">
+                    </figure>
+                    <div class="qr-side">
+                      <span class="qr-kicker">Scan with</span>
+                      <span class="qr-app">FBI</span>
+                      <span class="qr-path">Remote Install, then Scan QR Code</span>
+                      <span class="qr-file">3dsDL.cia</span>
+                    </div>
+                  </div>
+                  <div class="view qr-view" data-view="3dsx" hidden>
+                    <figure class="qr-tile">
+                      <img src="qr/download-3dsx.svg" width="184" height="184" alt="QR code that downloads the latest 3dsDL.3dsx">
+                    </figure>
+                    <div class="qr-side">
+                      <span class="qr-kicker">Scan with</span>
+                      <span class="qr-app">3dsDL</span>
+                      <span class="qr-path">Scan QR Code, then save it to the SD card</span>
+                      <span class="qr-file">3dsDL.3dsx</span>
+                    </div>
                   </div>
                 </div>
-                <div class="view qr-view" data-view="3dsx" hidden>
-                  <figure class="qr-tile">
-                    <img src="qr/download-3dsx.svg" width="184" height="184" alt="QR code that downloads the latest 3dsDL.3dsx">
-                  </figure>
-                  <div class="qr-side">
-                    <span class="qr-kicker">Scan with</span>
-                    <span class="qr-app">3dsDL</span>
-                    <span class="qr-path">Scan QR Code, then save it to the SD card</span>
-                    <span class="qr-file">3dsDL.3dsx</span>
-                  </div>
-                </div>
-              </div>
 
-              <div class="screen screen-bottom">
-                <div class="view info-view" data-view="cia">
-                  <div class="info-head">
-                    <h3>HOME Menu app</h3>
-                    <span class="chip">Recommended</span>
+                <div class="screen screen-bottom">
+                  <div class="split-note" aria-hidden="true"><b>&#9660;</b><span>Steps below</span></div>
+                  <div class="view info-view" data-view="cia">
+                    <div class="info-head">
+                      <h3>HOME Menu app</h3>
+                      <span class="chip">Recommended</span>
+                    </div>
+                    <p class="info-meta">3dsDL.cia<span class="size-inline" data-asset-size="3dsDL.cia"></span>, updates in place</p>
+                    <ol class="info-steps">
+                      <li>Open <b>FBI</b> on your 3DS.</li>
+                      <li>Choose <b>Remote Install</b>, then <b>Scan QR Code</b>.</li>
+                      <li>Point the camera at the code above and confirm.</li>
+                    </ol>
+                    <div class="info-actions">
+                      <button class="sbtn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia"><span>Copy link</span></button>
+                      <a class="sbtn sbtn-go" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">Download</a>
+                    </div>
                   </div>
-                  <p class="info-meta">3dsDL.cia<span class="size-inline" data-asset-size="3dsDL.cia"></span>, updates in place</p>
-                  <ol class="info-steps">
-                    <li>Open <b>FBI</b> on your 3DS.</li>
-                    <li>Choose <b>Remote Install</b>, then <b>Scan QR Code</b>.</li>
-                    <li>Point the camera at the code above and confirm.</li>
-                  </ol>
-                  <div class="info-actions">
-                    <button class="sbtn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia"><span>Copy link</span></button>
-                    <a class="sbtn sbtn-go" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">Download</a>
-                  </div>
-                </div>
-                <div class="view info-view" data-view="3dsx" hidden>
-                  <div class="info-head">
-                    <h3>Homebrew Launcher</h3>
-                  </div>
-                  <p class="info-meta">3dsDL.3dsx<span class="size-inline" data-asset-size="3dsDL.3dsx"></span>, no install needed</p>
-                  <ol class="info-steps">
-                    <li><b>Updating?</b> Scan it in 3dsDL and pick <b>Overwrite</b>.</li>
-                    <li><b>First time?</b> Copy it to <b>sdmc:/3ds/3dsDL/</b>.</li>
-                    <li>Start it from the Homebrew Launcher.</li>
-                  </ol>
-                  <div class="info-actions">
-                    <button class="sbtn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx"><span>Copy link</span></button>
-                    <a class="sbtn sbtn-go" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">Download</a>
+                  <div class="view info-view" data-view="3dsx" hidden>
+                    <div class="info-head">
+                      <h3>Homebrew Launcher</h3>
+                    </div>
+                    <p class="info-meta">3dsDL.3dsx<span class="size-inline" data-asset-size="3dsDL.3dsx"></span>, no install needed</p>
+                    <ol class="info-steps">
+                      <li><b>Updating?</b> Scan it in 3dsDL and pick <b>Overwrite</b>.</li>
+                      <li><b>First time?</b> Copy it to <b>sdmc:/3ds/3dsDL/</b>.</li>
+                      <li>Start it from the Homebrew Launcher.</li>
+                    </ol>
+                    <div class="info-actions">
+                      <button class="sbtn" type="button" data-copy="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx"><span>Copy link</span></button>
+                      <a class="sbtn sbtn-go" href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">Download</a>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            <div class="install-steps"></div>
           </div>
 
           <noscript>
@@ -330,10 +436,10 @@
         </div>
 
         <aside class="notice">
-          <svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>
+          <span class="notice-icon" aria-hidden="true"><svg class="icon"><use href="#i-clock"/></svg></span>
           <p><strong>Certificate errors?</strong> HTTPS needs the console's date to be right. Open <strong>Settings → Console clock</strong> in 3dsDL, or in Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd>) choose <strong>Miscellaneous options → Update time and date via NTP</strong>.</p>
         </aside>
-        <p class="fine">
+        <p class="fine fine-center">
           Direct downloads: <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.cia">3dsDL.cia</a> · <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.3dsx">3dsDL.3dsx</a> ·
           SHA-256 checksums in <a href="https://github.com/ankushKun/3dsDL/releases/latest/download/3dsDL.sha256">3dsDL.sha256</a> ·
           older versions on the <a href="https://github.com/ankushKun/3dsDL/releases">releases page</a>.
@@ -341,25 +447,37 @@
       </section>
     </main>
 
-    <footer class="foot">
-      <nav class="foot-links" aria-label="Project links">
-        <a href="https://github.com/ankushKun/3dsDL"><svg class="icon"><use href="#i-github"/></svg>Source code</a>
-        <a href="https://github.com/ankushKun/3dsDL/releases">Releases</a>
-        <a href="https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md">Roadmap</a>
-        <a href="https://github.com/ankushKun/3dsDL/issues">Report a bug</a>
-        <a href="https://ankush.one">ankush.one</a>
-        <button class="sound-toggle" type="button" id="sound-toggle" aria-pressed="true">
-          <svg class="icon"><use href="#i-sound"/></svg><span>Menu sounds on</span>
-        </button>
-      </nav>
-      <p class="legal">3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D. Not affiliated with Nintendo; Nintendo 3DS is a trademark of Nintendo. Hero photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, with the screens replaced). Install image: New Nintendo 3DS product render © Nintendo, with the screens replaced. Fonts: M PLUS Rounded 1c and M PLUS 1 Code (OFL).</p>
+    <!-- The back of the box: a (made-up) rating, the links and the small
+         print. -->
+    <footer class="foot panel">
+      <div class="rating" role="img" aria-label="Rated H for Homebrew. Content: frequent downloading, mild QR codes, open source.">
+        <div class="rating-box"><b>H</b><span>HOMEBREW</span></div>
+        <ul class="rating-notes">
+          <li>Frequent Downloading</li>
+          <li>Mild QR Codes</li>
+          <li>Open Source</li>
+        </ul>
+      </div>
+      <div class="foot-main">
+        <nav class="foot-links" aria-label="Project links">
+          <a href="https://github.com/ankushKun/3dsDL"><svg class="icon"><use href="#i-github"/></svg>Source code</a>
+          <a href="https://github.com/ankushKun/3dsDL/releases">Releases</a>
+          <a href="https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md">Roadmap</a>
+          <a href="https://github.com/ankushKun/3dsDL/issues">Report a bug</a>
+          <a href="https://ankush.one">ankush.one</a>
+          <button class="sound-toggle" type="button" id="sound-toggle" aria-pressed="true">
+            <svg class="icon"><use href="#i-sound"/></svg><span>Menu sounds on</span>
+          </button>
+        </nav>
+        <p class="legal">3dsDL is free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>. It grew out of <a href="https://github.com/hax0kartik/Multidownload">Multidownload</a> by hax0kartik and is built on libcurl, Mbed TLS, quirc and Citro2D. Not affiliated with Nintendo; Nintendo 3DS is a trademark of Nintendo. Hero photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, with the screens replaced and doodles added). Install image: New Nintendo 3DS product render © Nintendo, with the screens replaced. Fonts: M PLUS Rounded 1c, M PLUS 1 Code, DotGothic16 and Gaegu (OFL).</p>
+      </div>
     </footer>
   </div>
 
   <dialog id="qr-dialog" aria-label="Large QR code">
     <div id="qr-dialog-code" class="qr-dialog"></div>
     <p id="qr-dialog-url" class="dialog-url"></p>
-    <form method="dialog"><button class="btn btn-aqua" type="submit">Close</button></form>
+    <form method="dialog"><button class="btn btn-go" type="submit">Close</button></form>
   </dialog>
 
   <script src="vendor/qrcode.js" defer></script>

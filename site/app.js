@@ -1,7 +1,9 @@
 // Progressive enhancements for the 3dsDL website. The page works without
-// this file except for the "send a link" QR tool. Motion follows the
-// conventions of ankush.one/mixtunes: short eased transitions, reveals on
-// scroll, and nothing hidden until the script has confirmed it is running.
+// this file except for the "send a link" QR tool. Everything here plays
+// along with the DS and 3DS theme: the HOME Menu features, the status bar
+// clock, PictoChat and Notifications behaviour, and the menu sounds. Nothing
+// is hidden until the script has confirmed it is running, and motion is
+// skipped when reduced motion is requested.
 (function () {
   "use strict";
 
@@ -11,6 +13,11 @@
   var REPO = "ankushKun/3dsDL";
   var PAGE_URL = location.origin + location.pathname;
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+  // Any part of the page can ask for a menu sound by name; setUpSounds fills
+  // this in, and until then (or with sounds off) it does nothing.
+  var sfx = { play: function () {} };
 
   function formatBytes(bytes) {
     if (bytes < 1024) return Math.round(bytes) + " B";
@@ -41,6 +48,10 @@
         document.querySelectorAll("[data-release]").forEach(function (element) {
           element.textContent = "latest release " + release.tag_name + when;
         });
+        document.querySelectorAll("[data-release-tag]").forEach(function (element) {
+          element.textContent = "New! " + release.tag_name;
+          element.hidden = false;
+        });
         (release.assets || []).forEach(function (asset) {
           document
             .querySelectorAll('[data-asset-size="' + asset.name + '"]')
@@ -66,7 +77,7 @@
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
-        function () { done("Copied"); },
+        function () { done("Copied"); sfx.play("copy"); },
         function () { done("Copy failed"); }
       );
     } else {
@@ -137,6 +148,7 @@
     var input = document.getElementById("send-url");
     var status = document.getElementById("send-status");
     var preview = document.getElementById("send-qr");
+    var reply = document.getElementById("send-reply");
     var bigButton = document.getElementById("send-big");
     var copyButton = document.getElementById("send-copy");
     var dialog = document.getElementById("qr-dialog");
@@ -146,6 +158,17 @@
     var placeholder = preview.innerHTML;
     var current = "";
     var timer = null;
+    var showing = false;
+
+    // A new code pops in like a PictoChat message arriving.
+    function arrive() {
+      sfx.play("message");
+      if (reduceMotion || !reply.animate) return;
+      reply.animate(
+        { transform: ["translateY(16px) scale(0.94)", "none"], opacity: [0.3, 1] },
+        { duration: 520, easing: SPRING }
+      );
+    }
 
     // Encode non-ASCII characters as UTF-8, like the 3DS keyboard does.
     if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs["UTF-8"]) {
@@ -163,6 +186,7 @@
       preview.innerHTML = "";
       if (!result.ok) {
         preview.innerHTML = placeholder;
+        showing = false;
         return;
       }
       try {
@@ -175,6 +199,8 @@
         bigButton.disabled = true;
         copyButton.disabled = true;
       }
+      if (current && !showing) arrive();
+      showing = Boolean(current);
     }
 
     input.addEventListener("input", function () {
@@ -263,9 +289,10 @@
   }
 
   // The screens are drawn at native 3DS size and projected onto the photo by
-  // fixed matrices computed for a 1400 px wide image, so they need scaling
-  // by (rendered width / 1400). CSS cannot turn a length into a number, so
-  // the factor is set here and kept current as the stage resizes.
+  // fixed matrices computed for the photo at --photo-w pixels wide, so they
+  // need scaling by (rendered width / --photo-w). CSS cannot turn a length
+  // into a number, so the factor is set here and kept current as the stage
+  // resizes.
   function setUpScreenScale() {
     document.querySelectorAll(".device-stage").forEach(function (stage) {
       var photoWidth = parseFloat(getComputedStyle(stage).getPropertyValue("--photo-w"));
@@ -306,6 +333,55 @@
     device.addEventListener("pointerleave", function () {
       if (frame) cancelAnimationFrame(frame);
       stage.style.transform = "";
+    });
+  }
+
+  // The FAQ is the Notifications app: each question is marked new until it
+  // is opened, and the browser remembers which ones were read.
+  function setUpNotifications() {
+    var faq = document.querySelector(".faq");
+    var count = document.querySelector("[data-unread]");
+    if (!faq) return;
+    var rows = Array.prototype.slice.call(faq.querySelectorAll("details[id]"));
+    var KEY = "3dsdl-read";
+    var read = [];
+    try {
+      read = JSON.parse(localStorage.getItem(KEY) || "[]");
+      if (!Array.isArray(read)) read = [];
+    } catch (error) {
+      read = [];
+    }
+
+    function update() {
+      var unread = rows.filter(function (row) { return !row.classList.contains("is-read"); }).length;
+      if (!count) return;
+      count.textContent = unread ? unread + " new" : "All read";
+      count.classList.toggle("is-done", !unread);
+    }
+
+    rows.forEach(function (row) {
+      if (read.indexOf(row.id) !== -1) row.classList.add("is-read");
+      row.addEventListener("toggle", function () {
+        if (!row.open || row.classList.contains("is-read")) return;
+        row.classList.add("is-read");
+        read.push(row.id);
+        try {
+          localStorage.setItem(KEY, JSON.stringify(read));
+        } catch (error) {
+          // Remembering is a nicety; the row still reads as read this visit.
+        }
+        update();
+      });
+      var summary = row.querySelector("summary");
+      summary.addEventListener("click", function () {
+        var opening = !row.open || row.classList.contains("is-closing");
+        sfx.play(opening ? "open" : "close");
+      });
+    });
+    update();
+    // Rows already read appear read at once; only later changes animate.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { faq.classList.add("is-ready"); });
     });
   }
 
@@ -382,9 +458,30 @@
     var turn = 0;
 
     function stopAll() {
-      panel.querySelectorAll(".view, .qr-tile").forEach(function (element) {
-        element.getAnimations().forEach(function (animation) { animation.cancel(); });
+      views.forEach(function (view) {
+        view.getAnimations({ subtree: true }).forEach(function (animation) { animation.cancel(); });
       });
+    }
+
+    // On phones the touch screen is too small to read, so its views move out
+    // below the console (and back when there is room again).
+    var stepsBox = panel.querySelector(".install-steps");
+    var bottomScreen = panel.querySelector(".screen-bottom");
+    var infoViews = views.filter(function (view) { return view.classList.contains("info-view"); });
+    var narrow = window.matchMedia("(max-width: 640px)");
+    function placeSteps() {
+      if (!stepsBox || !bottomScreen) return;
+      var split = narrow.matches;
+      panel.classList.toggle("is-split", split);
+      infoViews.forEach(function (view) {
+        (split ? stepsBox : bottomScreen).appendChild(view);
+      });
+    }
+    placeSteps();
+    if (narrow.addEventListener) {
+      narrow.addEventListener("change", placeSteps);
+    } else if (narrow.addListener) {
+      narrow.addListener(placeSteps);
     }
 
     function showOnly(method) {
@@ -440,6 +537,7 @@
       });
       picker.dataset.active = pick.dataset.method;
       panel.setAttribute("aria-labelledby", pick.id);
+      sfx.play("swipe");
       swap(pick.dataset.method, picks.indexOf(pick) > before ? 1 : -1);
     }
 
@@ -459,6 +557,127 @@
       if (next === undefined) return;
       event.preventDefault();
       select(picks[next], true);
+    });
+  }
+
+  // The status bar clock, in the visitor's own time and format, with the
+  // colon blinking like the 3DS's.
+  function setUpClock() {
+    var clock = document.querySelector("[data-clock]");
+    if (!clock || !window.Intl) return;
+    var hours = clock.querySelector("[data-hours]");
+    var minutes = clock.querySelector("[data-minutes]");
+    var format = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+    function tick() {
+      var parts = {};
+      format.formatToParts(new Date()).forEach(function (part) { parts[part.type] = part.value; });
+      hours.textContent = parts.hour || "--";
+      minutes.textContent = (parts.minute || "--") + (parts.dayPeriod ? " " + parts.dayPeriod : "");
+      setTimeout(tick, 60000 - (Date.now() % 60000) + 50);
+    }
+    tick();
+  }
+
+  // The features as a HOME Menu: a tab per icon (arrow keys move between
+  // them, as in the ARIA tabs pattern), a selection frame that glides to the
+  // selected icon, and the selected feature on the "top screen". While the
+  // section is in view and nobody has touched it, it browses on its own.
+  function setUpHome() {
+    var home = document.querySelector("[data-home]");
+    if (!home) return;
+    var grid = home.querySelector(".home-grid");
+    var cursor = home.querySelector(".home-cursor");
+    var icons = Array.prototype.slice.call(home.querySelectorAll(".app-icon"));
+    var panels = icons.map(function (icon) {
+      return document.getElementById(icon.getAttribute("aria-controls"));
+    });
+    if (!grid || !cursor || !icons.length) return;
+    var index = Math.max(0, icons.findIndex(function (icon) {
+      return icon.getAttribute("aria-selected") === "true";
+    }));
+
+    // Layout positions (offsets ignore the selected icon's lift and scale).
+    function place() {
+      var icon = icons[index];
+      var glyph = icon.querySelector(".app-glyph");
+      if (!glyph || !icon.offsetWidth) return;
+      var margin = 6;
+      cursor.style.width = glyph.offsetWidth + margin * 2 + "px";
+      cursor.style.height = glyph.offsetHeight + margin * 2 + "px";
+      cursor.style.transform = "translate(" +
+        (icon.offsetLeft + glyph.offsetLeft - margin) + "px, " +
+        (icon.offsetTop + glyph.offsetTop - margin) + "px)";
+    }
+
+    function select(next, how) {
+      if (next === index) {
+        if (how === "key") icons[next].focus();
+        return;
+      }
+      index = next;
+      icons.forEach(function (icon, i) {
+        var on = i === next;
+        icon.setAttribute("aria-selected", on ? "true" : "false");
+        icon.tabIndex = on ? 0 : -1;
+        if (panels[i]) panels[i].classList.toggle("is-on", on);
+      });
+      place();
+      if (how === "key") icons[next].focus();
+      if (how !== "auto") sfx.play("select");
+    }
+
+    place();
+    requestAnimationFrame(function () { cursor.classList.add("is-ready"); });
+    if ("ResizeObserver" in window) new ResizeObserver(place).observe(grid);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+
+    icons.forEach(function (icon, i) {
+      icon.addEventListener("click", function () { select(i, "click"); });
+    });
+
+    grid.addEventListener("keydown", function (event) {
+      var columns = getComputedStyle(grid).gridTemplateColumns.split(" ").length || icons.length;
+      var last = icons.length - 1;
+      var next = {
+        ArrowLeft: index === 0 ? last : index - 1,
+        ArrowRight: index === last ? 0 : index + 1,
+        ArrowUp: Math.max(0, index - columns),
+        ArrowDown: Math.min(last, index + columns),
+        Home: 0,
+        End: last
+      }[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      select(next, "key");
+    });
+
+    // Attract mode: off with reduced motion, paused while the pointer is over
+    // the menu or the section is out of view, and over for good once someone
+    // picks an icon themselves.
+    if (reduceMotion || !("IntersectionObserver" in window)) return;
+    var timer = null;
+    var visible = false;
+    var hovering = false;
+    var done = false;
+    function stop() {
+      clearInterval(timer);
+      timer = null;
+    }
+    function run() {
+      stop();
+      if (done || !visible || hovering) return;
+      timer = setInterval(function () {
+        if (!document.hidden) select((index + 1) % icons.length, "auto");
+      }, 4200);
+    }
+    new IntersectionObserver(function (entries) {
+      visible = entries[0].isIntersecting;
+      run();
+    }, { threshold: 0.5 }).observe(home);
+    home.addEventListener("pointerenter", function () { hovering = true; run(); });
+    home.addEventListener("pointerleave", function () { hovering = false; run(); });
+    ["pointerdown", "keydown", "focusin"].forEach(function (type) {
+      home.addEventListener(type, function () { done = true; stop(); });
     });
   }
 
@@ -500,8 +719,9 @@
     });
   }
 
-  // Menu sounds, synthesised on the fly. On by default; browsers only allow
-  // audio after the first click or key press, so they start from then.
+  // Menu sounds, synthesised on the fly (no recordings of anyone's console).
+  // On by default; browsers only allow audio after the first click or key
+  // press, so they start from then.
   function setUpSounds() {
     var toggle = document.getElementById("sound-toggle");
     var AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -526,20 +746,49 @@
     window.addEventListener("pointerdown", unlock, { passive: true });
     window.addEventListener("keydown", unlock);
 
-    function blip(frequency, endFrequency, duration, volume) {
-      if (!enabled || !context || context.state !== "running") return;
-      var now = context.currentTime;
+    // One short note: a pitch glide with a quick attack and an exponential
+    // fade, optionally delayed so notes can make a little tune.
+    function tone(from, to, duration, volume, type, delay) {
+      var start = context.currentTime + (delay || 0);
       var oscillator = context.createOscillator();
       var gain = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, now);
-      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
-      gain.gain.setValueAtTime(volume, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      oscillator.type = type || "sine";
+      oscillator.frequency.setValueAtTime(from, start);
+      oscillator.frequency.exponentialRampToValueAtTime(to, start + duration);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(volume, start + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       oscillator.connect(gain).connect(context.destination);
-      oscillator.start(now);
-      oscillator.stop(now + duration + 0.02);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
     }
+
+    var sounds = {
+      hover: function () { tone(1800, 1500, 0.03, 0.03); },
+      click: function () { tone(520, 880, 0.09, 0.06); },
+      select: function () {
+        tone(1175, 1175, 0.05, 0.045, "triangle");
+        tone(1568, 1568, 0.07, 0.04, "triangle", 0.05);
+      },
+      swipe: function () { tone(420, 980, 0.12, 0.05); },
+      open: function () { tone(660, 1100, 0.1, 0.055); },
+      close: function () { tone(900, 520, 0.1, 0.05); },
+      copy: function () {
+        tone(784, 784, 0.08, 0.045, "triangle");
+        tone(988, 988, 0.08, 0.045, "triangle", 0.06);
+        tone(1319, 1319, 0.14, 0.045, "triangle", 0.12);
+      },
+      message: function () {
+        tone(1319, 1319, 0.07, 0.05, "triangle");
+        tone(1760, 1760, 0.12, 0.05, "triangle", 0.08);
+      },
+      toggle: function () { tone(660, 990, 0.08, 0.06); }
+    };
+
+    sfx.play = function (name) {
+      if (!enabled || !context || context.state !== "running") return;
+      (sounds[name] || sounds.click)();
+    };
 
     function render() {
       toggle.setAttribute("aria-pressed", enabled ? "true" : "false");
@@ -556,21 +805,21 @@
         // Remembering the choice is a nicety; it still applies to this visit.
       }
       render();
-      blip(660, 990, 0.08, 0.06);
+      sfx.play("toggle");
     });
 
     document.addEventListener("pointerover", function (event) {
-      var target = event.target.closest("[data-sound], .btn, .tabs a");
+      var target = event.target.closest("[data-sound], .btn, .tabs a, .app-icon, .pick, .faq summary, .sbtn");
       if (!target || target.contains(event.relatedTarget)) return;
       var now = Date.now();
       if (now - lastHover < 70) return;
       lastHover = now;
-      blip(1800, 1500, 0.03, 0.03);
+      sfx.play("hover");
     });
+    // Buttons and tabs click; the menu, installer and FAQ play their own.
     document.addEventListener("click", function (event) {
-      if (event.target.closest("[data-sound], .btn, summary, .tabs a")) {
-        blip(520, 880, 0.09, 0.06);
-      }
+      var target = event.target.closest("[data-sound], .btn, .tabs a, .sbtn, .brand");
+      if (target) sfx.play(target.getAttribute("data-sound") || "click");
     });
   }
 
@@ -580,6 +829,9 @@
   setUpScreenScale();
   setUpDeviceDemo();
   setUpTilt();
+  setUpClock();
+  setUpHome();
+  setUpNotifications();
   setUpFaq();
   setUpInstaller();
   setUpReveals();
