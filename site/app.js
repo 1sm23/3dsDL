@@ -367,6 +367,101 @@
     });
   }
 
+  // The install tabs. Arrow keys, Home and End move between them (a roving
+  // tabindex, as in the ARIA tabs pattern). Switching slides the old QR code
+  // and details off both screens and the new ones on, in the tab's direction.
+  function setUpInstaller() {
+    var picker = document.querySelector(".picker");
+    var panel = document.getElementById("install-screens");
+    if (!picker || !panel) return;
+    var picks = Array.prototype.slice.call(picker.querySelectorAll(".pick"));
+    var animated = !reduceMotion && "animate" in Element.prototype;
+    var easeOut = "cubic-bezier(0.23, 1, 0.32, 1)";
+    var easeIn = "cubic-bezier(0.4, 0, 1, 1)";
+    var views = Array.prototype.slice.call(panel.querySelectorAll(".view"));
+    var turn = 0;
+
+    function stopAll() {
+      panel.querySelectorAll(".view, .qr-tile").forEach(function (element) {
+        element.getAnimations().forEach(function (animation) { animation.cancel(); });
+      });
+    }
+
+    function showOnly(method) {
+      views.forEach(function (view) { view.hidden = view.dataset.view !== method; });
+    }
+
+    function swap(method, direction) {
+      var mine = ++turn;
+      stopAll();
+      var leaving = views.filter(function (view) {
+        return !view.hidden && view.dataset.view !== method;
+      });
+      if (!animated || !leaving.length) {
+        showOnly(method);
+        return;
+      }
+
+      var exits = leaving.map(function (view, index) {
+        return view.animate(
+          { opacity: [1, 0], transform: ["none", "translateX(" + -direction * 24 + "px)"] },
+          { duration: 160, delay: index * 30, easing: easeIn, fill: "forwards" }
+        ).finished;
+      });
+      // A rejection means a newer click cancelled this swap and owns the views.
+      Promise.all(exits).then(function () {
+        if (mine !== turn) return;
+        showOnly(method);
+        stopAll();
+        views.filter(function (view) { return !view.hidden; }).forEach(function (view, index) {
+          var timing = { duration: 320, delay: index * 50, easing: easeOut, fill: "backwards" };
+          view.animate(
+            { opacity: [0, 1], transform: ["translateX(" + direction * 24 + "px)", "none"] },
+            timing
+          );
+          var tile = view.querySelector(".qr-tile");
+          if (tile) {
+            tile.animate({ transform: ["scale(0.92)", "none"] }, { duration: 380, easing: easeOut, fill: "backwards" });
+          }
+        });
+      }, function () {});
+    }
+
+    function select(pick, focus) {
+      if (focus) pick.focus();
+      if (pick.getAttribute("aria-selected") === "true") return;
+      var before = picks.findIndex(function (other) {
+        return other.getAttribute("aria-selected") === "true";
+      });
+      picks.forEach(function (other) {
+        var on = other === pick;
+        other.setAttribute("aria-selected", on ? "true" : "false");
+        other.tabIndex = on ? 0 : -1;
+      });
+      picker.dataset.active = pick.dataset.method;
+      panel.setAttribute("aria-labelledby", pick.id);
+      swap(pick.dataset.method, picks.indexOf(pick) > before ? 1 : -1);
+    }
+
+    picks.forEach(function (pick) {
+      pick.addEventListener("click", function () { select(pick, false); });
+    });
+
+    picker.addEventListener("keydown", function (event) {
+      var index = picks.indexOf(document.activeElement);
+      if (index < 0) return;
+      var next = {
+        ArrowLeft: (index - 1 + picks.length) % picks.length,
+        ArrowRight: (index + 1) % picks.length,
+        Home: 0,
+        End: picks.length - 1
+      }[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      select(picks[next], true);
+    });
+  }
+
   // Scroll reveals. The reveal-ready class is added only here, so sections
   // are never hidden unless this code is running and can show them again.
   function setUpReveals() {
@@ -486,6 +581,7 @@
   setUpDeviceDemo();
   setUpTilt();
   setUpFaq();
+  setUpInstaller();
   setUpReveals();
   setUpTabs();
   setUpSounds();

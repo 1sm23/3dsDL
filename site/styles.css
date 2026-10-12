@@ -411,12 +411,17 @@ symbol .fill {
   --m-bottom: matrix3d(1.063699, 0.348492, 0, -0.000208, -1.145845, 0.471260, 0, -0.000304, 0, 0, 1, 0, 493.838504, 590.464957, 0, 1);
 }
 
-/* The install section: seen from above (1400 x 1323). */
-.device-flat .device-stage {
-  aspect-ratio: 1400 / 1323;
-  --photo-w: 1400;
-  --m-top: matrix3d(1.096445, 0.438849, 0, -0.000199, -0.630195, 1.241517, 0, -0.000037, 0, 0, 1, 0, 620.788252, 132.525716, 0, 1);
-  --m-bottom: matrix3d(1.126165, 0.452537, 0, -0.000202, -0.945143, 0.873932, 0, -0.000402, 0, 0, 1, 0, 467.965228, 559.910825, 0, 1);
+/* The install section: a dead-front New 3DS render (736 x 736), whose
+   screens are axis-aligned, so the matrices are plain scales. */
+.device-front {
+  width: min(100%, 760px);
+}
+
+.device-front .device-stage {
+  aspect-ratio: 1 / 1;
+  --photo-w: 736;
+  --m-top: matrix3d(0.8875, 0, 0, 0, 0, 0.883333, 0, 0, 0, 0, 1, 0, 191.5, 114.5, 0, 1);
+  --m-bottom: matrix3d(0.882813, 0, 0, 0, 0, 0.882917, 0, 0, 0, 0, 1, 0, 227.5, 412.6, 0, 1);
 }
 
 /* --k is (rendered width / --photo-w), set by app.js: CSS cannot divide a
@@ -891,92 +896,322 @@ symbol .fill {
 
 /* ----------------------------------------------------------------- Install */
 
-.install-device {
-  width: min(100%, 440px);
-  margin: -4px auto 30px;
-}
+/* --------------------------------------------------------------- Installer
+   Two tabs pick the method; the 3DS shows its QR code on the top screen and
+   the details on the touch screen. Everything inside a screen is laid out in
+   3DS pixels (400 x 240 and 320 x 240) and scaled with the screen. */
 
-.install-cards {
+.installer {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
-  gap: 14px;
+  justify-items: center;
 }
 
-.install-card {
-  background: #fff;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+/* A segmented control whose highlight slides to the selected tab. */
+.picker {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 560px);
+  margin-bottom: 18px;
+  border: 1px solid #8e8e89;
+  border-radius: 10px;
+  background: linear-gradient(#fff, #e8e8e4);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
 }
 
-.install-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 16px;
-  background: linear-gradient(#fff, var(--well-hi));
-  border-bottom: 1px solid var(--line-soft);
-  border-radius: var(--radius) var(--radius) 0 0;
+.picker::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  background: linear-gradient(var(--blue-hi), var(--blue));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  transition: transform 340ms var(--ease-out);
 }
 
-.install-head h3 {
-  font-size: 1rem;
+.picker[data-active="3dsx"]::before {
+  transform: translateX(100%);
 }
 
-.badge {
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 0.72rem;
+.pick {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  padding: 9px 14px 10px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: color var(--dur-ui) var(--ease-out);
+}
+
+.pick + .pick {
+  border-left: 1px solid #c4c4bf;
+}
+
+.pick:hover:not([aria-selected="true"]) {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.pick:active {
+  transform: translateY(1px);
+}
+
+.pick[aria-selected="true"] {
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.pick:focus-visible {
+  outline-offset: -4px;
+  border-radius: 8px;
+}
+
+.pick-title {
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mute);
-  background: var(--well);
-  border: 1px solid var(--line-soft);
+  font-size: 0.98rem;
 }
 
-.badge-go {
-  color: #1d5426;
-  background: #d8f3d8;
-  border-color: #a9e2ae;
-}
-
-.install-body {
-  display: flex;
-  gap: 18px;
-  align-items: flex-start;
-  padding: 16px;
+.pick-sub {
+  font-size: 0.78rem;
+  opacity: 0.8;
 }
 
 @media (max-width: 480px) {
-  .install-body {
-    flex-direction: column;
-    align-items: center;
+  .pick {
+    padding: 8px 8px 9px;
+  }
+  .pick-title {
+    font-size: 0.9rem;
+  }
+  .pick-sub {
+    font-size: 0.72rem;
   }
 }
 
-.steps {
-  margin: 0;
-  padding-left: 1.3em;
-  font-size: 0.9rem;
+/* Without the script the tabs can't switch and the screens aren't mapped,
+   so the <noscript> list stands in for both. */
+html:not(.js) .picker,
+html:not(.js) .device-front {
+  display: none;
 }
 
-.steps li {
-  margin-bottom: 7px;
+.view {
+  position: absolute;
+  inset: 0;
 }
 
-.steps li::marker {
-  color: var(--blue-ink);
-  font-weight: 700;
+.view[hidden] {
+  display: none;
 }
 
-.install-foot {
+/* Top screen: QR code on the left, what to scan it with on the right. */
+.qr-view {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px 0 22px;
+}
+
+.qr-tile {
+  flex: none;
+  margin: 0;
+  padding: 8px;
+  line-height: 0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.qr-tile img {
+  display: block;
+  width: 184px;
+  height: 184px;
+  image-rendering: pixelated;
+}
+
+.qr-side {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.qr-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.qr-app {
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--app-primary);
+}
+
+.qr-path {
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--app-text);
+}
+
+.qr-file {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font: 500 12px var(--mono);
+  color: var(--app-text);
+  background: var(--app-raised);
+  box-shadow: inset 3px 0 0 var(--app-primary);
+}
+
+/* Touch screen: title, file, steps and two buttons. */
+.info-view {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px 15px 14px;
+}
+
+.info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.info-head h3 {
+  font-size: 18px;
+  color: var(--app-text);
+}
+
+.chip {
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-bg);
+  background: var(--app-green);
+}
+
+.info-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--app-muted);
+}
+
+.size-inline:not(:empty)::before {
+  content: " · ";
+}
+
+.info-steps {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.info-steps li {
+  position: relative;
+  padding-left: 25px;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--app-text);
+  counter-increment: step;
+}
+
+.info-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--app-bg);
+  background: var(--app-primary);
+}
+
+.info-steps b {
+  color: #fff;
+}
+
+.info-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  padding: 0 16px 16px;
+  margin-top: auto;
+}
+
+/* Buttons in 3dsDL's own style: flat, with a hard drop shadow. */
+.sbtn {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  border: 0;
+  border-radius: 3px;
+  font: 700 14px var(--font);
+  letter-spacing: 0.02em;
+  color: var(--app-text);
+  text-decoration: none;
+  background: var(--app-raised);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out), filter var(--dur-ui) var(--ease-out);
+}
+
+.sbtn:hover {
+  filter: brightness(1.15);
+}
+
+.sbtn:active {
+  transform: translate(2px, 3px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.4);
+}
+
+.sbtn-go {
+  color: var(--app-bg);
+  background: var(--app-primary);
+  box-shadow: inset 5px 0 0 #c5f8fc, 2px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.sbtn-go:active {
+  box-shadow: inset 5px 0 0 #c5f8fc;
+}
+
+.sbtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.nojs-downloads {
+  display: grid;
+  gap: 14px;
+  max-width: 640px;
+  margin: 18px auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nojs-downloads img {
+  display: block;
+  margin-top: 6px;
 }
 
 .notice {
@@ -1103,14 +1338,12 @@ dialog::backdrop {
     transform: none;
   }
 
-  .reveal-ready .features .feature,
-  .reveal-ready .install-cards .install-card {
+  .reveal-ready .features .feature {
     opacity: 0;
     transform: translateY(8px);
   }
 
-  .reveal-ready .reveal.is-in .features .feature,
-  .reveal-ready .install-cards.is-in .install-card {
+  .reveal-ready .reveal.is-in .features .feature {
     opacity: 1;
     transform: none;
     transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
@@ -1122,7 +1355,6 @@ dialog::backdrop {
   .reveal-ready .reveal.is-in .feature:nth-child(4) { transition-delay: 160ms; }
   .reveal-ready .reveal.is-in .feature:nth-child(5) { transition-delay: 200ms; }
   .reveal-ready .reveal.is-in .feature:nth-child(6) { transition-delay: 240ms; }
-  .reveal-ready .install-cards.is-in .install-card:nth-child(2) { transition-delay: 70ms; }
 }
 
 @media (prefers-reduced-motion: reduce) {

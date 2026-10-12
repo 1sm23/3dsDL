@@ -16,29 +16,29 @@ The static site published at https://ankush.one/3dsDL/ by
 - `fonts/`: M PLUS Rounded 1c and M PLUS 1 Code, Latin subsets, under the
   SIL Open Font License (the `OFL-*.txt` files).
 - `assets/`: the icon and banner resized from `resources/`, plus the two
-  console photographs below.
+  console images below.
 
-## Console photographs
-
-Both come from Wikimedia Commons, with their transparency kept.
+## Console images
 
 | File | Used in | Source | Author | Licence |
 | --- | --- | --- | --- | --- |
 | `assets/new-3ds-angled.png` | hero | [File:New Nintendo 3DS (weiß) 20250129 HOF2650 RAW-Export.png](https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png), resized to 1800 px and cropped to the console (1356 × 1177) | PantheraLeo1359531 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| `assets/new-3ds.png` | install | [File:New Nintendo 3DS.png](https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS.png), resized to 1400 px | PhilipTerryGraham | CC0 |
+| `assets/new-3ds-front.png` | install | Nintendo's front-on New Nintendo 3DS product render, cut out at 736 × 736 with the screens blanked | Nintendo | © Nintendo, not freely licensed |
 
 The CC BY photograph requires the credit that the page footer carries; the
-footer also notes that it was cropped and that its screens are replaced.
+footer also notes that it was cropped and that its screens are replaced. The
+install render is Nintendo's own marketing image, credited in the footer too;
+swap it for a freely licensed front view if one turns up.
 
-### Live screens on the photos
+### Live screens on the images
 
-Both photos show 3dsDL on their screens. The screens are HTML drawn at the
+Both images show 3dsDL on their screens. The screens are HTML drawn at the
 3DS's native sizes (400 × 240 and 320 × 240 px) using the same coordinates
-as `ui.cpp` (`drawProgress()` in the hero, the home screen in the install
-section), then projected onto the photographed screens with a CSS
-`matrix3d()`. Each photo's matrices live on `.device-angled` and
-`.device-flat` in `styles.css` and come from `scripts/screen-map`; see its
-README. If a photo is replaced, its matrices have to be recomputed.
+as `ui.cpp` (`drawProgress()` in the hero; the install section shows the
+QR code and steps for whichever method is picked), then projected onto the photographed screens with a CSS
+`matrix3d()`. Each image's matrices live on `.device-angled` and
+`.device-front` in `styles.css` and come from `scripts/screen-map`; see its
+README. If an image is replaced, its matrices have to be recomputed.
 
 To preview locally, run `python3 -m http.server -d site` and open
 http://localhost:8000.
