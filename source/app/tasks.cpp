@@ -56,6 +56,22 @@ int workerPriority()
     return std::min(0x3f, static_cast<int>(priority) + 1);
 }
 
+// On a New 3DS the worker gets the third core, which nothing else uses, so
+// TLS and inflating never wait for drawing. Elsewhere, or when the system
+// refuses, it shares the app core with the main thread.
+Thread startWorker(ThreadFunc entry, void *argument)
+{
+    bool isNew3ds = false;
+    if (R_SUCCEEDED(APT_CheckNew3DS(&isNew3ds)) && isNew3ds) {
+        if (Thread thread = threadCreate(entry, argument, WorkerStackSize,
+                                         workerPriority(), 2, false)) {
+            return thread;
+        }
+    }
+    return threadCreate(entry, argument, WorkerStackSize, workerPriority(),
+                        -2, false);
+}
+
 bool confirmStop(const std::string &what)
 {
     ui::Dialog dialog;
@@ -96,6 +112,7 @@ struct DownloadJob : net::Observer {
     uint64_t received = 0;
     uint64_t total = 0;
     uint64_t resumedFrom = 0;
+    int connections = 0;
 
     DownloadJob() { LightLock_Init(&lock); }
 
@@ -126,6 +143,11 @@ struct DownloadJob : net::Observer {
     {
         Guard guard(lock);
         resumedFrom = offset;
+    }
+    void onConnections(int count) override
+    {
+        Guard guard(lock);
+        connections = count;
     }
 };
 
@@ -174,6 +196,10 @@ void runExtract(void *argument)
 template <typename Job, typename Draw>
 void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
 {
+    // 20 frames a second is plenty for a progress screen, and on an Old 3DS
+    // the time not spent drawing goes to the worker.
+    constexpr unsigned FramesPerDraw = 3;
+    unsigned frame = 0;
     while (!job.finished) {
         if (!ui::keepRunning()) {
             job.closing = true;
@@ -184,8 +210,9 @@ void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
         if (!job.cancel && wantsCancel(input) && confirmStop(what)) {
             job.cancel = true;
         }
-        draw();
-        // Drawing every other frame leaves more CPU time for the worker.
+        if (frame++ % FramesPerDraw == 0) {
+            draw();
+        }
         gspWaitForVBlank();
     }
     threadJoin(thread, U64_MAX);
@@ -211,8 +238,7 @@ void busy(const std::string &header, const std::string &title,
 {
     BusyJob job;
     job.work = &work;
-    Thread thread = threadCreate(runBusy, &job, WorkerStackSize,
-                                 workerPriority(), -2, false);
+    Thread thread = startWorker(runBusy, &job);
     if (thread == nullptr) {
         work();
         return;
@@ -233,8 +259,7 @@ net::Result download(const net::Request &request, bool keepAwake)
     job.request = &request;
 
     StayAwake awake(keepAwake);
-    Thread thread = threadCreate(runDownload, &job, WorkerStackSize,
-                                 workerPriority(), -2, false);
+    Thread thread = startWorker(runDownload, &job);
     if (thread == nullptr) {
         job.result.message = "Could not start the download thread.";
         return job.result;
@@ -250,7 +275,9 @@ net::Result download(const net::Request &request, bool keepAwake)
             view.status = job.cancel ? "stopping"
                         : job.phase == net::Phase::Connecting  ? "connecting"
                         : job.phase == net::Phase::Restarting ? "starting over"
-                                                              : "downloading";
+                        : job.connections > 1
+                            ? std::to_string(job.connections) + " connections"
+                            : "downloading";
             if (job.resumedFrom > 0) {
                 view.note = "Continuing from " +
                             units::bytes(job.resumedFrom) +
@@ -301,8 +328,7 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
     job.existing = existing;
 
     StayAwake awake(keepAwake);
-    Thread thread = threadCreate(runExtract, &job, WorkerStackSize,
-                                 workerPriority(), -2, false);
+    Thread thread = startWorker(runExtract, &job);
     if (thread == nullptr) {
         job.result.message = "Could not start the extraction thread.";
         return job.result;

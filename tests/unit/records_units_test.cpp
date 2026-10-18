@@ -134,6 +134,38 @@ TEST("records: resume info and validators")
     CHECK(!parseResumeInfo("garbage", parsed));
 }
 
+TEST("records: split resume info keeps its done ranges")
+{
+    ResumeInfo info;
+    info.url = "https://x/f.zip";
+    info.etag = "\"abc\"";
+    info.total = 3000;
+    info.split = true;
+    info.done = {{0, 1000}, {1500, 2000}};
+
+    const std::string text = serializeResumeInfo(info);
+    // Older releases only read version 1, which would take the whole
+    // full-size file as downloaded.
+    CHECK_EQ(text.substr(0, text.find('\n')),
+             std::string("3dsDL-resume 2"));
+    ResumeInfo parsed;
+    CHECK(parseResumeInfo(text, parsed));
+    CHECK(parsed.split);
+    CHECK_EQ(parsed.done.size(), static_cast<size_t>(2));
+    CHECK_EQ(parsed.done[1].first, static_cast<uint64_t>(1500));
+    CHECK_EQ(parsed.done[1].second, static_cast<uint64_t>(2000));
+
+    info.done.clear();
+    CHECK(parseResumeInfo(serializeResumeInfo(info), parsed));
+    CHECK(parsed.split);
+    CHECK(parsed.done.empty());
+
+    CHECK(!parseResumeInfo("3dsDL-resume 2\nurl=https://x\ndone=5-5\n",
+                           parsed));
+    CHECK(!parseResumeInfo("3dsDL-resume 2\nurl=https://x\ndone=1-x\n",
+                           parsed));
+}
+
 TEST("records: partial paths and Content-Range")
 {
     const PartialPaths first = partialPaths("sdmc:/d/", "https://x/a");

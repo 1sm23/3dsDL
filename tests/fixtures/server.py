@@ -9,6 +9,8 @@ controlled by query parameters:
   etag=stable|changing|weak|none   ETag behaviour (default stable)
   lm=0              omit Last-Modified
   ranges=0          ignore Range requests and say Accept-Ranges: none
+  range_ignore=1    say Accept-Ranges: bytes but ignore Range requests anyway
+  refuse_ranged=<n> answer the first n ranged requests for key with 503
   drop_at=<n>       first request for key: close the connection after n bytes
   stall_at=<n>      first request for key: stop sending after n bytes
   slow=1            send the body slowly
@@ -28,6 +30,7 @@ import os
 import socket
 import ssl
 import struct
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -166,7 +169,11 @@ class Handler(BaseHTTPRequestHandler):
         start = 0
         partial = False
         requested = self.headers.get("Range")
-        if ranges and requested and requested.startswith("bytes="):
+        if (requested and "refuse_ranged" in query
+                and next_count(key + "#ranged") <= int(query["refuse_ranged"])):
+            return self.status(503)
+        honour = ranges and query.get("range_ignore") != "1"
+        if honour and requested and requested.startswith("bytes="):
             if_range = self.headers.get("If-Range")
             validator_ok = (
                 if_range is None
@@ -212,6 +219,16 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
 
 
+class QuietServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # Split downloads hang up on purpose once a piece is full.
+        if isinstance(sys.exc_info()[1], (ConnectionError, ssl.SSLError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def serve(server):
     server.serve_forever(poll_interval=0.1)
 
@@ -250,9 +267,8 @@ def main():
                         help="file to write the chosen ports to")
     args = parser.parse_args()
 
-    ThreadingHTTPServer.daemon_threads = True
-    http_server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    https_server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    http_server = QuietServer(("127.0.0.1", 0), Handler)
+    https_server = QuietServer(("127.0.0.1", 0), Handler)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(args.cert, args.key)
     https_server.socket = context.wrap_socket(https_server.socket,

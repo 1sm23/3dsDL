@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 // The small text formats 3dsDL keeps on the SD card. Everything here only
@@ -45,6 +46,9 @@ std::string serializeHistory(const std::vector<HistoryEntry> &entries);
 void addHistoryEntry(std::vector<HistoryEntry> &entries, HistoryEntry entry,
                      size_t limit = HistoryLimit);
 
+// Byte ranges [first, second) of a file.
+using ByteRanges = std::vector<std::pair<uint64_t, uint64_t>>;
+
 // What 3dsDL remembers about an interrupted download so it can continue it
 // with an HTTP range request later.
 struct ResumeInfo {
@@ -53,6 +57,11 @@ struct ResumeInfo {
     std::string lastModified;
     std::string filename;
     uint64_t total = 0; // 0 when the server did not say
+    // A download split across connections is written into a file that
+    // already has its full size, so only the done ranges hold real data.
+    // Otherwise everything in the file is good.
+    bool split = false;
+    ByteRanges done;
 };
 
 std::string serializeResumeInfo(const ResumeInfo &info);

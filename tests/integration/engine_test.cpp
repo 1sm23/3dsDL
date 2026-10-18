@@ -4,6 +4,7 @@
 
 #include "download_engine.hpp"
 #include "fs_util.hpp"
+#include "records.hpp"
 
 #include <curl/curl.h>
 #include <dirent.h>
@@ -132,6 +133,139 @@ TEST("engine: downloads with explicit socket buffer sizes")
     const net::Result result = net::download(settings, recorder);
     CHECK(result.outcome == net::Outcome::Completed);
     CHECK_EQ(readText(result.partPath), pattern(300000));
+}
+
+net::Request splitRequest(const std::string &path, const TempDir &folder)
+{
+    net::Request value = request(path, folder);
+    value.connections = 4;
+    value.minPieceBytes = 64 * 1024;
+    return value;
+}
+
+TEST("engine: large files are split across connections")
+{
+    TempDir folder;
+    Recorder recorder;
+    const net::Result result =
+        net::download(splitRequest("/file/1000000", folder), recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(result.connections > 1);
+    CHECK_EQ(result.bytes, static_cast<uint64_t>(1000000));
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+    CHECK_EQ(recorder.received, static_cast<uint64_t>(1000000));
+    CHECK_EQ(recorder.total, static_cast<uint64_t>(1000000));
+    CHECK_EQ(listAll(folder.path()).size(), static_cast<size_t>(1));
+}
+
+TEST("engine: split downloads work over HTTPS")
+{
+    TempDir folder;
+    Recorder recorder;
+    net::Request settings = splitRequest("", folder);
+    settings.url = env("FIXTURE_HTTPS") + "/file/1000000";
+    settings.caFile = env("FIXTURE_CERT");
+    const net::Result result = net::download(settings, recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(result.connections > 1);
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+}
+
+TEST("engine: small files and files without a validator use one connection")
+{
+    TempDir folder;
+    Recorder recorder;
+    net::Result result =
+        net::download(splitRequest("/file/100000", folder), recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK_EQ(result.connections, 1);
+
+    TempDir other;
+    result = net::download(
+        splitRequest("/file/1000000?etag=none&lm=0", other), recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK_EQ(result.connections, 1);
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+}
+
+TEST("engine: a dropped connection of a split download is reopened")
+{
+    TempDir folder;
+    Recorder recorder;
+    const net::Result result = net::download(
+        splitRequest("/file/1000000?drop_at=100000&key=split-drop", folder),
+        recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(result.connections > 1);
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+}
+
+TEST("engine: servers that turn away extra connections still finish")
+{
+    TempDir folder;
+    Recorder recorder;
+    const net::Result result = net::download(
+        splitRequest("/file/1000000?refuse_ranged=3&key=refuse", folder),
+        recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+}
+
+TEST("engine: servers that mishandle ranges fall back to one connection")
+{
+    TempDir folder;
+    Recorder ignoring;
+    net::Result result = net::download(
+        splitRequest("/file/1000000?range_ignore=1", folder), ignoring);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(ignoring.saw(net::Phase::Restarting));
+    CHECK_EQ(result.connections, 1);
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+
+    // An ETag that changes with every request makes every range a mismatch.
+    TempDir other;
+    Recorder changing;
+    result = net::download(
+        splitRequest("/file/1000000?etag=changing&key=split-changing", other),
+        changing);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(changing.saw(net::Phase::Restarting));
+    CHECK_EQ(readText(result.partPath), pattern(1000000));
+}
+
+TEST("engine: a split download resumes only the missing pieces")
+{
+    TempDir folder;
+    Recorder first;
+    first.cancelAfter = 150000;
+    first.keepPartial = true;
+    const std::string path = "/file/600000?slow=1&key=split-resume";
+    net::Result result =
+        net::download(splitRequest(path, folder), first);
+    CHECK(result.outcome == net::Outcome::Cancelled);
+    CHECK(result.resumable);
+    CHECK(result.connections > 1);
+    CHECK(result.bytes >= 150000);
+    CHECK(result.bytes < 600000);
+    const uint64_t kept = result.bytes;
+    CHECK_EQ(net::partialSize(folder.path(), env("FIXTURE_HTTP") + path),
+             kept);
+
+    std::string stored;
+    ResumeInfo info;
+    CHECK(fs::readFile(
+        partialPaths(folder.path(), env("FIXTURE_HTTP") + path).info,
+        stored));
+    CHECK(parseResumeInfo(stored, info));
+    CHECK(info.split);
+
+    Recorder second;
+    result = net::download(splitRequest(path, folder), second);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(result.resumed);
+    CHECK_EQ(second.resumedAt, kept);
+    CHECK_EQ(readText(result.partPath), pattern(600000));
+    CHECK_EQ(listAll(folder.path()).size(), static_cast<size_t>(1));
 }
 
 TEST("engine: Content-Disposition names win over the URL")

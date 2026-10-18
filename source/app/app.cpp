@@ -26,6 +26,11 @@ constexpr const char *UserAgent = "3dsDL/" APP_VERSION " (Nintendo 3DS)";
 // which limits speed on links with any latency. 48 KiB measured fastest on a
 // New 3DS; 64 KiB and above break connections mid-handshake.
 constexpr int SocketBufferSize = 48 * 1024;
+// Even so, one connection carries at most one TCP window per round trip,
+// about 300 KiB/s from a server 150 ms away. Large files are split across
+// several connections to add those up, staying under the six per server
+// that browsers open.
+constexpr int DownloadConnections = 4;
 constexpr u64 StatusRefreshMs = 2000;
 constexpr size_t MaxRecentFolders = 4;
 
@@ -327,6 +332,7 @@ void App::startDownload(const std::string &address, std::string folder)
         request.userAgent = UserAgent;
         request.allowResume = settings_.resumeDownloads;
         request.socketBufferSize = SocketBufferSize;
+        request.connections = DownloadConnections;
         request.freeSpace = [](const std::string &) {
             return platform::sdFreeBytes();
         };
@@ -496,9 +502,23 @@ void App::finishDownload(const std::string &address, const std::string &folder,
     HistoryEntry entry = newEntry(address, folder, saved.ok
                                                        ? HistoryStatus::Saved
                                                        : HistoryStatus::Failed);
+    // How fast it went, so speeds can be compared between consoles and
+    // releases.
+    std::string speed;
+    if (result.transferred > 0 && result.seconds > 0.0) {
+        speed = units::rate(static_cast<double>(result.transferred) /
+                            result.seconds);
+        if (result.connections > 1) {
+            speed += " over " + std::to_string(result.connections) +
+                     " connections";
+        }
+    }
+
     entry.bytes = result.bytes;
     entry.path = saved.path;
-    entry.message = saved.ok ? "Saved" : saved.message;
+    entry.message = !saved.ok       ? saved.message
+                  : speed.empty() ? "Saved"
+                                  : "Saved at " + speed;
     record(entry);
 
     if (!saved.ok) {
@@ -509,7 +529,8 @@ void App::finishDownload(const std::string &address, const std::string &folder,
 
     const std::string summary = saved.usedFallbackName
         ? saved.message
-        : "Saved as " + saved.path + " (" + units::bytes(result.bytes) + ").";
+        : "Saved as " + saved.path + " (" + units::bytes(result.bytes) +
+              (speed.empty() ? "" : ", " + speed) + ").";
     if (settings_.offerZipExtraction &&
         text::endsWithNoCase(saved.path, ".zip")) {
         offerExtraction(saved.path, folder, summary);

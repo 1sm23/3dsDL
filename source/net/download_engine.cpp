@@ -9,9 +9,18 @@
 
 #include <curl/curl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <memory>
+#include <vector>
 
 namespace net {
 namespace {
@@ -19,16 +28,49 @@ namespace {
 constexpr size_t FileBufferSize = 256 * 1024;
 constexpr long CurlBufferSize = 128 * 1024;
 constexpr long MaxRedirects = 10;
+// A download starts over at most twice: once when the file changed since the
+// partial download, and once more on one connection when the server
+// mishandles ranges.
+constexpr int MaxAttempts = 3;
+// Failed connections of a split download that are reopened before giving up.
+constexpr int MaxReconnects = 8;
+// Pieces are split on this boundary so SD card writes stay aligned.
+constexpr uint64_t SplitAlignment = 64 * 1024;
+// New data a split download writes between saves of its progress.
+constexpr uint64_t SaveInterval = 4 * 1024 * 1024;
+constexpr int PollMilliseconds = 100;
+constexpr uint64_t Unknown = std::numeric_limits<uint64_t>::max();
 
-struct Transfer {
-    const Request *request = nullptr;
-    Observer *observer = nullptr;
+struct Connection;
+
+// A run [start, end) of the file. Bytes [start, next) have arrived and
+// [start, flushed) are on the SD card. end is Unknown while the size is.
+struct Piece {
+    uint64_t start = 0;
+    uint64_t next = 0;
+    uint64_t flushed = 0;
+    uint64_t end = Unknown;
+    Connection *connection = nullptr;
+
+    bool complete() const { return next == end; }
+};
+
+struct Transfer;
+
+// One HTTP request, filling one piece from its next byte on.
+struct Connection {
+    Transfer *transfer = nullptr;
+    Piece *piece = nullptr;
     CURL *curl = nullptr;
-    FILE *file = nullptr;
-    std::string url;
-    PartialPaths paths;
-    uint64_t offset = 0; // bytes already in the file when this attempt began
-    bool resuming = false;
+    curl_slist *headers = nullptr;
+    // The attempt's first request. Its response decides the file name, the
+    // size and whether the download is split.
+    bool lead = false;
+    bool started = false; // the response's headers have been handled
+    bool cutOff = false;  // stopped on purpose at the end of its piece
+    std::vector<char> buffer;
+    uint64_t bufferStart = 0; // file position of buffer[0]
+    char errorBuffer[CURL_ERROR_SIZE] = {0};
 
     // Headers of the response currently being received. A redirect starts a
     // new response, which clears them.
@@ -37,12 +79,49 @@ struct Transfer {
     std::string lastModified;
     std::string acceptRanges;
     std::string contentRange;
+};
 
-    bool started = false; // the final response's headers have been handled
+struct Transfer {
+    const Request *request = nullptr;
+    Observer *observer = nullptr;
+    CURLM *multi = nullptr;
+    CURLSH *share = nullptr;
+    FILE *file = nullptr;
+    std::string url;
+    PartialPaths paths;
+    uint64_t fileBytes = 0; // size of the file when this attempt began
+
+    std::list<Piece> pieces; // in file order, covering it without gaps
+    std::vector<std::unique_ptr<Connection>> connections;
+    bool allowSplit = true;
+    bool split = false;
+    int maxConnections = 1;
+    int peakConnections = 0;
+    int reconnectsLeft = MaxReconnects;
+    // Where the lead ended up after redirects. Later connections go there
+    // directly, until it stops working.
+    std::string directUrl;
+
+    ResumeInfo info;       // what the sidecar file says, or will say
+    std::string validator; // If-Range value for every ranged request
+    bool resuming = false;
+    bool keepInfo = false; // the sidecar file describes this download
+    uint64_t unsaved = 0;  // bytes written since the sidecar was saved
+
+    bool started = false; // the lead's response has been accepted
     bool cancelled = false;
+    bool stopped = false;       // a failure ended the attempt
+    bool restart = false;       // start again from the beginning
+    bool restartSingle = false; // ... on one connection
     uint64_t total = 0;
     std::string filename;
+    std::string effectiveUrl;
     std::string failure; // set by our own checks, overrides curl's message
+
+    // The response status, and the failure that ended the attempt.
+    long httpStatus = 0;
+    CURLcode code = CURLE_OK;
+    std::string detail;
 };
 
 std::string errnoText()
@@ -50,33 +129,153 @@ std::string errnoText()
     return std::strerror(errno);
 }
 
-// Runs once the headers of the final response are known, before any of its
-// body is written. Returns false to abort the transfer.
-bool begin(Transfer &transfer)
+uint64_t receivedBytes(const Transfer &transfer)
+{
+    uint64_t total = 0;
+    for (const Piece &piece : transfer.pieces) {
+        total += piece.next - piece.start;
+    }
+    return total;
+}
+
+uint64_t savedBytes(const Transfer &transfer)
+{
+    uint64_t total = 0;
+    for (const Piece &piece : transfer.pieces) {
+        total += piece.flushed - piece.start;
+    }
+    return total;
+}
+
+bool allComplete(const Transfer &transfer)
+{
+    for (const Piece &piece : transfer.pieces) {
+        if (!piece.complete()) {
+            return false;
+        }
+    }
+    return !transfer.pieces.empty();
+}
+
+// Writes the sidecar file. A split download saves as it goes, so a crash
+// loses little, and its done ranges only ever cover data on the card.
+void saveInfo(Transfer &transfer)
+{
+    if (!transfer.keepInfo) {
+        return;
+    }
+    ResumeInfo info = transfer.info;
+    info.split = transfer.split;
+    info.done.clear();
+    if (transfer.split) {
+        for (const Piece &piece : transfer.pieces) {
+            if (piece.flushed == piece.start) {
+                continue;
+            }
+            if (!info.done.empty() && info.done.back().second == piece.start) {
+                info.done.back().second = piece.flushed;
+            } else {
+                info.done.push_back({piece.start, piece.flushed});
+            }
+        }
+    }
+    if (!fs::writeFile(transfer.paths.info, serializeResumeInfo(info))) {
+        transfer.keepInfo = false;
+        fs::removeFile(transfer.paths.info);
+    }
+    transfer.unsaved = 0;
+}
+
+// Writes what connection has buffered to its place in the file.
+bool flush(Transfer &transfer, Connection &connection)
+{
+    if (connection.buffer.empty()) {
+        return true;
+    }
+    const size_t size = connection.buffer.size();
+    size_t written = 0;
+    if (fseeko(transfer.file, static_cast<off_t>(connection.bufferStart),
+               SEEK_SET) == 0) {
+        written = transfer.request->write
+            ? transfer.request->write(connection.buffer.data(), size,
+                                      transfer.file)
+            : std::fwrite(connection.buffer.data(), 1, size, transfer.file);
+    }
+    connection.buffer.clear();
+    if (written != size) {
+        if (transfer.failure.empty()) {
+            transfer.failure = errno == ENOSPC
+                ? "The SD card is full."
+                : "Could not write to the SD card (" + errnoText() + ").";
+        }
+        return false;
+    }
+    connection.bufferStart += size;
+    connection.piece->flushed = connection.bufferStart;
+    transfer.unsaved += size;
+    return true;
+}
+
+bool store(Transfer &transfer, Connection &connection, const char *data,
+           size_t size)
+{
+    while (size > 0) {
+        const size_t chunk =
+            std::min(size, FileBufferSize - connection.buffer.size());
+        connection.buffer.insert(connection.buffer.end(), data, data + chunk);
+        connection.piece->next += chunk;
+        data += chunk;
+        size -= chunk;
+        if (connection.buffer.size() == FileBufferSize &&
+            !flush(transfer, connection)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// The total size a response describes. requestStart is where the request
+// asked to begin.
+uint64_t responseTotal(const Connection &connection, long status,
+                       uint64_t requestStart)
+{
+    if (status == 206) {
+        const int64_t total = contentRangeTotal(connection.contentRange);
+        return total > 0 ? static_cast<uint64_t>(total) : 0;
+    }
+    curl_off_t length = -1;
+    curl_easy_getinfo(connection.curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,
+                      &length);
+    return length >= 0 ? requestStart + static_cast<uint64_t>(length) : 0;
+}
+
+// Runs once the headers of the lead's final response are known, before any
+// of its body is written. Returns false to abort the transfer.
+bool begin(Transfer &transfer, Connection &lead)
 {
     const Request &request = *transfer.request;
     transfer.started = true;
 
     long status = 0;
-    curl_easy_getinfo(transfer.curl, CURLINFO_RESPONSE_CODE, &status);
+    curl_easy_getinfo(lead.curl, CURLINFO_RESPONSE_CODE, &status);
     char *effective = nullptr;
-    curl_easy_getinfo(transfer.curl, CURLINFO_EFFECTIVE_URL, &effective);
+    curl_easy_getinfo(lead.curl, CURLINFO_EFFECTIVE_URL, &effective);
+    transfer.httpStatus = status;
+    transfer.effectiveUrl = effective != nullptr ? effective : transfer.url;
+    transfer.directUrl = transfer.effectiveUrl;
 
-    transfer.filename = naming::chooseFilename(
-        transfer.contentDisposition,
-        effective != nullptr ? effective : transfer.url);
+    transfer.filename = naming::chooseFilename(lead.contentDisposition,
+                                               transfer.effectiveUrl);
 
-    if (status == 206) {
-        const int64_t total = contentRangeTotal(transfer.contentRange);
-        transfer.total = total > 0 ? static_cast<uint64_t>(total) : 0;
-    } else {
-        curl_off_t length = -1;
-        curl_easy_getinfo(transfer.curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,
-                          &length);
-        transfer.total = length >= 0
-            ? transfer.offset + static_cast<uint64_t>(length)
-            : 0;
+    const uint64_t offset = lead.piece->next;
+    const uint64_t total = responseTotal(lead, status, offset);
+    // A split download's file was laid out for the size the server gave
+    // before, so a different size means a different file.
+    if (transfer.split && total != transfer.total) {
+        transfer.restart = true;
+        return false;
     }
+    transfer.total = total;
 
     transfer.observer->onFilename(transfer.filename);
     transfer.observer->onPhase(Phase::Downloading);
@@ -87,9 +286,9 @@ bool begin(Transfer &transfer)
                            "files of 4 GiB or more.";
         return false;
     }
-    if (request.freeSpace && transfer.total > transfer.offset) {
+    if (request.freeSpace && transfer.total > transfer.fileBytes) {
         const int64_t available = request.freeSpace(request.folder);
-        const uint64_t needed = transfer.total - transfer.offset;
+        const uint64_t needed = transfer.total - transfer.fileBytes;
         if (available >= 0 && static_cast<uint64_t>(available) < needed) {
             transfer.failure = "Not enough free space on the SD card: " +
                                units::bytes(needed) + " needed, " +
@@ -99,54 +298,118 @@ bool begin(Transfer &transfer)
         }
     }
 
-    ResumeInfo info;
+    ResumeInfo &info = transfer.info;
     info.url = transfer.url;
-    info.etag = transfer.etag;
-    info.lastModified = transfer.lastModified;
+    // A 206 answered our If-Range, so the stored validators still hold even
+    // when the response leaves them out.
+    if (status != 206) {
+        info.etag = lead.etag;
+        info.lastModified = lead.lastModified;
+    }
     info.filename = transfer.filename;
     info.total = transfer.total;
-    const bool resumable = request.allowResume &&
-                           !ifRangeValidator(info).empty() &&
-                           text::lower(transfer.acceptRanges) != "none";
-    if (!resumable || !fs::writeFile(transfer.paths.info,
-                                     serializeResumeInfo(info))) {
+    transfer.validator = ifRangeValidator(info);
+    const std::string ranges = text::lower(lead.acceptRanges);
+    transfer.keepInfo = request.allowResume && !transfer.validator.empty() &&
+                        ranges != "none";
+
+    // Splitting needs the size, proof that ranges work, and a validator so
+    // every connection is sure to get the same version of the file.
+    bool split = !transfer.split && transfer.allowSplit &&
+                 request.connections > 1 && !transfer.validator.empty() &&
+                 (status == 206 || ranges == "bytes") &&
+                 transfer.total > offset &&
+                 transfer.total - offset >= 2 * request.minPieceBytes;
+    if (split) {
+        transfer.split = true;
+    }
+    if (transfer.keepInfo) {
+        saveInfo(transfer);
+    } else {
         fs::removeFile(transfer.paths.info);
     }
+    if (split && !transfer.keepInfo && fs::fileExists(transfer.paths.info)) {
+        // A stale sidecar would make the grown file look downloaded.
+        transfer.split = false;
+        split = false;
+    }
+    if (split) {
+        // The sidecar already says the file is split, so growing it can
+        // never make missing bytes look downloaded. Growing it now claims
+        // the space at once; if that fails, writes past the end grow it.
+        std::fflush(transfer.file);
+        if (ftruncate(fileno(transfer.file),
+                      static_cast<off_t>(transfer.total)) != 0) {
+            // Writes past the end of the file grow it instead.
+        }
+        lead.piece->end = transfer.total;
+    }
+    transfer.maxConnections =
+        transfer.split ? std::max(1, request.connections) : 1;
     return true;
+}
+
+// Checks a later connection's response against the lead's before any of its
+// body is written.
+bool verify(Transfer &transfer, Connection &connection)
+{
+    long status = 0;
+    curl_easy_getinfo(connection.curl, CURLINFO_RESPONSE_CODE, &status);
+    // Ranged requests carry If-Range, so a 206 is the same version. Only a
+    // request from byte 0 can get a 200, and its validators have to match.
+    const bool same =
+        responseTotal(connection, status, 0) == transfer.total &&
+        (status == 206 || (connection.etag == transfer.info.etag &&
+                           connection.lastModified ==
+                               transfer.info.lastModified));
+    if (!same) {
+        transfer.restart = true;
+        transfer.restartSingle = true;
+    }
+    return same;
 }
 
 size_t writeCallback(char *data, size_t size, size_t count, void *userdata)
 {
-    Transfer &transfer = *static_cast<Transfer *>(userdata);
+    Connection &connection = *static_cast<Connection *>(userdata);
+    Transfer &transfer = *connection.transfer;
     const size_t bytes = size * count;
 
-    if (!transfer.started && !begin(transfer)) {
-        return 0;
+    if (!connection.started) {
+        connection.started = true;
+        if (connection.lead ? !begin(transfer, connection)
+                            : !verify(transfer, connection)) {
+            return 0;
+        }
     }
 
-    const size_t written = transfer.request->write
-        ? transfer.request->write(data, bytes, transfer.file)
-        : std::fwrite(data, 1, bytes, transfer.file);
-    if (written != bytes && transfer.failure.empty()) {
-        transfer.failure = errno == ENOSPC
-            ? "The SD card is full."
-            : "Could not write to the SD card (" + errnoText() + ").";
+    Piece &piece = *connection.piece;
+    const uint64_t room = piece.end - piece.next;
+    const size_t take = room < bytes ? static_cast<size_t>(room) : bytes;
+    if (take > 0 && !store(transfer, connection, data, take)) {
+        return 0;
     }
-    return written;
+    // Requests run to the end of the file, so every piece but the last one
+    // stops its connection once it is full.
+    if (take < bytes || (piece.complete() && piece.end != transfer.total)) {
+        connection.cutOff = true;
+        return 0;
+    }
+    return bytes;
 }
 
 size_t headerCallback(char *data, size_t size, size_t count, void *userdata)
 {
-    Transfer &transfer = *static_cast<Transfer *>(userdata);
+    Connection &connection = *static_cast<Connection *>(userdata);
     const size_t bytes = size * count;
     const std::string line = text::trim(std::string(data, bytes));
 
     if (text::startsWithNoCase(line, "HTTP/")) {
-        transfer.contentDisposition.clear();
-        transfer.etag.clear();
-        transfer.lastModified.clear();
-        transfer.acceptRanges.clear();
-        transfer.contentRange.clear();
+        connection.contentDisposition.clear();
+        connection.etag.clear();
+        connection.lastModified.clear();
+        connection.acceptRanges.clear();
+        connection.contentRange.clear();
         return bytes;
     }
 
@@ -157,36 +420,17 @@ size_t headerCallback(char *data, size_t size, size_t count, void *userdata)
     const std::string name = text::lower(text::trim(line.substr(0, colon)));
     const std::string value = text::trim(line.substr(colon + 1));
     if (name == "content-disposition") {
-        transfer.contentDisposition = value;
+        connection.contentDisposition = value;
     } else if (name == "etag") {
-        transfer.etag = value;
+        connection.etag = value;
     } else if (name == "last-modified") {
-        transfer.lastModified = value;
+        connection.lastModified = value;
     } else if (name == "accept-ranges") {
-        transfer.acceptRanges = value;
+        connection.acceptRanges = value;
     } else if (name == "content-range") {
-        transfer.contentRange = value;
+        connection.contentRange = value;
     }
     return bytes;
-}
-
-int progressCallback(void *userdata, curl_off_t, curl_off_t downloaded,
-                     curl_off_t, curl_off_t)
-{
-    Transfer &transfer = *static_cast<Transfer *>(userdata);
-    if (transfer.observer->cancelRequested()) {
-        transfer.cancelled = true;
-        return 1;
-    }
-    if (transfer.started) {
-        transfer.observer->onProgress(
-            transfer.offset + static_cast<uint64_t>(downloaded > 0 ? downloaded
-                                                                   : 0),
-            transfer.total);
-    } else {
-        transfer.observer->onProgress(transfer.offset, 0);
-    }
-    return 0;
 }
 
 // Runs on each new socket before it connects, which is when the receive
@@ -221,12 +465,16 @@ bool isTransient(CURLcode code, long httpStatus)
     }
 }
 
-void configure(Transfer &transfer, char *errorBuffer, curl_slist *headers)
+void configure(Transfer &transfer, Connection &connection)
 {
     const Request &request = *transfer.request;
-    CURL *curl = transfer.curl;
+    const Piece &piece = *connection.piece;
+    CURL *curl = connection.curl;
+    const std::string &address =
+        connection.lead || transfer.directUrl.empty() ? transfer.url
+                                                      : transfer.directUrl;
 
-    curl_easy_setopt(curl, CURLOPT_URL, transfer.url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, address.c_str());
     if (!request.userAgent.empty()) {
         curl_easy_setopt(curl, CURLOPT_USERAGENT, request.userAgent.c_str());
     }
@@ -247,30 +495,324 @@ void configure(Transfer &transfer, char *errorBuffer, curl_slist *headers)
     if (!request.caFile.empty()) {
         curl_easy_setopt(curl, CURLOPT_CAINFO, request.caFile.c_str());
     }
-    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer);
+    // Shares DNS answers and TLS sessions, so later connections skip most
+    // of the handshake.
+    curl_easy_setopt(curl, CURLOPT_SHARE, transfer.share);
+    curl_easy_setopt(curl, CURLOPT_PRIVATE, &connection);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, connection.errorBuffer);
     curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, CurlBufferSize);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &transfer);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &connection);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &transfer);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &transfer);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &connection);
     if (request.socketBufferSize > 0) {
         curl_easy_setopt(curl, CURLOPT_SOCKOPTFUNCTION, sockoptCallback);
         curl_easy_setopt(curl, CURLOPT_SOCKOPTDATA, &transfer);
     }
 
-    if (request.maxFileSize > transfer.offset) {
+    if (request.maxFileSize > piece.next) {
         curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE,
                          static_cast<curl_off_t>(request.maxFileSize -
-                                                 transfer.offset));
+                                                 piece.next));
     }
-    if (transfer.resuming) {
+    // Pieces past the start are only ever fetched with a validator, from a
+    // resumed download or a split one.
+    if (piece.next > 0) {
         curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE,
-                         static_cast<curl_off_t>(transfer.offset));
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                         static_cast<curl_off_t>(piece.next));
+        connection.headers = curl_slist_append(
+            nullptr, ("If-Range: " + transfer.validator).c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, connection.headers);
     }
+}
+
+bool open(Transfer &transfer, Piece &piece, bool lead)
+{
+    std::unique_ptr<Connection> connection(new Connection());
+    connection->transfer = &transfer;
+    connection->piece = &piece;
+    connection->lead = lead;
+    connection->bufferStart = piece.next;
+    connection->curl = curl_easy_init();
+    if (connection->curl == nullptr) {
+        return false;
+    }
+    connection->buffer.reserve(FileBufferSize);
+    configure(transfer, *connection);
+    if (curl_multi_add_handle(transfer.multi, connection->curl) != CURLM_OK) {
+        curl_slist_free_all(connection->headers);
+        curl_easy_cleanup(connection->curl);
+        return false;
+    }
+
+    piece.connection = connection.get();
+    transfer.connections.push_back(std::move(connection));
+    const int count = static_cast<int>(transfer.connections.size());
+    transfer.peakConnections = std::max(transfer.peakConnections, count);
+    transfer.observer->onConnections(count);
+    return true;
+}
+
+// Writes out what connection received, detaches it from its piece and frees
+// it.
+void close(Transfer &transfer, Connection &connection)
+{
+    flush(transfer, connection);
+    connection.piece->connection = nullptr;
+    curl_multi_remove_handle(transfer.multi, connection.curl);
+    curl_easy_cleanup(connection.curl);
+    curl_slist_free_all(connection.headers);
+
+    std::vector<std::unique_ptr<Connection>> &all = transfer.connections;
+    all.erase(std::find_if(all.begin(), all.end(),
+                           [&](const std::unique_ptr<Connection> &entry) {
+                               return entry.get() == &connection;
+                           }));
+    transfer.observer->onConnections(static_cast<int>(all.size()));
+}
+
+void closeAll(Transfer &transfer)
+{
+    while (!transfer.connections.empty()) {
+        close(transfer, *transfer.connections.back());
+    }
+}
+
+// Handles a connection whose request has ended.
+void finish(Transfer &transfer, Connection &connection, CURLcode code)
+{
+    long status = 0;
+    curl_easy_getinfo(connection.curl, CURLINFO_RESPONSE_CODE, &status);
+    if (connection.lead && !transfer.started) {
+        transfer.httpStatus = status;
+        char *effective = nullptr;
+        curl_easy_getinfo(connection.curl, CURLINFO_EFFECTIVE_URL, &effective);
+        if (effective != nullptr) {
+            transfer.effectiveUrl = effective;
+        }
+        // An empty body never reaches the write callback.
+        if (code == CURLE_OK && !begin(transfer, connection)) {
+            code = CURLE_WRITE_ERROR;
+        }
+    }
+    const std::string detail = connection.errorBuffer[0] != '\0'
+        ? connection.errorBuffer
+        : curl_easy_strerror(code);
+    const bool cutOff = connection.cutOff;
+    const bool direct = !connection.lead;
+    Piece &piece = *connection.piece;
+    close(transfer, connection);
+
+    if (transfer.stopped || transfer.cancelled) {
+        return;
+    }
+    const bool ours = !transfer.failure.empty() || transfer.restart;
+    if (cutOff && !ours) {
+        return; // its piece is full
+    }
+    if (code == CURLE_OK && !ours) {
+        if (piece.end == Unknown) {
+            piece.end = piece.next; // the server said where the file ends
+        }
+        if (piece.complete()) {
+            return;
+        }
+        code = CURLE_PARTIAL_FILE;
+    }
+    if (code == CURLE_OK) {
+        code = CURLE_WRITE_ERROR;
+    }
+
+    const auto stop = [&]() {
+        transfer.stopped = true;
+        transfer.code = code;
+        transfer.httpStatus = status;
+        transfer.detail = detail;
+    };
+    if (ours) {
+        stop();
+        return;
+    }
+    if (code == CURLE_RANGE_ERROR ||
+        (code == CURLE_HTTP_RETURNED_ERROR && status == 416)) {
+        // From the lead resuming an earlier download, the file has changed.
+        // From any later connection, the server mishandles ranges, so the
+        // next attempt makes do with one connection.
+        transfer.restart = true;
+        transfer.restartSingle = transfer.started;
+        stop();
+        return;
+    }
+    if (transfer.split && transfer.started && transfer.reconnectsLeft > 0 &&
+        (isTransient(code, status) || code == CURLE_HTTP_RETURNED_ERROR)) {
+        --transfer.reconnectsLeft;
+        if (code == CURLE_HTTP_RETURNED_ERROR) {
+            // Some servers turn extra connections away, and the signed links
+            // that downloads often redirect to expire. Use fewer connections
+            // and go through the original link again.
+            transfer.maxConnections = std::max(
+                1, static_cast<int>(transfer.connections.size()));
+            if (direct) {
+                transfer.directUrl.clear();
+            }
+        }
+        return; // the piece is idle again and schedule() reopens it
+    }
+    stop();
+}
+
+// Splits the piece with the most left to fetch, if that is worth another
+// connection, and returns the new second half.
+Piece *splitLargest(Transfer &transfer)
+{
+    const uint64_t minimum =
+        std::max<uint64_t>(transfer.request->minPieceBytes, 1);
+    auto largest = transfer.pieces.end();
+    uint64_t left = 0;
+    for (auto piece = transfer.pieces.begin(); piece != transfer.pieces.end();
+         ++piece) {
+        if (piece->connection != nullptr && piece->end != Unknown &&
+            piece->end - piece->next > left) {
+            largest = piece;
+            left = piece->end - piece->next;
+        }
+    }
+    if (largest == transfer.pieces.end() || left < 2 * minimum) {
+        return nullptr;
+    }
+    uint64_t middle = largest->next + left / 2;
+    middle -= middle % SplitAlignment;
+    if (middle <= largest->next) {
+        return nullptr;
+    }
+
+    Piece half;
+    half.start = half.next = half.flushed = middle;
+    half.end = largest->end;
+    largest->end = middle;
+    return &*transfer.pieces.insert(std::next(largest), half);
+}
+
+// Opens connections for idle pieces, and splits pieces in flight when none
+// are idle, until maxConnections are open.
+void schedule(Transfer &transfer)
+{
+    if (!transfer.started) {
+        return;
+    }
+    while (static_cast<int>(transfer.connections.size()) <
+           transfer.maxConnections) {
+        Piece *piece = nullptr;
+        for (Piece &candidate : transfer.pieces) {
+            if (candidate.connection == nullptr && !candidate.complete()) {
+                piece = &candidate;
+                break;
+            }
+        }
+        if (piece == nullptr && transfer.split) {
+            piece = splitLargest(transfer);
+        }
+        if (piece == nullptr) {
+            return;
+        }
+        if (!open(transfer, *piece, false)) {
+            transfer.failure = "Could not start the HTTPS client.";
+            transfer.stopped = true;
+            transfer.code = CURLE_FAILED_INIT;
+            return;
+        }
+    }
+}
+
+// Drives every connection until the attempt is over.
+void run(Transfer &transfer)
+{
+    while (true) {
+        int running = 0;
+        curl_multi_perform(transfer.multi, &running);
+        int queued = 0;
+        while (CURLMsg *message = curl_multi_info_read(transfer.multi,
+                                                       &queued)) {
+            if (message->msg != CURLMSG_DONE) {
+                continue;
+            }
+            // message does not outlive the handle, which finish() frees.
+            const CURLcode code = message->data.result;
+            Connection *connection = nullptr;
+            curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE,
+                              &connection);
+            finish(transfer, *connection, code);
+        }
+
+        if (!transfer.cancelled && transfer.observer->cancelRequested()) {
+            transfer.cancelled = true;
+        }
+        if (!transfer.cancelled && !transfer.stopped) {
+            if (transfer.split && transfer.unsaved >= SaveInterval) {
+                saveInfo(transfer);
+            }
+            schedule(transfer);
+        }
+        if (transfer.cancelled || transfer.stopped) {
+            closeAll(transfer);
+            return;
+        }
+        transfer.observer->onProgress(receivedBytes(transfer),
+                                      transfer.started ? transfer.total : 0);
+        if (transfer.connections.empty()) {
+            return;
+        }
+        curl_multi_poll(transfer.multi, nullptr, 0, PollMilliseconds,
+                        nullptr);
+    }
+}
+
+// Picks up the earlier partial download that info describes. Leaves the
+// transfer alone when there is nothing usable to resume.
+void restore(Transfer &transfer, const ResumeInfo &info, uint64_t fileSize)
+{
+    std::list<Piece> pieces;
+    const auto add = [&](uint64_t start, uint64_t done, uint64_t end) {
+        Piece piece;
+        piece.start = start;
+        piece.next = piece.flushed = done;
+        piece.end = end;
+        pieces.push_back(piece);
+    };
+    if (info.split) {
+        if (info.total == 0) {
+            return;
+        }
+        uint64_t cursor = 0;
+        for (const auto &range : info.done) {
+            if (range.first < cursor || range.second > info.total) {
+                return;
+            }
+            if (range.first > cursor) {
+                add(cursor, cursor, range.first);
+            }
+            add(range.first, range.second, range.second);
+            cursor = range.second;
+        }
+        if (cursor < info.total) {
+            add(cursor, cursor, info.total);
+        }
+    } else {
+        add(0, fileSize, Unknown);
+    }
+
+    transfer.pieces = pieces;
+    if (receivedBytes(transfer) == 0) {
+        transfer.pieces.clear();
+        return;
+    }
+    transfer.split = info.split;
+    transfer.total = info.split ? info.total : 0;
+    transfer.info = info;
+    transfer.validator = ifRangeValidator(info);
+    transfer.filename = info.filename;
+    transfer.resuming = true;
+    transfer.keepInfo = true;
 }
 
 } // namespace
@@ -293,88 +835,112 @@ Result download(const Request &request, Observer &observer)
     }
     const PartialPaths paths = partialPaths(normalised.folder, address);
 
-    for (int attempt = 0; attempt < 2; ++attempt) {
+    bool allowSplit = true;
+    for (int attempt = 0; attempt < MaxAttempts; ++attempt) {
         Transfer transfer;
         transfer.request = &normalised;
         transfer.observer = &observer;
         transfer.url = address;
         transfer.paths = paths;
+        transfer.allowSplit = allowSplit;
+        const auto began = std::chrono::steady_clock::now();
 
         // Continue an earlier download only when it was for the same URL and
         // the server gave a validator we can send in If-Range. Otherwise any
         // leftover data could belong to a different version of the file.
-        std::string validator;
         std::string stored;
         ResumeInfo previous;
         const int64_t existing = fs::fileSize(paths.data);
         if (normalised.allowResume && attempt == 0 && existing > 0 &&
             fs::readFile(paths.info, stored) &&
-            parseResumeInfo(stored, previous) && previous.url == address) {
-            validator = ifRangeValidator(previous);
+            parseResumeInfo(stored, previous) && previous.url == address &&
+            !ifRangeValidator(previous).empty()) {
+            restore(transfer, previous, static_cast<uint64_t>(existing));
         }
-        if (!validator.empty()) {
-            transfer.offset = static_cast<uint64_t>(existing);
-            transfer.resuming = true;
-            transfer.filename = previous.filename;
-        } else {
+        if (!transfer.resuming) {
             fs::removeFile(paths.data);
             fs::removeFile(paths.info);
+            transfer.pieces.assign(1, Piece());
         }
 
         observer.onPhase(attempt == 0 ? Phase::Connecting : Phase::Restarting);
 
         transfer.file = std::fopen(paths.data.c_str(),
-                                   transfer.resuming ? "ab" : "wb");
+                                   transfer.resuming ? "r+b" : "w+b");
         if (transfer.file == nullptr) {
             result.message = "Could not create a file in " +
                              normalised.folder + " (" + errnoText() + ").";
             return result;
         }
-        std::setvbuf(transfer.file, nullptr, _IOFBF, FileBufferSize);
+        // Each connection buffers its own writes for its own place in the
+        // file, so stdio's buffer would only add a copy.
+        std::setvbuf(transfer.file, nullptr, _IONBF, 0);
+        transfer.fileBytes = transfer.resuming
+            ? static_cast<uint64_t>(existing)
+            : 0;
 
-        transfer.curl = curl_easy_init();
-        if (transfer.curl == nullptr) {
+        transfer.multi = curl_multi_init();
+        transfer.share = curl_share_init();
+        if (transfer.share != nullptr) {
+            curl_share_setopt(transfer.share, CURLSHOPT_SHARE,
+                              CURL_LOCK_DATA_DNS);
+            curl_share_setopt(transfer.share, CURLSHOPT_SHARE,
+                              CURL_LOCK_DATA_SSL_SESSION);
+        }
+        const uint64_t resumedBytes = receivedBytes(transfer);
+        if (transfer.resuming) {
+            observer.onResumed(resumedBytes);
+        }
+        Piece *first = nullptr;
+        for (Piece &piece : transfer.pieces) {
+            if (!piece.complete()) {
+                first = &piece;
+                break;
+            }
+        }
+        if (transfer.multi == nullptr || transfer.share == nullptr ||
+            (first != nullptr && !open(transfer, *first, true))) {
+            curl_multi_cleanup(transfer.multi);
+            curl_share_cleanup(transfer.share);
             std::fclose(transfer.file);
-            fs::removeFile(paths.data);
+            if (!transfer.resuming) {
+                fs::removeFile(paths.data);
+            }
             result.message = "Could not start the HTTPS client.";
             return result;
         }
-
-        char errorBuffer[CURL_ERROR_SIZE] = {0};
-        curl_slist *headers = nullptr;
-        if (transfer.resuming) {
-            headers = curl_slist_append(headers,
-                                        ("If-Range: " + validator).c_str());
-            observer.onResumed(transfer.offset);
+        if (first != nullptr) {
+            run(transfer);
         }
-        configure(transfer, errorBuffer, headers);
-
-        CURLcode code = curl_easy_perform(transfer.curl);
-        curl_easy_getinfo(transfer.curl, CURLINFO_RESPONSE_CODE,
-                          &result.httpStatus);
-        if (code == CURLE_OK && !transfer.started && !transfer.cancelled &&
-            !begin(transfer)) {
-            code = CURLE_WRITE_ERROR; // an empty body that failed a check
-        }
-        char *effective = nullptr;
-        curl_easy_getinfo(transfer.curl, CURLINFO_EFFECTIVE_URL, &effective);
-        result.effectiveUrl = effective != nullptr ? effective : address;
-
+        curl_multi_cleanup(transfer.multi);
+        curl_share_cleanup(transfer.share);
         const bool closed = std::fclose(transfer.file) == 0;
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(transfer.curl);
 
-        result.curlCode = code;
+        result.httpStatus = transfer.httpStatus;
+        result.curlCode = transfer.code;
         result.filename = transfer.filename;
+        result.effectiveUrl = transfer.effectiveUrl.empty()
+            ? address
+            : transfer.effectiveUrl;
         result.resumed = transfer.resuming;
+        result.connections = transfer.peakConnections;
+        result.transferred = receivedBytes(transfer) - resumedBytes;
+        result.seconds = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - began)
+                             .count();
 
         if (transfer.cancelled) {
-            const int64_t kept = fs::fileSize(paths.data);
-            if (observer.keepPartialOnCancel() && normalised.allowResume &&
-                closed && kept > 0 && fs::fileExists(paths.info)) {
+            const bool keep = observer.keepPartialOnCancel() &&
+                              normalised.allowResume && closed;
+            if (keep) {
+                saveInfo(transfer);
+            }
+            const uint64_t kept = savedBytes(transfer);
+            if (keep && kept > 0 && transfer.keepInfo &&
+                fs::fileExists(paths.info)) {
                 result.resumable = true;
                 result.partPath = paths.data;
-                result.bytes = static_cast<uint64_t>(kept);
+                result.bytes = kept;
             } else {
                 fs::removeFile(paths.data);
                 fs::removeFile(paths.info);
@@ -384,19 +950,16 @@ Result download(const Request &request, Observer &observer)
             return result;
         }
 
-        // The server no longer accepts our range: the file changed, or the
-        // server ignores ranges. Start again from the beginning once.
-        const bool rangeRejected =
-            transfer.resuming &&
-            (code == CURLE_RANGE_ERROR ||
-             (code == CURLE_HTTP_RETURNED_ERROR && result.httpStatus == 416));
-        if (rangeRejected && attempt == 0) {
+        if (transfer.restart) {
             fs::removeFile(paths.data);
             fs::removeFile(paths.info);
+            if (transfer.restartSingle) {
+                allowSplit = false;
+            }
             continue;
         }
 
-        if (code == CURLE_OK && closed) {
+        if (!transfer.stopped && allComplete(transfer) && closed) {
             fs::removeFile(paths.info);
             result.outcome = Outcome::Completed;
             result.partPath = paths.data;
@@ -408,9 +971,14 @@ Result download(const Request &request, Observer &observer)
             return result;
         }
 
+        CURLcode code = transfer.code;
+        if (!transfer.stopped && code == CURLE_OK) {
+            code = CURLE_PARTIAL_FILE;
+        }
         result.outcome = Outcome::Failed;
-        result.detail = errorBuffer[0] != '\0' ? errorBuffer
-                                               : curl_easy_strerror(code);
+        result.curlCode = code;
+        result.detail = !transfer.detail.empty() ? transfer.detail
+                                                 : curl_easy_strerror(code);
         result.certificateProblem = code == CURLE_PEER_FAILED_VERIFICATION;
         if (!transfer.failure.empty()) {
             result.message = transfer.failure;
@@ -421,13 +989,18 @@ Result download(const Request &request, Observer &observer)
                 describeFailure(code, result.httpStatus, result.detail);
         }
 
-        const int64_t kept = fs::fileSize(paths.data);
-        if (normalised.allowResume && closed && transfer.failure.empty() &&
-            isTransient(code, result.httpStatus) && kept > 0 &&
+        const bool resumable = normalised.allowResume && closed &&
+                               transfer.failure.empty() &&
+                               isTransient(code, result.httpStatus);
+        if (resumable) {
+            saveInfo(transfer);
+        }
+        const uint64_t kept = savedBytes(transfer);
+        if (resumable && kept > 0 && transfer.keepInfo &&
             fs::fileExists(paths.info)) {
             result.resumable = true;
             result.partPath = paths.data;
-            result.bytes = static_cast<uint64_t>(kept);
+            result.bytes = kept;
         } else {
             fs::removeFile(paths.data);
             fs::removeFile(paths.info);
@@ -435,6 +1008,7 @@ Result download(const Request &request, Observer &observer)
         return result;
     }
 
+    result.outcome = Outcome::Failed;
     result.message = "The server kept rejecting the request to continue the "
                      "download.";
     return result;
@@ -445,8 +1019,20 @@ uint64_t partialSize(const std::string &folder, const std::string &url)
     const PartialPaths paths =
         partialPaths(naming::normaliseFolder(folder), text::trim(url));
     const int64_t size = fs::fileSize(paths.data);
-    return size > 0 && fs::fileExists(paths.info) ? static_cast<uint64_t>(size)
-                                                  : 0;
+    std::string stored;
+    ResumeInfo info;
+    if (size <= 0 || !fs::readFile(paths.info, stored) ||
+        !parseResumeInfo(stored, info)) {
+        return 0;
+    }
+    if (!info.split) {
+        return static_cast<uint64_t>(size);
+    }
+    uint64_t done = 0;
+    for (const auto &range : info.done) {
+        done += range.second - range.first;
+    }
+    return done;
 }
 
 void discardPartial(const std::string &folder, const std::string &url)

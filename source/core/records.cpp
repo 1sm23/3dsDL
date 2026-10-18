@@ -11,6 +11,9 @@ namespace {
 
 constexpr const char *HistoryHeader = "3dsDL-history 1";
 constexpr const char *ResumeHeader = "3dsDL-resume 1";
+// Split downloads use a new version so that older 3dsDL releases, which
+// would take the whole full-size file as downloaded, refuse them instead.
+constexpr const char *SplitResumeHeader = "3dsDL-resume 2";
 
 std::vector<std::string> lines(const std::string &contents)
 {
@@ -231,22 +234,36 @@ void addHistoryEntry(std::vector<HistoryEntry> &entries, HistoryEntry entry,
 
 std::string serializeResumeInfo(const ResumeInfo &info)
 {
-    return std::string(ResumeHeader) + "\n" +
-           "url=" + text::singleLine(info.url) + "\n" +
-           "etag=" + text::singleLine(info.etag) + "\n" +
-           "last_modified=" + text::singleLine(info.lastModified) + "\n" +
-           "filename=" + text::singleLine(info.filename) + "\n" +
-           "total=" + std::to_string(info.total) + "\n";
+    std::string output =
+        std::string(info.split ? SplitResumeHeader : ResumeHeader) + "\n" +
+        "url=" + text::singleLine(info.url) + "\n" +
+        "etag=" + text::singleLine(info.etag) + "\n" +
+        "last_modified=" + text::singleLine(info.lastModified) + "\n" +
+        "filename=" + text::singleLine(info.filename) + "\n" +
+        "total=" + std::to_string(info.total) + "\n";
+    if (info.split) {
+        output += "done=";
+        for (size_t index = 0; index < info.done.size(); ++index) {
+            output += (index > 0 ? "," : "") +
+                      std::to_string(info.done[index].first) + "-" +
+                      std::to_string(info.done[index].second);
+        }
+        output += "\n";
+    }
+    return output;
 }
 
 bool parseResumeInfo(const std::string &contents, ResumeInfo &info)
 {
     const std::vector<std::string> all = lines(contents);
-    if (all.empty() || all.front() != ResumeHeader) {
+    if (all.empty() || (all.front() != ResumeHeader &&
+                        all.front() != SplitResumeHeader)) {
         return false;
     }
 
     info = ResumeInfo();
+    info.split = all.front() == SplitResumeHeader;
+    bool valid = true;
     forEachPair(contents, [&](const std::string &key,
                               const std::string &value) {
         if (key == "url") {
@@ -259,9 +276,21 @@ bool parseResumeInfo(const std::string &contents, ResumeInfo &info)
             info.filename = value;
         } else if (key == "total") {
             parseUnsigned(value, info.total);
+        } else if (key == "done" && !value.empty()) {
+            for (const std::string &range : split(value, ',')) {
+                const std::vector<std::string> ends = split(range, '-');
+                uint64_t first = 0;
+                uint64_t second = 0;
+                if (ends.size() != 2 || !parseUnsigned(ends[0], first) ||
+                    !parseUnsigned(ends[1], second) || second <= first) {
+                    valid = false;
+                    return;
+                }
+                info.done.push_back({first, second});
+            }
         }
     });
-    return !info.url.empty();
+    return valid && !info.url.empty();
 }
 
 std::string ifRangeValidator(const ResumeInfo &info)
