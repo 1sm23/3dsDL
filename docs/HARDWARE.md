@@ -54,16 +54,23 @@ and (on New 3DS) CPU speed.
 
 11. The confirm screen shows the host, the full link (wrapped), the folder and
     the http warning for plain-http links.
-12. A large download shows speed, time left, size and percentage, and runs at
-    a speed similar to 0.2.0 or better. Write the speed in the matrix.
+12. A large download (several MiB, from GitHub for example) shows speed, time
+    left, size and percentage, and its status says "4 connections". The
+    finished message gives the average speed; write it in the matrix. Then
+    check the file is intact: a CIA installs with FBI, a video plays to the
+    end.
 13. Cancelling asks first; "KEEP GOING" continues, "STOP" removes the partial
     file.
 14. Close the lid during a download with "Stay awake" on: the download keeps
     going. With it off: the download fails and offers RETRY.
-15. Use `drop_at` on the fixture server: the failure says the connection
-    dropped and RETRY continues from the partial size ("Continuing from…").
+15. Use `drop_at` on the fixture server with a file under 1 MiB, which uses
+    one connection: the failure says the connection dropped and RETRY
+    continues from the partial size ("Continuing from…"). With a larger file
+    the dropped connection is reopened and the download simply finishes.
 16. Press HOME during a download, then close 3dsDL from the HOME Menu. Start
     it again: History lists the download as resumable and RESUME continues it.
+    Try it once with a large download split across connections too, and
+    check the finished file as in item 12.
 17. Download the same file twice: RENAME creates `name (1).ext`, OVERWRITE
     replaces it, CANCEL keeps the old file.
 18. With Wi-Fi off, starting a download warns first.
@@ -115,6 +122,11 @@ On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over
 the internet (items 11 and 12), installing the CIA with FBI, and ZIP
 extraction (item 24). The console model was not recorded, so the matrix
 below is still open.
+
+On 2026-10-18 a test build of 0.4.0 (pre-release `test-fast-downloads-1`)
+downloaded a 38 MB video over 4 connections at an average of 500 to 600
+KiB/s (item 12). The single-connection speed of 0.3.2 on the same file and
+network was not measured, so the gain is not known exactly.
 
 The same day, the first 3D banner build (commit 539b3d8) crashed the HOME
 Menu every time 3dsDL was selected (item 28). Its CGFX left every mesh's node

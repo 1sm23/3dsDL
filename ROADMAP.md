@@ -29,6 +29,19 @@ images, a finished download was deleted when its name was rejected, dialogs
 ran off the screen and could not be dismissed by touch, and the conflict
 prompt stalled the connection while it waited.
 
+## 0.4: Faster downloads
+
+- [x] Ask for larger socket buffers, which widens each connection's TCP
+      window (0.3.2).
+- [x] Split large downloads across up to four connections when the server
+      accepts byte ranges, with resume that remembers which parts are done.
+- [x] Run the download on the New 3DS's third core and redraw the progress
+      screen less often.
+
+The socket buffer size and the idea that the 3DS caps each connection come
+from Colby Shores' measurements in
+[Steveice10/FBI#4](https://github.com/Steveice10/FBI/pull/4).
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.
