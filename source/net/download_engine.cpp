@@ -8,6 +8,7 @@
 #include "url.hpp"
 
 #include <curl/curl.h>
+#include <sys/socket.h>
 
 #include <cerrno>
 #include <cstring>
@@ -188,6 +189,18 @@ int progressCallback(void *userdata, curl_off_t, curl_off_t downloaded,
     return 0;
 }
 
+// Runs on each new socket before it connects, which is when the receive
+// buffer has to be set for it to size the TCP window. Errors are ignored
+// because the stack clamps sizes it does not like to its own limits.
+int sockoptCallback(void *userdata, curl_socket_t socket, curlsocktype)
+{
+    const Transfer &transfer = *static_cast<Transfer *>(userdata);
+    const int size = transfer.request->socketBufferSize;
+    setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
+    setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    return CURL_SOCKOPT_OK;
+}
+
 // Failures after which the bytes received so far are still good to resume.
 bool isTransient(CURLcode code, long httpStatus)
 {
@@ -243,6 +256,10 @@ void configure(Transfer &transfer, char *errorBuffer, curl_slist *headers)
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &transfer);
+    if (request.socketBufferSize > 0) {
+        curl_easy_setopt(curl, CURLOPT_SOCKOPTFUNCTION, sockoptCallback);
+        curl_easy_setopt(curl, CURLOPT_SOCKOPTDATA, &transfer);
+    }
 
     if (request.maxFileSize > transfer.offset) {
         curl_easy_setopt(curl, CURLOPT_MAXFILESIZE_LARGE,

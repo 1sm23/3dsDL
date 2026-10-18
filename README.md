@@ -318,6 +318,7 @@ The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull re
 - [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
 - [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
 - [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), used only by the tests to draw QR codes
+- [**Colby Shores**](https://github.com/colbyshores), whose [FBI pull request](https://github.com/Steveice10/FBI/pull/4) measured how much the 3DS socket buffer size limits download speed and found the size that works best, and pointed out that the 3DS build of Mbed TLS needs a system service open to get its randomness
 - [**libcurl**](https://curl.se/) and [**Mbed TLS**](https://github.com/Mbed-TLS/mbedtls), for downloads and HTTPS
 - The [Mozilla CA certificate bundle](https://curl.se/docs/caextract.html), for checking who you're talking to
 - [**devkitPro**](https://devkitpro.org/), **libctru** and **Citro2D**, which make 3DS homebrew possible at all

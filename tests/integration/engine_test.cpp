@@ -123,6 +123,17 @@ TEST("engine: downloads a file and reports progress")
     CHECK_EQ(listAll(folder.path()).size(), static_cast<size_t>(1));
 }
 
+TEST("engine: downloads with explicit socket buffer sizes")
+{
+    TempDir folder;
+    Recorder recorder;
+    net::Request settings = request("/file/300000", folder);
+    settings.socketBufferSize = 48 * 1024;
+    const net::Result result = net::download(settings, recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK_EQ(readText(result.partPath), pattern(300000));
+}
+
 TEST("engine: Content-Disposition names win over the URL")
 {
     TempDir folder;

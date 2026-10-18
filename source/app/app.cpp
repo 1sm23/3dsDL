@@ -22,6 +22,10 @@ namespace {
 
 constexpr const char *CaBundle = "romfs:/cacert.pem";
 constexpr const char *UserAgent = "3dsDL/" APP_VERSION " (Nintendo 3DS)";
+// The soc service's default socket buffers keep the TCP receive window small,
+// which limits speed on links with any latency. 48 KiB measured fastest on a
+// New 3DS; 64 KiB and above break connections mid-handshake.
+constexpr int SocketBufferSize = 48 * 1024;
 constexpr u64 StatusRefreshMs = 2000;
 constexpr size_t MaxRecentFolders = 4;
 
@@ -322,6 +326,7 @@ void App::startDownload(const std::string &address, std::string folder)
         request.caFile = CaBundle;
         request.userAgent = UserAgent;
         request.allowResume = settings_.resumeDownloads;
+        request.socketBufferSize = SocketBufferSize;
         request.freeSpace = [](const std::string &) {
             return platform::sdFreeBytes();
         };

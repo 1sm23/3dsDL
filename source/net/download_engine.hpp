@@ -42,6 +42,9 @@ struct Request {
     long connectTimeoutSeconds = 30;
     // Give up when less than one byte per second arrives for this long.
     long stallTimeoutSeconds = 60;
+    // Receive and send buffer size requested for the connection's socket, in
+    // bytes. 0 keeps the system default.
+    int socketBufferSize = 0;
     // FAT32 cannot hold files of 4 GiB or more.
     uint64_t maxFileSize = 0xffffffffULL;
     // Free bytes in a folder, or -1 when unknown. Optional.

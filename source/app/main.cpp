@@ -27,6 +27,7 @@ struct Services {
     u32 *socBuffer = nullptr;
     bool romfs = false;
     bool soc = false;
+    bool sslc = false;
     bool ac = false;
     bool curl = false;
 
@@ -52,6 +53,17 @@ struct Services {
         }
         soc = true;
 
+        // devkitPro's Mbed TLS gathers its randomness through
+        // sslcGenerateRandomData and never checks the result. Without an
+        // open SSLC session every TLS connection would be keyed from
+        // whatever happened to be on the stack.
+        result = sslcInit(0);
+        if (R_FAILED(result)) {
+            error = failure("Starting the secure random source", result);
+            return false;
+        }
+        sslc = true;
+
         // Only used for the Wi-Fi indicator, so failing here is not fatal.
         ac = R_SUCCEEDED(acInit());
 
@@ -72,6 +84,9 @@ struct Services {
         }
         if (ac) {
             acExit();
+        }
+        if (sslc) {
+            sslcExit();
         }
         if (soc) {
             socExit();
