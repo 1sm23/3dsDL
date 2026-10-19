@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3dsDL: download files straight onto your Nintendo 3DS</title>
-  <meta name="description" content="3dsDL downloads files from a link or a QR code straight onto your Nintendo 3DS SD card over verified HTTPS, and installs the CIAs it downloads. Install it with FBI in under a minute.">
+  <meta name="description" content="3dsDL downloads files from a link, a QR code or your phone straight onto your Nintendo 3DS SD card over verified HTTPS, installs CIAs, manages files, titles and saves, and keeps itself up to date. Install it with FBI in under a minute.">
   <meta name="theme-color" content="#e7edf2">
   <meta name="color-scheme" content="light">
   <link rel="canonical" href="https://ankush.one/3dsDL/">
@@ -42,6 +42,9 @@
     <symbol id="g-clock" viewBox="0 0 24 24"><circle cx="12" cy="12.5" r="8"/><path d="M12 8.5v4.5l3 1.8M9 2.5h6"/></symbol>
     <symbol id="g-install" viewBox="0 0 24 24"><path d="M4 13.5v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="M12 3.5v10M8 9.5l4 4 4-4"/><path d="M7.5 16.5h9"/></symbol>
     <symbol id="g-files" viewBox="0 0 24 24"><path d="M7 3.5h7l4.5 4.5v10.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path d="M14 3.5V8h4.5M8.5 12.5h7M8.5 16h5"/></symbol>
+    <symbol id="g-titles" viewBox="0 0 24 24"><path d="M6 3.5h9l3 3V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M9 8h6v5H9z"/><path d="M9 16.5h6"/></symbol>
+    <symbol id="g-receive" viewBox="0 0 24 24"><path d="M5 9.5a10 10 0 0 1 14 0M7.8 12.5a6 6 0 0 1 8.4 0"/><circle cx="12" cy="16" r="1.4"/><path d="M12 19.5v1"/></symbol>
+    <symbol id="g-queue" viewBox="0 0 24 24"><path d="M8 6.5h11M8 12h11M8 17.5h11"/><path d="M4.5 6.5h.5M4.5 12h.5M4.5 17.5h.5"/></symbol>
     <symbol id="g-zip" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M12 3.5v1.5M12 7v1.5M12 10.5V12"/><rect x="10" y="13.5" width="4" height="4" rx="1"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
   </svg>
@@ -190,7 +193,7 @@
                   <img src="assets/screens/installprompt-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
-                  <h3 id="feat-install-title">Installs CIAs <span class="tag-new">new</span></h3>
+                  <h3 id="feat-install-title">Installs CIAs</h3>
                   <p>When a CIA finishes downloading, install it, install it and delete the file, or keep it. 3dsDL shows the icon and version first, fetches the seed newer games need, and can launch the title straight away.</p>
                 </div>
               </article>
@@ -200,8 +203,38 @@
                   <img src="assets/screens/files-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
-                  <h3 id="feat-files-title">Files <span class="tag-new">new</span></h3>
+                  <h3 id="feat-files-title">Files</h3>
                   <p>A file manager: copy, cut, paste, rename and delete files and folders, view pictures, edit text and config files, peek inside ZIPs, and install CIAs, several at a time.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-titles" role="tabpanel" aria-labelledby="feat-titles-title">
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/titles-top.webp" width="400" height="240" alt="The Titles screen with Software, Updates and DLC, Save Data, Extra Data, Clean Up, Tickets and Seeds" loading="lazy">
+                  <img src="assets/screens/titles-bottom.webp" width="320" height="240" alt="" loading="lazy">
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-titles-title">Titles, saves and tickets <span class="tag-new">new</span></h3>
+                  <p>Everything installed, like Data Management: launch or delete games, back up and restore saves and extra data in Checkpoint's own folders, install and export tickets, import seeds, and clear the stuck installs that block a CIA.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-receive" role="tabpanel" aria-labelledby="feat-receive-title">
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/receive-top.webp" width="400" height="240" alt="The Receive screen with a QR code to open the console's page on a phone" loading="lazy">
+                  <img src="assets/screens/receive-bottom.webp" width="320" height="240" alt="" loading="lazy">
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-receive-title">Receive links <span class="tag-new">new</span></h3>
+                  <p>Scan the code with your phone and paste links into a page the 3DS serves on your Wi-Fi. FBI's servefiles.py, sendurls.py and Boop work too, on port 5000 as before.</p>
+                </div>
+              </article>
+              <article class="feature" id="feat-queue" role="tabpanel" aria-labelledby="feat-queue-title">
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/queue-top.webp" width="400" height="240" alt="Three links waiting in the Queue, with a notification that one was added" loading="lazy">
+                  <img src="assets/screens/queue-bottom.webp" width="320" height="240" alt="" loading="lazy">
+                </div>
+                <div class="feature-text">
+                  <h3 id="feat-queue-title">Queue <span class="tag-new">new</span></h3>
+                  <p>Add to Queue as you scan, and the camera comes straight back for the next code. Download All fetches them one after another without stopping to ask.</p>
                 </div>
               </article>
               <article class="feature" id="feat-progress" role="tabpanel" aria-labelledby="feat-progress-title">
@@ -271,6 +304,9 @@
               <span class="home-cursor" aria-hidden="true"></span>
               <button class="app-icon" type="button" role="tab" id="tab-install" aria-controls="feat-install" aria-selected="true" style="--tint:#a35be0"><span class="app-glyph"><svg class="icon"><use href="#g-install"/></svg></span><span class="app-label">Install</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-files" aria-controls="feat-files" aria-selected="false" tabindex="-1" style="--tint:#16a6a0"><span class="app-glyph"><svg class="icon"><use href="#g-files"/></svg></span><span class="app-label">Files</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-titles" aria-controls="feat-titles" aria-selected="false" tabindex="-1" style="--tint:#c9a227"><span class="app-glyph"><svg class="icon"><use href="#g-titles"/></svg></span><span class="app-label">Titles</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-receive" aria-controls="feat-receive" aria-selected="false" tabindex="-1" style="--tint:#c05ba8"><span class="app-glyph"><svg class="icon"><use href="#g-receive"/></svg></span><span class="app-label">Receive</span></button>
+              <button class="app-icon" type="button" role="tab" id="tab-queue" aria-controls="feat-queue" aria-selected="false" tabindex="-1" style="--tint:#32a865"><span class="app-glyph"><svg class="icon"><use href="#g-queue"/></svg></span><span class="app-label">Queue</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-progress" aria-controls="feat-progress" aria-selected="false" tabindex="-1" style="--tint:#2fb6e8"><span class="app-glyph"><svg class="icon"><use href="#g-download"/></svg></span><span class="app-label">Progress</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-resume" aria-controls="feat-resume" aria-selected="false" tabindex="-1" style="--tint:#3fb45f"><span class="app-glyph"><svg class="icon"><use href="#g-resume"/></svg></span><span class="app-label">Resume</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-safe" aria-controls="feat-safe" aria-selected="false" tabindex="-1" style="--tint:#f08a3c"><span class="app-glyph"><svg class="icon"><use href="#g-shield"/></svg></span><span class="app-label">Safe saves</span></button>
@@ -280,7 +316,7 @@
             </div>
           </div>
         </div>
-        <p class="also">Also: history of the last 50 downloads, sleep mode paused during transfers, plain-http warnings, and QR codes that aren't links are pointed out instead of ending the scan.</p>
+        <p class="also">Also: it updates itself from GitHub and tells you when a new version is out, installs a CIA straight from the internet when the SD card is too full to hold it, checks files against SHA-256 lists, keeps a history of the last 50 downloads, and pauses sleep mode during transfers.</p>
       </section>
 
       <section id="install" class="section panel tone-a">
