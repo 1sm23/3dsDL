@@ -38,8 +38,10 @@ TEST("titles: only user software is shown")
     for (const uint64_t id : {Game, GameUpdate, GameDlc, Demo, DsiWare}) {
         CHECK(titles::isShown(id));
     }
+    // System DSi titles on platform 3 are never shown either.
+    constexpr uint64_t TwlSystem = 0x0003000548414E41ULL;
     for (const uint64_t id : {HomeMenu, SystemDsiWare, DownloadPlayChild,
-                              0x0003000548414E41ULL}) {
+                              TwlSystem}) {
         CHECK(!titles::isShown(id));
     }
     CHECK(titles::isSoftware(Game));
