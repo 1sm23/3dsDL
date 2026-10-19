@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.4.0" src="https://img.shields.io/badge/version-0.4.0-34d6e8?style=for-the-badge">
+  <img alt="Version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-34d6e8?style=for-the-badge">
   <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=for-the-badge">
   <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=for-the-badge">
   <img alt="Active development" src="https://img.shields.io/badge/status-in%20development-ffc857?style=for-the-badge">
@@ -32,7 +32,7 @@ Getting a file onto a 3DS usually means powering it off, pulling the SD card and
 It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownload), the 2017 homebrew downloader, rebuilt around libcurl and mbedTLS with a new Citro2D interface.
 
 > [!IMPORTANT]
-> Version 0.4.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console, and the download engine, file handling, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
+> Version 0.5.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself is new in 0.5.0 and has been tried in the Azahar emulator but not yet on a console. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## ✨ Features
 
@@ -75,6 +75,16 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
     <td valign="top">
       <h4>🗜️ Optional ZIP extraction</h4>
       Off by default. When you turn it on, 3dsDL offers to extract a downloaded <code>.zip</code> into the same folder or a new one, asks before overwriting, and refuses paths that would escape the folder.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <h4>📦 Installs CIAs</h4>
+      When a <code>.cia</code> finishes downloading, install it, install it and delete the file, or keep it. 3dsDL shows the title's icon, name and version first, warns before replacing a newer version, fetches the seed newer games need, and can launch the title straight away.
+    </td>
+    <td valign="top">
+      <h4>🗂️ Files</h4>
+      Browse the SD card's folders and files. A CIA shows its icon, title ID, version and whether it's already installed, and can be installed or deleted from there.
     </td>
   </tr>
   <tr>
@@ -145,6 +155,9 @@ Install `3dsDL.cia` with FBI to launch it straight from the HOME Menu. The CIA u
 3. Check the link and the folder on the confirm screen. **Folder** lets you change where it goes.
 4. Watch the progress screen. Leave it running, or cancel with <kbd>B</kbd>.
 5. If a file with that name already exists, choose **Rename**, **Overwrite** or **Cancel**.
+6. If it's a CIA, choose **Install**, **Install & delete** (removes the file once it's installed) or **Keep file**. After installing, **Launch** starts it, and it's on the HOME Menu from then on.
+
+CIAs already on the SD card install from **Files** on the home screen: open the folder, select the CIA, and choose **Install**.
 
 If the connection drops, the error dialog offers **Retry**, which continues from where it stopped. The same download can also be resumed later from **History**.
 
@@ -168,6 +181,7 @@ The QR code has to contain a **direct** link starting with `http://` or `https:/
 | Dialogs | <kbd>B</kbd> | Go back or cancel |
 | Lists | Up / Down, <kbd>L</kbd> / <kbd>R</kbd> to page, tap twice to open | Move and open |
 | Folder browser | <kbd>X</kbd> / <kbd>Y</kbd> | New folder / use the current folder |
+| Files | <kbd>A</kbd> / <kbd>B</kbd> / <kbd>START</kbd> | Open a folder or a file's options / up one folder / back to the home screen |
 | History | <kbd>X</kbd> | Clear the history |
 | QR scanner | <kbd>B</kbd> | Stop scanning |
 | Download | <kbd>B</kbd> | Ask to cancel |
@@ -179,6 +193,7 @@ The QR code has to contain a **direct** link starting with `http://` or `https:/
 | Resume interrupted downloads | On | Keep partial downloads and continue them with HTTP range requests. 3dsDL only resumes when the server sends a strong ETag or a Last-Modified date, and starts over if the file changed. |
 | Stay awake while downloading | On | Pause sleep mode during downloads and extraction so closing the lid doesn't drop Wi-Fi. |
 | Offer to extract ZIP files | Off | After a `.zip` finishes, ask whether to extract it. |
+| After downloading a CIA | Ask | Ask each time, install and keep the file, install and delete the file, or only keep the file. |
 | Default download folder | `sdmc:/` | Where new downloads go. |
 | Console clock | | Shows the console's time next to internet time and sets the clock for your time zone. The time zone you pick is remembered. |
 
@@ -191,6 +206,7 @@ The QR code has to contain a **direct** link starting with `http://` or `https:/
 | --- | --- |
 | `sdmc:/3ds/3dsDL/settings.ini` | Settings. Version 0.2's `sdmc:/3dsDL.cfg` is moved here automatically. |
 | `sdmc:/3ds/3dsDL/history.txt` | The last 50 downloads. |
+| `sdmc:/3ds/3dsDL/seeds/<title id>.dat` | Optional 16-byte seeds for games that need one, checked before asking Nintendo's server. FBI's `sdmc:/fbi/seed/` is checked too. |
 | `<folder>/.3dsdl-<id>.part` and `.resume` | A partial download kept for resuming, removed once it finishes, is cancelled or is removed from History. |
 
 ## 🛠️ Building
@@ -303,7 +319,7 @@ site/          the website, deployed to GitHub Pages
 
 ## 🗺️ Roadmap
 
-Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, and **0.4.0** large downloads split across four connections. Next up:
+Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, and **0.5.0** installing the CIAs it downloads, with a Files screen. Next up:
 
 - [ ] Hardware pass on New and Old 3DS using [docs/HARDWARE.md](docs/HARDWARE.md)
 - [ ] 1.0 once that pass is clean
@@ -318,6 +334,7 @@ The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull re
 - [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
 - [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
 - [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), used only by the tests to draw QR codes
+- [**FBI**](https://github.com/Steveice10/FBI) by Steveice10 (MIT), whose CIA install sequence, seed handling and title ID rules 3dsDL's installer follows
 - [**Colby Shores**](https://github.com/colbyshores), whose [FBI pull request](https://github.com/Steveice10/FBI/pull/4) measured how much the 3DS socket buffer size limits download speed and found the size that works best, and pointed out that the 3DS build of Mbed TLS needs a system service open to get its randomness
 - [**libcurl**](https://curl.se/) and [**Mbed TLS**](https://github.com/Mbed-TLS/mbedtls), for downloads and HTTPS
 - The [Mozilla CA certificate bundle](https://curl.se/docs/caextract.html), for checking who you're talking to
