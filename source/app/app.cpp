@@ -1640,6 +1640,7 @@ void App::settingsScreen()
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
         spec.back = "Back";
+        spec.action = "Report Issue";
         const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
                              u32 iconColor, bool tile) {
             ui::Control control;
@@ -1667,8 +1668,16 @@ void App::settingsScreen()
             ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
             ui::drawPanel();
             spec.controls[1].badge = updateAvailable_ ? "New" : "";
-            const int shown = focus >= 0 && focus < 6 ? focus : 2;
             const float left = ui::TopPanel.x + 18;
+            if (focus == ui::ScreenAction) {
+                ui::drawWrapped("Where to report a bug, ask a question or "
+                                "reach the developer, as QR codes to scan "
+                                "with a phone.",
+                                left, ui::TopPanel.y + 12, ui::type::Small,
+                                ui::color::Ink, ui::TopPanel.w - 36, 3);
+                return;
+            }
+            const int shown = focus >= 0 && focus < 6 ? focus : 2;
             float y = ui::drawWrapped(TileHelp[shown], left, ui::TopPanel.y + 12,
                                       ui::type::Small, ui::color::Ink,
                                       ui::TopPanel.w - 36, 3) +
@@ -1723,6 +1732,9 @@ void App::settingsScreen()
             break;
         case 5:
             filesAndHistory();
+            break;
+        case ui::ScreenAction:
+            reportScreen();
             break;
         default:
             return;
@@ -1916,12 +1928,22 @@ bool App::clockScreen()
 
 void App::aboutScreen()
 {
-    ui::message("3dsDL " APP_VERSION,
-                "Download files straight onto your Nintendo 3DS from a link "
-                "or a QR code. Settings and history live in " +
-                    std::string(storage::DataFolder) + ".",
-                ui::Tone::Info,
-                "GPLv3. Built on libcurl, Mbed TLS, quirc and Citro2D, and "
-                "grew out of Multidownload by hax0kartik. CIA installing "
-                "follows FBI by Steveice10 (MIT).");
+    ui::Dialog dialog;
+    dialog.header = "3dsDL " APP_VERSION;
+    dialog.title = "3dsDL " APP_VERSION;
+    dialog.body.push_back({"Download files straight onto your Nintendo 3DS "
+                           "from a link or a QR code. Settings and history "
+                           "live in " +
+                               std::string(storage::DataFolder) + ".",
+                           ui::color::Ink, 0.5f, 6});
+    dialog.body.push_back({"GPLv3. Built on libcurl, Mbed TLS, quirc and "
+                           "Citro2D, and grew out of Multidownload by "
+                           "hax0kartik. CIA installing follows FBI by "
+                           "Steveice10 (MIT).",
+                           ui::color::InkSoft, 0.5f, 3});
+    dialog.buttons = {"OK", "Report an Issue"};
+    dialog.cancelButton = 0;
+    if (ui::choose(dialog) == 1) {
+        reportScreen();
+    }
 }

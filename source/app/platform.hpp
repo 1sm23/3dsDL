@@ -14,6 +14,13 @@ int64_t sdFreeBytes();
 // Seconds since 1970 by the console clock (which has no time zone).
 int64_t now();
 
+// The model as the CFG service numbers it (CFG_SystemModel), or -1 when it
+// cannot be read.
+int systemModel();
+// The system version as System Settings shows it, "11.17.0-50U", or "" when
+// it cannot be read.
+std::string systemVersion();
+
 // Sets the console clock to localUnixMilliseconds (local time, since 1970),
 // the same way Luma3DS's Rosalina menu does. Fails with an explanation when
 // 3dsDL is not allowed to change the clock.

@@ -75,4 +75,9 @@ TEST("url: last path segment and percent decoding")
     CHECK_EQ(url::percentDecode("a%20b%2Fc"), std::string("a b/c"));
     CHECK_EQ(url::percentDecode("100%"), std::string("100%"));
     CHECK_EQ(url::percentDecode("%zz%4"), std::string("%zz%4"));
+    CHECK_EQ(url::percentEncode("a b/c,(d)\n~-._"),
+             std::string("a%20b%2Fc%2C%28d%29%0A~-._"));
+    CHECK_EQ(url::percentEncode("\xc3\xa9"), std::string("%C3%A9"));
+    CHECK_EQ(url::percentDecode(url::percentEncode("x=1&y=%2")),
+             std::string("x=1&y=%2"));
 }

@@ -34,6 +34,30 @@ int64_t now()
     return static_cast<int64_t>(std::time(nullptr));
 }
 
+int systemModel()
+{
+    if (R_FAILED(cfguInit())) {
+        return -1;
+    }
+    u8 model = 0;
+    const Result result = CFGU_GetSystemModel(&model);
+    cfguExit();
+    return R_SUCCEEDED(result) ? model : -1;
+}
+
+std::string systemVersion()
+{
+    // Read from the NVer and CVer system titles, as System Settings does.
+    OS_VersionBin nver {};
+    OS_VersionBin cver {};
+    char text[32] = {};
+    if (R_FAILED(osGetSystemVersionDataString(&nver, &cver, text,
+                                              sizeof(text)))) {
+        return "";
+    }
+    return text;
+}
+
 bool setConsoleClock(int64_t localUnixMilliseconds, std::string &error)
 {
     // System Settings keeps manual changes as an offset from the hardware

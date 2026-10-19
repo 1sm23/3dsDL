@@ -18,5 +18,7 @@ std::string lastPathSegment(const std::string &value);
 
 // Decodes %XX escapes. Malformed escapes are kept as they are.
 std::string percentDecode(const std::string &value);
+// Escapes everything but letters, digits and -._~ for a query value.
+std::string percentEncode(const std::string &value);
 
 } // namespace url

@@ -114,4 +114,24 @@ std::string percentDecode(const std::string &value)
     return output;
 }
 
+std::string percentEncode(const std::string &value)
+{
+    static const char *const Hex = "0123456789ABCDEF";
+    std::string output;
+    output.reserve(value.size());
+    for (const char character : value) {
+        const unsigned char byte = static_cast<unsigned char>(character);
+        if ((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+            (byte >= '0' && byte <= '9') || byte == '-' || byte == '.' ||
+            byte == '_' || byte == '~') {
+            output += character;
+        } else {
+            output += '%';
+            output += Hex[byte >> 4];
+            output += Hex[byte & 0x0f];
+        }
+    }
+    return output;
+}
+
 } // namespace url

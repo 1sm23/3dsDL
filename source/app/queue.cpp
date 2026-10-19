@@ -5,6 +5,7 @@
 #include "fs_util.hpp"
 #include "installer.hpp"
 #include "naming.hpp"
+#include "qr_code.hpp"
 #include "remote.hpp"
 #include "remote_server.hpp"
 #include "storage.hpp"
@@ -13,10 +14,6 @@
 #include "ui.hpp"
 #include "units.hpp"
 #include "url.hpp"
-
-extern "C" {
-#include "qrcodegen.h"
-}
 
 #include <arpa/inet.h>
 
@@ -65,42 +62,6 @@ std::string localAddress()
     address.s_addr = static_cast<in_addr_t>(id);
     return inet_ntoa(address);
 }
-
-// A QR code of text, drawn with modules of size px at x, y on white.
-class QrCode {
-public:
-    explicit QrCode(const std::string &text)
-    {
-        uint8_t temp[qrcodegen_BUFFER_LEN_FOR_VERSION(6)];
-        ok_ = qrcodegen_encodeText(text.c_str(), temp, code_,
-                                   qrcodegen_Ecc_MEDIUM, qrcodegen_VERSION_MIN,
-                                   6, qrcodegen_Mask_AUTO, true);
-    }
-    int size() const { return ok_ ? qrcodegen_getSize(code_) : 0; }
-    void draw(float x, float y, float px) const
-    {
-        if (!ok_) {
-            return;
-        }
-        const int count = size();
-        const float quiet = 2 * px;
-        ui::fillRound({x - quiet, y - quiet, count * px + 2 * quiet,
-                       count * px + 2 * quiet},
-                      4, ui::color::rgb(0xFFFFFF));
-        for (int row = 0; row < count; ++row) {
-            for (int column = 0; column < count; ++column) {
-                if (qrcodegen_getModule(code_, column, row)) {
-                    ui::fillRound({x + column * px, y + row * px, px, px}, 0,
-                                  ui::color::rgb(0x222222));
-                }
-            }
-        }
-    }
-
-private:
-    uint8_t code_[qrcodegen_BUFFER_LEN_FOR_VERSION(6)] = {};
-    bool ok_ = false;
-};
 
 // Listens on a worker thread while the Receive screen is open.
 struct ReceiveJob {

@@ -105,6 +105,8 @@ private:
     bool confirmClearHistory();
     void settingsScreen();
     void aboutScreen();
+    // Where to report a problem, as QR codes to scan, in report.cpp.
+    void reportScreen();
 
     // Installed software and its data, in titles_screens.cpp.
     void titlesScreen();
