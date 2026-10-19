@@ -65,13 +65,13 @@ void addCiaParagraphs(ui::Dialog &dialog, const cia::Info &info)
     }
     dialog.body.push_back(
         {std::string(cia::kindName(cia::kind(info.titleId))) + ", " +
-             cia::versionText(info.version) + ", " +
+             titleVersion(info.titleId, info.version) + ", " +
              units::bytes(info.fileSize),
          ui::color::Text, 0.46f, 2});
     uint16_t installed = 0;
     if (installer::installedVersion(info.titleId, installed)) {
         dialog.body.push_back({"Installed now: " +
-                                   cia::versionText(installed),
+                                   titleVersion(info.titleId, installed),
                                installed > info.version ? ui::color::Warning
                                                         : ui::color::Muted,
                                0.44f, 1});
@@ -98,18 +98,25 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
     uint16_t installed = 0;
     const bool isInstalled = installedCached(info.titleId, installed);
     y = ui::drawTagRow(left, y, 76, "Version",
-                       versionRow(info.version, isInstalled, installed));
+                       versionRow(info.titleId, info.version, isInstalled,
+                                  installed));
     ui::drawTagRow(left, y, 76, "Size",
                    units::bytes(info.fileSize) + ", " +
                        (cia::installsToNand(info.titleId) ? "system memory"
                                                           : "SD card"));
 }
 
-std::string versionRow(uint16_t version, bool isInstalled, uint16_t installed)
+std::string titleVersion(uint64_t titleId, uint16_t version)
+{
+    return cia::versionText(titleId, version, APP_VERSION);
+}
+
+std::string versionRow(uint64_t titleId, uint16_t version, bool isInstalled,
+                       uint16_t installed)
 {
     // "1.2.0 (v1056)" without the raw number, so the state fits beside it.
-    const auto shortText = [](uint16_t value) {
-        const std::string text = cia::versionText(value);
+    const auto shortText = [titleId](uint16_t value) {
+        const std::string text = titleVersion(titleId, value);
         return text.substr(0, text.find(' '));
     };
     if (!isInstalled) {

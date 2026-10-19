@@ -235,7 +235,8 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                        {{"Type", std::string("CIA, ") +
                                      cia::kindName(cia::kind(info.titleId))},
                         {"Version",
-                         versionRow(info.version, details.installed,
+                         versionRow(info.titleId, info.version,
+                                    details.installed,
                                     details.installedVersion)},
                         {"Size", units::bytes(info.fileSize)}});
         return;

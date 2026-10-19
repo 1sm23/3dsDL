@@ -393,7 +393,8 @@ bool readTitle(const std::string &local, Title &title, std::string &error)
     return true;
 }
 
-void sendTitle(int client, const std::string &local, bool iconOnly)
+void sendTitle(int client, const FileSharing &sharing, const std::string &local,
+               bool iconOnly)
 {
     Title title;
     std::string error;
@@ -427,6 +428,13 @@ void sendTitle(int client, const std::string &local, bool iconOnly)
                          ",\"product\":" + remote::jsonString(title.product) +
                          ",\"titleId\":" + remote::jsonString(titleId) +
                          ",\"version\":" + std::to_string(title.version) +
+                         ",\"versionText\":" +
+                         remote::jsonString(
+                             title.version < 0
+                                 ? ""
+                                 : cia::versionText(title.titleId,
+                                                    static_cast<uint16_t>(title.version),
+                                                    sharing.appVersion)) +
                          ",\"note\":" + remote::jsonString(title.note) +
                          ",\"icon\":" + (title.icon.size() == 48 * 48 ? "true" : "false") +
                          "}");
@@ -681,7 +689,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
     }
     if ((route == "/api/meta" || route == "/api/icon") && method == "GET") {
         if (mapped(remote::formValue(request.query, "path"), local)) {
-            sendTitle(client, local, route == "/api/icon");
+            sendTitle(client, sharing, local, route == "/api/icon");
         }
         return false;
     }

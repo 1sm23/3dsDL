@@ -98,6 +98,25 @@ std::string titleIdText(uint64_t titleId); // 16 upper-case hex digits
 // "1.2.0 (v1056)"
 std::string versionText(uint16_t version);
 
+// 3dsDL's own title. From 0.8.1 on, its CIAs carry a build number instead of
+// major.minor.micro, so that every build, pre-releases included, installs
+// over the one before (see scripts/version.sh):
+// major * 16384 + minor * 256 + patch * 16 + step, where step is the
+// pre-release's last number (1 to 14) and 15 for the release.
+constexpr uint64_t OwnTitleId = 0x0004000003D5D100ull;
+
+// The build number for a version such as "0.8.1-beta.2", or -1 when the
+// version has no build number (no last number from 1 to 14, or too big).
+int buildNumber(const std::string &version);
+
+// versionText, except for 3dsDL's own builds from 0.8.1 on: the version
+// running, when the number is its own, and otherwise the version the number
+// stands for, "0.8.1 (v2079)" or "0.8.1-pre.2 (v2066)". The label itself is
+// not in the number. Numbers below 2048 are older 3dsDL releases, which used
+// major.minor.micro.
+std::string versionText(uint64_t titleId, uint16_t version,
+                        const std::string &running = "");
+
 enum class Kind { Application, Update, Dlc, Demo, DsiWare, DownloadPlay, System };
 Kind kind(uint64_t titleId);
 const char *kindName(Kind kind);

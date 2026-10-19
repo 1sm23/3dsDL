@@ -909,7 +909,7 @@ async function details(li) {
     try {
       const m = await api('GET', '/api/meta?path=' + enc(path));
       for (const s of f.querySelectorAll('.skel')) s.remove();
-      const version = m.version >= 0 ? 'v' + (m.version >> 10) + '.' + ((m.version >> 4) & 63) + '.' + (m.version & 15) + ' (' + m.version + ')' : '';
+      const version = m.versionText || '';
       const rows = [['Title', m.name], ['Publisher', m.publisher], ['Product', m.product], ['Title ID', m.titleId], ['Version', version], ['Note', m.note]].filter(r => r[1]);
       f.insertAdjacentHTML('afterbegin', rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join(''));
       if (m.name) d.querySelector('.sub').textContent = m.name + (m.publisher ? ' · ' + m.publisher : '');

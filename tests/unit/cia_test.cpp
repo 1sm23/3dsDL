@@ -218,6 +218,26 @@ TEST("cia: title ID helpers")
     CHECK_EQ(cia::versionText(TestVersion), std::string("1.2.0 (v1056)"));
     CHECK_EQ(cia::versionText(0), std::string("0.0.0 (v0)"));
 
+    // 3dsDL's own build numbers, the same as scripts/version.sh gives.
+    CHECK_EQ(cia::buildNumber("0.8.1-beta.1"), 2065);
+    CHECK_EQ(cia::buildNumber("0.8.1-beta.2"), 2066);
+    CHECK_EQ(cia::buildNumber("0.8.1-rc.3"), 2067);
+    CHECK_EQ(cia::buildNumber("0.8.1"), 2079);
+    CHECK_EQ(cia::buildNumber("1.0.0"), 16399);
+    CHECK_EQ(cia::buildNumber("0.8.1-beta"), -1);
+    CHECK_EQ(cia::buildNumber("0.8.1-beta.15"), -1);
+    CHECK_EQ(cia::buildNumber("0.8.1-beta.1a"), -1);
+    CHECK_EQ(cia::buildNumber("0.7.16"), -1);
+    CHECK_EQ(cia::buildNumber("nonsense"), -1);
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2066, "0.8.1-beta.2"),
+             std::string("0.8.1-beta.2 (v2066)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2066, "0.8.1-beta.3"),
+             std::string("0.8.1-pre.2 (v2066)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2079), std::string("0.8.1 (v2079)"));
+    // 0.8.0 and older used major.minor.micro, and other titles always do.
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 128), std::string("0.8.0 (v128)"));
+    CHECK_EQ(cia::versionText(0x0004000000055D00ull, 2066), std::string("2.1.2 (v2066)"));
+
     CHECK(cia::kind(0x0004000000164800ULL) == cia::Kind::Application);
     CHECK(cia::kind(0x0004000E00164800ULL) == cia::Kind::Update);
     CHECK(cia::kind(0x0004008C00164800ULL) == cia::Kind::Dlc);

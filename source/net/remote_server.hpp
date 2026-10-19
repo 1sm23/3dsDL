@@ -68,6 +68,8 @@ struct FileSharing {
     std::function<int64_t()> totalSpace; // bytes, or -1 when unknown
     // Unset reports "ready" with no text.
     std::function<ConsoleStatus()> status;
+    // The running 3dsDL's version, to name its own CIAs (cia::versionText).
+    std::string appVersion;
     // Called a few times a second during a transfer, on the server's thread.
     std::function<void(const Transfer &)> progress;
     int socketBufferSize = 0; // asked for on each connection when not 0

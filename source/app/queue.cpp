@@ -566,6 +566,7 @@ void App::receiveScreen()
     sharing.freeSpace = []() { return platform::sdFreeBytes(); };
     sharing.totalSpace = []() { return platform::sdTotalBytes(); };
     sharing.status = [&job]() { return job.snapshot(); };
+    sharing.appVersion = APP_VERSION;
     sharing.progress = [&job](const net::Transfer &transfer) {
         job.progress(transfer);
     };
@@ -1036,7 +1037,7 @@ void App::installDirectly(const std::string &address)
     dialog.icon = info.hasSmdh ? ui::showIcon(info.smdh.icon) : nullptr;
     dialog.body.push_back({name, ui::color::Text, 0.5f, 1});
     dialog.body.push_back({std::string(cia::kindName(cia::kind(info.titleId))) +
-                               ", " + cia::versionText(info.version) + ", " +
+                               ", " + screens::titleVersion(info.titleId, info.version) + ", " +
                                units::bytes(installed.bytes) +
                                ", installed directly without saving the file.",
                            ui::color::Muted, 0.46f, 3});

@@ -84,7 +84,7 @@ void drawTitleTop(const std::string &header, ui::Icon headerIcon,
                     ui::color::InkSoft, 280);
     float y = top + 60;
     y = ui::drawTagRow(left, y, 76, "Title ID", cia::titleIdText(title.id));
-    y = ui::drawTagRow(left, y, 76, "Version", cia::versionText(title.version));
+    y = ui::drawTagRow(left, y, 76, "Version", screens::titleVersion(title.id, title.version));
     ui::drawTagRow(left, y, 76, "Size",
                    units::bytes(title.size) + ", " + placeName(title.place));
 }

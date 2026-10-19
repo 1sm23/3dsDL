@@ -44,7 +44,11 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
 // One line about the installed copy: "Not installed yet", "An update for
 // the installed version", and so on.
 // The Version row: "1.2.0, installed 1.1.0".
-std::string versionRow(uint16_t version, bool isInstalled, uint16_t installed);
+// A title's version as people read it: cia::versionText with this build of
+// 3dsDL named exactly.
+std::string titleVersion(uint64_t titleId, uint16_t version);
+std::string versionRow(uint64_t titleId, uint16_t version, bool isInstalled,
+                       uint16_t installed);
 std::string installState(const cia::Info &info);
 
 } // namespace screens

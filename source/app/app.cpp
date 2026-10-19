@@ -907,9 +907,9 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         dialog.title = title;
         dialog.tone = sameVersion ? ui::Tone::Info : ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
-        dialog.body.push_back({"Installed: " + cia::versionText(installed) +
+        dialog.body.push_back({"Installed: " + screens::titleVersion(info.titleId, installed) +
                                    "\nThis file: " +
-                                   cia::versionText(info.version),
+                                   screens::titleVersion(info.titleId, info.version),
                                ui::color::Text, 0.48f, 2});
         dialog.body.push_back({"3dsDL backs up its save, removes the "
                                "installed copy and installs this one.",
@@ -936,7 +936,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         bool reinstall = false;
         if (isRunning) {
             ui::message("Already Installed",
-                        name + " " + cia::versionText(installed) +
+                        name + " " + screens::titleVersion(info.titleId, installed) +
                             " is already installed. It is the software "
                             "running now, so it cannot be installed again.",
                         ui::Tone::Info);
@@ -959,10 +959,10 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     } else if (isInstalled && installed > info.version) {
         if (isRunning) {
             ui::message("Newer Version Running",
-                        name + " " + cia::versionText(installed) +
+                        name + " " + screens::titleVersion(info.titleId, installed) +
                             " is installed and running now, so it cannot "
                             "be replaced by this older " +
-                            cia::versionText(info.version) + ".",
+                            screens::titleVersion(info.titleId, info.version) + ".",
                         ui::Tone::Info);
             return false;
         }
@@ -1090,7 +1090,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     dialog.body.push_back({name, ui::color::Text, 0.5f, 1});
     dialog.body.push_back(
         {std::string(cia::kindName(cia::kind(info.titleId))) + ", " +
-             cia::versionText(info.version) + ", " +
+             screens::titleVersion(info.titleId, info.version) + ", " +
              units::bytes(result.bytes) +
              (result.seconds > 0.5
                   ? ", installed in " + units::duration(static_cast<int64_t>(

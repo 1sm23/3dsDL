@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -311,6 +312,50 @@ std::string versionText(uint16_t version)
                   static_cast<unsigned>(version & 0xf),
                   static_cast<unsigned>(version));
     return buffer;
+}
+
+int buildNumber(const std::string &version)
+{
+    unsigned major = 0, minor = 0, patch = 0;
+    int used = 0;
+    if (std::sscanf(version.c_str(), "%u.%u.%u%n", &major, &minor, &patch, &used) != 3 ||
+        major > 3 || minor > 63 || patch > 15) {
+        return -1;
+    }
+    unsigned step = 15;
+    const std::string rest = version.substr(static_cast<size_t>(used));
+    if (!rest.empty()) {
+        const size_t digits = rest.find_last_not_of("0123456789");
+        const std::string last = rest.substr(digits + 1);
+        if (rest[0] != '-' || last.empty() || last.size() > 2 ||
+            (digits != std::string::npos && rest[digits] != '.' && rest[digits] != '-')) {
+            return -1;
+        }
+        step = static_cast<unsigned>(std::atoi(last.c_str()));
+        if (step < 1 || step > 14) {
+            return -1;
+        }
+    }
+    return static_cast<int>(major * 16384 + minor * 256 + patch * 16 + step);
+}
+
+std::string versionText(uint64_t titleId, uint16_t version,
+                        const std::string &running)
+{
+    if (titleId != OwnTitleId || version < 2048) {
+        return versionText(version);
+    }
+    std::string text;
+    if (!running.empty() && buildNumber(running) == version) {
+        text = running;
+    } else {
+        const unsigned step = version % 16;
+        text = std::to_string(version / 16384) + "." +
+               std::to_string(version / 256 % 64) + "." +
+               std::to_string(version / 16 % 16) +
+               (step == 15 ? "" : "-pre." + std::to_string(step));
+    }
+    return text + " (v" + std::to_string(version) + ")";
 }
 
 Kind kind(uint64_t titleId)
