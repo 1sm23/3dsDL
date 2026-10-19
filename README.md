@@ -23,10 +23,13 @@
 3dsDL downloads files onto the SD card while the console stays on, with no card reader and no computer. Scan a QR code, type a link or send one from your phone, and it saves the file, installs it if it's a CIA, and lets you manage what's on the card. It's built to replace FBI, which is no longer maintained, and it looks and feels like the console's own system software.
 
 <p align="center">
-  <img src="docs/images/downloading.png" width="200" alt="A download in progress">
-  <img src="docs/images/installprompt.png" width="200" alt="Installing a CIA">
-  <img src="docs/images/titles.png" width="200" alt="The Titles screen">
-  <img src="docs/images/receive.png" width="200" alt="Receiving links from a phone">
+  <img src="docs/images/home.png" width="250" alt="The home screen">
+  <img src="docs/images/downloading.png" width="250" alt="A download in progress">
+  <img src="docs/images/install.png" width="250" alt="Installing a downloaded CIA">
+  <br>
+  <img src="docs/images/files.png" width="250" alt="Files, showing a CIA's details">
+  <img src="docs/images/titles.png" width="250" alt="The Titles screen">
+  <img src="docs/images/receive.png" width="250" alt="Receiving links from a phone">
 </p>
 
 ## Features
