@@ -1438,22 +1438,26 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     // the tab, clear of the rounded corner.
     float labelScale = type::Tab;
     while (labelScale > 0.45f &&
-           textWidth(label, labelScale) + keyWidth > area.w - 34) {
+           textWidth(label, labelScale) + keyWidth > area.w - 22) {
         labelScale -= 0.02f;
     }
     const float labelWidth = textWidth(label, labelScale);
-    float x = tab == Tab::Left    ? area.x + 20
-            : tab == Tab::Right ? area.x + area.w - 16 - labelWidth - keyWidth
-                                : area.x + (area.w - labelWidth - keyWidth) / 2;
+    // Centred on the tab, a little away from its rounded inner corner, and
+    // on the middle of the grey body below the highlight.
+    const float inset = tab == Tab::Full ? 0 : 6;
+    const float centre = tab == Tab::Right ? area.x + inset + (area.w - inset) / 2
+                                           : area.x + (area.w - inset) / 2;
+    float x = centre - (labelWidth + keyWidth) / 2;
+    const Rect line = {x, area.y + 3.5f, labelWidth + keyWidth, area.h - 3};
     if (!key.empty()) {
         const float capWidth = keyWidth - 5;
         // Centred on the same line as the label beside it.
-        const Rect cap = {x, area.y + 2 + (area.h - 2 - 15) / 2, capWidth, 15};
+        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, 15};
         fillRound(cap, key.size() == 1 ? 7.5f : 4, color::rgb(0xFFFFFF));
         drawCentered(key, cap, 0.36f, color::rgb(0x6C6C6C));
         x += keyWidth;
     }
-    drawCentered(label, {x, area.y + 2, labelWidth, area.h - 2}, labelScale,
+    drawCentered(label, {x, line.y, labelWidth, line.h}, labelScale,
                  color::rgb(0xFFFFFF), true);
 
     if (focused) {

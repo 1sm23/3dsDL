@@ -490,9 +490,11 @@ void App::extraDataScreen()
                             left, y + 2, ui::type::Tiny, ui::color::InkSoft,
                             ui::TopPanel.w - 36, 2);
         };
-        spec.action = "Delete";
-        spec.actionKey = "X";
-        spec.actionKeys = KEY_X;
+        if (!shown.empty()) {
+            spec.action = "Delete";
+            spec.actionKey = "X";
+            spec.actionKeys = KEY_X;
+        }
         const ui::ListResult result = ui::runList(spec, cursor);
         if ((result.key != KEY_A && result.key != KEY_X) || result.index < 0 ||
             result.index >= static_cast<int>(shown.size())) {
