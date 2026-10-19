@@ -120,6 +120,16 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
     </td>
   </tr>
   <tr>
+    <td valign="top">
+      <h4>💾 Saves and extra data</h4>
+      Back up and restore game saves and extra data in Checkpoint's own folders (<code>sdmc:/3ds/Checkpoint/</code>), so a backup made by either app restores in the other. Restoring backs up what's there first, clears the secure value games check, and skips computer junk like <code>._</code> files. You can also look inside a save and copy files out.
+    </td>
+    <td valign="top">
+      <h4>🎟️ Tickets</h4>
+      Install <code>.tik</code> files from Files, the way FBI did, and export an installed title's ticket to <code>sdmc:/3ds/3dsDL/tickets/</code>.
+    </td>
+  </tr>
+  <tr>
     <td colspan="2" valign="top">
       <h4>🎮 Titles</h4>
       Everything installed, like System Settings' Data Management: games, updates and DLC, extra data and tickets, with their icons. Launch a game, fetch its seed, delete it with or without its ticket, delete extra data, import seeds from a <code>seeddb.bin</code>, and clean up the unfinished installs that make a CIA refuse to install again. System titles never show up, so they can't be deleted by mistake.

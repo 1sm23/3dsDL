@@ -29,13 +29,22 @@ AccessControlInfo:
     - DirectSdmcWrite
     # Adding a game's seed after installing it, as FBI does.
     - SeedDB
-    # Reading other software's icons and listing and deleting its extra
-    # data on the Titles screens. FBI asks for these and more; the ones that
-    # write to the system memory (CtrNandRw, TwlNandData and the like) are
-    # left out on purpose.
+    # Reading other software's icons, and opening, backing up and
+    # restoring its save data and extra data (with its secure value) on the
+    # Titles screens. These are the categories FBI and Checkpoint ask for;
+    # the ones that write to the system memory (CtrNandRw, CtrNandRoWrite,
+    # TwlNandData, ExportImportIvs) are left out on purpose.
     - CategorySystemApplication
+    - CategoryHardwareCheck
     - CategoryFileSystemTool
+    - CategorySystemSettings
     - Core
+    - Debug
+    - Boss
+    - CardBoard
+    - SwitchCleanup
+    - SaveDataMove
+    - Shop
     - Shell
     - CategoryHomeMenu
   IoAccessControl:

@@ -43,7 +43,7 @@ void appendUtf8(std::string &output, uint32_t code)
 
 } // namespace
 
-std::string utf16ToUtf8(const uint8_t *data, size_t maxUnits)
+std::string utf16ToUtf8Raw(const uint8_t *data, size_t maxUnits)
 {
     std::string output;
     for (size_t index = 0; index < maxUnits; ++index) {
@@ -64,8 +64,13 @@ std::string utf16ToUtf8(const uint8_t *data, size_t maxUnits)
         }
         appendUtf8(output, code);
     }
+    return output;
+}
+
+std::string utf16ToUtf8(const uint8_t *data, size_t maxUnits)
+{
     // Several titles put a line break between two parts of the name.
-    return text::trim(text::singleLine(output));
+    return text::trim(text::singleLine(utf16ToUtf8Raw(data, maxUnits)));
 }
 
 bool parse(const uint8_t *data, size_t size, Info &info)
@@ -75,6 +80,8 @@ bool parse(const uint8_t *data, size_t size, Info &info)
     }
 
     info = Info();
+    info.englishShortName =
+        utf16ToUtf8Raw(data + TitlesOffset + English * TitleSize, ShortNameUnits);
     for (int pass = 0; pass <= Languages && info.shortName.empty(); ++pass) {
         const int language = pass == 0 ? English : pass - 1;
         if (pass > 0 && language == English) {

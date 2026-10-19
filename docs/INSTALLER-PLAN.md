@@ -152,6 +152,9 @@ later as read-only views if someone asks.
    Titles screen for games installed elsewhere.
 4. Ext save data and system save data lists with Delete, as FBI has. Save
    import and export over SPI for DSiWare is left out; Checkpoint does it.
+5. (Added later) Save data and extra data backup and restore in
+   Checkpoint's format, browsing, and ticket install and export: see
+   app/savedata.cpp, app/saves_screens.cpp and core/saves.cpp.
 
 ## Phase 4: beyond FBI (done, see app/queue.cpp; self update in app/software_update.cpp)
 

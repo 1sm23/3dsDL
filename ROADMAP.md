@@ -110,6 +110,21 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       it.
 - [ ] Hardware pass (items 53 to 58 in [docs/HARDWARE.md](docs/HARDWARE.md)).
 
+## 0.7: Saves, tickets and polish
+
+- [x] Save data and extra data: back up, restore and look inside, in
+      Checkpoint's folders and the way Checkpoint does it (names, the
+      extra data ID table, clearing the secure value, skipping files the
+      system holds open), so backups move freely between the two apps.
+      A restore backs up what is there first.
+- [x] Install .tik files from Files; export a title's ticket from Tickets.
+- [x] History names downloads that never finished after the file the
+      server named.
+- [x] Interface sounds, made in code, with a switch in Other Settings.
+- [ ] Hardware pass (items 59 to 66 in [docs/HARDWARE.md](docs/HARDWARE.md)).
+- DSiWare saves, DS game cards and GBA Virtual Console saves are left to
+  Checkpoint for now; they need different routes.
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.

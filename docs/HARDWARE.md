@@ -204,6 +204,26 @@ with a few hundred files.
     with a clear message, and the installed copy still starts.
 58. SHA-256 of a downloaded 3dsDL.cia next to 3dsDL.sha256 says it matches.
 
+### Saves, tickets and sounds
+
+59. Save Data lists the installed games that have saves, and a 3DS game card
+    in the slot. A New Backup appears in sdmc:/3ds/Checkpoint/saves/ under
+    the same folder name Checkpoint uses for that game.
+60. Checkpoint lists 3dsDL's backup, and 3dsDL lists Checkpoint's; each
+    restores the other's, and the game starts with the restored progress.
+61. Restore on a game with anti-tamper (a Pokemon game, for example) does
+    not make the game call its save corrupted (secure value cleared).
+62. Restore first makes a "Before Restore" backup; a backup folder with
+    ._ files from a Mac still restores.
+63. Extra Data backs up and restores, for example a game's downloaded
+    content, and HOME Menu's own extra data is skipped where it is in use.
+64. Browse a save, view a file as hex and copy a folder to the SD card.
+65. Install a .tik from Files; export a title's ticket from Tickets and the
+    .tik installs again (export is not available in Azahar).
+66. Sounds play on moving, choosing and going back, and stop with Sounds
+    off in Other Settings; without sdmc:/3ds/dspfirm.cdc the setting says
+    unavailable and nothing else changes.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over

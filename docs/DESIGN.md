@@ -164,7 +164,11 @@ on its top right corner, drawn over the focus ring.
   60% and 100% over 1.2 s.
 - Dialogs dim the screen in 120 ms and scale from 92% to 100% in 140 ms.
 - Screens cross-fade in 100 ms. Progress bars ease.
-- Optional soft clicks for move, select and back, off by default.
+- Sounds: a short tick when the cursor moves, rising and falling two-note
+  blips for choosing and going back, a low tone when an error dialog
+  opens and a three-note chime with notifications. They are synthesised
+  at start-up (sine with a little octave, soft attack, exponential fade)
+  and on by default, with a switch in Other Settings.
 - Text never ends in "..." where it matters: a name, path or value too long
   for its box waits 1.4 s, slides to its end at 32 px a second inside the
   box, rests 1.1 s and starts over. Wrapped text that runs out of lines

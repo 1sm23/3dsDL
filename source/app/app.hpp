@@ -4,6 +4,7 @@
 #include "download_engine.hpp"
 #include "file_types.hpp"
 #include "library.hpp"
+#include "savedata.hpp"
 #include "platform.hpp"
 #include "records.hpp"
 #include "update.hpp"
@@ -87,6 +88,7 @@ private:
     void titleDetails(const std::string &path, filetype::Kind kind);
     void showProperties(const std::vector<std::string> &paths);
     void showChecksum(const std::string &path);
+    void installTicketFile(const std::string &path);
     bool renameEntry(const std::string &path);
     bool deleteEntries(const std::vector<std::string> &paths);
     bool pasteInto(const std::string &folder);
@@ -116,6 +118,12 @@ private:
     void deleteUnusedTickets();
     void cleanUpScreen();
     void importSeeds();
+
+    // Save data and extra data, in saves_screens.cpp.
+    void saveTitlesScreen();
+    void saveDataScreen(const savedata::Target &target,
+                        const std::vector<uint16_t> &icon);
+    void dataBrowser(const savedata::Target &target);
 
     // The download queue and receiving links over the network, in
     // queue.cpp.

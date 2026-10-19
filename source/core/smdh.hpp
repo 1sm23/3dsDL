@@ -14,6 +14,9 @@ constexpr uint32_t IconSize = 48;
 
 struct Info {
     std::string shortName;
+    // The English short name exactly as stored, untrimmed, which Checkpoint
+    // names its backup folders after whatever the console's language.
+    std::string englishShortName;
     std::string longName;
     std::string publisher;
     // 48x48 RGB565 pixels, row by row from the top left. Empty when the
@@ -25,7 +28,10 @@ struct Info {
 // the large icon. Returns false when data is not an SMDH block.
 bool parse(const uint8_t *data, size_t size, Info &info);
 
-// UTF-16LE text that ends at the first zero or after maxUnits units.
+// UTF-16LE text that ends at the first zero or after maxUnits units, on one
+// line and trimmed.
 std::string utf16ToUtf8(const uint8_t *data, size_t maxUnits);
+// The same without tidying it up.
+std::string utf16ToUtf8Raw(const uint8_t *data, size_t maxUnits);
 
 } // namespace smdh

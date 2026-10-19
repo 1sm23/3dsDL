@@ -13,7 +13,7 @@
 // data and rules live here; app/library reads them from the console.
 namespace titles {
 
-enum class Place { SdCard, SystemMemory };
+enum class Place { SdCard, SystemMemory, GameCard };
 
 struct Title {
     uint64_t id = 0;
@@ -23,6 +23,9 @@ struct Title {
     std::string productCode; // "CTR-P-AXXE", or "" when unknown
     // From the title's own icon data; empty for updates, DLC and DSiWare.
     std::string name;
+    // The English short name as stored, which Checkpoint names backup
+    // folders after (see core/saves).
+    std::string englishShortName;
     std::string publisher;
     std::vector<uint16_t> icon; // 48x48 RGB565, or empty
 };

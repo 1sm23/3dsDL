@@ -1,7 +1,9 @@
 #include "library.hpp"
 
 #include "installer.hpp"
+#include "fs_util.hpp"
 #include "smdh.hpp"
+#include "title_meta.hpp"
 #include "updater.hpp"
 
 #include <algorithm>
@@ -80,7 +82,8 @@ void loadTitles(FS_MediaType media, Snapshot &out)
         titles::Title title;
         title.id = shown[index];
         title.place = media == MEDIATYPE_NAND ? titles::Place::SystemMemory
-                                              : titles::Place::SdCard;
+                      : media == MEDIATYPE_GAME_CARD ? titles::Place::GameCard
+                                                     : titles::Place::SdCard;
         if (haveInfo) {
             title.version = infos[index].version;
             title.size = infos[index].size;
@@ -95,6 +98,7 @@ void loadTitles(FS_MediaType media, Snapshot &out)
                 title.name = info.shortName.empty() ? info.longName
                                                     : info.shortName;
                 title.publisher = info.publisher;
+                title.englishShortName = info.englishShortName;
                 title.icon = std::move(info.icon);
             }
         }
@@ -147,6 +151,7 @@ void loadExtData(Snapshot &out)
                                                    SmdhSize, data.get())) &&
             smdh::parse(data.get(), read, info)) {
             extData.name = info.shortName.empty() ? info.longName : info.shortName;
+            extData.englishShortName = info.englishShortName;
             extData.publisher = info.publisher;
             extData.icon = std::move(info.icon);
         }
@@ -183,6 +188,8 @@ bool load(Snapshot &out, std::string &error)
     }
     loadTitles(MEDIATYPE_SD, out);
     loadTitles(MEDIATYPE_NAND, out);
+    // A 3DS game card in the slot, for its save data.
+    loadTitles(MEDIATYPE_GAME_CARD, out);
     loadTickets(out);
     loadExtData(out);
     loadPending(MEDIATYPE_SD, out);
@@ -192,8 +199,15 @@ bool load(Snapshot &out, std::string &error)
 
 FS_MediaType mediaOf(const titles::Title &title)
 {
-    return title.place == titles::Place::SystemMemory ? MEDIATYPE_NAND
-                                                      : MEDIATYPE_SD;
+    switch (title.place) {
+    case titles::Place::SystemMemory:
+        return MEDIATYPE_NAND;
+    case titles::Place::GameCard:
+        return MEDIATYPE_GAME_CARD;
+    case titles::Place::SdCard:
+        break;
+    }
+    return MEDIATYPE_SD;
 }
 
 uint64_t runningTitle()
@@ -213,6 +227,10 @@ bool deleteTitle(const titles::Title &title, bool withTicket, std::string &error
     }
     if (title.id == runningTitle()) {
         error = "3dsDL cannot delete itself while it is running.";
+        return false;
+    }
+    if (title.place == titles::Place::GameCard) {
+        error = "Software on a game card cannot be deleted.";
         return false;
     }
     const ::Result code = AM_DeleteTitle(mediaOf(title), title.id);
@@ -267,6 +285,102 @@ bool deletePending(const PendingTitle &pending, std::string &error)
     if (R_FAILED(code)) {
         error = "The unfinished install could not be removed. " +
                 installer::describe(code);
+        return false;
+    }
+    return true;
+}
+
+bool installTicket(const std::string &path, uint64_t &titleId,
+                   std::string &error)
+{
+    titlemeta::Meta meta;
+    if (!titlemeta::read(path, filetype::Kind::Ticket, meta, error) ||
+        !meta.hasTitleId) {
+        if (error.empty()) {
+            error = "This is not a ticket file.";
+        }
+        return false;
+    }
+    titleId = meta.titleId;
+    if (!titles::isShown(titleId)) {
+        error = "This ticket is for a system title, which 3dsDL does not "
+                "install.";
+        return false;
+    }
+    std::string data;
+    if (!fs::readFile(path, data) || data.empty() || data.size() > 1024 * 1024) {
+        error = "The ticket file could not be read.";
+        return false;
+    }
+    // FBI replaces a ticket that is already installed by deleting it first.
+    AM_DeleteTicket(titleId);
+    Handle ticket = 0;
+    ::Result code = AMNET_InstallTicketBegin(&ticket);
+    if (R_FAILED(code)) {
+        error = "The ticket install could not start. " + installer::describe(code);
+        return false;
+    }
+    u32 written = 0;
+    code = FSFILE_Write(ticket, &written, 0, data.data(),
+                        static_cast<u32>(data.size()), 0);
+    if (R_FAILED(code)) {
+        AMNET_InstallTicketAbort(ticket);
+        error = "The ticket could not be installed. " + installer::describe(code);
+        return false;
+    }
+    code = AMNET_InstallTicketFinish(ticket);
+    if (R_FAILED(code)) {
+        error = "The ticket could not be installed. " + installer::describe(code);
+        return false;
+    }
+    return true;
+}
+
+bool exportTicket(uint64_t titleId, const std::string &folder,
+                  std::string &path, std::string &error)
+{
+    u64 ticketIds[8] = {};
+    u32 count = 0;
+    ::Result code = AMNET_GetTitleTicketIds(&count, ticketIds, 8, titleId, false);
+    if (R_FAILED(code) || count == 0) {
+        error = "The console did not give out this ticket. " +
+                (R_FAILED(code) ? installer::describe(code) : std::string());
+        return false;
+    }
+    std::vector<uint8_t> buffer(64 * 1024);
+    u32 size = 0;
+    code = AMNET_ExportLicenseTicket(&size, buffer.data(),
+                                     static_cast<u32>(buffer.size()), titleId,
+                                     ticketIds[0]);
+    if (R_FAILED(code) || size == 0 || size > buffer.size()) {
+        error = "The console did not give out this ticket. " +
+                (R_FAILED(code) ? installer::describe(code) : std::string());
+        return false;
+    }
+    // Only keep it when it reads back as this title's ticket.
+    const cia::Reader reader = [&](uint64_t offset, void *out, size_t length) {
+        if (offset + length > size) {
+            return false;
+        }
+        std::memcpy(out, buffer.data() + offset, length);
+        return true;
+    };
+    titlemeta::Meta meta;
+    std::string why;
+    if (!titlemeta::read(reader, size, filetype::Kind::Ticket, meta, why) ||
+        !meta.hasTitleId || meta.titleId != titleId) {
+        error = "The console gave back something that is not this title's "
+                "ticket.";
+        return false;
+    }
+    if (!fs::makeDirectories(folder)) {
+        error = "Could not create " + folder + ".";
+        return false;
+    }
+    path = folder + cia::titleIdText(titleId) + ".tik";
+    if (!fs::writeFile(path, std::string(reinterpret_cast<const char *>(buffer.data()),
+                                         size))) {
+        error = "Could not write " + path + ".";
         return false;
     }
     return true;

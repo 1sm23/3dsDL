@@ -17,6 +17,7 @@ struct ExtData {
     uint64_t id = 0;
     // From the extra data's own icon, which stays when the game is gone.
     std::string name;
+    std::string englishShortName; // for Checkpoint's folder name
     std::string publisher;
     std::vector<uint16_t> icon;
 };
@@ -45,5 +46,14 @@ bool deleteTitle(const titles::Title &title, bool withTicket,
 bool deleteTicket(uint64_t titleId, std::string &error);
 bool deleteExtData(uint64_t extDataId, std::string &error);
 bool deletePending(const PendingTitle &pending, std::string &error);
+
+// Installs the ticket file at path, replacing one already there, as FBI
+// does. titleId is the ticket's title.
+bool installTicket(const std::string &path, uint64_t &titleId,
+                   std::string &error);
+// Writes the console's ticket for titleId into folder as <Title ID>.tik and
+// returns its path.
+bool exportTicket(uint64_t titleId, const std::string &folder,
+                  std::string &path, std::string &error);
 
 } // namespace library

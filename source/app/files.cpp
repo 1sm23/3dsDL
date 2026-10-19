@@ -6,6 +6,7 @@
 #include "file_types.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "library.hpp"
 #include "naming.hpp"
 #include "picture.hpp"
 #include "platform.hpp"
@@ -679,6 +680,7 @@ bool App::entryOptions(const std::string &folder,
         Open,
         Install,
         InstallDelete,
+        InstallTicket,
         InstallAll,
         InstallDeleteAll,
         Extract,
@@ -731,6 +733,10 @@ bool App::entryOptions(const std::string &folder,
         add("Install", Action::Install, "Installs the software and keeps the CIA file.");
         add("Install and Delete", Action::InstallDelete,
             "Installs the software, then removes the CIA file from the SD card.");
+    } else if (single && kind == Kind::Ticket) {
+        add("Install Ticket", Action::InstallTicket,
+            "Adds this ticket to the console, replacing one it already has "
+            "for the same title, as FBI does.");
     } else if (single && kind == Kind::Text) {
         add("Edit", Action::Edit, "Opens the file in the line editor.");
     } else if (single) {
@@ -805,6 +811,9 @@ bool App::entryOptions(const std::string &folder,
     case Action::InstallDelete:
         installCias({path}, actions[choice] == Action::InstallDelete);
         return true;
+    case Action::InstallTicket:
+        installTicketFile(path);
+        return false;
     case Action::InstallAll:
     case Action::InstallDeleteAll:
         installCias(cias, actions[choice] == Action::InstallDeleteAll);
@@ -1392,6 +1401,29 @@ void App::showProperties(const std::vector<std::string> &paths)
 
 // --- Viewers ----------------------------------------------------------------------
 
+void App::installTicketFile(const std::string &path)
+{
+    if (!installer::available()) {
+        ui::message("Cannot Install", installer::unavailableReason(),
+                    ui::Tone::Error);
+        return;
+    }
+    uint64_t titleId = 0;
+    std::string error;
+    bool installed = false;
+    tasks::busy("Tickets", "Installing the ticket...", [&]() {
+        installed = library::installTicket(path, titleId, error);
+    });
+    if (installed) {
+        ui::message("Ticket Installed",
+                    "The ticket for " + cia::titleIdText(titleId) +
+                        " is installed.",
+                    ui::Tone::Success);
+    } else {
+        ui::message("Ticket Not Installed", error, ui::Tone::Error);
+    }
+}
+
 void App::titleDetails(const std::string &path, Kind kind)
 {
     titlemeta::Meta meta;
@@ -1401,12 +1433,21 @@ void App::titleDetails(const std::string &path, Kind kind)
 
     ui::ScreenSpec spec;
     spec.back = "Back";
+    const bool ticket = kind == Kind::Ticket && readable;
     ui::Control hex;
-    hex.rect = {46, 110, 228, 34};
+    hex.rect = {46, ticket ? 150.0f : 110.0f, 228, 34};
     hex.label = "Open as Hex";
     hex.icon = ui::Icon::Hex;
     hex.scale = ui::type::Body + 0.06f;
     spec.controls.push_back(hex);
+    if (ticket) {
+        ui::Control install = hex;
+        install.rect = {46, 106, 228, 34};
+        install.label = "Install Ticket";
+        install.icon = ui::Icon::Lock;
+        install.iconColor = ui::color::IconGreen;
+        spec.controls.push_back(install);
+    }
     spec.drawTop = [&]() {
         ui::drawTopChrome(filetype::label(kind), look.icon, look.color);
         if (!readable) {
@@ -1436,9 +1477,12 @@ void App::titleDetails(const std::string &path, Kind kind)
                               : basename(path),
                           panel, ui::type::Small + 0.04f);
     };
-    int focus = 0;
-    if (ui::runScreen(spec, focus).choice == 0) {
+    int focus = ticket ? 1 : 0;
+    const int choice = ui::runScreen(spec, focus).choice;
+    if (choice == 0) {
         hexViewer(path);
+    } else if (choice == 1) {
+        installTicketFile(path);
     }
 }
 
