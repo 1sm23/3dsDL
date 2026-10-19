@@ -967,6 +967,21 @@ html:not(.js) .tray {
 .m-warn { color: var(--app-yellow); }
 .m-cyan { color: var(--app-primary); }
 
+/* A small "new" badge next to a feature's name. */
+.tag-new {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--app-primary);
+  color: #08131f;
+  font-size: 0.6em;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .m-bar {
   display: block;
   height: 0.92em;
@@ -1136,8 +1151,9 @@ html:not(.js) .tray {
 .js .home-grid {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+  row-gap: 14px;
   padding: 16px 10px 12px;
   border-radius: 14px;
   background:
@@ -1272,7 +1288,7 @@ html:not(.js) .tray {
 
 @media (max-width: 560px) {
   .js .home-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     row-gap: 14px;
   }
   .js .home .feature-demo {
