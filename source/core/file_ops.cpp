@@ -1,5 +1,6 @@
 #include "file_ops.hpp"
 
+#include "fs_util.hpp"
 #include "text.hpp"
 
 #include <cerrno>
@@ -313,7 +314,7 @@ int64_t modifiedTime(const std::string &path)
     if (stat(path.c_str(), &info) != 0) {
         return 0;
     }
-    return static_cast<int64_t>(info.st_mtime);
+    return fs::modifiedTime(path, static_cast<int64_t>(info.st_mtime));
 }
 
 } // namespace fileops

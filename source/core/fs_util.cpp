@@ -8,6 +8,10 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#ifdef __3DS__
+#include <3ds.h>
+#endif
+
 namespace fs {
 
 bool fileExists(const std::string &path)
@@ -161,6 +165,24 @@ std::vector<std::string> listFolders(const std::string &folder)
     return names;
 }
 
+int64_t modifiedTime(const std::string &path, int64_t statTime)
+{
+    if (statTime != 0) {
+        return statTime;
+    }
+#ifdef __3DS__
+    u64 time = 0;
+    if (R_SUCCEEDED(archive_getmtime(path.c_str(), &time))) {
+        return static_cast<int64_t>(time);
+    }
+    return 0;
+#else
+    struct stat info {};
+    return stat(path.c_str(), &info) == 0 ? static_cast<int64_t>(info.st_mtime)
+                                          : 0;
+#endif
+}
+
 std::vector<Entry> listEntries(const std::string &folder, bool *ok,
                                bool hidden)
 {
@@ -188,7 +210,8 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok,
         struct stat info {};
         if (stat((base + entry.name).c_str(), &info) == 0) {
             entry.folder = S_ISDIR(info.st_mode);
-            entry.modified = static_cast<int64_t>(info.st_mtime);
+            entry.modified = modifiedTime(base + entry.name,
+                                          static_cast<int64_t>(info.st_mtime));
             if (!entry.folder) {
                 entry.size = static_cast<int64_t>(info.st_size);
             }

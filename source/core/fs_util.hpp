@@ -40,6 +40,10 @@ struct Entry {
 std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr,
                                bool hidden = false);
 
+// Seconds since 1970 when path last changed, or 0 when unknown. On the SD
+// card stat() always says 0, so this asks the card's archive instead.
+int64_t modifiedTime(const std::string &path, int64_t statTime = 0);
+
 enum class SortOrder { Name, Size, Date, Type };
 // Folders always come first and are sorted by name, or newest first for
 // Date. Files follow in order: by name, largest first, newest first, or by
