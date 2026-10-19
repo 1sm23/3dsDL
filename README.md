@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-34d6e8?style=for-the-badge">
+  <img alt="Version 0.6.0" src="https://img.shields.io/badge/version-0.6.0-34d6e8?style=for-the-badge">
   <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=for-the-badge">
   <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=for-the-badge">
   <img alt="Active development" src="https://img.shields.io/badge/status-in%20development-ffc857?style=for-the-badge">
@@ -29,10 +29,12 @@
 
 Getting a file onto a 3DS usually means powering it off, pulling the SD card and finding a card reader. 3dsDL skips all of that. Point the camera at a QR code, or type a direct link with the on-screen keyboard, pick a folder, and the file streams straight onto the SD card while the console stays on.
 
+It looks and works like the software that came with the console: the same khaki screens, embossed buttons, Back and OK tabs and system dialogs as System Settings, with touch scrolling that you can flick.
+
 It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownload), the 2017 homebrew downloader, rebuilt around libcurl and mbedTLS with a new Citro2D interface.
 
 > [!IMPORTANT]
-> Version 0.5.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself is new in 0.5.0 and has been tried in the Azahar emulator but not yet on a console. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
+> Version 0.6.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself (0.5.0), the file manager and the new system-style interface (0.6.0) have been tried in the Azahar emulator but not yet on a console. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## ✨ Features
 
@@ -333,7 +335,7 @@ site/          the website, deployed to GitHub Pages
 
 ## 🗺️ Roadmap
 
-Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, and **0.5.0** installing the CIAs it downloads, with a Files screen. Next up:
+Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, **0.5.0** installing the CIAs it downloads, with a Files screen, and **0.6.0** a full file manager and an interface redrawn in the style of the console's own system software. Next up:
 
 - [ ] Hardware pass on New and Old 3DS using [docs/HARDWARE.md](docs/HARDWARE.md)
 - [ ] 1.0 once that pass is clean

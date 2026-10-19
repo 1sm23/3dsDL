@@ -55,7 +55,7 @@ FBI is no longer maintained, so 3dsDL is taking over its job of installing
 what it downloads. The longer plan, including a full file manager and title
 management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
 
-## 0.6: Files becomes a file manager
+## 0.6: A file manager and the System Look
 
 - [x] Copy, cut, paste, rename and delete files and whole folders, with
       progress, cancel, and a choice when a name is already taken.
@@ -65,8 +65,12 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       config files, ZIP contents, a hex view, and icons and titles for
       `.3dsx`, `.3ds`, `.nds` and `.tik` files.
 - [x] Install several CIAs at once, or every CIA in a folder.
+- [x] Every screen redrawn in the style of the system applets (System
+      Settings, Data Management), with touch scrolling that flicks. See
+      [docs/DESIGN.md](docs/DESIGN.md).
 - [ ] Hardware pass for Files (items 37 to 44 in
-      [docs/HARDWARE.md](docs/HARDWARE.md)).
+      [docs/HARDWARE.md](docs/HARDWARE.md)), and 60 frames a second on an
+      Old 3DS with the new interface.
 
 ## 1.0: Stable release
 
