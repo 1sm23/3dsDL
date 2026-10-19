@@ -14,7 +14,10 @@
 // progress screen and reading the cancel button.
 namespace tasks {
 
-net::Result download(const net::Request &request, bool keepAwake);
+// step is shown after the title, e.g. "2 of 5" in a queue. direct says the
+// data goes straight into an install (request.write) instead of a file.
+net::Result download(const net::Request &request, bool keepAwake,
+                     const std::string &step = "", bool direct = false);
 
 zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
                     const std::string &folder, zip::Existing existing,

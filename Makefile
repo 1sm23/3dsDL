@@ -12,7 +12,8 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET          := 3dsDL
 BUILD           := build
-SOURCES         := source/app source/core source/net source/quirc source/stb
+SOURCES         := source/app source/core source/net source/quirc source/stb \
+                   source/qrcodegen
 INCLUDES        := $(SOURCES)
 ROMFS           := romfs
 
@@ -87,6 +88,9 @@ $(OUTPUT).elf: $(OFILES)
 # quirc is vendored unmodified; keep its upstream warnings out of the build log.
 QUIRC_OFILES := $(patsubst %.c,%.o,$(notdir $(wildcard $(TOPDIR)/source/quirc/*.c)))
 $(QUIRC_OFILES): CFLAGS += -Wno-sign-compare -Wno-unused-parameter -Wno-type-limits
+
+# qrcodegen is vendored unmodified, so its warnings are not ours to fix.
+qrcodegen.o: CFLAGS += -Wno-type-limits
 
 -include $(DEPSDIR)/*.d
 

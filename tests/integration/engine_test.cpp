@@ -482,6 +482,7 @@ TEST("engine: refuses files that do not fit")
     net::Result result = net::download(settings, recorder);
     CHECK(result.outcome == net::Outcome::Failed);
     CHECK(contains(result.message, "Not enough free space"));
+    CHECK(result.noSpace);
     CHECK(listAll(folder.path()).empty());
 
     settings = request("/file/100000", folder);
@@ -489,6 +490,7 @@ TEST("engine: refuses files that do not fit")
     result = net::download(settings, recorder);
     CHECK(result.outcome == net::Outcome::Failed);
     CHECK(contains(result.message, "FAT32"));
+    CHECK(!result.noSpace);
 
     settings = request("/huge", folder);
     result = net::download(settings, recorder);
@@ -514,8 +516,35 @@ TEST("engine: SD card write failures are reported and cleaned up")
     const net::Result result = net::download(settings, recorder);
     CHECK(result.outcome == net::Outcome::Failed);
     CHECK_EQ(result.message, std::string("The SD card is full."));
+    CHECK(result.noSpace);
     CHECK(!result.resumable);
     CHECK(listAll(folder.path()).empty());
+}
+
+TEST("engine: the write seam can send the data elsewhere, in order")
+{
+    // Direct CIA install: one connection, nothing kept, and the data goes
+    // to the install service instead of the file, at the offset the engine
+    // has seeked to.
+    TempDir folder;
+    Recorder recorder;
+    net::Request settings = request("/file/700000", folder);
+    settings.connections = 1;
+    settings.allowResume = false;
+    std::string received;
+    bool inOrder = true;
+    settings.write = [&](const void *data, size_t size, FILE *file) {
+        const off_t at = ftello(file);
+        inOrder = inOrder && at == static_cast<off_t>(received.size());
+        received.append(static_cast<const char *>(data), size);
+        return size;
+    };
+    const net::Result result = net::download(settings, recorder);
+    CHECK(result.outcome == net::Outcome::Completed);
+    CHECK(inOrder);
+    CHECK_EQ(received.size(), static_cast<size_t>(700000));
+    CHECK(received == pattern(700000));
+    CHECK_EQ(fs::fileSize(result.partPath), static_cast<int64_t>(0));
 }
 
 TEST("engine: rejects bad input before connecting")

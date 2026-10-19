@@ -97,6 +97,19 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
 - System save data is left out on purpose: deleting it is the classic way
   to break a console, and Checkpoint covers saves.
 
+## 0.7: Beyond FBI
+
+- [x] Receive: a web page on the console for a phone or computer on the
+      same Wi-Fi (QR code on the top screen), and FBI's remote install
+      protocol on port 5000 for servefiles.py, sendurls.py and Boop.
+- [x] Queue: Add to Queue on the confirm screen, scanning straight back to
+      the camera, and Download All without questions in between.
+- [x] Install Directly when a CIA does not fit on the SD card, streamed into
+      the install service with nothing saved.
+- [x] SHA-256 of any file in Files, checked against a .sha256 list next to
+      it.
+- [ ] Hardware pass (items 53 to 58 in [docs/HARDWARE.md](docs/HARDWARE.md)).
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.
@@ -110,6 +123,6 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
 
 ## Ideas for after 1.0
 
-- Receive links from a phone or computer browser on the same network, so long
-  URLs never have to be typed on the console.
-- Show a SHA-256 checksum for finished downloads.
+- Receive in the background on the home screen, not only on Receive.
+- Resume a direct install: AM cannot take data out of order, so it would
+  need a server that resends from the last byte the install accepted.

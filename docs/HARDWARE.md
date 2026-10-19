@@ -190,6 +190,20 @@ with a few hundred files.
 52. Seeds imports from a seeddb.bin in sdmc:/ only the seeds of installed
     games.
 
+### Queue, Receive and direct install
+
+53. Scan three QR codes with Add to Queue: the camera comes back after each,
+    Home shows 3 on Queue, and Download All fetches them in order.
+54. Receive shows the console's address and a QR code. A phone that scans it
+    gets the page; links pasted there arrive and download.
+55. servefiles.py from a computer sends a CIA to port 5000: it downloads and
+    installs, and servefiles.py exits by itself afterwards.
+56. Fill the SD card until a CIA does not fit: the error offers Install
+    Directly, the CIA installs, and nothing is left on the card.
+57. Install Directly of an older version than the installed one is refused
+    with a clear message, and the installed copy still starts.
+58. SHA-256 of a downloaded 3dsDL.cia next to 3dsDL.sha256 says it matches.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over

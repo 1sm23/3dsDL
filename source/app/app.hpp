@@ -28,6 +28,8 @@ private:
         History,
         Files,
         Titles,
+        Queue,
+        Receive,
         Folder,
         Settings,
         Exit
@@ -36,8 +38,13 @@ private:
     Action home();
     void refreshStatus(bool force);
 
-    void startDownload(const std::string &address, std::string folder);
-    bool confirmDownload(const std::string &address, std::string &folder);
+    enum class Start { Cancelled, Done, Queued };
+    // Asks to confirm, then downloads, or adds the link to the queue.
+    Start startDownload(const std::string &address, std::string folder);
+    enum class Confirm { Cancel, Download, Queue };
+    Confirm confirmDownload(const std::string &address, std::string &folder);
+    // Installs a CIA from the internet without saving it, for a full SD card.
+    void installDirectly(const std::string &address);
     void finishDownload(const std::string &address, const std::string &folder,
                         const net::Result &result);
     void offerExtraction(const std::string &zipPath, const std::string &folder,
@@ -79,6 +86,7 @@ private:
     void zipViewer(const std::string &path);
     void titleDetails(const std::string &path, filetype::Kind kind);
     void showProperties(const std::vector<std::string> &paths);
+    void showChecksum(const std::string &path);
     bool renameEntry(const std::string &path);
     bool deleteEntries(const std::vector<std::string> &paths);
     bool pasteInto(const std::string &folder);
@@ -109,6 +117,24 @@ private:
     void cleanUpScreen();
     void importSeeds();
 
+    // The download queue and receiving links over the network, in
+    // queue.cpp.
+    struct QueuedLink {
+        enum class State { Waiting, Failed, Stopped };
+        uint64_t id = 0;
+        std::string url;
+        std::string folder;
+        State state = State::Waiting;
+        std::string message; // why it failed
+    };
+    void addToQueue(const std::vector<std::string> &links,
+                    const std::string &folder, bool announce);
+    void queueScreen();
+    // Downloads the queued links in order, or only those in ids when given,
+    // without stopping to ask. Finished ones leave the queue.
+    void runQueue(const std::vector<uint64_t> *ids = nullptr);
+    void receiveScreen();
+
     // Software updates, in software_update.cpp.
     void softwareUpdateScreen();
     void showReleaseNotes(const update::Release &release);
@@ -137,6 +163,8 @@ private:
     platform::Wifi wifi_ = platform::Wifi::Unknown;
     u64 lastRefresh_ = 0;
     library::Snapshot library_;
+    std::vector<QueuedLink> queue_;
+    uint64_t nextQueueId_ = 1;
     bool updateAvailable_ = false;
     bool updateNoticeShown_ = false;
     uint32_t updateGeneration_ = 0;

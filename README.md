@@ -110,6 +110,16 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
     </td>
   </tr>
   <tr>
+    <td valign="top">
+      <h4>📡 Receive links</h4>
+      Send links from a phone or computer on the same Wi-Fi: a small web page on the console, reached by scanning a QR code on the top screen, or FBI's own remote install protocol, so <code>servefiles.py</code>, <code>sendurls.py</code> and Boop keep working.
+    </td>
+    <td valign="top">
+      <h4>📋 Queue</h4>
+      Add links to a queue as you scan or receive them, then download them all in one go. Scanning goes straight back to the camera, so a page of QR codes takes seconds.
+    </td>
+  </tr>
+  <tr>
     <td colspan="2" valign="top">
       <h4>🎮 Titles</h4>
       Everything installed, like System Settings' Data Management: games, updates and DLC, extra data and tickets, with their icons. Launch a game, fetch its seed, delete it with or without its ticket, delete extra data, import seeds from a <code>seeddb.bin</code>, and clean up the unfinished installs that make a CIA refuse to install again. System titles never show up, so they can't be deleted by mistake.
@@ -168,8 +178,19 @@ Install `3dsDL.cia` with FBI to launch it straight from the HOME Menu. The CIA u
 2. Pick **Scan QR Code** or **Enter URL**.
 3. Check the link and the folder on the confirm screen. **Folder** lets you change where it goes.
 4. Watch the progress screen. Leave it running, or cancel with <kbd>B</kbd>.
-5. If a file with that name already exists, choose **Rename**, **Overwrite** or **Cancel**.
-6. If it's a CIA, choose **Install**, **Install & delete** (removes the file once it's installed) or **Keep file**. After installing, **Launch** starts it, and it's on the HOME Menu from then on.
+5. If a file with that name already exists, choose **Keep Both**, **Replace** or **Cancel**.
+6. If it's a CIA, choose **Install**, **Install and Delete File** (removes the file once it's installed) or **Keep File**. After installing, **Launch** starts it, and it's on the HOME Menu from then on.
+
+If a CIA doesn't fit on the SD card, the error offers **Install Directly**: it streams the CIA straight into the install service without saving the file, as FBI did. It can't resume, so a dropped connection means starting over.
+
+### Queue and Receive
+
+**Add to Queue** on the confirm screen saves a link for later instead of downloading it. From the scanner, the camera comes straight back, so you can scan a whole page of QR codes in a row. **Queue** on the home screen lists them, and **Download All** fetches them one after another without stopping to ask. A name that's taken keeps both files, and CIAs are asked about once per run.
+
+**Receive** on the home screen listens for links from other devices on the same Wi-Fi:
+
+- **A phone or computer browser:** scan the QR code on the top screen, or open the address on the touch screen, paste one or more links and press **Send to 3DS**.
+- **FBI's tools:** `servefiles.py`, `sendurls.py` and Boop send to port 5000 exactly as they did to FBI, and they keep serving their files until 3dsDL has downloaded them.
 
 CIAs already on the SD card install from **Files** on the home screen: open the folder, select the CIA, and choose **Install**.
 
@@ -182,7 +203,7 @@ CIAs already on the SD card install from **Files** on the home screen: open the 
 - **ZIP archives** list their contents and can be extracted here or into a new folder.
 - **CIAs** install, **`.3dsx`**, **`.3ds`/`.cci`**, **`.nds`** and **`.tik`** files show their icon, name, title ID and product code, and anything else opens in a hex view.
 
-**OPTIONS** (<kbd>X</kbd>) on a file or folder offers open, edit, open as text or hex, rename, copy, cut, delete, install and properties. **MARK** (<kbd>Y</kbd>) marks several entries so the options apply to all of them. **FOLDER** (<kbd>SELECT</kbd>) pastes what you copied or cut, makes a new folder or a new file (which opens in the editor), changes the sort order (name, size, date, type), shows hidden files, and installs every CIA in the folder. Deleting always asks first and says how much is inside.
+**OPTIONS** (<kbd>X</kbd>) on a file or folder offers open, edit, open as text or hex, rename, copy, cut, delete, install, properties and **SHA-256**, which also checks the file against a `.sha256` list in the same folder. **MARK** (<kbd>Y</kbd>) marks several entries so the options apply to all of them. **FOLDER** (<kbd>SELECT</kbd>) pastes what you copied or cut, makes a new folder or a new file (which opens in the editor), changes the sort order (name, size, date, type), shows hidden files, and installs every CIA in the folder. Deleting always asks first and says how much is inside.
 
 If the connection drops, the error dialog offers **Retry**, which continues from where it stopped. The same download can also be resumed later from **History**.
 
@@ -361,7 +382,8 @@ The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull re
 
 - [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
 - [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
-- [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), used only by the tests to draw QR codes
+- [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), which draws the Receive screen's QR code and the tests' codes (vendored in `source/qrcodegen/`)
+- [**FBI's remote install**](https://github.com/Steveice10/FBI/tree/master/servefiles) protocol, which Receive speaks so `servefiles.py`, `sendurls.py` and Boop keep working
 - [**stb_image**](https://github.com/nothings/stb) by Sean Barrett (public domain or MIT, see [source/stb/VENDORED.md](source/stb/VENDORED.md)) and [**libjpeg-turbo**](https://libjpeg-turbo.org/), for showing pictures
 - [**FBI**](https://github.com/Steveice10/FBI) by Steveice10 (MIT), whose CIA install sequence, seed handling and title ID rules 3dsDL's installer follows
 - [**Colby Shores**](https://github.com/colbyshores), whose [FBI pull request](https://github.com/Steveice10/FBI/pull/4) measured how much the 3DS socket buffer size limits download speed and found the size that works best, and pointed out that the 3DS build of Mbed TLS needs a system service open to get its randomness

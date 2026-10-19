@@ -6,6 +6,7 @@
 #include "image.hpp"
 #include "smdh.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -119,6 +120,55 @@ TEST("cia: reads the title ID, version, seed flag, name and icon")
         CHECK_EQ(info.smdh.icon[0], static_cast<uint16_t>(0));
     }
     CHECK_EQ(info.fileSize, static_cast<uint64_t>(fs::fileSize(path)));
+}
+
+TEST("cia: reads a CIA as it streams in")
+{
+    const std::string data = makeCia();
+    for (const size_t piece : {static_cast<size_t>(1), static_cast<size_t>(7),
+                               static_cast<size_t>(4096), data.size()}) {
+        cia::Stream stream;
+        std::string error;
+        std::vector<uint8_t> prefix;
+        bool ok = true;
+        for (size_t offset = 0; offset < data.size() && ok; offset += piece) {
+            const size_t size = std::min(piece, data.size() - offset);
+            const bool wasReady = stream.ready();
+            ok = stream.feed(offset,
+                             reinterpret_cast<const uint8_t *>(data.data()) + offset,
+                             size, error);
+            if (!wasReady && stream.ready()) {
+                prefix = stream.takePrefix();
+                // Everything fed so far, so the installer can start with it.
+                CHECK_EQ(prefix.size(), offset + size);
+                CHECK(std::memcmp(prefix.data(), data.data(), prefix.size()) == 0);
+                CHECK_EQ(stream.info().titleId, TestTitleId);
+                // The icon is at the end, so it only arrives later, unless
+                // this piece held the whole file.
+                CHECK(stream.info().hasSmdh == (offset + size == data.size()));
+            }
+        }
+        CHECK(ok);
+        CHECK(stream.ready());
+        CHECK_EQ(stream.info().version, TestVersion);
+        CHECK(stream.info().seed == cia::Seed::Needed);
+        CHECK(stream.info().hasSmdh);
+        CHECK_EQ(stream.info().smdh.shortName, std::string("Test Game"));
+        CHECK(stream.takePrefix().empty());
+    }
+
+    cia::Stream outOfOrder;
+    std::string error;
+    const uint8_t *bytes = reinterpret_cast<const uint8_t *>(data.data());
+    CHECK(outOfOrder.feed(0, bytes, 100, error));
+    CHECK(!outOfOrder.feed(200, bytes + 200, 100, error));
+    CHECK(error.find("order") != std::string::npos);
+
+    cia::Stream notCia;
+    const std::string junk(0x3000, 'x');
+    CHECK(!notCia.feed(0, reinterpret_cast<const uint8_t *>(junk.data()),
+                       junk.size(), error));
+    CHECK(!notCia.ready());
 }
 
 TEST("cia: seed and meta are optional")

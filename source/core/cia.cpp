@@ -1,5 +1,6 @@
 #include "cia.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -185,6 +186,76 @@ bool readInfo(const Reader &read, uint64_t fileSize, Info &info,
         }
     }
     return true;
+}
+
+bool Stream::feed(uint64_t offset, const uint8_t *data, size_t size,
+                  std::string &error)
+{
+    // A CIA's header, certificates, ticket and TMD come first and are small;
+    // more than this before the content means something is wrong.
+    constexpr uint64_t MaxPrefix = 1024 * 1024;
+    if (offset != next_) {
+        error = "The download arrived out of order.";
+        return false;
+    }
+    next_ += size;
+    if (!ready_) {
+        prefix_.insert(prefix_.end(), data, data + size);
+        if (!haveLayout_ && prefix_.size() >= 0x20) {
+            if (!parseLayout(prefix_.data(), prefix_.size(), layout_)) {
+                error = "This is not a CIA file.";
+                return false;
+            }
+            haveLayout_ = true;
+            // Up to the first content's NCCH header, which holds the seed
+            // flag, or the end of the TMD when there is no content.
+            prefixNeeded_ = layout_.contentSize > 0
+                                ? layout_.contentOffset + NcchHeaderSize
+                                : layout_.tmdOffset + layout_.tmdSize;
+            if (prefixNeeded_ > MaxPrefix) {
+                error = "This CIA's header is too large to be real.";
+                return false;
+            }
+        }
+        if (haveLayout_ && prefix_.size() >= prefixNeeded_) {
+            const Reader reader = [this](uint64_t at, void *buffer, size_t count) {
+                if (at + count > prefix_.size()) {
+                    return false;
+                }
+                std::memcpy(buffer, prefix_.data() + at, count);
+                return true;
+            };
+            if (!readInfo(reader, 0, info_, error)) {
+                return false;
+            }
+            ready_ = true;
+            if (layout_.metaSize >= SmdhInMeta + smdh::Size) {
+                metaStart_ = layout_.metaOffset + SmdhInMeta;
+                meta_.assign(smdh::Size, 0);
+            }
+        }
+    }
+    // Keep the meta section's icon block as it passes.
+    if (!meta_.empty() && metaGot_ < meta_.size()) {
+        const uint64_t start = std::max(offset, metaStart_);
+        const uint64_t end = std::min(offset + size, metaStart_ + meta_.size());
+        if (start < end) {
+            std::memcpy(meta_.data() + (start - metaStart_), data + (start - offset),
+                        static_cast<size_t>(end - start));
+            metaGot_ += static_cast<size_t>(end - start);
+            if (metaGot_ == meta_.size()) {
+                info_.hasSmdh = smdh::parse(meta_.data(), meta_.size(), info_.smdh);
+            }
+        }
+    }
+    return true;
+}
+
+std::vector<uint8_t> Stream::takePrefix()
+{
+    std::vector<uint8_t> taken;
+    taken.swap(prefix_);
+    return taken;
 }
 
 bool readInfo(const std::string &path, Info &info, std::string &error)

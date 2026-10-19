@@ -81,7 +81,7 @@ bool confirmStop(const std::string &what)
     dialog.body.push_back({"It keeps running in the background while this "
                            "question is open.",
                            ui::color::Muted, 0.48f, 2});
-    dialog.buttons = {"KEEP GOING", "STOP"};
+    dialog.buttons = {"Keep Going", "Stop"};
     dialog.dangerous = 1;
     dialog.cancelButton = 0;
     return ui::choose(dialog) == 1;
@@ -324,7 +324,8 @@ void busy(const std::string &header, const std::string &title,
     threadFree(thread);
 }
 
-net::Result download(const net::Request &request, bool keepAwake)
+net::Result download(const net::Request &request, bool keepAwake,
+                     const std::string &step, bool direct)
 {
     DownloadJob job;
     job.request = &request;
@@ -346,7 +347,11 @@ net::Result download(const net::Request &request, bool keepAwake)
             view.title = job.phase == net::Phase::Connecting ? "Connecting"
                        : job.phase == net::Phase::Restarting
                            ? "Starting Over"
-                           : "Downloading";
+                       : direct ? "Installing"
+                                : "Downloading";
+            if (!step.empty()) {
+                view.title += " " + step;
+            }
             if (job.connections > 1) {
                 view.tag = std::to_string(job.connections) + " connections";
             }
@@ -380,8 +385,11 @@ net::Result download(const net::Request &request, bool keepAwake)
         view.icon = ui::Icon::Download;
         view.iconColor = ui::color::IconGreen;
         view.source = "from " + host;
-        view.message = "Saving to " + request.folder;
-        view.detail = footer(keepAwake);
+        view.message = direct ? "Installing as it downloads"
+                              : "Saving to " + request.folder;
+        view.detail = direct ? "Nothing is saved on the SD card. "
+                               "Stopping leaves the console as it was."
+                             : footer(keepAwake);
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });

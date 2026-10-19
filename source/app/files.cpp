@@ -9,6 +9,7 @@
 #include "naming.hpp"
 #include "picture.hpp"
 #include "platform.hpp"
+#include "sha256.hpp"
 #include "storage.hpp"
 #include "tasks.hpp"
 #include "text.hpp"
@@ -16,6 +17,7 @@
 #include "title_meta.hpp"
 #include "ui.hpp"
 #include "units.hpp"
+#include "update.hpp"
 #include "zip.hpp"
 
 #include <algorithm>
@@ -613,6 +615,59 @@ void App::ciaOptions(const std::string &path)
 
 // --- Options --------------------------------------------------------------------
 
+void App::showChecksum(const std::string &path)
+{
+    std::string hash;
+    tasks::busy("SHA-256", "Reading " + basename(path) + "...",
+                [&]() { hash = sha256::ofFile(path); });
+    if (hash.empty()) {
+        ui::message("No Checksum", "The file could not be read.",
+                    ui::Tone::Error, path);
+        return;
+    }
+    // A checksum list next to the file, as releases publish them.
+    const std::string folder = folderOf(path);
+    const std::string name = basename(path);
+    std::string verdict;
+    bool matches = false;
+    for (const fs::Entry &entry : fs::listEntries(folder)) {
+        if (entry.folder || !text::endsWithNoCase(entry.name, ".sha256")) {
+            continue;
+        }
+        std::string listing;
+        if (fs::fileSize(folder + entry.name) > 1024 * 1024 ||
+            !fs::readFile(folder + entry.name, listing)) {
+            continue;
+        }
+        const std::string expected = update::checksumFor(listing, name);
+        if (!expected.empty()) {
+            matches = expected == hash;
+            verdict = matches ? "It matches " + entry.name + "."
+                              : "It does not match " + entry.name +
+                                    ", which expects " + expected + ".";
+            break;
+        }
+    }
+    ui::Dialog dialog;
+    dialog.header = "SHA-256";
+    dialog.title = verdict.empty() ? "SHA-256 of " + name
+                   : matches       ? name + " is intact."
+                                   : name + " does not match its checksum.";
+    dialog.tone = verdict.empty() ? ui::Tone::Info
+                  : matches       ? ui::Tone::Success
+                                  : ui::Tone::Error;
+    dialog.body.push_back({name, ui::color::Text, 0.5f, 2});
+    dialog.body.push_back({hash.substr(0, 32) + "\n" + hash.substr(32),
+                           ui::color::Text, 0.46f, 2});
+    if (!verdict.empty()) {
+        dialog.body.push_back({verdict,
+                               matches ? ui::color::Good : ui::color::Bad,
+                               0.44f, 3});
+    }
+    dialog.buttons = {"Close"};
+    ui::choose(dialog);
+}
+
 bool App::entryOptions(const std::string &folder,
                        const std::vector<std::string> &paths,
                        std::vector<std::string> &marked,
@@ -636,6 +691,7 @@ bool App::entryOptions(const std::string &folder,
         Cut,
         Delete,
         Properties,
+        Checksum,
         Mark,
         ClearMarks,
         Folder
@@ -707,6 +763,11 @@ bool App::entryOptions(const std::string &folder,
     add("Delete", Action::Delete, "Deletes " + std::string(single ? "it" : "them") +
                                       " for good, after asking.", true);
     add("Properties", Action::Properties, "Size, date and where it is.");
+    if (single && !isFolder) {
+        add("SHA-256", Action::Checksum,
+            "Works out the file's SHA-256 checksum and compares it with any "
+            ".sha256 list in the same folder.");
+    }
     if (single) {
         add(isMarked ? "Unmark" : "Mark", Action::Mark,
             "Marked items are copied, moved, installed or deleted together.");
@@ -775,6 +836,9 @@ bool App::entryOptions(const std::string &folder,
         return deleteEntries(paths);
     case Action::Properties:
         showProperties(paths);
+        return false;
+    case Action::Checksum:
+        showChecksum(path);
         return false;
     case Action::Mark:
         if (isMarked) {

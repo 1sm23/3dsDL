@@ -153,7 +153,7 @@ later as read-only views if someone asks.
 4. Ext save data and system save data lists with Delete, as FBI has. Save
    import and export over SPI for DSiWare is left out; Checkpoint does it.
 
-## Phase 4: beyond FBI
+## Phase 4: beyond FBI (done, see app/queue.cpp; self update in app/software_update.cpp)
 
 These are the things users ask for that no FBI build ever had.
 

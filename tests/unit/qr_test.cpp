@@ -3,7 +3,7 @@
 #include "image.hpp"
 
 extern "C" {
-#include "../third_party/qrcodegen.h"
+#include "../../source/qrcodegen/qrcodegen.h"
 #include "quirc.h"
 }
 

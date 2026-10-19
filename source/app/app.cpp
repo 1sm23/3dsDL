@@ -108,10 +108,16 @@ void App::run()
     while (ui::keepRunning() && !quit_) {
         switch (home()) {
         case Action::Scan: {
+            // A code added to the queue goes straight back to the camera,
+            // so several can be scanned in a row.
             bool typeInstead = false;
-            const std::string link = scanner::scan(&typeInstead);
-            if (!link.empty()) {
-                startDownload(link, settings_.destination);
+            while (ui::keepRunning()) {
+                typeInstead = false;
+                const std::string link = scanner::scan(&typeInstead);
+                if (link.empty() ||
+                    startDownload(link, settings_.destination) != Start::Queued) {
+                    break;
+                }
             }
             if (!typeInstead) {
                 break;
@@ -135,6 +141,12 @@ void App::run()
             break;
         case Action::Titles:
             titlesScreen();
+            break;
+        case Action::Queue:
+            queueScreen();
+            break;
+        case Action::Receive:
+            receiveScreen();
             break;
         case Action::Folder:
             changeDefaultFolder();
@@ -181,15 +193,23 @@ App::Action App::home()
     };
     add({16, 6, 140, 26}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
         false);
-    add({164, 6, 140, 26}, "Titles", ui::Icon::GameCard, ui::color::IconBlue,
+    add({164, 6, 140, 26}, "Queue", ui::Icon::Download, ui::color::IconGreen,
         false);
-    add({16, 42, 140, 78}, "Scan QR Code", ui::Icon::Scan, ui::color::IconBlue,
+    if (!queue_.empty()) {
+        spec.controls.back().badge = std::to_string(queue_.size());
+    }
+    // Three across: getting links in on top, finding things below.
+    add({16, 42, 92, 78}, "Scan QR Code", ui::Icon::Scan, ui::color::IconBlue,
         true);
-    add({164, 42, 140, 78}, "Enter URL", ui::Icon::Globe, ui::color::IconTeal,
+    add({114, 42, 92, 78}, "Enter URL", ui::Icon::Globe, ui::color::IconTeal,
         true);
-    add({16, 127, 140, 76}, "History", ui::Icon::History, ui::color::IconRed,
+    add({212, 42, 92, 78}, "Receive", ui::Icon::Chip, ui::color::IconPink,
         true);
-    add({164, 127, 140, 76}, "Files", ui::Icon::Folder, ui::color::IconOrange,
+    add({16, 127, 92, 76}, "History", ui::Icon::History, ui::color::IconRed,
+        true);
+    add({114, 127, 92, 76}, "Files", ui::Icon::Folder, ui::color::IconOrange,
+        true);
+    add({212, 127, 92, 76}, "Titles", ui::Icon::GameCard, ui::color::IconGold,
         true);
     spec.drawTop = [&]() {
         // The answer to the update check can arrive while this is open.
@@ -223,15 +243,19 @@ App::Action App::home()
     case 0:
         return Action::Settings;
     case 1:
-        return Action::Titles;
+        return Action::Queue;
     case 2:
         return Action::Scan;
     case 3:
         return Action::EnterUrl;
     case 4:
-        return Action::History;
+        return Action::Receive;
     case 5:
+        return Action::History;
+    case 6:
         return Action::Files;
+    case 7:
+        return Action::Titles;
     default:
         break;
     }
@@ -240,26 +264,31 @@ App::Action App::home()
 
 // --- Downloading -------------------------------------------------------------
 
-void App::startDownload(const std::string &address, std::string folder)
+App::Start App::startDownload(const std::string &address, std::string folder)
 {
     const std::string link = text::trim(address);
     if (link.empty()) {
-        return;
+        return Start::Cancelled;
     }
     if (!url::isHttpUrl(link)) {
         ui::message("Not a download link",
                     "3dsDL can only download direct http:// or https:// "
                     "links.",
                     ui::Tone::Error, link);
-        return;
+        return Start::Cancelled;
     }
-    if (!confirmDownload(link, folder)) {
-        return;
+    const Confirm confirmed = confirmDownload(link, folder);
+    if (confirmed == Confirm::Queue) {
+        addToQueue({link}, folder, true);
+        return Start::Queued;
+    }
+    if (confirmed != Confirm::Download) {
+        return Start::Cancelled;
     }
     if (!fs::makeDirectories(folder)) {
         ui::message("Folder unavailable", "Could not create " + folder + ".",
                     ui::Tone::Error);
-        return;
+        return Start::Done;
     }
 
     if (platform::wifiStatus() == platform::Wifi::Disconnected) {
@@ -274,7 +303,7 @@ void App::startDownload(const std::string &address, std::string folder)
         dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) != 0) {
-            return;
+            return Start::Cancelled;
         }
     }
 
@@ -302,19 +331,19 @@ void App::startDownload(const std::string &address, std::string folder)
                 entry.bytes = result.bytes;
                 record(entry);
             }
-            return;
+            return Start::Done;
         }
 
         if (result.outcome == net::Outcome::Completed) {
             finishDownload(link, folder, result);
-            return;
+            return Start::Done;
         }
         if (result.outcome == net::Outcome::Cancelled) {
             HistoryEntry entry =
                 newEntry(link, folder, HistoryStatus::Cancelled);
             entry.message = result.message;
             record(entry);
-            return;
+            return Start::Done;
         }
 
         HistoryEntry entry = newEntry(link, folder, HistoryStatus::Failed);
@@ -339,8 +368,27 @@ void App::startDownload(const std::string &address, std::string folder)
                                        units::dateTime(platform::now()) + ".",
                                    ui::color::Warning, 0.46f, 1});
         }
-        if (!result.detail.empty() && result.detail != result.message) {
+        if (!result.detail.empty() && result.detail != result.message &&
+            !result.noSpace) {
             dialog.body.push_back({result.detail, ui::color::Muted, 0.4f, 2});
+        }
+        // A CIA too big for the SD card can still go straight into the
+        // install service, as FBI did.
+        const std::string fileName = result.filename.empty()
+                                         ? naming::chooseFilename("", link)
+                                         : result.filename;
+        if (result.noSpace && installer::available() &&
+            text::endsWithNoCase(fileName, ".cia")) {
+            dialog.body.push_back({"Install Directly puts it straight into the "
+                                   "install service without saving the file. "
+                                   "It starts over if the connection drops.",
+                                   ui::color::Muted, 0.44f, 3});
+            dialog.buttons = {"Install Directly", "Close"};
+            dialog.cancelButton = 1;
+            if (ui::choose(dialog) == 0) {
+                installDirectly(link);
+            }
+            return Start::Done;
         }
         if (result.certificateProblem) {
             dialog.buttons = {"Check Clock", "Retry", "Close"};
@@ -365,14 +413,16 @@ void App::startDownload(const std::string &address, std::string folder)
             break;
         }
         if (!retry) {
-            return;
+            return Start::Done;
         }
         // The retry gets its own history entry.
         history_.erase(history_.begin());
     }
+    return Start::Done;
 }
 
-bool App::confirmDownload(const std::string &address, std::string &folder)
+App::Confirm App::confirmDownload(const std::string &address,
+                                  std::string &folder)
 {
     int focus = ui::ScreenAction;
     while (ui::keepRunning()) {
@@ -386,12 +436,18 @@ bool App::confirmDownload(const std::string &address, std::string &folder)
         spec.back = "Cancel";
         spec.action = "Download";
         ui::Control change;
-        change.rect = {46, 132, 228, 34};
+        change.rect = {46, 124, 228, 34};
         change.label = "Change Folder";
         change.icon = ui::Icon::Folder;
         change.iconColor = ui::color::IconOrange;
         change.scale = ui::type::Body + 0.06f;
         spec.controls.push_back(change);
+        ui::Control queue = change;
+        queue.rect = {46, 166, 228, 34};
+        queue.label = "Add to Queue";
+        queue.icon = ui::Icon::Download;
+        queue.iconColor = ui::color::IconGreen;
+        spec.controls.push_back(queue);
         spec.drawTop = [&]() {
             ui::drawTopChrome("Download", ui::Icon::Download,
                               ui::color::IconGreen);
@@ -441,10 +497,13 @@ bool App::confirmDownload(const std::string &address, std::string &folder)
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         if (result.choice == ui::ScreenAction) {
-            return true;
+            return Confirm::Download;
+        }
+        if (result.choice == 1) {
+            return Confirm::Queue;
         }
         if (result.choice != 0) {
-            return false;
+            return Confirm::Cancel;
         }
         std::string chosen = folder;
         if (chooseFolder(chosen)) {
@@ -453,7 +512,7 @@ bool App::confirmDownload(const std::string &address, std::string &folder)
             persistSettings();
         }
     }
-    return false;
+    return Confirm::Cancel;
 }
 
 void App::finishDownload(const std::string &address, const std::string &folder,

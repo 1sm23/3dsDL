@@ -52,7 +52,7 @@ $(BUILD)/quirc/%.o: $(QUIRC)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -Wno-sign-compare -Wno-unused-parameter -Wno-type-limits \
 		-fno-sanitize=nonnull-attribute -c $< -o $@
 
-$(BUILD)/qrcodegen.o: third_party/qrcodegen.c third_party/qrcodegen.h
+$(BUILD)/qrcodegen.o: $(ROOT)/source/qrcodegen/qrcodegen.c $(ROOT)/source/qrcodegen/qrcodegen.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -w -c $< -o $@
 

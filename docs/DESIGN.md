@@ -123,7 +123,7 @@ strip for a red button and a 30 px dark Cancel strip.
 
 | Board | Top screen | Bottom screen |
 | --- | --- | --- |
-| Home | app icon, name, folder and free space | Settings bar, four tiles (Scan QR Code, Enter URL, History, Files), Close bar |
+| Home | app icon, name, folder and free space | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
 | Scan QR code | camera with corner brackets, status strip at the bottom | title, help panel, Type a URL Instead, Back |
 | Confirm download | file, host, URL, Save to and HTTPS tags | folder recess, Change Folder, Cancel / Download |
 | Downloading | file, progress, amounts, speed, connections tag | saving to, Sleep Mode note, Cancel |
@@ -140,7 +140,7 @@ strip for a red button and a 30 px dark Cancel strip.
 | CIA details | icon, name, Title ID, Version, Size | Install, Install and Delete File, Delete File |
 | Delete | what goes and how big it is | destructive dialog |
 | History | the highlighted download in full | rows with Installed, Resume, Saved, Failed badges |
-| Settings | what is in the highlighted section | About bar, four tiles |
+| Settings | what is in the highlighted section | About and Updates bars, four tiles |
 | Setting choice | what the setting does | recessed options, the current one chosen |
 | Console clock | console time, internet time, zone | Set the Clock, Change Time Zone |
 | Download folder | current and selected folder | presets and recent folders |

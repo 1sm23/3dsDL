@@ -117,6 +117,7 @@ struct Transfer {
     std::string filename;
     std::string effectiveUrl;
     std::string failure; // set by our own checks, overrides curl's message
+    bool noSpace = false; // the SD card is too full for the file
 
     // The response status, and the failure that ended the attempt.
     long httpStatus = 0;
@@ -204,6 +205,7 @@ bool flush(Transfer &transfer, Connection &connection)
     connection.buffer.clear();
     if (written != size) {
         if (transfer.failure.empty()) {
+            transfer.noSpace = errno == ENOSPC;
             transfer.failure = errno == ENOSPC
                 ? "The SD card is full."
                 : "Could not write to the SD card (" + errnoText() + ").";
@@ -290,6 +292,7 @@ bool begin(Transfer &transfer, Connection &lead)
         const int64_t available = request.freeSpace(request.folder);
         const uint64_t needed = transfer.total - transfer.fileBytes;
         if (available >= 0 && static_cast<uint64_t>(available) < needed) {
+            transfer.noSpace = true;
             transfer.failure = "Not enough free space on the SD card: " +
                                units::bytes(needed) + " needed, " +
                                units::bytes(static_cast<uint64_t>(available)) +
@@ -980,6 +983,7 @@ Result download(const Request &request, Observer &observer)
         result.detail = !transfer.detail.empty() ? transfer.detail
                                                  : curl_easy_strerror(code);
         result.certificateProblem = code == CURLE_PEER_FAILED_VERIFICATION;
+        result.noSpace = transfer.noSpace;
         if (!transfer.failure.empty()) {
             result.message = transfer.failure;
         } else if (!closed) {

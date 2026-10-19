@@ -320,6 +320,104 @@ Result installCia(const std::string &path, uint64_t titleId,
     return result;
 }
 
+StreamInstall::~StreamInstall()
+{
+    cancel();
+}
+
+bool StreamInstall::begin()
+{
+    const cia::Info &info = stream_.info();
+    if (cia::isSystemTitle(info.titleId)) {
+        result_.message = "This is a system title. 3dsDL does not install "
+                          "them.";
+        return false;
+    }
+    startTime_ = osGetTime();
+    const ::Result code = AM_StartCiaInstall(destination(info.titleId), &target_);
+    if (R_FAILED(code)) {
+        result_ = failure(code, "The install could not start.");
+        return false;
+    }
+    started_ = true;
+    const std::vector<uint8_t> prefix = stream_.takePrefix();
+    u32 done = 0;
+    const ::Result wrote = FSFILE_Write(target_, &done, 0, prefix.data(),
+                                        static_cast<u32>(prefix.size()), 0);
+    if (R_FAILED(wrote)) {
+        result_ = failure(wrote, "The install failed.");
+        cancel();
+        return false;
+    }
+    written_ = prefix.size();
+    return true;
+}
+
+bool StreamInstall::write(uint64_t offset, const void *data, size_t size)
+{
+    if (!started_ && target_ == 0 && !result_.message.empty()) {
+        return false; // already failed
+    }
+    if (!available()) {
+        result_.message = unavailableReason();
+        return false;
+    }
+    std::string error;
+    if (!stream_.feed(offset, static_cast<const uint8_t *>(data), size, error)) {
+        result_.message = error;
+        cancel();
+        return false;
+    }
+    if (!started_) {
+        return !stream_.ready() || begin();
+    }
+    if (offset < written_) {
+        return true; // already handed over as part of the prefix
+    }
+    u32 done = 0;
+    const ::Result code = FSFILE_Write(target_, &done, offset, data,
+                                       static_cast<u32>(size), 0);
+    if (R_FAILED(code)) {
+        result_ = failure(code, "The install failed.");
+        cancel();
+        return false;
+    }
+    written_ = offset + size;
+    return true;
+}
+
+Result StreamInstall::finish()
+{
+    if (!started_) {
+        if (result_.message.empty()) {
+            result_.message = "The download ended before the CIA's header "
+                              "arrived.";
+        }
+        return result_;
+    }
+    const ::Result code = AM_FinishCiaInstall(target_);
+    started_ = false;
+    target_ = 0;
+    if (R_FAILED(code)) {
+        result_ = failure(code, "The install could not be finished.");
+        return result_;
+    }
+    result_ = Result();
+    result_.outcome = Outcome::Installed;
+    result_.bytes = written_;
+    result_.seconds = static_cast<double>(osGetTime() - startTime_) / 1000.0;
+    return result_;
+}
+
+void StreamInstall::cancel()
+{
+    if (started_) {
+        AM_CancelCIAInstall(target_);
+        started_ = false;
+        target_ = 0;
+    }
+}
+
 bool installedVersion(uint64_t titleId, uint16_t &version)
 {
     if (!started) {

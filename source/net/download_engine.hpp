@@ -80,6 +80,8 @@ struct Result {
     double seconds = 0.0;
     // The server's certificate was rejected; often a wrong console clock.
     bool certificateProblem = false;
+    // The SD card has too little room for the file.
+    bool noSpace = false;
     std::string message;    // for the user
     std::string detail;     // technical detail, may be empty
 };

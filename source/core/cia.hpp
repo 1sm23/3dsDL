@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 // Reads what 3dsDL shows about a CIA installer before installing it: the
 // title ID and version from its TMD, the name and icon from its meta section
@@ -59,6 +60,37 @@ bool readInfo(const Reader &read, uint64_t fileSize, Info &info,
 bool readInfo(const std::string &path, Info &info, std::string &error);
 // Checks only the header, for listing files quickly.
 bool isCiaFile(const std::string &path);
+
+// Reads a CIA as it arrives, for installing it without saving the file.
+// The title ID and version are known once the header and title metadata
+// have come in; the name and icon once the meta section at the end has.
+class Stream {
+public:
+    // Hand over the data in order, from offset 0. Returns false, with a
+    // reason, when it is not a CIA or arrives out of order.
+    bool feed(uint64_t offset, const uint8_t *data, size_t size,
+              std::string &error);
+    // The title ID and version are known.
+    bool ready() const { return ready_; }
+    // Everything fed until ready, to give to the installer first. Empty
+    // afterwards.
+    std::vector<uint8_t> takePrefix();
+    // Title ID, version and seed flag once ready; the name and icon too
+    // once the meta section has passed.
+    const Info &info() const { return info_; }
+
+private:
+    std::vector<uint8_t> prefix_;
+    std::vector<uint8_t> meta_;
+    Layout layout_;
+    bool haveLayout_ = false;
+    uint64_t prefixNeeded_ = 0;
+    bool ready_ = false;
+    uint64_t next_ = 0;
+    uint64_t metaStart_ = 0;
+    size_t metaGot_ = 0;
+    Info info_;
+};
 
 // --- Title IDs ---------------------------------------------------------------
 

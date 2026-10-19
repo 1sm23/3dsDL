@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cia.hpp"
+
 #include <3ds.h>
 
 #include <cstdint>
@@ -44,6 +46,37 @@ struct Result {
 // path is an sdmc:/ path to a CIA whose title ID is titleId.
 Result installCia(const std::string &path, uint64_t titleId,
                   Observer &observer);
+
+// Installs a CIA as it downloads, without saving the file, for SD cards
+// too full to hold it. Data must come in order from offset 0. The install
+// starts once the title ID is known from the first few kilobytes.
+class StreamInstall {
+public:
+    StreamInstall() = default;
+    ~StreamInstall();
+    StreamInstall(const StreamInstall &) = delete;
+    StreamInstall &operator=(const StreamInstall &) = delete;
+
+    // False when the data is not an installable CIA or the install failed;
+    // the reason is in result().
+    bool write(uint64_t offset, const void *data, size_t size);
+    // Finishes the install after the last write.
+    Result finish();
+    // Abandons the install; nothing is changed.
+    void cancel();
+    const cia::Info &info() const { return stream_.info(); }
+    const Result &result() const { return result_; }
+
+private:
+    bool begin();
+
+    cia::Stream stream_;
+    Handle target_ = 0;
+    bool started_ = false;
+    uint64_t written_ = 0;
+    u64 startTime_ = 0;
+    Result result_;
+};
 
 FS_MediaType destination(uint64_t titleId);
 // False when the title is not installed.
