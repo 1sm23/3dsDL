@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fs_util.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -19,6 +21,9 @@ struct Settings {
     bool keepAwake = true;
     bool offerZipExtraction = false;
     CiaAction afterCiaDownload = CiaAction::Ask;
+    // Files screen.
+    bool showHiddenFiles = false;
+    fs::SortOrder fileSort = fs::SortOrder::Name;
     // UTC offset used when setting the clock from the internet.
     bool timeZoneSet = false;
     int timeZoneMinutes = 0;

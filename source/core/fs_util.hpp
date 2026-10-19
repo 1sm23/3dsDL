@@ -30,11 +30,20 @@ std::vector<std::string> listFolders(const std::string &folder);
 struct Entry {
     std::string name;
     bool folder = false;
-    int64_t size = -1; // files only; -1 when it cannot be read
+    int64_t size = -1;    // files only; -1 when it cannot be read
+    int64_t modified = 0; // seconds since 1970, 0 when unknown
 };
 
 // The folders and then the files in folder, each sorted case-insensitively.
-// Hidden entries are left out. ok is false when folder cannot be opened.
-std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr);
+// Entries starting with '.' are left out unless hidden is true. ok is false
+// when folder cannot be opened.
+std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr,
+                               bool hidden = false);
+
+enum class SortOrder { Name, Size, Date, Type };
+// Folders always come first and are sorted by name, or newest first for
+// Date. Files follow in order: by name, largest first, newest first, or by
+// extension and then name.
+void sortEntries(std::vector<Entry> &entries, SortOrder order);
 
 } // namespace fs

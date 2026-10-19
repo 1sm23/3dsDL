@@ -1,5 +1,6 @@
 #include "app.hpp"
 
+#include "app_util.hpp"
 #include "cia.hpp"
 #include "finalize.hpp"
 #include "fs_util.hpp"
@@ -22,6 +23,12 @@
 #include <map>
 
 namespace {
+
+using screens::addCiaParagraphs;
+using screens::basename;
+using screens::ciaName;
+using screens::drawLabelledPanel;
+using screens::plural;
 
 constexpr const char *CaBundle = "romfs:/cacert.pem";
 constexpr const char *UserAgent = "3dsDL/" APP_VERSION " (Nintendo 3DS)";
@@ -76,11 +83,6 @@ int homeButton(int row, int column)
     return row < 2 ? row : 2 + (row - 2) * 2 + column;
 }
 
-std::string basename(const std::string &path)
-{
-    return path.substr(path.find_last_of('/') + 1);
-}
-
 std::string onOff(bool value)
 {
     return value ? "On" : "Off";
@@ -99,11 +101,6 @@ const char *ciaActionLabel(CiaAction action)
         break;
     }
     return "Ask";
-}
-
-std::string plural(uint64_t count, const std::string &word)
-{
-    return std::to_string(count) + " " + word + (count == 1 ? "" : "s");
 }
 
 std::string entryName(const HistoryEntry &entry)
@@ -154,44 +151,6 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
     entry.folder = folder;
     entry.status = status;
     return entry;
-}
-
-void drawLabelledPanel(float y, float height, const std::string &label,
-                       const std::string &value, u32 valueColor)
-{
-    ui::drawPanel({18, y, 364, height});
-    ui::drawText(label, 34, y + 9, 0.44f, ui::color::Muted);
-    ui::drawWrapped(value, 34, y + 27, 0.52f, valueColor, 330,
-                    static_cast<size_t>((height - 30) / ui::lineHeight(0.52f)));
-}
-
-// The title's name from its icon data, or its title ID when it has none.
-std::string ciaName(const cia::Info &info)
-{
-    return info.smdh.shortName.empty()
-        ? "title " + cia::titleIdText(info.titleId)
-        : info.smdh.shortName;
-}
-
-void addCiaParagraphs(ui::Dialog &dialog, const cia::Info &info)
-{
-    if (!info.smdh.publisher.empty()) {
-        dialog.body.push_back({info.smdh.publisher, ui::color::Muted, 0.46f,
-                               1});
-    }
-    dialog.body.push_back(
-        {std::string(cia::kindName(cia::kind(info.titleId))) + ", " +
-             cia::versionText(info.version) + ", " +
-             units::bytes(info.fileSize),
-         ui::color::Text, 0.46f, 2});
-    uint16_t installed = 0;
-    if (installer::installedVersion(info.titleId, installed)) {
-        dialog.body.push_back({"Installed now: " +
-                                   cia::versionText(installed),
-                               installed > info.version ? ui::color::Warning
-                                                        : ui::color::Muted,
-                               0.44f, 1});
-    }
 }
 
 } // namespace
@@ -614,13 +573,15 @@ void App::finishDownload(const std::string &address, const std::string &folder,
 }
 
 void App::offerExtraction(const std::string &zipPath, const std::string &folder,
-                          const std::string &summary)
+                          const std::string &summary, const std::string &title)
 {
     zip::Archive archive;
     std::string error;
     if (!zip::readArchive(zipPath, archive, error)) {
-        ui::message("Download complete", summary, ui::Tone::Success,
-                    "It was not extracted: " + error);
+        ui::message(summary.empty() ? "Cannot extract" : "Download complete",
+                    summary.empty() ? error : summary,
+                    summary.empty() ? ui::Tone::Error : ui::Tone::Success,
+                    summary.empty() ? "" : "It was not extracted: " + error);
         return;
     }
 
@@ -629,7 +590,7 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
 
     ui::Dialog dialog;
     dialog.header = "extract";
-    dialog.title = "Download complete. Extract the archive?";
+    dialog.title = title;
     dialog.tone = ui::Tone::Success;
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
     dialog.body.push_back({"It holds " + plural(archive.fileCount, "file") +
@@ -771,7 +732,7 @@ void App::offerInstall(const std::string &path, const std::string &address,
 }
 
 bool App::installCia(const std::string &path, const cia::Info &info,
-                     bool deleteAfter, const std::string &address)
+                     bool deleteAfter, const std::string &address, bool quiet)
 {
     const std::string name = ciaName(info);
     if (!installer::available()) {
@@ -923,6 +884,10 @@ bool App::installCia(const std::string &path, const cia::Info &info,
                       deleteAfter ? "Installed, file deleted" : "Installed");
     }
 
+    if (quiet) {
+        return true;
+    }
+
     // An update or DLC opens with its game, when that is installed.
     const uint64_t launchId = cia::baseTitle(info.titleId);
     uint16_t unused = 0;
@@ -980,261 +945,6 @@ void App::markInstalled(const std::string &address, const std::string &path,
             return;
         }
     }
-}
-
-// --- Files -------------------------------------------------------------------
-
-void App::filesScreen()
-{
-    if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
-        filesFolder_ = fs::directoryExists(settings_.destination)
-            ? naming::normaliseFolder(settings_.destination)
-            : "sdmc:/";
-    }
-    std::string &current = filesFolder_;
-    int cursor = 0;
-
-    // What the top screen shows about a CIA takes a few reads of the SD card
-    // and a question to AM, so it is worked out once per file.
-    struct CiaDetails {
-        bool readable = false;
-        cia::Info info;
-        std::string error;
-        bool installed = false;
-        uint16_t installedVersion = 0;
-    };
-    std::map<std::string, CiaDetails> details;
-    const auto describe = [&](const std::string &path) -> const CiaDetails & {
-        auto found = details.find(path);
-        if (found == details.end()) {
-            CiaDetails entry;
-            entry.readable = cia::readInfo(path, entry.info, entry.error);
-            if (entry.readable) {
-                entry.installed = installer::installedVersion(
-                    entry.info.titleId, entry.installedVersion);
-            }
-            found = details.emplace(path, entry).first;
-        }
-        return found->second;
-    };
-
-    while (ui::keepRunning()) {
-        bool readable = false;
-        const std::vector<fs::Entry> entries =
-            fs::listEntries(current, &readable);
-        if (!readable && current != "sdmc:/") {
-            current = "sdmc:/";
-            cursor = 0;
-            continue;
-        }
-        const bool atRoot = naming::parentFolder(current) == current;
-        const int first = atRoot ? 0 : 1;
-
-        ui::ListSpec spec;
-        spec.header = "files";
-        spec.title = ui::fitMiddle(current, 0.56f, 290);
-        spec.emptyText = readable ? "This folder is empty."
-                                  : "The SD card could not be read.";
-        spec.hint = "A: Open    B: Up    START: Home";
-        spec.extraKeys = KEY_START;
-        if (!atRoot) {
-            spec.items.push_back({".. (up one level)", "", ui::color::Muted});
-        }
-        for (const fs::Entry &entry : entries) {
-            if (entry.folder) {
-                spec.items.push_back({entry.name + "/", ""});
-                continue;
-            }
-            const bool isCia = text::endsWithNoCase(entry.name, ".cia");
-            spec.items.push_back(
-                {entry.name,
-                 entry.size >= 0 ? units::bytes(static_cast<uint64_t>(
-                                       entry.size))
-                                 : "",
-                 isCia ? ui::color::Primary : ui::color::Text});
-        }
-
-        spec.drawTop = [&](int index) {
-            const int position = index - first;
-            if (position < 0 || position >= static_cast<int>(entries.size())) {
-                drawLabelledPanel(56, 74, "BROWSING", current,
-                                  ui::color::Text);
-                drawLabelledPanel(144, 76, "CONTENTS",
-                                  plural(entries.size(), "item") + ".",
-                                  ui::color::Text);
-                return;
-            }
-            const fs::Entry &entry = entries[position];
-            const std::string path = current + entry.name;
-            if (entry.folder) {
-                drawLabelledPanel(56, 74, "FOLDER", path + "/",
-                                  ui::color::Text);
-                return;
-            }
-            if (!text::endsWithNoCase(entry.name, ".cia")) {
-                drawLabelledPanel(56, 74, "FILE", path, ui::color::Text);
-                drawLabelledPanel(144, 76, "SIZE",
-                                  entry.size >= 0
-                                      ? units::bytes(static_cast<uint64_t>(
-                                            entry.size))
-                                      : "Unknown",
-                                  ui::color::Text);
-                return;
-            }
-
-            const CiaDetails &cia = describe(path);
-            ui::drawPanel({18, 54, 364, 172});
-            if (!cia.readable) {
-                ui::drawText("CIA FILE", 34, 63, 0.44f, ui::color::Muted);
-                ui::drawWrapped(entry.name, 34, 82, 0.56f, ui::color::Text,
-                                330, 2);
-                ui::drawWrapped(cia.error, 34, 128, 0.48f,
-                                ui::color::Danger, 330, 3);
-                return;
-            }
-            const cia::Info &info = cia.info;
-            float textX = 34;
-            if (const C2D_Image *icon = ui::showIcon(info.smdh.icon)) {
-                C2D_DrawImageAt(*icon, 34, 64, 0.5f);
-                textX = 94;
-            }
-            ui::drawText(ui::fitEnd(ciaName(info), 0.62f, 366 - textX), textX,
-                         66, 0.62f, ui::color::Text);
-            ui::drawText(ui::fitEnd(info.smdh.publisher.empty()
-                                        ? entry.name
-                                        : info.smdh.publisher,
-                                    0.46f, 366 - textX),
-                         textX, 90, 0.46f, ui::color::Muted);
-
-            const struct {
-                const char *label;
-                std::string value;
-                u32 color;
-            } rows[] = {
-                {"Type", cia::kindName(cia::kind(info.titleId)),
-                 ui::color::Text},
-                {"Title ID", cia::titleIdText(info.titleId), ui::color::Text},
-                {"Version", cia::versionText(info.version), ui::color::Text},
-                {"Installed",
-                 cia.installed ? cia::versionText(cia.installedVersion)
-                               : "No",
-                 cia.installed ? ui::color::Success : ui::color::Muted},
-                {"Size", units::bytes(info.fileSize), ui::color::Text},
-            };
-            float y = 122;
-            for (const auto &row : rows) {
-                ui::drawText(row.label, 34, y, 0.46f, ui::color::Muted);
-                ui::drawText(ui::fitEnd(row.value, 0.48f, 250), 120, y, 0.48f,
-                             row.color);
-                y += 19;
-            }
-        };
-
-        const ui::ListResult result = ui::runList(spec, cursor);
-        if (result.key == 0 || result.key == KEY_START) {
-            return;
-        }
-        if (result.key == KEY_B || (result.key == KEY_A && !atRoot &&
-                                    result.index == 0)) {
-            if (atRoot) {
-                return;
-            }
-            // Land on the folder that was just left.
-            const std::string left = current.substr(
-                naming::parentFolder(current).size());
-            current = naming::parentFolder(current);
-            cursor = 0;
-            const std::vector<fs::Entry> parent = fs::listEntries(current);
-            for (size_t index = 0; index < parent.size(); ++index) {
-                if (parent[index].folder &&
-                    parent[index].name + "/" == left) {
-                    cursor = static_cast<int>(index) +
-                             (naming::parentFolder(current) == current ? 0
-                                                                       : 1);
-                }
-            }
-            continue;
-        }
-        const int position = result.index - first;
-        if (result.key != KEY_A || position < 0 ||
-            position >= static_cast<int>(entries.size())) {
-            continue;
-        }
-        const fs::Entry &entry = entries[position];
-        if (entry.folder) {
-            current += entry.name + "/";
-            cursor = 0;
-            continue;
-        }
-        const std::string path = current + entry.name;
-        if (fileOptions(path)) {
-            details.erase(path);
-        }
-    }
-}
-
-bool App::fileOptions(const std::string &path)
-{
-    const std::string name = basename(path);
-    const auto confirmDelete = [&]() {
-        ui::Dialog dialog;
-        dialog.header = "delete";
-        dialog.title = "Delete " + name + "?";
-        dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({path, ui::color::Muted, 0.46f, 3});
-        dialog.buttons = {"DELETE", "CANCEL"};
-        dialog.dangerous = 0;
-        dialog.initial = 1;
-        dialog.cancelButton = 1;
-        if (ui::choose(dialog) != 0) {
-            return false;
-        }
-        if (!fs::removeFile(path)) {
-            ui::message("Could not delete the file", path, ui::Tone::Error);
-            return false;
-        }
-        return true;
-    };
-
-    cia::Info info;
-    std::string error;
-    if (!cia::isCiaFile(path) || !cia::readInfo(path, info, error)) {
-        ui::Dialog dialog;
-        dialog.header = "file";
-        dialog.title = name;
-        const int64_t size = fs::fileSize(path);
-        if (size >= 0) {
-            dialog.body.push_back({units::bytes(static_cast<uint64_t>(size)),
-                                   ui::color::Text, 0.5f, 1});
-        }
-        if (!error.empty()) {
-            dialog.body.push_back({"Not installable: " + error,
-                                   ui::color::Warning, 0.46f, 3});
-        }
-        dialog.buttons = {"DELETE", "BACK"};
-        dialog.dangerous = 0;
-        dialog.initial = 1;
-        dialog.cancelButton = 1;
-        return ui::choose(dialog) == 0 && confirmDelete();
-    }
-
-    ui::Dialog dialog;
-    dialog.header = "cia";
-    dialog.title = ciaName(info);
-    dialog.icon = ui::showIcon(info.smdh.icon);
-    addCiaParagraphs(dialog, info);
-    if (!installer::available()) {
-        dialog.body.push_back({installer::unavailableReason(),
-                               ui::color::Warning, 0.42f, 3});
-    }
-    dialog.buttons = {"INSTALL", "INSTALL & DELETE", "DELETE"};
-    dialog.dangerous = 2;
-    const int choice = ui::choose(dialog);
-    if (choice == 0 || choice == 1) {
-        installCia(path, info, choice == 1, "");
-        return true;
-    }
-    return choice == 2 && confirmDelete();
 }
 
 // --- Folders -----------------------------------------------------------------

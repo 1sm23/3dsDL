@@ -131,6 +131,21 @@ const char *ciaActionName(CiaAction action)
     return "ask";
 }
 
+const char *sortName(fs::SortOrder order)
+{
+    switch (order) {
+    case fs::SortOrder::Size:
+        return "size";
+    case fs::SortOrder::Date:
+        return "date";
+    case fs::SortOrder::Type:
+        return "type";
+    case fs::SortOrder::Name:
+        break;
+    }
+    return "name";
+}
+
 uint64_t fnv1a64(const std::string &value)
 {
     uint64_t hash = 0xcbf29ce484222325ULL;
@@ -166,6 +181,17 @@ Settings parseSettings(const std::string &contents)
                     settings.afterCiaDownload = action;
                 }
             }
+        } else if (key == "show_hidden_files") {
+            settings.showHiddenFiles =
+                parseBool(value, settings.showHiddenFiles);
+        } else if (key == "file_sort") {
+            for (const fs::SortOrder order :
+                 {fs::SortOrder::Name, fs::SortOrder::Size,
+                  fs::SortOrder::Date, fs::SortOrder::Type}) {
+                if (text::lower(value) == sortName(order)) {
+                    settings.fileSort = order;
+                }
+            }
         } else if (key == "time_zone_minutes") {
             char *end = nullptr;
             const long minutes = std::strtol(value.c_str(), &end, 10);
@@ -191,6 +217,9 @@ std::string serializeSettings(const Settings &settings)
               (settings.offerZipExtraction ? "1" : "0") + "\n";
     output += std::string("after_cia_download=") +
               ciaActionName(settings.afterCiaDownload) + "\n";
+    output += std::string("show_hidden_files=") +
+              (settings.showHiddenFiles ? "1" : "0") + "\n";
+    output += std::string("file_sort=") + sortName(settings.fileSort) + "\n";
     if (settings.timeZoneSet) {
         output += "time_zone_minutes=" +
                   std::to_string(settings.timeZoneMinutes) + "\n";

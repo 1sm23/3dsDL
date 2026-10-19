@@ -141,6 +141,31 @@ installed, and a game older than the installed version.
 36. LAUNCH after installing starts the title, from both the `.3dsx` and the
     CIA build. Installing 3dsDL's own CIA over itself from the CIA build works.
 
+### Files
+
+Use a folder with a few of each: big phone photos (JPEG over 12 MP), a PNG
+with transparency, a GIF, `.ini` and `.txt` files with Windows line endings,
+a ZIP, a `.3dsx`, a decrypted and an encrypted `.3ds`, an `.nds` and a folder
+with a few hundred files.
+
+37. Scrolling a folder of a few hundred files stays smooth on an Old 3DS, and
+    the top screen keeps up with the highlighted entry.
+38. Pictures open, fit the screen, and L/R browse the folder. A 12 MP photo
+    opens in a few seconds without running out of memory, on Old and New.
+39. Editing a line of an `.ini` and saving changes only that line (compare
+    the file on a computer); a new file gets a line break at the end. B with
+    unsaved changes asks first. The keyboard shows the line's current text.
+40. Copy and paste a folder of a few hundred MiB: progress moves, cancel
+    stops it and leaves the finished files, and the copy matches the
+    original. Paste into the same folder makes "name (1)".
+41. Cut and paste moves instantly, also between folders, and never into
+    itself. Something that could not move stays ready to paste.
+42. Delete a folder with files inside: it says how much is inside first, then
+    removes everything.
+43. Rename, including changing only the case of a name (a.txt to A.txt).
+44. Mark several CIAs and install them: each installs, and the summary counts
+    them.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over

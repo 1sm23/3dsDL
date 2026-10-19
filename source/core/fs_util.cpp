@@ -161,7 +161,8 @@ std::vector<std::string> listFolders(const std::string &folder)
     return names;
 }
 
-std::vector<Entry> listEntries(const std::string &folder, bool *ok)
+std::vector<Entry> listEntries(const std::string &folder, bool *ok,
+                               bool hidden)
 {
     std::vector<Entry> entries;
     DIR *directory = opendir(folder.c_str());
@@ -180,12 +181,14 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok)
     while (dirent *item = readdir(directory)) {
         Entry entry;
         entry.name = item->d_name;
-        if (entry.name.empty() || entry.name[0] == '.') {
+        if (entry.name.empty() || entry.name == "." || entry.name == ".." ||
+            (entry.name[0] == '.' && !hidden)) {
             continue;
         }
         struct stat info {};
         if (stat((base + entry.name).c_str(), &info) == 0) {
             entry.folder = S_ISDIR(info.st_mode);
+            entry.modified = static_cast<int64_t>(info.st_mtime);
             if (!entry.folder) {
                 entry.size = static_cast<int64_t>(info.st_size);
             }
@@ -194,14 +197,49 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok)
     }
     closedir(directory);
 
-    std::sort(entries.begin(), entries.end(),
-              [](const Entry &a, const Entry &b) {
-                  if (a.folder != b.folder) {
-                      return a.folder;
-                  }
-                  return text::lower(a.name) < text::lower(b.name);
-              });
+    sortEntries(entries, SortOrder::Name);
     return entries;
+}
+
+void sortEntries(std::vector<Entry> &entries, SortOrder order)
+{
+    const auto extensionOf = [](const std::string &name) {
+        const size_t dot = name.find_last_of('.');
+        return dot == std::string::npos || dot == 0
+            ? std::string()
+            : text::lower(name.substr(dot + 1));
+    };
+    std::stable_sort(
+        entries.begin(), entries.end(), [&](const Entry &a, const Entry &b) {
+            if (a.folder != b.folder) {
+                return a.folder;
+            }
+            const std::string nameA = text::lower(a.name);
+            const std::string nameB = text::lower(b.name);
+            switch (order) {
+            case SortOrder::Size:
+                if (!a.folder && a.size != b.size) {
+                    return a.size > b.size;
+                }
+                break;
+            case SortOrder::Date:
+                if (a.modified != b.modified) {
+                    return a.modified > b.modified;
+                }
+                break;
+            case SortOrder::Type: {
+                const std::string typeA = extensionOf(a.name);
+                const std::string typeB = extensionOf(b.name);
+                if (!a.folder && typeA != typeB) {
+                    return typeA < typeB;
+                }
+                break;
+            }
+            case SortOrder::Name:
+                break;
+            }
+            return nameA != nameB ? nameA < nameB : a.name < b.name;
+        });
 }
 
 } // namespace fs

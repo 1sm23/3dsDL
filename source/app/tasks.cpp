@@ -221,6 +221,38 @@ void runInstall(void *argument)
     job.finished = true;
 }
 
+struct FileJob : fileops::Observer {
+    const std::function<fileops::Result(fileops::Observer &)> *work = nullptr;
+    fileops::Result result;
+    std::atomic<bool> cancel {false};
+    std::atomic<bool> closing {false};
+    std::atomic<bool> finished {false};
+
+    LightLock lock;
+    uint64_t done = 0;
+    uint64_t total = 0;
+    std::string current;
+
+    FileJob() { LightLock_Init(&lock); }
+
+    bool cancelRequested() override { return cancel.load(); }
+    void onProgress(uint64_t now, uint64_t expected,
+                    const std::string &name) override
+    {
+        Guard guard(lock);
+        done = now;
+        total = expected;
+        current = name;
+    }
+};
+
+void runFileJob(void *argument)
+{
+    FileJob &job = *static_cast<FileJob *>(argument);
+    job.result = (*job.work)(job);
+    job.finished = true;
+}
+
 // Waits for the worker while drawing frames with draw(). Returns once the
 // worker has finished, having asked it to stop if the user cancelled.
 template <typename Job, typename Draw>
@@ -439,6 +471,58 @@ installer::Result install(const std::string &path, uint64_t titleId,
     if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
         job.result.message = "Interrupted when 3dsDL closed.";
     }
+    return job.result;
+}
+
+fileops::Result fileOperation(
+    const std::string &header, const std::string &title,
+    const std::string &folder, uint64_t total, bool countsFiles,
+    const std::function<fileops::Result(fileops::Observer &)> &work,
+    bool keepAwake)
+{
+    FileJob job;
+    job.work = &work;
+    job.total = total;
+
+    StayAwake awake(keepAwake);
+    Thread thread = startWorker(runFileJob, &job);
+    if (thread == nullptr) {
+        job.result.status = fileops::Status::Failed;
+        job.result.message = "Could not start the worker thread.";
+        return job.result;
+    }
+
+    units::RateMeter meter;
+    supervise(job, thread, header, [&]() {
+        ui::ProgressView view;
+        {
+            Guard guard(job.lock);
+            const uint64_t expected = std::max(job.total, job.done);
+            view.fraction = expected > 0
+                ? static_cast<float>(static_cast<double>(job.done) /
+                                     static_cast<double>(expected))
+                : -1.0f;
+            if (countsFiles) {
+                view.amounts = std::to_string(job.done) + " of " +
+                               std::to_string(expected) + " files";
+            } else {
+                view.amounts = units::bytes(job.done) + " of " +
+                               units::bytes(expected);
+                meter.sample(osGetTime(), job.done);
+                if (meter.hasRate()) {
+                    view.speed = units::rate(meter.bytesPerSecond());
+                }
+            }
+            view.subtitle = job.current;
+        }
+        view.header = header;
+        view.title = title;
+        view.status = job.cancel ? "stopping" : header;
+        view.folderLabel = "In";
+        view.folder = folder;
+        view.footer = footer(keepAwake);
+        ui::drawProgress(view);
+    });
     return job.result;
 }
 

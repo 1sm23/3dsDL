@@ -33,6 +33,14 @@ const Tex3DS_SubTexture IconSubTexture = {
     48, 48, 0.0f, 1.0f, 48.0f / IconTextureSize, 1.0f - 48.0f / IconTextureSize};
 const C2D_Image IconImage = {&iconTexture, &IconSubTexture};
 
+// The picture viewer's texture, big enough for a whole top screen.
+constexpr u16 PictureTextureWidth = 512;
+constexpr u16 PictureTextureHeight = 256;
+C3D_Tex pictureTexture;
+bool pictureTextureReady = false;
+Tex3DS_SubTexture pictureSubTexture;
+C2D_Image pictureImage = {&pictureTexture, &pictureSubTexture};
+
 void loadFontMetrics()
 {
     CFNT_s *font = fontGetSystemFont();
@@ -220,6 +228,10 @@ bool init()
 
 void shutdown()
 {
+    if (pictureTextureReady) {
+        C3D_TexDelete(&pictureTexture);
+        pictureTextureReady = false;
+    }
     if (iconTextureReady) {
         C3D_TexDelete(&iconTexture);
         iconTextureReady = false;
@@ -261,6 +273,36 @@ const C2D_Image *showIcon(const std::vector<uint16_t> &pixels)
         iconPixels = pixels;
     }
     return &IconImage;
+}
+
+const C2D_Image *showPicture(const std::vector<uint16_t> &pixels,
+                             uint32_t width, uint32_t height)
+{
+    if (width == 0 || height == 0 || width > PictureTextureWidth ||
+        height > PictureTextureHeight || pixels.size() != width * height) {
+        return nullptr;
+    }
+    if (!pictureTextureReady) {
+        if (!C3D_TexInit(&pictureTexture, PictureTextureWidth,
+                         PictureTextureHeight, GPU_RGB565)) {
+            return nullptr;
+        }
+        C3D_TexSetFilter(&pictureTexture, GPU_LINEAR, GPU_LINEAR);
+        C3D_TexSetWrap(&pictureTexture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+        pictureTextureReady = true;
+    }
+    std::fill_n(static_cast<u16 *>(pictureTexture.data),
+                PictureTextureWidth * PictureTextureHeight, 0);
+    image::tileImage(pixels.data(), width, height,
+                     static_cast<uint16_t *>(pictureTexture.data),
+                     PictureTextureWidth);
+    C3D_TexFlush(&pictureTexture);
+    pictureSubTexture = {static_cast<u16>(width), static_cast<u16>(height),
+                         0.0f, 1.0f,
+                         static_cast<float>(width) / PictureTextureWidth,
+                         1.0f - static_cast<float>(height) /
+                                    PictureTextureHeight};
+    return &pictureImage;
 }
 
 bool keepRunning()
@@ -628,6 +670,14 @@ ListResult runList(const ListSpec &spec, int &cursor)
     const Rect scrollDown = {296, Top + RowHeight * VisibleRows / 2, 24,
                              RowHeight * VisibleRows / 2};
 
+    // Touch buttons along the bottom, in place of the hint.
+    std::vector<Rect> buttonRects;
+    for (size_t index = 0; index < spec.buttons.size(); ++index) {
+        const float width = (312.0f - 4.0f * (spec.buttons.size() - 1)) /
+                            spec.buttons.size();
+        buttonRects.push_back({4 + index * (width + 4), 212, width, 26});
+    }
+
     const int count = static_cast<int>(spec.items.size());
     cursor = count == 0 ? -1 : std::max(0, std::min(cursor, count - 1));
     int first = std::max(0, cursor - VisibleRows / 2);
@@ -657,6 +707,11 @@ ListResult runList(const ListSpec &spec, int &cursor)
         }
         if (input.down & spec.extraKeys) {
             return {input.down & spec.extraKeys, cursor};
+        }
+        for (size_t index = 0; index < buttonRects.size(); ++index) {
+            if (input.tapped(buttonRects[index])) {
+                return {spec.buttons[index].key, cursor};
+            }
         }
         if ((input.down & KEY_TOUCH) && input.touch.px < 292) {
             const int row = static_cast<int>((input.touch.py - Top) /
@@ -704,8 +759,16 @@ ListResult runList(const ListSpec &spec, int &cursor)
                 item.detail.empty()
                     ? 0.0f
                     : std::min(110.0f, textWidth(item.detail, 0.44f)) + 8;
-            drawText(fitEnd(item.label, 0.5f, 270 - detailWidth), 14, y + 3,
-                     0.5f, item.labelColor);
+            float labelX = 14;
+            if (item.marked) {
+                // A small tick box before the name.
+                C2D_DrawRectSolid(12, y + 5, 0.45f, 10, 10, color::Primary);
+                C2D_DrawRectSolid(14, y + 9, 0.5f, 2, 3, color::Background);
+                C2D_DrawRectSolid(16, y + 10, 0.5f, 4, 2, color::Background);
+                labelX = 28;
+            }
+            drawText(fitEnd(item.label, 0.5f, 284 - labelX - detailWidth),
+                     labelX, y + 3, 0.5f, item.labelColor);
             if (!item.detail.empty()) {
                 drawText(fitEnd(item.detail, 0.44f, 110), 286, y + 4, 0.44f,
                          color::Muted, C2D_AlignRight);
@@ -722,8 +785,18 @@ ListResult runList(const ListSpec &spec, int &cursor)
             C2D_DrawRectSolid(306, Top + offset, 0.4f, 6, thumb,
                               color::Primary);
         }
-        drawText(fitEnd(spec.hint, 0.42f, 300), 160, 218, 0.42f, color::Muted,
-                 C2D_AlignCenter);
+        if (spec.buttons.empty()) {
+            drawText(fitEnd(spec.hint, 0.42f, 300), 160, 218, 0.42f,
+                     color::Muted, C2D_AlignCenter);
+        }
+        for (size_t index = 0; index < buttonRects.size(); ++index) {
+            const Rect &rect = buttonRects[index];
+            C2D_DrawRectSolid(rect.x, rect.y, 0.4f, rect.w, rect.h,
+                              color::SurfaceRaised);
+            drawText(fitEnd(spec.buttons[index].label, 0.42f, rect.w - 6),
+                     rect.x + rect.w / 2, rect.y + 6, 0.42f, color::Text,
+                     C2D_AlignCenter);
+        }
         endFrame();
     }
     return {0, cursor};

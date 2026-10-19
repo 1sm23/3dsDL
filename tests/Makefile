@@ -14,12 +14,13 @@ ROOT     := ..
 CORE     := $(ROOT)/source/core
 NET      := $(ROOT)/source/net
 QUIRC    := $(ROOT)/source/quirc
+STB      := $(ROOT)/source/stb
 BUILD    := build
 
 SAN      ?= -fsanitize=address,undefined -fno-sanitize-recover=undefined \
             -fno-omit-frame-pointer
 WARN     := -Wall -Wextra
-CPPFLAGS := -I$(CORE) -I$(NET) -I$(QUIRC)
+CPPFLAGS := -I$(CORE) -I$(NET) -I$(QUIRC) -I$(STB)
 CXXFLAGS := -std=c++17 -g -O1 $(WARN) -Werror $(SAN) $(CPPFLAGS)
 CFLAGS   := -std=gnu99 -g -O1 $(WARN) $(SAN) $(CPPFLAGS)
 LDLIBS   := -lcurl -lz -lm

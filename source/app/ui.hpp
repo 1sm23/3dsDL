@@ -91,6 +91,12 @@ void drawProgressBar(const Rect &rect, float fraction);
 // Only one icon can be shown at a time.
 const C2D_Image *showIcon(const std::vector<uint16_t> &pixels);
 
+// Puts a picture (see picture::Picture, at most 400x240) into the shared
+// picture texture and returns it for drawing at its own size, or nullptr
+// when it is empty or too big.
+const C2D_Image *showPicture(const std::vector<uint16_t> &pixels,
+                             uint32_t width, uint32_t height);
+
 // --- Dialogs ---------------------------------------------------------------
 
 enum class Tone { Info, Success, Warning, Error };
@@ -127,6 +133,13 @@ struct ListItem {
     std::string label;
     std::string detail; // short text on the right
     u32 labelColor = color::Text;
+    bool marked = false; // drawn with a tick, for multiple selection
+};
+
+// A touch button under a list that acts like pressing key.
+struct ListButton {
+    std::string label;
+    u32 key = 0;
 };
 
 struct ListSpec {
@@ -136,6 +149,8 @@ struct ListSpec {
     std::string emptyText;
     std::string hint;   // controls line at the bottom
     u32 extraKeys = 0;  // keys besides A and B that close the list
+    // Shown in place of the hint line. Their keys close the list too.
+    std::vector<ListButton> buttons;
     // Draws the top screen for the highlighted item (index -1 when empty),
     // after the header has been drawn.
     std::function<void(int)> drawTop;

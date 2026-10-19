@@ -2,6 +2,7 @@
 
 #include "cia.hpp"
 #include "download_engine.hpp"
+#include "file_types.hpp"
 #include "platform.hpp"
 #include "records.hpp"
 
@@ -37,7 +38,9 @@ private:
     void finishDownload(const std::string &address, const std::string &folder,
                         const net::Result &result);
     void offerExtraction(const std::string &zipPath, const std::string &folder,
-                         const std::string &summary);
+                         const std::string &summary,
+                         const std::string &title =
+                             "Download complete. Extract the archive?");
 
     // Asks what to do with a CIA that just finished downloading.
     void offerInstall(const std::string &path, const std::string &address,
@@ -45,14 +48,38 @@ private:
     // Installs the CIA at path after the checks and questions that come
     // first. address is the download it came from, or "" for a file picked
     // on the SD card. Returns true when it was installed.
+    // quiet skips the success screen, for installing several in a row.
     bool installCia(const std::string &path, const cia::Info &info,
-                    bool deleteAfter, const std::string &address);
+                    bool deleteAfter, const std::string &address,
+                    bool quiet = false);
     void markInstalled(const std::string &address, const std::string &path,
                        const std::string &message);
 
+    // Files, in files.cpp. Paths of entries never end with '/'; folders
+    // being browsed always do.
     void filesScreen();
-    // Returns true when the file was changed or removed.
-    bool fileOptions(const std::string &path);
+    void openFile(const std::string &path);
+    void ciaOptions(const std::string &path);
+    // Options for the marked entries, or the highlighted one. Returns true
+    // when the folder's contents may have changed.
+    bool entryOptions(const std::string &folder,
+                      const std::vector<std::string> &paths);
+    bool folderOptions(const std::string &folder,
+                       const std::vector<std::string> &entries,
+                       std::vector<std::string> &marked);
+    void textEditor(const std::string &path);
+    void hexViewer(const std::string &path);
+    void pictureViewer(const std::vector<std::string> &pictures,
+                       size_t index);
+    void zipViewer(const std::string &path);
+    void titleDetails(const std::string &path, filetype::Kind kind);
+    void showProperties(const std::vector<std::string> &paths);
+    bool renameEntry(const std::string &path);
+    bool deleteEntries(const std::vector<std::string> &paths);
+    bool pasteInto(const std::string &folder);
+    bool createFolder(const std::string &folder);
+    bool createFile(const std::string &folder);
+    void installCias(const std::vector<std::string> &paths, bool deleteAfter);
 
     bool chooseFolder(std::string &folder);
     bool browseFolders(std::string &folder);
@@ -77,6 +104,9 @@ private:
     std::vector<HistoryEntry> history_;
     int homeSelection_ = 0;
     std::string filesFolder_;
+    // Copied or cut entries waiting to be pasted.
+    std::vector<std::string> clipboard_;
+    bool clipboardCut_ = false;
     int64_t freeBytes_ = -1;
     platform::Wifi wifi_ = platform::Wifi::Unknown;
     u64 lastRefresh_ = 0;

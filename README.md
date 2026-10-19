@@ -84,7 +84,7 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
     </td>
     <td valign="top">
       <h4>🗂️ Files</h4>
-      Browse the SD card's folders and files. A CIA shows its icon, title ID, version and whether it's already installed, and can be installed or deleted from there.
+      A file manager for the SD card: copy, cut, paste, rename and delete files and whole folders, mark several at once, and make new folders and files. Pictures (PNG, JPEG, BMP, GIF) open full screen, text and config files open in a line editor, ZIPs show what's inside, anything else opens in a hex view, and CIAs, homebrew, 3DS and DS games show their icon and title.
     </td>
   </tr>
   <tr>
@@ -159,6 +159,17 @@ Install `3dsDL.cia` with FBI to launch it straight from the HOME Menu. The CIA u
 
 CIAs already on the SD card install from **Files** on the home screen: open the folder, select the CIA, and choose **Install**.
 
+### Files
+
+**Files** on the home screen browses the whole SD card. Tap a row to select it and tap it again (or press <kbd>A</kbd>) to open it:
+
+- **Pictures** (PNG, JPEG, BMP, GIF, TGA) fill the top screen. <kbd>L</kbd> / <kbd>R</kbd> go to the previous or next picture in the folder. Big phone photos open too.
+- **Text and config files** (`.txt`, `.ini`, `.cfg`, `.json`, `.md`, `.xml`, `.yml`, `.log` and more) open in a line editor: <kbd>A</kbd> edits the highlighted line with the keyboard, <kbd>X</kbd> adds a line below it, <kbd>Y</kbd> deletes it, <kbd>START</kbd> saves. Line endings and encoding are kept as they were, and files over 512 KiB open read-only.
+- **ZIP archives** list their contents and can be extracted here or into a new folder.
+- **CIAs** install, **`.3dsx`**, **`.3ds`/`.cci`**, **`.nds`** and **`.tik`** files show their icon, name, title ID and product code, and anything else opens in a hex view.
+
+**OPTIONS** (<kbd>X</kbd>) on a file or folder offers open, edit, open as text or hex, rename, copy, cut, delete, install and properties. **MARK** (<kbd>Y</kbd>) marks several entries so the options apply to all of them. **FOLDER** (<kbd>SELECT</kbd>) pastes what you copied or cut, makes a new folder or a new file (which opens in the editor), changes the sort order (name, size, date, type), shows hidden files, and installs every CIA in the folder. Deleting always asks first and says how much is inside.
+
 If the connection drops, the error dialog offers **Retry**, which continues from where it stopped. The same download can also be resumed later from **History**.
 
 > [!TIP]
@@ -181,7 +192,10 @@ The QR code has to contain a **direct** link starting with `http://` or `https:/
 | Dialogs | <kbd>B</kbd> | Go back or cancel |
 | Lists | Up / Down, <kbd>L</kbd> / <kbd>R</kbd> to page, tap twice to open | Move and open |
 | Folder browser | <kbd>X</kbd> / <kbd>Y</kbd> | New folder / use the current folder |
-| Files | <kbd>A</kbd> / <kbd>B</kbd> / <kbd>START</kbd> | Open a folder or a file's options / up one folder / back to the home screen |
+| Files | <kbd>A</kbd> / <kbd>B</kbd> / <kbd>START</kbd> | Open / up one folder / back to the home screen |
+| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> | Options for the entry or the marked entries / mark / folder options (paste, new folder, new file, sort, hidden files) |
+| Text editor | <kbd>A</kbd> / <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>START</kbd> | Edit the line / new line below / delete the line / save |
+| Pictures | <kbd>L</kbd> / <kbd>R</kbd> | Previous / next picture in the folder |
 | History | <kbd>X</kbd> | Clear the history |
 | QR scanner | <kbd>B</kbd> | Stop scanning |
 | Download | <kbd>B</kbd> | Ask to cancel |
@@ -334,6 +348,7 @@ The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull re
 - [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
 - [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
 - [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), used only by the tests to draw QR codes
+- [**stb_image**](https://github.com/nothings/stb) by Sean Barrett (public domain or MIT, see [source/stb/VENDORED.md](source/stb/VENDORED.md)) and [**libjpeg-turbo**](https://libjpeg-turbo.org/), for showing pictures
 - [**FBI**](https://github.com/Steveice10/FBI) by Steveice10 (MIT), whose CIA install sequence, seed handling and title ID rules 3dsDL's installer follows
 - [**Colby Shores**](https://github.com/colbyshores), whose [FBI pull request](https://github.com/Steveice10/FBI/pull/4) measured how much the 3DS socket buffer size limits download speed and found the size that works best, and pointed out that the 3DS build of Mbed TLS needs a system service open to get its randomness
 - [**libcurl**](https://curl.se/) and [**Mbed TLS**](https://github.com/Mbed-TLS/mbedtls), for downloads and HTTPS

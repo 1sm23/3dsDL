@@ -12,7 +12,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET          := 3dsDL
 BUILD           := build
-SOURCES         := source/app source/core source/net source/quirc
+SOURCES         := source/app source/core source/net source/quirc source/stb
 INCLUDES        := $(SOURCES)
 ROMFS           := romfs
 
@@ -31,7 +31,7 @@ ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS      := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 \
-             -lmbedcrypto -lz -lctru -lm
+             -lmbedcrypto -lturbojpeg -lz -lctru -lm
 LIBDIRS   := $(CTRULIB) $(PORTLIBS)
 
 #---------------------------------------------------------------------------------

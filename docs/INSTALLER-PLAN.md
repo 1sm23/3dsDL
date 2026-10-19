@@ -107,6 +107,11 @@ too.
 
 ## Phase 2 (0.6.0): the file browser
 
+Built on 2026-10-19 and tried in Azahar: everything below, plus a line editor for text files, new files, sorting,
+and titles and icons for `.3dsx`, `.3ds`, `.nds` and `.tik` files. JPEGs are
+decoded at a reduced size with libjpeg-turbo so phone photos open on a
+console; other pictures use stb_image and are limited to 6 megapixels.
+
 1. A Files screen on the home menu that lists folders and files in
    `sdmc:/`, with sizes, sort by name, size or date, and remembers the
    last folder.
