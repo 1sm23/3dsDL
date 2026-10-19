@@ -23,6 +23,8 @@ struct Settings {
     CiaAction afterCiaDownload = CiaAction::Ask;
     // Ask GitHub for a newer 3dsDL each time it starts.
     bool checkForUpdates = true;
+    // Interface sounds.
+    bool sounds = true;
     // Files screen.
     bool showHiddenFiles = false;
     fs::SortOrder fileSort = fs::SortOrder::Name;
@@ -47,6 +49,9 @@ struct HistoryEntry {
     std::string folder;
     std::string path;    // where the file was saved, when it was
     std::string message; // result shown to the user
+    // The file's name from the server, known once a download has started,
+    // even if it never finished. "" when unknown.
+    std::string name;
 };
 
 constexpr size_t HistoryLimit = 50;

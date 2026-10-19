@@ -232,8 +232,10 @@ void App::runQueue(const std::vector<uint64_t> *ids)
         if (result.outcome == net::Outcome::Cancelled) {
             found->state = QueuedLink::State::Stopped;
             found->message = "Stopped.";
-            record(historyEntry(item.url, item.folder, HistoryStatus::Cancelled,
-                                result.message));
+            HistoryEntry stoppedEntry = historyEntry(
+                item.url, item.folder, HistoryStatus::Cancelled, result.message);
+            stoppedEntry.name = result.filename;
+            record(stoppedEntry);
             stopped = true;
             break;
         }
@@ -245,6 +247,7 @@ void App::runQueue(const std::vector<uint64_t> *ids)
                                               result.message);
             entry.resumable = result.resumable;
             entry.bytes = result.bytes;
+            entry.name = result.filename;
             record(entry);
             ++failed;
             continue;
@@ -260,6 +263,7 @@ void App::runQueue(const std::vector<uint64_t> *ids)
             placed.ok ? "Saved from the queue" : placed.message);
         entry.bytes = result.bytes;
         entry.path = placed.path;
+        entry.name = result.filename;
         record(entry);
         if (!placed.ok) {
             found->state = QueuedLink::State::Failed;
@@ -661,20 +665,25 @@ void App::installDirectly(const std::string &address)
     const cia::Info &info = sink.info();
     const std::string name = info.hasSmdh ? screens::ciaName(info)
                                           : nameOf(address);
+    const auto recordResult = [&](HistoryStatus status,
+                                  const std::string &message) {
+        HistoryEntry entry = historyEntry(address, folder, status, message);
+        entry.name = result.filename;
+        entry.bytes = installed.bytes;
+        record(entry);
+    };
     if (installed.outcome == installer::Outcome::Cancelled) {
-        record(historyEntry(address, folder, HistoryStatus::Cancelled,
-                            "Direct install stopped"));
+        recordResult(HistoryStatus::Cancelled, "Direct install stopped");
         ui::message("Install Stopped", "Nothing was changed.");
         return;
     }
     if (installed.outcome != installer::Outcome::Installed) {
-        record(historyEntry(address, folder, HistoryStatus::Failed,
-                            "Direct install failed: " + installed.message));
+        recordResult(HistoryStatus::Failed,
+                     "Direct install failed: " + installed.message);
         ui::message("Install Failed", installed.message, ui::Tone::Error, name);
         return;
     }
-    record(historyEntry(address, folder, HistoryStatus::Installed,
-                        "Installed directly, nothing saved"));
+    recordResult(HistoryStatus::Installed, "Installed directly, nothing saved");
 
     std::string seedNote;
     if (info.seed == cia::Seed::Needed) {

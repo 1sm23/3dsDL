@@ -2,6 +2,7 @@
 
 #include "image.hpp"
 #include "platform.hpp"
+#include "sound.hpp"
 #include "text.hpp"
 
 #include "stb_image.h"
@@ -1811,6 +1812,7 @@ void notify(const Notice &value)
     notice = value;
     noticeActive = true;
     noticeStart = now();
+    sound::play(sound::Effect::Notify);
 }
 
 void setFrameHook(std::function<void()> hook)
@@ -1943,6 +1945,9 @@ int choose(const Dialog &dialog)
     int selection = std::max(0, std::min(dialog.initial, count - 1));
     int pressed = -1;
     int result = -1;
+    if (dialog.tone == Tone::Error) {
+        sound::play(sound::Effect::Error);
+    }
 
     const auto hit = [&](const touchPosition &touch) {
         if (redLayout) {
@@ -1966,6 +1971,7 @@ int choose(const Dialog &dialog)
 
     while (keepRunning()) {
         const Input input = readInput();
+        const int before = selection;
         if (redLayout) {
             if (input.repeat & (KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT)) {
                 selection = selection == dialog.dangerous ? safe
@@ -1978,6 +1984,9 @@ int choose(const Dialog &dialog)
             if (input.repeat & KEY_RIGHT) {
                 selection = (selection + 1) % count;
             }
+        }
+        if (selection != before) {
+            sound::play(sound::Effect::Move);
         }
         if (input.down & KEY_B) {
             result = dialog.cancelButton;
@@ -2040,6 +2049,12 @@ int choose(const Dialog &dialog)
         endFrame();
     }
     inDialog = false;
+    if (keepRunning()) {
+        // Cancel, or the only button of a message, sounds like going back.
+        sound::play(result == dialog.cancelButton && count > 1
+                        ? sound::Effect::Back
+                        : sound::Effect::Select);
+    }
     return keepRunning() ? result : -1;
 }
 
@@ -2180,10 +2195,14 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
             result.key = input.down & spec.extraKeys;
             break;
         }
+        const int before = current;
         for (const u32 key : {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT}) {
             if (input.repeat & key) {
                 current = nearest(targets, current, key);
             }
+        }
+        if (current != before) {
+            sound::play(sound::Effect::Move);
         }
         if ((input.down & KEY_A) && current >= 0 &&
             current < static_cast<int>(targets.size())) {
@@ -2292,6 +2311,11 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
     }
     if (current >= 0 && current < static_cast<int>(targets.size())) {
         focus = targets[current].choice;
+    }
+    if (result.choice == ScreenBack) {
+        sound::play(sound::Effect::Back);
+    } else if (result.choice != ScreenClosed) {
+        sound::play(sound::Effect::Select);
     }
     return result;
 }
@@ -2486,7 +2510,24 @@ void Scroller::reveal(float top, float height, float viewport)
 
 // --- Lists -----------------------------------------------------------------------
 
+namespace {
+ListResult runListQuietly(const ListSpec &spec, int &cursor);
+}
+
 ListResult runList(const ListSpec &spec, int &cursor)
+{
+    const ListResult result = runListQuietly(spec, cursor);
+    if (result.key == KEY_B) {
+        sound::play(sound::Effect::Back);
+    } else if (result.key != 0) {
+        sound::play(sound::Effect::Select);
+    }
+    return result;
+}
+
+namespace {
+
+ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
     constexpr float RowHeight = 25;
     constexpr float Pitch = 31;
@@ -2539,6 +2580,7 @@ ListResult runList(const ListSpec &spec, int &cursor)
             if (moved != cursor) {
                 cursor = moved;
                 scroller.reveal(cursor * Pitch, Pitch, viewport);
+                sound::play(sound::Effect::Move);
             }
         }
         if (input.down & KEY_B) {
@@ -2694,6 +2736,8 @@ ListResult runList(const ListSpec &spec, int &cursor)
     }
     return {0, cursor};
 }
+
+} // namespace
 
 // --- Progress, busy and scanner ------------------------------------------------------
 

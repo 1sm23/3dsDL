@@ -8,6 +8,7 @@
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "scanner.hpp"
+#include "sound.hpp"
 #include "storage.hpp"
 #include "tasks.hpp"
 #include "text.hpp"
@@ -77,6 +78,9 @@ std::string entryName(const HistoryEntry &entry)
     if (!entry.path.empty()) {
         return basename(entry.path);
     }
+    if (!entry.name.empty()) {
+        return entry.name;
+    }
     const std::string fromUrl = naming::chooseFilename("", entry.url);
     return fromUrl == naming::DefaultFilename ? url::host(entry.url)
                                               : fromUrl;
@@ -97,6 +101,20 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
 App::App()
     : settings_(storage::loadSettings()), history_(storage::loadHistory())
 {
+    sound::setEnabled(settings_.sounds);
+    // Interrupted downloads from before names were kept: their resume file
+    // knows the name the server gave.
+    for (HistoryEntry &entry : history_) {
+        if (entry.name.empty() && entry.path.empty() && entry.resumable) {
+            std::string contents;
+            ResumeInfo info;
+            if (fs::readFile(partialPaths(entry.folder, entry.url).info,
+                             contents) &&
+                parseResumeInfo(contents, info)) {
+                entry.name = info.filename;
+            }
+        }
+    }
     ui::setFrameHook([this]() { pollUpdate(); });
     if (settings_.checkForUpdates) {
         updater::startCheck();
@@ -326,6 +344,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
                 HistoryEntry entry =
                     newEntry(link, folder, HistoryStatus::Failed);
                 entry.message = "Interrupted when 3dsDL closed.";
+                entry.name = result.filename;
                 entry.resumable = true;
                 entry.bytes = result.bytes;
                 record(entry);
@@ -341,12 +360,14 @@ App::Start App::startDownload(const std::string &address, std::string folder)
             HistoryEntry entry =
                 newEntry(link, folder, HistoryStatus::Cancelled);
             entry.message = result.message;
+            entry.name = result.filename;
             record(entry);
             return Start::Done;
         }
 
         HistoryEntry entry = newEntry(link, folder, HistoryStatus::Failed);
         entry.message = result.message;
+        entry.name = result.filename;
         entry.resumable = result.resumable;
         entry.bytes = result.bytes;
         record(entry);
@@ -568,6 +589,7 @@ void App::finishDownload(const std::string &address, const std::string &folder,
 
     entry.bytes = result.bytes;
     entry.path = saved.path;
+    entry.name = result.filename;
     entry.message = !saved.ok       ? saved.message
                   : speed.empty() ? "Saved"
                                   : "Saved at " + speed;
@@ -1541,7 +1563,7 @@ void App::settingsScreen()
     };
     const auto filesAndHistory = [&]() {
         settingsList(
-            "Files and History", ui::Icon::History, ui::color::IconRed,
+            "Other Settings", ui::Icon::Wrench, ui::color::IconGrey,
             [&]() {
                 static const char *const Sorts[] = {"Name", "Size", "Date",
                                                     "Type"};
@@ -1551,6 +1573,15 @@ void App::settingsScreen()
                      "come first."},
                     {"Show Hidden Files", onOff(settings_.showHiddenFiles),
                      "Show files and folders whose names start with a dot."},
+                    {"Sounds",
+                     sound::available() ? onOff(settings_.sounds)
+                                        : "Unavailable",
+                     sound::available()
+                         ? "Soft sounds when moving, choosing and going back, "
+                           "as in the system menus."
+                         : "Sounds need the DSP firmware dump, "
+                           "sdmc:/3ds/dspfirm.cdc. Make it with DSP1, then "
+                           "start 3dsDL again."},
                     {"Clear Download History",
                      std::to_string(history_.size()),
                      "Removes the list of past downloads and any partial "
@@ -1574,6 +1605,19 @@ void App::settingsScreen()
                                 "Show files and folders whose names start "
                                 "with a dot.",
                                 settings_.showHiddenFiles);
+                } else if (index == 2) {
+                    if (!sound::available()) {
+                        ui::message("Sounds Unavailable",
+                                    "Sounds need the DSP firmware dump, "
+                                    "sdmc:/3ds/dspfirm.cdc. Make it with the "
+                                    "DSP1 homebrew, then start 3dsDL again.");
+                    } else {
+                        onOffChoice("Sounds",
+                                    "Soft sounds when moving, choosing and "
+                                    "going back.",
+                                    settings_.sounds);
+                        sound::setEnabled(settings_.sounds);
+                    }
                 } else if (history_.empty()) {
                     ui::message("History Is Empty", "There is nothing to clear.");
                 } else {
@@ -1590,7 +1634,7 @@ void App::settingsScreen()
         "The folder new downloads are saved to.",
         "Compare the console's clock with the time online and set it. Secure "
         "downloads fail when the date is wrong.",
-        "How Files sorts folders, hidden files, and the download history.",
+        "How Files sorts and shows files, sounds, and the download history.",
     };
     int focus = 2;
     while (ui::keepRunning() && !quit_) {
@@ -1617,8 +1661,8 @@ void App::settingsScreen()
             ui::color::IconOrange, true);
         add({16, 127, 140, 76}, "Console Clock", ui::Icon::Clock,
             ui::color::IconBlue, true);
-        add({164, 127, 140, 76}, "Files and History", ui::Icon::History,
-            ui::color::IconRed, true);
+        add({164, 127, 140, 76}, "Other Settings", ui::Icon::Wrench,
+            ui::color::IconGrey, true);
         spec.drawTop = [&]() {
             ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
             ui::drawPanel();
@@ -1646,8 +1690,11 @@ void App::settingsScreen()
                 ui::drawTagRow(left, y, 96, "Console",
                                units::dateTime(platform::now()));
             } else if (shown == 5) {
-                ui::drawTagRow(left, y, 96, "History",
-                               plural(history_.size(), "download"));
+                y = ui::drawTagRow(left, y, 96, "History",
+                                   plural(history_.size(), "download"));
+                ui::drawTagRow(left, y, 96, "Sounds",
+                               sound::available() ? onOff(settings_.sounds)
+                                                  : "Unavailable");
             } else if (shown == 2) {
                 y = ui::drawTagRow(left, y, 96, "Resume",
                                    onOff(settings_.resumeDownloads));

@@ -50,8 +50,10 @@ TEST("records: settings round trip and defaults")
     settings.keepAwake = false;
     settings.offerZipExtraction = true;
     settings.checkForUpdates = false;
+    settings.sounds = false;
     const Settings parsed = parseSettings(serializeSettings(settings));
     CHECK_EQ(parsed.checkForUpdates, false);
+    CHECK_EQ(parsed.sounds, false);
     CHECK_EQ(parsed.destination, std::string("sdmc:/cias/"));
     CHECK_EQ(parsed.resumeDownloads, false);
     CHECK_EQ(parsed.keepAwake, false);
@@ -73,6 +75,7 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(defaults.resumeDownloads, true);
     CHECK_EQ(defaults.offerZipExtraction, false);
     CHECK_EQ(defaults.checkForUpdates, true);
+    CHECK_EQ(defaults.sounds, true);
 
     CHECK_EQ(defaults.timeZoneSet, false);
 
@@ -108,6 +111,7 @@ TEST("records: history round trip, ordering and limit")
         entry.folder = "sdmc:/";
         entry.path = "sdmc:/f" + std::to_string(index);
         entry.message = "line one\twith tab\nand newline";
+        entry.name = index == 4 ? "game\tname.cia" : "";
         addHistoryEntry(entries, entry, 3);
     }
     CHECK_EQ(entries.size(), static_cast<size_t>(3));
@@ -122,6 +126,14 @@ TEST("records: history round trip, ordering and limit")
     CHECK(parsed[2].status == HistoryStatus::Installed);
     CHECK_EQ(parsed[2].time, static_cast<int64_t>(1002));
     CHECK_EQ(parsed[0].message, std::string("line one with tab and newline"));
+    CHECK_EQ(parsed[0].name, std::string("game name.cia"));
+    CHECK_EQ(parsed[1].name, std::string(""));
+
+    // Files from before 0.7 have no name field.
+    const std::vector<HistoryEntry> older = parseHistory(
+        "3dsDL-history 1\n5\tsaved\t10\t0\thttps://x/a\tsdmc:/\tsdmc:/a\tSaved\n");
+    CHECK_EQ(older.size(), static_cast<size_t>(1));
+    CHECK_EQ(older[0].name, std::string(""));
 
     CHECK(parseHistory("not a history file\n").empty());
     CHECK(parseHistory("3dsDL-history 1\ngarbage\n1\tsaved\n").empty());

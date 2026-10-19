@@ -181,6 +181,8 @@ Settings parseSettings(const std::string &contents)
                     settings.afterCiaDownload = action;
                 }
             }
+        } else if (key == "sounds") {
+            settings.sounds = parseBool(value, settings.sounds);
         } else if (key == "check_for_updates") {
             settings.checkForUpdates =
                 parseBool(value, settings.checkForUpdates);
@@ -220,6 +222,7 @@ std::string serializeSettings(const Settings &settings)
               (settings.offerZipExtraction ? "1" : "0") + "\n";
     output += std::string("after_cia_download=") +
               ciaActionName(settings.afterCiaDownload) + "\n";
+    output += std::string("sounds=") + (settings.sounds ? "1" : "0") + "\n";
     output += std::string("check_for_updates=") +
               (settings.checkForUpdates ? "1" : "0") + "\n";
     output += std::string("show_hidden_files=") +
@@ -248,7 +251,8 @@ std::vector<HistoryEntry> parseHistory(const std::string &contents)
 
     for (size_t index = 1; index < all.size(); ++index) {
         const std::vector<std::string> fields = split(all[index], '\t');
-        if (fields.size() != 8) {
+        // The ninth field, the file's name, was added in 0.7.
+        if (fields.size() != 8 && fields.size() != 9) {
             continue;
         }
 
@@ -265,6 +269,9 @@ std::vector<HistoryEntry> parseHistory(const std::string &contents)
         entry.folder = fields[5];
         entry.path = fields[6];
         entry.message = fields[7];
+        if (fields.size() == 9) {
+            entry.name = fields[8];
+        }
         entries.push_back(entry);
     }
     return entries;
@@ -281,7 +288,8 @@ std::string serializeHistory(const std::vector<HistoryEntry> &entries)
                   text::singleLine(entry.url) + "\t" +
                   text::singleLine(entry.folder) + "\t" +
                   text::singleLine(entry.path) + "\t" +
-                  text::singleLine(entry.message) + "\n";
+                  text::singleLine(entry.message) + "\t" +
+                  text::singleLine(entry.name) + "\n";
     }
     return output;
 }

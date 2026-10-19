@@ -1,5 +1,6 @@
 #include "app.hpp"
 #include "installer.hpp"
+#include "sound.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
 
@@ -72,6 +73,9 @@ struct Services {
         // Without AM, downloads still work; installing explains why not.
         installer::init();
 
+        // Without the DSP firmware dump there are no sounds, which is fine.
+        sound::init();
+
         const CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
         if (code != CURLE_OK) {
             error = std::string("Starting libcurl failed: ") +
@@ -84,6 +88,7 @@ struct Services {
 
     ~Services()
     {
+        sound::exit();
         installer::exit();
         if (curl) {
             curl_global_cleanup();
