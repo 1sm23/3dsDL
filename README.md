@@ -111,6 +111,12 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
   </tr>
   <tr>
     <td colspan="2" valign="top">
+      <h4>🎮 Titles</h4>
+      Everything installed, like System Settings' Data Management: games, updates and DLC, extra data and tickets, with their icons. Launch a game, fetch its seed, delete it with or without its ticket, delete extra data, import seeds from a <code>seeddb.bin</code>, and clean up the unfinished installs that make a CIA refuse to install again. System titles never show up, so they can't be deleted by mistake.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
       <h4>🔔 Keeps itself up to date</h4>
       When it opens, 3dsDL asks GitHub whether a newer version is out and shows a notification if there is. <b>Settings → Updates</b> shows what's new and updates in place: it downloads the CIA or the <code>.3dsx</code>, whichever you run, checks it against the release's SHA-256 checksums, then installs it or swaps the file. Turn the check at startup off in the same screen.
     </td>

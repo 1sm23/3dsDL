@@ -83,6 +83,20 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       the Homebrew Launcher started.
 - [ ] Hardware pass for updating both builds on a console.
 
+## 0.7: Titles and their data
+
+- [x] Titles on Home, in the spirit of System Settings, Data Management:
+      Software, Updates and DLC, Extra Data and Tickets, with icons and names
+      read from the console. System titles never appear.
+- [x] Launch, Get Seed, Delete, Delete with Ticket and Delete Extra Data for
+      a title; Delete and Delete Unused for tickets.
+- [x] Clean Up: unfinished installs that make reinstalls fail, and unused
+      tickets.
+- [x] Seeds from a seeddb.bin, only for installed games.
+- [ ] Hardware pass (items 45 to 52 in [docs/HARDWARE.md](docs/HARDWARE.md)).
+- System save data is left out on purpose: deleting it is the classic way
+  to break a console, and Checkpoint covers saves.
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.

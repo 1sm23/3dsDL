@@ -57,6 +57,9 @@ int64_t requiredSpace(const std::string &path, uint64_t titleId);
 // fetched from Nintendo. message says what happened.
 bool installSeed(uint64_t titleId, std::string &message);
 
+// Adds a 16-byte seed for titleId, as from a seeddb.bin.
+bool addSeed(uint64_t titleId, const uint8_t *seed, std::string &error);
+
 // Leaves 3dsDL and starts an installed title.
 bool launch(uint64_t titleId, std::string &error);
 

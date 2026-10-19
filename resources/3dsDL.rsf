@@ -29,6 +29,15 @@ AccessControlInfo:
     - DirectSdmcWrite
     # Adding a game's seed after installing it, as FBI does.
     - SeedDB
+    # Reading other software's icons and listing and deleting its extra
+    # data on the Titles screens. FBI asks for these and more; the ones that
+    # write to the system memory (CtrNandRw, TwlNandData and the like) are
+    # left out on purpose.
+    - CategorySystemApplication
+    - CategoryFileSystemTool
+    - Core
+    - Shell
+    - CategoryHomeMenu
   IoAccessControl:
     - CreateSeed
 

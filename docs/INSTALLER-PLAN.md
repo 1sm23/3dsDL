@@ -135,7 +135,7 @@ on purpose. Writing to them can brick a console, the r/3dsqrcodes audience
 does not need them, and GodMode9 does that job better. They can be added
 later as read-only views if someone asks.
 
-## Phase 3 (0.7.0): titles, tickets and seeds
+## Phase 3 (0.7.0): titles, tickets and seeds (done, see app/titles_screens.cpp)
 
 1. Titles screen: every installed title on SD and NAND with icon, name,
    title ID, version and size, sortable, with Launch, Delete title, Delete

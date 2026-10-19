@@ -2095,12 +2095,14 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
             }
             const Rect &area = control.rect;
             const float width =
-                std::max(34.0f, textWidth(control.badge, 0.34f) + 10);
+                std::max(16.0f, textWidth(control.badge, 0.34f) + 10);
             const float right = std::min(area.x + area.w + 6, BottomWidth - 2);
             const float top = std::max(1.5f, area.y - 9);
             fillRound({right - width - 1.5f, top - 1.5f, width + 3, 19}, 5.5f,
                       color::rgb(0xFFFFFF));
-            drawBadge(right, top, control.badge, control.badgeColor);
+            const Rect badge = {right - width, top, width, 16};
+            fillRound(badge, 4, control.badgeColor);
+            drawCentered(control.badge, badge, 0.34f, color::rgb(0xFFFFFF));
         }
         endFrame();
     }

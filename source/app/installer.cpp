@@ -386,6 +386,16 @@ bool installSeed(uint64_t titleId, std::string &message)
     return true;
 }
 
+bool addSeed(uint64_t titleId, const uint8_t *seed, std::string &error)
+{
+    const ::Result code = addSeed(titleId, seed);
+    if (R_FAILED(code)) {
+        error = "The seed could not be added. " + describe(code);
+        return false;
+    }
+    return true;
+}
+
 bool launch(uint64_t titleId, std::string &error)
 {
     // The jump carries no parameters; both buffers stay zero.

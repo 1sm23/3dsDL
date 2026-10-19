@@ -3,6 +3,7 @@
 #include "cia.hpp"
 #include "download_engine.hpp"
 #include "file_types.hpp"
+#include "library.hpp"
 #include "platform.hpp"
 #include "records.hpp"
 #include "update.hpp"
@@ -26,6 +27,7 @@ private:
         EnterUrl,
         History,
         Files,
+        Titles,
         Folder,
         Settings,
         Exit
@@ -94,6 +96,19 @@ private:
     void settingsScreen();
     void aboutScreen();
 
+    // Installed software and its data, in titles_screens.cpp.
+    void titlesScreen();
+    // Reads what is installed into library_; false (after saying why) when
+    // the AM service is unavailable.
+    bool reloadLibrary();
+    void titleList(bool software);
+    void titleOptions(titles::Title title);
+    void extraDataScreen();
+    void ticketsScreen();
+    void deleteUnusedTickets();
+    void cleanUpScreen();
+    void importSeeds();
+
     // Software updates, in software_update.cpp.
     void softwareUpdateScreen();
     void showReleaseNotes(const update::Release &release);
@@ -113,7 +128,7 @@ private:
 
     Settings settings_;
     std::vector<HistoryEntry> history_;
-    int homeSelection_ = 1; // Scan QR Code
+    int homeSelection_ = 2; // Scan QR Code
     std::string filesFolder_;
     // Copied or cut entries waiting to be pasted.
     std::vector<std::string> clipboard_;
@@ -121,6 +136,7 @@ private:
     int64_t freeBytes_ = -1;
     platform::Wifi wifi_ = platform::Wifi::Unknown;
     u64 lastRefresh_ = 0;
+    library::Snapshot library_;
     bool updateAvailable_ = false;
     bool updateNoticeShown_ = false;
     uint32_t updateGeneration_ = 0;

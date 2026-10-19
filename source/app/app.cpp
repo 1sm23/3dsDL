@@ -133,6 +133,9 @@ void App::run()
         case Action::Files:
             filesScreen();
             break;
+        case Action::Titles:
+            titlesScreen();
+            break;
         case Action::Folder:
             changeDefaultFolder();
             break;
@@ -176,7 +179,9 @@ App::Action App::home()
         control.scale = ui::type::Small + 0.06f;
         spec.controls.push_back(control);
     };
-    add({26, 6, 268, 26}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
+    add({16, 6, 140, 26}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
+        false);
+    add({164, 6, 140, 26}, "Titles", ui::Icon::GameCard, ui::color::IconBlue,
         false);
     add({16, 42, 140, 78}, "Scan QR Code", ui::Icon::Scan, ui::color::IconBlue,
         true);
@@ -218,12 +223,14 @@ App::Action App::home()
     case 0:
         return Action::Settings;
     case 1:
-        return Action::Scan;
+        return Action::Titles;
     case 2:
-        return Action::EnterUrl;
+        return Action::Scan;
     case 3:
-        return Action::History;
+        return Action::EnterUrl;
     case 4:
+        return Action::History;
+    case 5:
         return Action::Files;
     default:
         break;

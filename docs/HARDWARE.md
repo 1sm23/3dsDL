@@ -166,6 +166,30 @@ with a few hundred files.
 44. Mark several CIAs and install them: each installs, and the summary counts
     them.
 
+### Software updates and Titles
+
+45. With an older build installed, 3dsDL shows the Update Available
+    notification on Home and the New badges. Settings, Updates installs the
+    new CIA over itself and restarts into it; with the .3dsx it replaces the
+    file and closes, and the Homebrew Launcher starts the new version.
+46. Titles lists every installed game, update and DLC with the right icon,
+    name, version and size, including DSiWare in the system memory, and no
+    system titles. The CIA build can read every icon (FS access rights).
+47. Launch from Software starts the game. Get Seed on a seed-encrypted game
+    adds its seed, and the game then starts.
+48. Delete an update: the game stays and goes back to its first version.
+    Delete with Ticket on a test game removes it and its ticket.
+49. Extra Data lists the SD card's extra data with names and icons, even for
+    games that are no longer installed; Delete removes one and the game
+    recreates it on its next start.
+50. Tickets marks tickets of uninstalled software as Unused, and Delete Unused
+    removes only those.
+51. Interrupt a CIA install (cancel it, or pull the power in a test), then
+    Clean Up shows an unfinished install; Remove Unfinished Installs clears
+    it and the CIA installs again.
+52. Seeds imports from a seeddb.bin in sdmc:/ only the seeds of installed
+    games.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over
