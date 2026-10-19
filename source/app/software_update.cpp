@@ -2,6 +2,7 @@
 
 #include "app_util.hpp"
 #include "finalize.hpp"
+#include "installer.hpp"
 #include "fs_util.hpp"
 #include "sha256.hpp"
 #include "storage.hpp"
@@ -438,7 +439,38 @@ void App::installUpdate(const update::Release &release)
                         ui::Tone::Error, error);
             return;
         }
-        if (!installCia(placed.path, info, true, "", true)) {
+        // Installing over the running title is FBI's special case: never
+        // remove the installed copy first, and restart straight afterwards,
+        // because this copy keeps reading its own files from a title that
+        // has just been replaced.
+        if (!installer::available()) {
+            fs::removeFile(placed.path);
+            ui::message("Update Not Installed", installer::unavailableReason(),
+                        ui::Tone::Error);
+            return;
+        }
+        const int64_t needed = installer::requiredSpace(placed.path, info.titleId);
+        const int64_t free = platform::sdFreeBytes();
+        if (needed > 0 && free >= 0 && needed > free) {
+            fs::removeFile(placed.path);
+            ui::message("Update Not Installed",
+                        "The update needs " +
+                            units::bytes(static_cast<uint64_t>(needed)) +
+                            " on the SD card and " +
+                            units::bytes(static_cast<uint64_t>(free)) +
+                            " is free.",
+                        ui::Tone::Error);
+            return;
+        }
+        const installer::Result installed =
+            tasks::install(placed.path, info.titleId, "3dsDL " + release.version,
+                           settings_.keepAwake, info.smdh.icon);
+        fs::removeFile(placed.path);
+        if (installed.outcome != installer::Outcome::Installed) {
+            if (installed.outcome == installer::Outcome::Failed) {
+                ui::message("Update Not Installed", installed.message,
+                            ui::Tone::Error);
+            }
             return;
         }
         updateAvailable_ = false;
@@ -447,16 +479,14 @@ void App::installUpdate(const update::Release &release)
         dialog.header = "Software Update";
         dialog.title = "3dsDL has been updated to " + release.version + ".";
         dialog.tone = ui::Tone::Success;
-        dialog.body.push_back({"Restart 3dsDL to start using the new version.",
+        dialog.body.push_back({"3dsDL will restart now to start the new "
+                               "version.",
                                ui::color::Text, 0.5f, 2});
-        dialog.buttons = {"Later", "Restart"};
-        dialog.initial = 1;
-        dialog.cancelButton = 0;
-        if (ui::choose(dialog) == 1) {
-            // Closing with the chainloader set starts the new version.
-            aptSetChainloaderToSelf();
-            quit_ = true;
-        }
+        dialog.buttons = {"Restart"};
+        ui::choose(dialog);
+        // Closing with the chainloader set starts the new version.
+        aptSetChainloaderToSelf();
+        quit_ = true;
         return;
     }
 
