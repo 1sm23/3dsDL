@@ -18,8 +18,10 @@ namespace {
 // Big enough that the SD card and AM each see few, large requests.
 constexpr size_t ChunkSize = 512 * 1024;
 constexpr size_t SeedSize = 16;
-// AM's "invalid or outdated title version".
+// AM's "invalid or outdated title version" (0xD8E08027), and its "this
+// version is already installed" (0xC8E083FC).
 constexpr int VersionRefused = 39;
+constexpr int SameVersion = 1020;
 
 // Nintendo's seed server presents a certificate from Nintendo's own CA,
 // which is not in the Mozilla bundle. Its public key is pinned instead;
@@ -100,7 +102,8 @@ private:
 bool isVersionRefusal(::Result code)
 {
     return (R_MODULE(code) == RM_AM || R_MODULE(code) == RM_AM_LOW) &&
-           R_DESCRIPTION(code) == VersionRefused;
+           (R_DESCRIPTION(code) == VersionRefused ||
+            R_DESCRIPTION(code) == SameVersion);
 }
 
 Result failure(::Result code, const std::string &what)
@@ -538,6 +541,9 @@ std::string describe(::Result code)
         case 53:
             text = "There is not enough space left in the DSiWare area of "
                    "the system memory.";
+            break;
+        case SameVersion:
+            text = "This version is already installed.";
             break;
         case 106:
             text = "The CIA failed a signature or hash check. The file is "

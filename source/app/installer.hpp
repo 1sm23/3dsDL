@@ -35,8 +35,8 @@ enum class Outcome { Installed, Failed, Cancelled };
 struct Result {
     Outcome outcome = Outcome::Failed;
     ::Result code = 0;
-    // AM refused the version in the CIA, usually because the same or a
-    // newer version is installed.
+    // AM would not take this version over the installed one: an older one,
+    // or the same one again. Removing the installed title first gets past it.
     bool versionRefused = false;
     uint64_t bytes = 0;
     double seconds = 0.0;

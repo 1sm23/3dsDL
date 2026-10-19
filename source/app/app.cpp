@@ -7,6 +7,9 @@
 #include "installer.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
+#include "platform.hpp"
+#include "savedata.hpp"
+#include "saves.hpp"
 #include "scanner.hpp"
 #include "sound.hpp"
 #include "storage.hpp"
@@ -84,6 +87,60 @@ std::string entryName(const HistoryEntry &entry)
     const std::string fromUrl = naming::chooseFilename("", entry.url);
     return fromUrl == naming::DefaultFilename ? url::host(entry.url)
                                               : fromUrl;
+}
+
+// Before a title is removed to put another copy in its place, its save goes
+// to Checkpoint's folder, the way Restore keeps what was there: removing a
+// title can take its save with it. False when the person would rather stop.
+// note says where the backup went, for the end of the install.
+bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
+                        uint16_t installedVersion, std::string &note)
+{
+    titles::Title title;
+    title.id = info.titleId;
+    title.place = installer::destination(info.titleId) == MEDIATYPE_NAND
+                      ? titles::Place::SystemMemory
+                      : titles::Place::SdCard;
+    title.version = installedVersion;
+    title.name = name;
+    title.englishShortName = !info.smdh.englishShortName.empty()
+                                 ? info.smdh.englishShortName
+                                 : info.smdh.shortName;
+    if (!savedata::unsupportedReason(title).empty()) {
+        return true; // nothing 3dsDL can keep, such as DSiWare
+    }
+    const savedata::Target target =
+        savedata::saveOf(title, installer::destination(info.titleId));
+    if (!savedata::exists(target)) {
+        return true; // no save yet
+    }
+    const time_t seconds = static_cast<time_t>(platform::now());
+    std::tm parts {};
+    gmtime_r(&seconds, &parts); // the console clock is already local time
+    const std::string backup = saves::backupName(parts) + " Before Reinstall";
+    savedata::Progress progress;
+    savedata::Result saved;
+    tasks::busy("install", "Backing up the save of " + name + "...",
+                [&]() { saved = savedata::backup(target, backup, progress); });
+    if (saved.ok) {
+        note = "The save was backed up first, as " + backup +
+               " in Titles, Save Data, should it be needed.";
+        return true;
+    }
+    ui::Dialog dialog;
+    dialog.header = "install";
+    dialog.title = "The save of " + name + " could not be backed up.";
+    dialog.tone = ui::Tone::Warning;
+    dialog.icon = ui::showIcon(info.smdh.icon);
+    dialog.body.push_back({saved.message, ui::color::Text, 0.48f, 3});
+    dialog.body.push_back({"Removing the installed copy may take the save "
+                           "with it.",
+                           ui::color::Warning, 0.46f, 2});
+    dialog.buttons = {"Continue Anyway", "Cancel"};
+    dialog.dangerous = 0;
+    dialog.initial = 1;
+    dialog.cancelButton = 1;
+    return ui::choose(dialog) == 0;
 }
 
 HistoryEntry newEntry(const std::string &address, const std::string &folder,
@@ -795,8 +852,12 @@ void App::offerInstall(const std::string &path, const std::string &address,
 }
 
 bool App::installCia(const std::string &path, const cia::Info &info,
-                     bool deleteAfter, const std::string &address, bool quiet)
+                     bool deleteAfter, const std::string &address, bool quiet,
+                     bool *alreadyInstalled)
 {
+    if (alreadyInstalled != nullptr) {
+        *alreadyInstalled = false;
+    }
     const std::string name = ciaName(info);
     if (!installer::available()) {
         ui::message("Cannot install", installer::unavailableReason(),
@@ -831,34 +892,69 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         }
     }
 
-    // AM refuses to go back to an older version, so that takes removing the
-    // installed one first, which can take its save data with it.
+    // AM refuses to go back to an older version, or to install the same
+    // version again, so both take removing the installed one first, which
+    // can take its save data with it.
     uint16_t installed = 0;
     const bool isInstalled = installer::installedVersion(info.titleId,
                                                          installed);
-    const auto confirmReplace = [&](const std::string &title) {
+    // sameVersion asks gently and starts on Reinstall: installing that
+    // version again was asked for. Going back a version is the risky one.
+    const auto confirmReplace = [&](const std::string &title,
+                                    bool sameVersion = false) {
         ui::Dialog dialog;
         dialog.header = "install";
         dialog.title = title;
-        dialog.tone = ui::Tone::Warning;
+        dialog.tone = sameVersion ? ui::Tone::Info : ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
         dialog.body.push_back({"Installed: " + cia::versionText(installed) +
                                    "\nThis file: " +
                                    cia::versionText(info.version),
                                ui::color::Text, 0.48f, 2});
-        dialog.body.push_back({"Replacing it removes the installed copy "
-                               "first, and its save data may go with it. "
-                               "Back the save up with Checkpoint before "
-                               "you replace it.",
-                               ui::color::Warning, 0.46f, 4});
-        dialog.buttons = {"Replace", "Cancel"};
-        dialog.dangerous = 0;
-        dialog.initial = 1;
+        dialog.body.push_back({"3dsDL backs up its save, removes the "
+                               "installed copy and installs this one.",
+                               ui::color::Muted, 0.46f, 3});
+        if (sameVersion) {
+            dialog.buttons = {"Reinstall", "Keep Installed"};
+            dialog.initial = 0;
+        } else {
+            dialog.buttons = {"Replace", "Cancel"};
+            dialog.dangerous = 0;
+            dialog.initial = 1;
+        }
         dialog.cancelButton = 1;
         return ui::choose(dialog) == 0;
     };
     bool removeFirst = false;
-    if (isInstalled && installed > info.version) {
+    if (isInstalled && installed == info.version) {
+        // AM answers 0xC8E083FC to the same version, after the whole file.
+        u64 running = 0;
+        const bool isRunning = R_SUCCEEDED(APT_GetProgramID(&running)) &&
+                               running == info.titleId;
+        bool reinstall = false;
+        if (isRunning) {
+            ui::message("Already Installed",
+                        name + " " + cia::versionText(installed) +
+                            " is already installed. It is the software "
+                            "running now, so it cannot be installed again.",
+                        ui::Tone::Info);
+        } else {
+            reinstall = confirmReplace("This version of " + name +
+                                           " is already installed",
+                                       true);
+        }
+        if (!reinstall) {
+            // The file stays even after Install and Delete: nothing went in.
+            if (!address.empty()) {
+                markInstalled(address, path, "Already installed");
+            }
+            if (alreadyInstalled != nullptr) {
+                *alreadyInstalled = true;
+            }
+            return true;
+        }
+        removeFirst = true;
+    } else if (isInstalled && installed > info.version) {
         if (!confirmReplace("A newer version of " + name +
                             " is installed")) {
             return false;
@@ -882,7 +978,15 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     }
 
     installer::Result result;
+    std::string saveNote;
+    bool saveKept = false;
     while (ui::keepRunning()) {
+        if (removeFirst && !saveKept) {
+            if (!saveBeforeRemoving(info, name, installed, saveNote)) {
+                return false;
+            }
+            saveKept = true;
+        }
         if (removeFirst) {
             std::string error;
             if (!installer::removeTitle(info.titleId, error)) {
@@ -936,6 +1040,9 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         }
     }
 
+    if (!saveNote.empty()) {
+        notes.push_back({saveNote, ui::color::Muted, 0.42f, 3});
+    }
     std::string where = "The CIA file is still at " + path + ".";
     if (deleteAfter) {
         where = fs::removeFile(path) ? "The CIA file was deleted."

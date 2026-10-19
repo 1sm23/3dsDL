@@ -60,9 +60,12 @@ private:
     // first. address is the download it came from, or "" for a file picked
     // on the SD card. Returns true when it was installed.
     // quiet skips the success screen, for installing several in a row.
+    // True once the CIA's title is installed, including when the same
+    // version already was and the person chose to keep it; alreadyInstalled
+    // then says so.
     bool installCia(const std::string &path, const cia::Info &info,
                     bool deleteAfter, const std::string &address,
-                    bool quiet = false);
+                    bool quiet = false, bool *alreadyInstalled = nullptr);
     void markInstalled(const std::string &address, const std::string &path,
                        const std::string &message);
 

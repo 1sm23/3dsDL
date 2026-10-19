@@ -622,6 +622,7 @@ void App::receiveScreen()
                                         bool deleteAfter) {
         size_t installed = 0;
         std::vector<std::string> failed;
+        std::vector<std::string> already;
         for (size_t index = 0; index < paths.size() && ui::keepRunning();
              ++index) {
             const std::string name = basename(paths[index]);
@@ -635,30 +636,51 @@ void App::receiveScreen()
                                ".");
             cia::Info info;
             std::string error;
-            if (cia::readInfo(paths[index], info, error) &&
-                installCia(paths[index], info, deleteAfter, "", true)) {
-                ++installed;
-            } else {
+            bool kept = false;
+            if (!cia::readInfo(paths[index], info, error) ||
+                !installCia(paths[index], info, deleteAfter, "", true, &kept)) {
                 failed.push_back(name);
+            } else if (kept) {
+                already.push_back(name);
+            } else {
+                ++installed;
             }
         }
-        std::string list;
-        for (const std::string &name : failed) {
-            list += (list.empty() ? "" : ", ") + name;
+        const auto listed = [](const std::vector<std::string> &names) {
+            std::string list;
+            for (const std::string &name : names) {
+                list += (list.empty() ? "" : ", ") + name;
+            }
+            return list;
+        };
+        std::string summary;
+        if (installed > 0) {
+            summary = paths.size() == 1
+                          ? "Installed " + basename(paths[0]) + "."
+                      : installed == paths.size()
+                          ? "Installed all " + plural(paths.size(), "CIA") + "."
+                          : "Installed " + plural(installed, "CIA") + ".";
         }
-        const std::string summary =
-            failed.empty()
-                ? (paths.size() == 1 ? "Installed " + basename(paths[0]) + "."
-                                     : "Installed all " +
-                                           plural(paths.size(), "CIA") + ".")
-                : "Installed " + std::to_string(installed) + " of " +
-                      plural(paths.size(), "CIA") + ". Not installed: " +
-                      list + ".";
+        if (!already.empty()) {
+            summary += std::string(summary.empty() ? "" : " ") +
+                       (paths.size() == 1
+                            ? already.front() + " was already installed."
+                            : "Already installed: " + listed(already) + ".");
+        }
+        if (!failed.empty()) {
+            summary += std::string(summary.empty() ? "" : " ") +
+                       "Not installed: " + listed(failed) + ".";
+        }
         state.finish(summary, failed.empty());
-        ui::message(failed.empty() ? "Installed" : "Some were not installed",
-                    summary,
-                    failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
-                    failed.empty() ? "Find it on the HOME Menu." : "");
+        // A single CIA that was already there has had its own message.
+        if (installed > 0 || !failed.empty() || paths.size() > 1) {
+            ui::message(failed.empty() ? "Installed" : "Some were not installed",
+                        summary,
+                        failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
+                        failed.empty() && installed > 0
+                            ? "Find it on the HOME Menu."
+                            : "");
+        }
     };
 
     while (ui::keepRunning() && !quit_) {
