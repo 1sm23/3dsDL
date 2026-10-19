@@ -6,6 +6,21 @@
 #include <cstdint>
 #include <string>
 
+// What every request 3dsDL makes sends and trusts.
+namespace http {
+constexpr const char *CaBundle = "romfs:/cacert.pem";
+constexpr const char *UserAgent = "3dsDL/" APP_VERSION " (Nintendo 3DS)";
+// The soc service's default socket buffers keep the TCP receive window small,
+// which limits speed on links with any latency. 48 KiB measured fastest on a
+// New 3DS; 64 KiB and above break connections mid-handshake.
+constexpr int SocketBufferSize = 48 * 1024;
+// Even so, one connection carries at most one TCP window per round trip,
+// about 300 KiB/s from a server 150 ms away. Large files are split across
+// several connections to add those up, staying under the six per server
+// that browsers open.
+constexpr int DownloadConnections = 4;
+} // namespace http
+
 // Small pieces of screen code shared by app.cpp and files.cpp.
 namespace screens {
 

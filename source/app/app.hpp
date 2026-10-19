@@ -5,6 +5,7 @@
 #include "file_types.hpp"
 #include "platform.hpp"
 #include "records.hpp"
+#include "update.hpp"
 
 #include <3ds.h>
 
@@ -15,6 +16,7 @@
 class App {
 public:
     App();
+    ~App();
     void run();
 
 private:
@@ -92,6 +94,14 @@ private:
     void settingsScreen();
     void aboutScreen();
 
+    // Software updates, in software_update.cpp.
+    void softwareUpdateScreen();
+    void showReleaseNotes(const update::Release &release);
+    void installUpdate(const update::Release &release);
+    // Runs every frame: notices when the background check finishes and
+    // shows the notification once.
+    void pollUpdate();
+
     // Compares the console clock with internet time and offers to set it.
     // Returns true when the clock was set.
     bool clockScreen();
@@ -111,4 +121,9 @@ private:
     int64_t freeBytes_ = -1;
     platform::Wifi wifi_ = platform::Wifi::Unknown;
     u64 lastRefresh_ = 0;
+    bool updateAvailable_ = false;
+    bool updateNoticeShown_ = false;
+    uint32_t updateGeneration_ = 0;
+    // Set when 3dsDL should close, e.g. to restart into an update.
+    bool quit_ = false;
 };

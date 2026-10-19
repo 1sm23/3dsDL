@@ -49,7 +49,9 @@ TEST("records: settings round trip and defaults")
     settings.resumeDownloads = false;
     settings.keepAwake = false;
     settings.offerZipExtraction = true;
+    settings.checkForUpdates = false;
     const Settings parsed = parseSettings(serializeSettings(settings));
+    CHECK_EQ(parsed.checkForUpdates, false);
     CHECK_EQ(parsed.destination, std::string("sdmc:/cias/"));
     CHECK_EQ(parsed.resumeDownloads, false);
     CHECK_EQ(parsed.keepAwake, false);
@@ -70,6 +72,7 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(defaults.destination, std::string("sdmc:/"));
     CHECK_EQ(defaults.resumeDownloads, true);
     CHECK_EQ(defaults.offerZipExtraction, false);
+    CHECK_EQ(defaults.checkForUpdates, true);
 
     CHECK_EQ(defaults.timeZoneSet, false);
 

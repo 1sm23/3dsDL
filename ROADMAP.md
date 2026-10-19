@@ -72,6 +72,17 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       [docs/HARDWARE.md](docs/HARDWARE.md)), and 60 frames a second on an
       Old 3DS with the new interface.
 
+## 0.7: Software updates
+
+- [x] Check GitHub for a newer release when 3dsDL opens, on a background
+      thread, and show a notification over the top screen.
+- [x] Settings, Updates: the installed and newest versions, the release
+      notes, and Check at Startup.
+- [x] Update in place, checked against the release's `3dsDL.sha256`: the
+      CIA installs over itself and restarts, the `.3dsx` replaces the file
+      the Homebrew Launcher started.
+- [ ] Hardware pass for updating both builds on a console.
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.

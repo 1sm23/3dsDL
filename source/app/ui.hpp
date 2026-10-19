@@ -294,6 +294,9 @@ struct Control {
     float scale = type::Button;
     bool enabled = true;
     u32 labelColor = 0; // 0 keeps the style's own colour
+    // A small badge such as "New" on the top right corner.
+    std::string badge;
+    u32 badgeColor = color::Badge;
 };
 
 struct ScreenSpec {
@@ -445,5 +448,23 @@ void drawScanner(const C2D_Image *preview, const std::string &status,
 
 // Copies what both screens show now, for dialogs to dim behind them.
 void captureBackdrop();
+
+// --- Notifications -------------------------------------------------------------
+
+struct Notice {
+    std::string title; // "Update Available"
+    std::string text;  // one line under it
+    Icon icon = Icon::AppMark;
+    u32 iconColor = color::Accent;
+};
+
+// Slides notice down from under the status bar over whatever the top screen
+// shows, keeps it there for a few seconds and slides it away, the way the
+// HOME Menu shows its notifications. A new notice replaces the current one.
+void notify(const Notice &notice);
+
+// Runs at the start of every frame on the main thread, whichever screen is
+// open. For picking up the results of background work.
+void setFrameHook(std::function<void()> hook);
 
 } // namespace ui

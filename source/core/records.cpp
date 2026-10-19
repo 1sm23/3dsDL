@@ -181,6 +181,9 @@ Settings parseSettings(const std::string &contents)
                     settings.afterCiaDownload = action;
                 }
             }
+        } else if (key == "check_for_updates") {
+            settings.checkForUpdates =
+                parseBool(value, settings.checkForUpdates);
         } else if (key == "show_hidden_files") {
             settings.showHiddenFiles =
                 parseBool(value, settings.showHiddenFiles);
@@ -217,6 +220,8 @@ std::string serializeSettings(const Settings &settings)
               (settings.offerZipExtraction ? "1" : "0") + "\n";
     output += std::string("after_cia_download=") +
               ciaActionName(settings.afterCiaDownload) + "\n";
+    output += std::string("check_for_updates=") +
+              (settings.checkForUpdates ? "1" : "0") + "\n";
     output += std::string("show_hidden_files=") +
               (settings.showHiddenFiles ? "1" : "0") + "\n";
     output += std::string("file_sort=") + sortName(settings.fileSort) + "\n";

@@ -109,6 +109,12 @@ It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownloa
       The download engine, ZIP extraction and QR decoding run in automated tests against a local HTTP, HTTPS and NTP fixture server on every push.
     </td>
   </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <h4>🔔 Keeps itself up to date</h4>
+      When it opens, 3dsDL asks GitHub whether a newer version is out and shows a notification if there is. <b>Settings → Updates</b> shows what's new and updates in place: it downloads the CIA or the <code>.3dsx</code>, whichever you run, checks it against the release's SHA-256 checksums, then installs it or swaps the file. Turn the check at startup off in the same screen.
+    </td>
+  </tr>
 </table>
 
 ## 🔄 How it works

@@ -1,6 +1,7 @@
 #include "app.hpp"
 #include "installer.hpp"
 #include "ui.hpp"
+#include "updater.hpp"
 
 #include <3ds.h>
 #include <curl/curl.h>
@@ -105,8 +106,11 @@ struct Services {
 
 } // namespace
 
-int main()
+int main(int argc, char **argv)
 {
+    // The Homebrew Launcher passes the .3dsx's path, which an update
+    // replaces.
+    updater::setLaunchPath(argc > 0 ? argv[0] : nullptr);
     // Uses the New 3DS's faster clock and L2 cache when available. TLS and QR
     // decoding both benefit; on an Old 3DS this does nothing.
     osSetSpeedupEnable(true);

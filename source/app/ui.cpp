@@ -78,6 +78,13 @@ const Tex3DS_SubTexture BackdropSubs[2] = {
 bool inDialog = false;
 bool lastFrameWasDialog = false;
 
+// The notification on the top screen, if any, and when it appeared.
+Notice notice;
+bool noticeActive = false;
+uint64_t noticeStart = 0;
+std::function<void()> frameHook;
+void drawNotice();
+
 // --- Font ----------------------------------------------------------------------
 
 void loadFontMetrics()
@@ -857,6 +864,9 @@ Input readInput()
 
 void beginFrame()
 {
+    if (frameHook) {
+        frameHook();
+    }
     lastFrameWasDialog = inDialog;
     C2D_TextBufClear(textBuffer);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -884,6 +894,7 @@ void beginBottom()
 
 void endFrame()
 {
+    drawNotice();
     C3D_FrameEnd(0);
 }
 
@@ -1536,6 +1547,93 @@ void captureBackdrop()
     captureScreen(1, GFX_BOTTOM, 320);
 }
 
+// --- Notifications -------------------------------------------------------------
+
+namespace {
+
+constexpr uint64_t NoticeIn = 320;
+constexpr uint64_t NoticeHold = 6000;
+constexpr uint64_t NoticeOut = 260;
+
+// Overshoots a little and settles, like the HOME Menu's banners.
+float easeOutBack(float t)
+{
+    const float c = 1.4f;
+    const float u = t - 1;
+    return 1 + (c + 1) * u * u * u + c * u * u;
+}
+
+void drawNotice()
+{
+    if (!noticeActive) {
+        return;
+    }
+    const uint64_t age = now() - noticeStart;
+    if (age >= NoticeIn + NoticeHold + NoticeOut) {
+        noticeActive = false;
+        return;
+    }
+    // A dialog dims a copy of the screens, so the banner waits under it.
+    if (inDialog) {
+        return;
+    }
+    float shown = 1;
+    if (age < NoticeIn) {
+        shown = easeOutBack(static_cast<float>(age) / NoticeIn);
+    } else if (age > NoticeIn + NoticeHold) {
+        const float t = static_cast<float>(age - NoticeIn - NoticeHold) / NoticeOut;
+        shown = 1 - t * t;
+    }
+    constexpr float Width = 336;
+    constexpr float Height = 50;
+    constexpr float Rest = 22; // just under the status bar
+    const float x = (TopWidth - Width) / 2;
+    const float y = -Height - 8 + (Rest + Height + 8) * shown;
+
+    C2D_SceneBegin(topTarget);
+    onBottom = false;
+    const Rect card = {x, y, Width, Height};
+    drawShadow({x, y + 2, Width, Height}, 12, 4, color::rgb(0x403810, 0x48));
+    fillRound(card, 12, color::rgb(0xC8BF96));
+    fillRound(card.inset(1), 11,
+              {{0, color::rgb(0xFFFFFF)}, {0.6f, color::rgb(0xFAF8EF)},
+               {1, color::rgb(0xEFEBDA)}});
+
+    const Rect badge = {x + 8, y + 7, 36, 36};
+    fillRound(badge, 9, notice.iconColor);
+    fillRound({badge.x, badge.y, badge.w, badge.h / 2}, 9,
+              color::rgb(0xFFFFFF, 0x38), corner::Top);
+    drawIcon(notice.icon, badge.x + 6, badge.y + 6, 24, color::rgb(0xFFFFFF));
+
+    const float textX = badge.x + badge.w + 10;
+    const float textWidthMax = x + Width - 12 - textX;
+    drawText(fitEnd(notice.title, type::Small, textWidthMax), textX, y + 6,
+             type::Small, color::InkStrong);
+    drawText(fitEnd(notice.text, type::Tiny, textWidthMax), textX, y + 27,
+             type::Tiny, color::Ink);
+
+    // How long it stays, as a line that runs out.
+    if (age >= NoticeIn && age <= NoticeIn + NoticeHold) {
+        const float left = 1 - static_cast<float>(age - NoticeIn) / NoticeHold;
+        rect(textX, y + Height - 5, textWidthMax * left, 2,
+             withAlpha(notice.iconColor, 0.55f));
+    }
+}
+
+} // namespace
+
+void notify(const Notice &value)
+{
+    notice = value;
+    noticeActive = true;
+    noticeStart = now();
+}
+
+void setFrameHook(std::function<void()> hook)
+{
+    frameHook = std::move(hook);
+}
+
 namespace {
 
 Icon toneIcon(Tone tone)
@@ -1926,6 +2024,11 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
                     targets[pressed].rect.contains(input.touch)
                 ? pressed
                 : -1;
+        // drawTop may describe the control under the ring, so keep focus
+        // current while the screen is open.
+        if (current >= 0 && current < static_cast<int>(targets.size())) {
+            focus = targets[current].choice;
+        }
 
         beginFrame();
         if (spec.drawTop) {
@@ -1983,6 +2086,21 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
             drawFocus(control.rect, control.tile ? 10
                                     : control.rect.h >= 34 ? 9
                                                            : 8);
+        }
+        // Badges sit on the top right corner, as the HOME Menu marks new
+        // icons, over the focus ring so it never hides them.
+        for (const Control &control : spec.controls) {
+            if (control.badge.empty()) {
+                continue;
+            }
+            const Rect &area = control.rect;
+            const float width =
+                std::max(34.0f, textWidth(control.badge, 0.34f) + 10);
+            const float right = std::min(area.x + area.w + 6, BottomWidth - 2);
+            const float top = std::max(1.5f, area.y - 9);
+            fillRound({right - width - 1.5f, top - 1.5f, width + 3, 19}, 5.5f,
+                      color::rgb(0xFFFFFF));
+            drawBadge(right, top, control.badge, control.badgeColor);
         }
         endFrame();
     }

@@ -147,6 +147,17 @@ strip for a red button and a 30 px dark Cancel strip.
 | Error | what was kept, the technical detail | dialog: Close / Retry |
 | Please wait | what is happening | small dialog with the spinner |
 
+### Notifications
+
+News that is not a question, such as a new version of 3dsDL, slides down
+from under the status bar over whatever the top screen shows, like the HOME
+Menu's notifications. A card 336 by 50 at y 22: white to cream, radius 12, a
+48 px app-coloured square with a white icon, a title in small type and one
+line under it. A thin line under the text runs out over the six seconds it
+stays, then the card slides back up. It waits while a dialog is open. The
+control it points to (Settings, then Updates) carries an orange "New" badge
+on its top right corner, drawn over the focus ring.
+
 ## Motion and sound
 
 - The focus ring glides to its target in 80 ms; its glow breathes between

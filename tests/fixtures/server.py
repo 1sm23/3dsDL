@@ -17,7 +17,8 @@ controlled by query parameters:
   key=<name>        identifies a test for drop_at / stall_at / etag=changing
 
 Other endpoints: /chunked/<size>, /redirect/<count>, /redirect-ftp,
-/status/<code>, /empty, /huge.
+/status/<code>, /empty, /huge, /release/<tag> (a GitHub-style release) and
+/headers (the request's headers as JSON).
 
 It also runs three fake NTP servers on UDP: "good" answers with
 NTP_FIXED_UNIX, "unsynced" claims stratum 0, and "mismatched" answers with
@@ -118,6 +119,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
+        if parts[:1] == ["release"] and len(parts) == 2:
+            return self.release(parts[1])
+        if parts == ["headers"]:
+            return self.json_body({k.lower(): v for k, v in self.headers.items()})
         if parts == ["huge"]:
             self.send_response(200)
             self.send_header("Content-Length", str(5 * 1024 ** 3))
@@ -125,6 +130,30 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return
         self.status(404)
+
+    def json_body(self, value):
+        body = json.dumps(value).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def release(self, tag):
+        # Shaped like GitHub's releases/latest answer, with assets served
+        # from /file/ so an update can be downloaded end to end.
+        base = "http://%s:%d" % self.server.server_address[:2]
+        self.json_body({
+            "tag_name": tag,
+            "name": "3dsDL " + tag,
+            "html_url": base + "/release/" + tag,
+            "published_at": "2026-10-20T08:15:00Z",
+            "body": "## What's new\n\n- Updates.",
+            "assets": [
+                {"name": "3dsDL.cia", "size": 4000,
+                 "browser_download_url": base + "/file/4000"},
+            ],
+        })
 
     def redirect(self, location):
         self.send_response(302)

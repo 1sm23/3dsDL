@@ -14,6 +14,7 @@
 #include "timezone.hpp"
 #include "ui.hpp"
 #include "units.hpp"
+#include "updater.hpp"
 #include "url.hpp"
 #include "zip.hpp"
 
@@ -30,17 +31,10 @@ using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
 
-constexpr const char *CaBundle = "romfs:/cacert.pem";
-constexpr const char *UserAgent = "3dsDL/" APP_VERSION " (Nintendo 3DS)";
-// The soc service's default socket buffers keep the TCP receive window small,
-// which limits speed on links with any latency. 48 KiB measured fastest on a
-// New 3DS; 64 KiB and above break connections mid-handshake.
-constexpr int SocketBufferSize = 48 * 1024;
-// Even so, one connection carries at most one TCP window per round trip,
-// about 300 KiB/s from a server 150 ms away. Large files are split across
-// several connections to add those up, staying under the six per server
-// that browsers open.
-constexpr int DownloadConnections = 4;
+using http::CaBundle;
+using http::DownloadConnections;
+using http::SocketBufferSize;
+using http::UserAgent;
 constexpr u64 StatusRefreshMs = 2000;
 constexpr size_t MaxRecentFolders = 4;
 
@@ -103,11 +97,15 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
 App::App()
     : settings_(storage::loadSettings()), history_(storage::loadHistory())
 {
+    ui::setFrameHook([this]() { pollUpdate(); });
+    if (settings_.checkForUpdates) {
+        updater::startCheck();
+    }
 }
 
 void App::run()
 {
-    while (ui::keepRunning()) {
+    while (ui::keepRunning() && !quit_) {
         switch (home()) {
         case Action::Scan: {
             bool typeInstead = false;
@@ -189,6 +187,8 @@ App::Action App::home()
     add({164, 127, 140, 76}, "Files", ui::Icon::Folder, ui::color::IconOrange,
         true);
     spec.drawTop = [&]() {
+        // The answer to the update check can arrive while this is open.
+        spec.controls[0].badge = updateAvailable_ ? "New" : "";
         refreshStatus(false);
         ui::drawTopBackground();
         ui::drawStatusBar();
@@ -1522,6 +1522,7 @@ void App::settingsScreen()
 
     static const char *const TileHelp[] = {
         "Version, credits and where 3dsDL keeps its files.",
+        "Check for a newer 3dsDL and install it.",
         "Resuming, Sleep Mode, ZIP files and what happens after a CIA "
         "downloads.",
         "The folder new downloads are saved to.",
@@ -1529,8 +1530,8 @@ void App::settingsScreen()
         "downloads fail when the date is wrong.",
         "How Files sorts folders, hidden files, and the download history.",
     };
-    int focus = 1;
-    while (ui::keepRunning()) {
+    int focus = 2;
+    while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
         spec.back = "Back";
         const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
@@ -1544,8 +1545,10 @@ void App::settingsScreen()
             control.scale = ui::type::Small + 0.06f;
             spec.controls.push_back(control);
         };
-        add({26, 6, 268, 26}, "About 3dsDL", ui::Icon::AppMark,
-            ui::color::Accent, false);
+        add({16, 6, 140, 26}, "About", ui::Icon::AppMark, ui::color::Accent,
+            false);
+        add({164, 6, 140, 26}, "Updates", ui::Icon::Download,
+            ui::color::IconGreen, false);
         add({16, 42, 140, 78}, "Downloads", ui::Icon::Download,
             ui::color::IconGreen, true);
         add({164, 42, 140, 78}, "Download Folder", ui::Icon::Folder,
@@ -1557,21 +1560,33 @@ void App::settingsScreen()
         spec.drawTop = [&]() {
             ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
             ui::drawPanel();
-            const int shown = focus >= 0 && focus < 5 ? focus : 1;
+            spec.controls[1].badge = updateAvailable_ ? "New" : "";
+            const int shown = focus >= 0 && focus < 6 ? focus : 2;
             const float left = ui::TopPanel.x + 18;
             float y = ui::drawWrapped(TileHelp[shown], left, ui::TopPanel.y + 12,
                                       ui::type::Small, ui::color::Ink,
                                       ui::TopPanel.w - 36, 3) +
                       10;
-            if (shown == 2) {
-                ui::drawTagRow(left, y, 96, "Saves to", settings_.destination);
+            if (shown == 1) {
+                const updater::Status update = updater::status();
+                y = ui::drawTagRow(left, y, 96, "Installed", APP_VERSION);
+                if (update.state == updater::State::Available) {
+                    ui::drawTagRow(left, y, 96, "New", update.release.version,
+                                   ui::color::Good);
+                } else {
+                    ui::drawTagRow(left, y, 96, "At Startup",
+                                   settings_.checkForUpdates ? "Check"
+                                                             : "Don't Check");
+                }
             } else if (shown == 3) {
+                ui::drawTagRow(left, y, 96, "Saves to", settings_.destination);
+            } else if (shown == 4) {
                 ui::drawTagRow(left, y, 96, "Console",
                                units::dateTime(platform::now()));
-            } else if (shown == 4) {
+            } else if (shown == 5) {
                 ui::drawTagRow(left, y, 96, "History",
                                plural(history_.size(), "download"));
-            } else if (shown == 1) {
+            } else if (shown == 2) {
                 y = ui::drawTagRow(left, y, 96, "Resume",
                                    onOff(settings_.resumeDownloads));
                 ui::drawTagRow(left, y, 96, "After a CIA",
@@ -1586,15 +1601,18 @@ void App::settingsScreen()
             aboutScreen();
             break;
         case 1:
-            downloads();
+            softwareUpdateScreen();
             break;
         case 2:
-            changeDefaultFolder();
+            downloads();
             break;
         case 3:
-            clockScreen();
+            changeDefaultFolder();
             break;
         case 4:
+            clockScreen();
+            break;
+        case 5:
             filesAndHistory();
             break;
         default:

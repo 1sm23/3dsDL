@@ -21,6 +21,8 @@ struct Settings {
     bool keepAwake = true;
     bool offerZipExtraction = false;
     CiaAction afterCiaDownload = CiaAction::Ask;
+    // Ask GitHub for a newer 3dsDL each time it starts.
+    bool checkForUpdates = true;
     // Files screen.
     bool showHiddenFiles = false;
     fs::SortOrder fileSort = fs::SortOrder::Name;
