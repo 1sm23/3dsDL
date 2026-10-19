@@ -40,7 +40,7 @@ std::string escapeHtml(const std::string &value)
 const char *const PageStart = R"PAGE(<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2ebb2">
-<link rel="icon" href="data:,"><title>3dsDL</title><style>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAARGVYSWZNTQAqAAAACAABh2kABAAAAAEAAAAaAAAAAAADoAEAAwAAAAEAAQAAoAIABAAAAAEAAAAgoAMABAAAAAEAAAAgAAAAAKyGYvMAAAHLaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJYTVAgQ29yZSA2LjAuMCI+CiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOmV4aWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vZXhpZi8xLjAvIj4KICAgICAgICAgPGV4aWY6Q29sb3JTcGFjZT4xPC9leGlmOkNvbG9yU3BhY2U+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj4yNTY8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8ZXhpZjpQaXhlbFlEaW1lbnNpb24+MjU2PC9leGlmOlBpeGVsWURpbWVuc2lvbj4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CuYattQAAAaYSURBVEgNtVZLj1zFFT6n7rsfM+72zBhkbAG2F4MdBRBIVpAiWHiRSNmBkggJWWILO9ggJK9gwY6fkLBIFLFBCkIIhIWExSPiYYVFMBo0YxsznnGPZ9zT3fdRD75T1T1j7Ci7lG5X1617zvedR51zL1vrmOn/N2JH5PDDAI1f/He62S5ERPA2yaAdTJxJhTuZQRBULJmB4wWl2DqBmA3/1G1w/SmZBvLkuOGH4uKEZwmCUwuh8gtVDxEDDvsRr3DzsWm6Y/dY0T0mm+xpAnv5T2W+ock1YsXU3Nxa7h9/TampDfvw0w35E1Q/FDiNmYw2P2bWur5cTrYFmCEARefYi1pLqiDO/FWQ2zWmgaIIzKBEQS6vddusLECilk2furI6WlltWyruEIEdjjrBGpkZXpRGV7IOkNN/3IFSLgQggGAhScZd1n2wzWcXOgcjRQYiPjw+wOIE85zAMYJi8ReBAPkQ5+S35wQ8U3bV0BJFS3uuKaygBJpW9yDEcWrB53X8DHS7TmpMNPJSmLjItar+xfoHZ2sh9kMMr1bi+gOz+5GWAIo6RiwmAR7YYqsf3n7ZY25uvZ9Wb8VJREhDGI6KIiL+6+D7oZ575eDh085KMoBQm/76tV6n90BL+dPv5X2IsJJICY1wePsjpoTJuqPXVpJD/c2s3yIVwXwv5oYbu4PJmSPHHgYvVGEtfmn7yOKxs0FfNkSUeKc2UBI9j44J65hp09InJY0sj4c3dq5/uNzfeah1JefGEt8o849+OvXsqT/c184qia/HBwIsk6QEPr8A3HZtgC0cUwKC7SNLb4z5i21T1U6pCOfGWcqpQaSg37i4pOhYs3PuvuxENy9NMDa44XE9WYgpjul0yydF1qil7yu7VtmWcZIeY5zWbHVlVaMyqzLsFaTX4vZLl6vPB+M8Ap5Yjf29Sxzz1/SYTmMkkiIaOTmssaI/9dTxDMlgBI2tvbR21Rnz6PHDeRwhQ2M79/aPt7aa4ZlD3Qp+BI49Jr+IsSvomDH8AsscDcG6XxXqxcVZQyCajOq/vXd+PKmefvGZfmfeK9BksfXy2jiy20/ec6BG0e5zCDDOloIv+1HyRNjJlJzdZB9c0KIsTbOsNG5YoetNRy9yNs0v3NiFbXfioMKcm+YAz3AjFjiH4CSAIxp7c2ZQdP6r724OUXH0l/c/2x2XYb8dca5415KWEhWOGZTPgSNUMnClmENawgLxjZwbo4WH0HmwfrdAYZR1c3TxQJGngaCluFB0y1JjhCBcASTAhkp2PhiMB6HdoFITchM5kVITYTy+/MCrz+Vff7f2xzOnp1toMIo7QsCVMTHDXAEJmQAB+OR9IFUgpS5tTTQZrweXkivFA8jI5rXBzqXL17Wx3U777x98MS6r350+ee9iP1cuJhqSKrVtx0AXBeGYLni/FwE9mA8iLHDaNxytTsyptoLwD1fWL1y8lOVplCYcxypN/zNq1nj34sRdt62E1agxrRwJkL7kbWdQgek2D6TfSZVhhlEZE9rAuXVzIiprR9X80frJ+yviynFNjGb9TmP0FllWieKa1bDRC2I7cuo9mM0x0gh74Rfs9KGSW0Ql87cDF63rGKwYsAvJ1wAgLFxNCpXoS9IZFQ0bhBOvmmB+mL3FULvjAiVAMh9KIOOkI+FddsuZQxIfKfg3BSGxLyyo5cT+fl69fg8j1Tdr0QMJOLAKmFhIDgCHPMvsTxFm6z1AZH5d8CuH1FsbVS9Pz/bp3JX6+aV8gfSbm/bPvXjOuiylJzp8OFUDf04F1wOGGc4iB+KypMafIdyAAMzwQDs6ktC9CZ9M3S12CUdLkZ2greLkorvKGaUbOMjEnVhtTyzMFy9mHIILi2E3LnR5tE4znT0BeEgqCCNXNISq71Ej4zI0dF+3vYhGWrr9fMRbGgSiqL192IUqrvBdJCgYUz8gpwh1AIqJx51jt4M3DXasXSv1ydj+qPnCTnO5tOcnSXuzvFirk9YYX/mIUrBdAEFw2608wGOECsHJPd+KVu8Oqq9H9KmJ9dXy8zIZjd0/Nuqrmi9uj61u8Kr4tqmXdPnb44cqmL+H7S3GHX9zc781+k0hRgy2G/3mT6PV2hqtI92kpsGH2RyZDlkcoYOJOpDEvTQ5kCVzWbLUabfzXMM6MfoXg7+6iwAiEIyZt8v63xsDsqaXJfNZ2k2TIk2yGN8Y+IJFQ0dE4bEkFo3Ov/zvggfhl1t3ezA1QTGjSiEjR0NC6Q8clrOwguB/D5z+nwFBOSw475JwzgAAAABJRU5ErkJggg=="><title>3dsDL</title><style>
 :root{color-scheme:light;--ink:#615a4b;--soft:#8c8466;--text:#141414;--blue:#1c93c2;--panel:#dcd49a;--recess:#d9d3a0;--dots:#b0a66e;--good:#3fa65a;--bad:#e0301a;--warn:#e69614;--cream:#fffdf4;--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.2,.9,.3,1.25)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:#f0e694}
@@ -50,7 +50,15 @@ main{max-width:48rem;margin:0 auto;padding:16px 16px 140px}
 .i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .i.fill{fill:currentColor;stroke:none}
 .head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-h1{margin:0;font-size:1.55rem;color:var(--blue);letter-spacing:-.01em}
+h1{margin:0;font-size:1.55rem;color:var(--blue);letter-spacing:-.01em;line-height:1.1}
+.brand{display:flex;flex-direction:column;gap:3px;min-width:0}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none}
+.logo img{width:30px;height:30px;border-radius:8px;box-shadow:0 1px 3px #0002;transition:transform .3s var(--spring)}
+.logo:hover img{transform:rotate(-8deg) scale(1.08)}
+.ext{display:flex;gap:12px;padding-left:39px;font-size:12px;font-weight:600}
+.ext a{display:inline-flex;align-items:center;gap:3px;color:var(--soft);text-decoration:none;transition:color .2s}
+.ext a:hover{color:var(--blue)}
+.ext .i{width:11px;height:11px}
 .pill{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:62%;padding:6px 12px 6px 10px;border-radius:999px;background:#fffdf0cc;border:1px solid #d6cc8f;font-size:13px;font-weight:600;color:var(--ink);box-shadow:0 1px 2px #0001;transition:background .3s,border-color .3s}
 .pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--good)}
@@ -172,9 +180,19 @@ select{padding:9px 10px;border-radius:11px;border:1px solid #8f8659;background:v
 .skel i{width:42px;height:42px}
 .skel b{height:12px;flex:1;max-width:var(--w,60%)}
 @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
-.ups{margin-top:16px;animation:rise .3s var(--ease)}
-.ups h2{display:flex;align-items:center;justify-content:space-between;font-size:1rem;margin:0 0 8px}
-.ups ul{list-style:none;margin:0;padding:0}
+.ups{position:sticky;top:8px;z-index:5;margin-bottom:12px;padding:12px 14px;animation:rise .3s var(--ease);transition:box-shadow .25s}
+.ups.stuck{box-shadow:0 8px 24px #3a320f33}
+.uphead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.uphead>div:first-child{flex:1 1 220px;min-width:0}
+.uphead b{display:block;color:var(--text);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uphead span{display:block;font-size:13px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uphead .track{order:3;flex:1 1 100%;height:8px}
+.upbtns{order:4;display:flex;flex-wrap:wrap;gap:6px}
+.ups.done .uphead .fill{animation:none;background:linear-gradient(#7fd08f,#3fa65a)}
+.ups ul{list-style:none;margin:8px 0 0;padding:0 4px 0 0;max-height:min(34vh,240px);overflow-y:auto;overscroll-behavior:contain}
+.ups:not(.open) .updetail{display:none}
+.toggle .i{transition:transform .25s var(--ease)}
+.ups.open .toggle .i{transform:rotate(180deg)}
 .ups li{display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center;padding:9px 0;border-bottom:1px dotted var(--dots);animation:rise .3s var(--ease)}
 .ups li:last-child{border:0}
 .ups .n{font-weight:600;overflow-wrap:anywhere;min-width:0;color:var(--text);font-size:14px}
@@ -183,18 +201,14 @@ select{padding:9px 10px;border-radius:11px;border:1px solid #8f8659;background:v
 .ups li>div:last-child{grid-row:1/span 3;grid-column:2;display:flex;gap:6px}
 .track{grid-column:1;height:10px;border-radius:5px;background:#cfc795;overflow:hidden;box-shadow:inset 0 1px 2px #0002}
 .fill{height:100%;width:0;border-radius:5px;background:linear-gradient(#ffcc22,#ff9900);transition:width .25s linear}
-.active .fill,.upbar .fill{background-image:linear-gradient(45deg,#fff4 25%,transparent 25%,transparent 50%,#fff4 50%,#fff4 75%,transparent 75%),linear-gradient(#ffcc22,#ff9900);background-size:18px 18px,100% 100%;animation:stripes .8s linear infinite}
+.active .fill,.uphead .fill{background-image:linear-gradient(45deg,#fff4 25%,transparent 25%,transparent 50%,#fff4 50%,#fff4 75%,transparent 75%),linear-gradient(#ffcc22,#ff9900);background-size:18px 18px,100% 100%;animation:stripes .8s linear infinite}
 .ok .fill{background:linear-gradient(#7fd08f,#3fa65a)}
 @keyframes stripes{to{background-position:18px 0,0 0}}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;gap:8px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
 .dock>*{pointer-events:auto;max-width:46rem;width:100%;margin:0 auto;animation:dockin .35s var(--spring)}
 @keyframes dockin{from{opacity:0;transform:translateY(24px)}}
-.selbar,.upbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fffdf0f2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid #d6cc8f;border-radius:16px;padding:10px 12px;box-shadow:0 8px 28px #3a320f30}
+.selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fffdf0f2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid #d6cc8f;border-radius:16px;padding:10px 12px;box-shadow:0 8px 28px #3a320f30}
 .selbar b{margin-right:auto;color:var(--text)}
-.upbar{display:grid;grid-template-columns:1fr auto;gap:6px 12px}
-.upbar b{color:var(--text);font-size:14px}
-.upbar span{display:block;font-size:13px;color:var(--soft)}
-.upbar .track{grid-column:1/-1;height:8px}
 .drop{position:fixed;inset:10px;z-index:30;display:grid;place-items:center;background:rgba(28,147,194,.16);border:3px dashed var(--blue);border-radius:22px;color:var(--blue);pointer-events:none;animation:fadein .15s}
 .drop div{display:grid;justify-items:center;gap:6px;background:#fffdf0;padding:22px 30px;border-radius:18px;box-shadow:0 10px 30px #0002;animation:pop .3s var(--spring)}
 .drop .i{width:36px;height:36px}
@@ -262,7 +276,8 @@ dialog.sheet[open]{animation:sheetin .35s var(--ease)}
 kbd{font:600 11px ui-monospace,monospace;background:#fffdf0;border:1px solid #d6cc8f;border-bottom-width:2px;border-radius:5px;padding:1px 5px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style></head><body><main>
-<header class="head"><h1>3dsDL</h1><div class="pill" id="pill" data-state="connecting" role="status" aria-live="polite"><i class="dot"></i><span id="pilltext">Connecting...</span></div></header>
+<header class="head"><div class="brand"><a class="logo" href="https://ankush.one/3dsDL/" target="_blank" rel="noopener" title="3dsDL website"><img id="logo" alt=""><h1>3dsDL</h1></a>
+<nav class="ext" id="ext"><a href="https://ankush.one/3dsDL/" target="_blank" rel="noopener">Website</a><a href="https://github.com/ankushKun/3dsDL" target="_blank" rel="noopener">GitHub</a></nav></div><div class="pill" id="pill" data-state="connecting" role="status" aria-live="polite"><i class="dot"></i><span id="pilltext">Connecting...</span></div></header>
 <nav class="tabs" id="tabs"><span class="ink" id="ink"></span><a href="#links" id="t-links" class="on">Links</a><a href="#files:%2F" id="t-files">Files</a></nav>
 <div class="banner" id="offline" hidden><span class="spin"></span><span>Can't reach the 3DS. Keep 3dsDL open on Receive; this page reconnects by itself.</span></div>
 <section id="links">
@@ -292,18 +307,19 @@ const char *const PageEnd = R"PAGE(<form method="post" action="/send" class="pan
 <select id="sort" aria-label="Sort"><option value="name">By name</option><option value="size">By size</option><option value="time">By date</option><option value="type">By type</option></select>
 <label class="check"><input type="checkbox" id="hidden">Hidden</label>
 </div>
+<div class="ups panel" id="ups" hidden>
+<div class="uphead"><div><b id="uptitle"></b><span id="upsub"></span></div><div class="upbtns"><button class="btn small toggle" id="uptoggle" aria-expanded="false"></button><button class="btn small" id="upcancel">Cancel All</button><button class="btn small" id="upclear">Clear Finished</button></div><div class="track"><div class="fill" id="upfill"></div></div></div>
+<div class="updetail"><ul id="uplist"></ul>
+<label class="check" style="margin-top:10px"><input type="checkbox" id="offer" checked>Offer to install CIAs on the 3DS once they arrive</label></div></div>
 <div class="listwrap"><div class="loadline" id="loadline"></div>
 <div class="listhead"><input type="checkbox" id="all" aria-label="Select all"><span id="count"></span></div>
 <ul class="list" id="list"></ul></div>
-<div class="ups panel" id="ups" hidden><h2>Uploads <button class="btn small" id="upclear">Clear Finished</button></h2><ul id="uplist"></ul>
-<label class="check" style="margin-top:10px"><input type="checkbox" id="offer" checked>Offer to install CIAs on the 3DS once they arrive</label></div>
 <small class="hint">Drop files or folders anywhere on this page to upload them here. <span class="keys"><kbd>/</kbd> filter, <kbd>Backspace</kbd> up, <kbd>Del</kbd> delete, <kbd>F2</kbd> rename, <kbd>Ctrl</kbd>+<kbd>A</kbd> select all.</span></small>
 </div>
 </section>
 </main>
 <div class="dock">
 <div class="selbar" id="selbar" hidden><b id="selcount"></b><button class="btn small" id="selinstall">Install on 3DS</button><button class="btn small" id="selmove">Move</button><button class="btn small danger" id="seldel">Delete</button><button class="btn small" id="selnone">Clear</button></div>
-<div class="upbar" id="upbar" hidden><div><b id="uptitle"></b><span id="upsub"></span></div><button class="btn small" id="upcancel">Cancel All</button><div class="track"><div class="fill" id="upfill"></div></div></div>
 </div>
 <div class="drop" id="drop" hidden><div><span id="ic-drop"></span><b>Drop to upload</b><span id="dropto"></span></div></div>
 <div class="toasts" id="toasts"></div>
@@ -352,12 +368,16 @@ const ICONS = {
   right: '<path d="M9 5l7 7-7 7"/>',
   console: '<rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M8.5 5h7v5h-7zM10 15h4M12 13v4"/>',
   retry: '<path d="M4 4v6h6M4 10a8 8 0 1 1 2.3 5.7"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  out: '<path d="M7 17 17 7M9 7h8v8"/>',
   more: '<circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>'
 };
 const svg = name => '<svg class="i' + (name === 'more' ? ' fill' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>';
 const FOLDER = '<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h5.6l2.4 2.6h9A2.5 2.5 0 0 1 24 9.1V20a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 20z" fill="#e6b422"/><path d="M2 10h22v10a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 20z" fill="#f7d55c"/></svg>';
 for (const [id, name] of [['ic-upload', 'upload'], ['ic-folder', 'folder'], ['ic-search', 'search'], ['ic-drop', 'upload'], ['ic-warn', 'warn']]) $('#' + id).outerHTML = svg(name);
 $('#mkdir').innerHTML = svg('folderplus') + 'New Folder';
+$('#logo').src = document.querySelector('link[rel=icon]').href;
+for (const a of document.querySelectorAll('#ext a')) a.insertAdjacentHTML('beforeend', svg('out'));
 $('#reload').innerHTML = svg('refresh');
 $('#up').innerHTML = svg('up');
 for (const [id, name] of [['vclose', 'x'], ['eclose', 'x'], ['vprev', 'left'], ['vnext', 'right']]) $('#' + id).innerHTML = svg(name);
@@ -572,9 +592,15 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 
 // --- Tabs and routes ------------------------------------------------------------
 const onFiles = () => location.hash.startsWith('#files');
+// The highlight slides between tabs, but lands in place the first time.
+let inked = false;
 function ink() {
   const on = $('.tabs a.on'), i = $('#ink');
-  if (on) { i.style.left = on.offsetLeft + 'px'; i.style.width = on.offsetWidth + 'px'; }
+  if (!on) return;
+  if (!inked) i.style.transition = 'none';
+  i.style.left = on.offsetLeft + 'px';
+  i.style.width = on.offsetWidth + 'px';
+  if (!inked) { void i.offsetWidth; i.style.transition = ''; inked = true; }
 }
 addEventListener('resize', ink);
 function route() {
@@ -632,7 +658,7 @@ $('#sendform').addEventListener('submit', async e => {
 });
 
 // --- Files ------------------------------------------------------------------------
-const F = {cwd: '/', entries: [], free: -1, total: -1, sel: new Set(), anchor: null, token: 0, fresh: new Set()};
+const F = {cwd: '/', entries: [], free: -1, total: -1, sel: new Set(), anchor: null, token: 0, fresh: new Set(), scrollTo: ''};
 $('#sort').value = store.get('sort', 'name');
 $('#hidden').checked = store.get('hidden', false);
 if (/iPhone|iPad|iPod/.test(navigator.userAgent)) $('#pickdirbtn').hidden = true;
@@ -665,7 +691,7 @@ function loading(on) {
   $('#reload').classList.toggle('busy', on);
   $('#list').classList.toggle('dim', on && !!F.entries.length);
 }
-async function load(path, quietly) {
+async function load(path, quietly, priority) {
   const token = ++F.token, moved = path !== F.cwd;
   F.cwd = path;
   if (moved) { F.sel.clear(); F.anchor = null; $('#filter').value = ''; }
@@ -673,7 +699,7 @@ async function load(path, quietly) {
   if ($('#browser').hidden && !quietly && S.access !== 'pending') gate('connecting');
   const slow = setTimeout(() => { if (token === F.token && moved && !quietly) skeleton(); }, 180);
   try {
-    const j = await api('GET', '/api/list?path=' + enc(path) + ($('#hidden').checked ? '&hidden=1' : ''), undefined, quietly ? 1 : 0);
+    const j = await api('GET', '/api/list?path=' + enc(path) + ($('#hidden').checked ? '&hidden=1' : ''), undefined, priority !== undefined ? priority : quietly ? 1 : 0);
     if (token !== F.token) return;
     Object.assign(F, {entries: j.entries, free: j.free, total: j.total});
     S.access = 'allowed';
@@ -752,9 +778,24 @@ function render(animate) {
     if (!e.dir && TITLED.has(ext(e.name))) { if (watcher) watcher.observe(li); else icon(li); }
   });
   F.fresh.clear();
+  if (F.scrollTo) {
+    const row = [...ul.children].find(r => r.dataset.path === F.scrollTo);
+    F.scrollTo = '';
+    if (row) reveal(row);
+  }
   const n = F.entries.length;
   $('#count').textContent = list.length === n ? n + (n === 1 ? ' item' : ' items') : list.length + ' of ' + n + ' shown';
   selbar();
+}
+// Scrolls a row into the middle of the screen, unless it is in full view
+// already (and clear of the selection bar at the bottom).
+function reveal(row) {
+  const ups = $('#ups'), r = row.getBoundingClientRect();
+  const top = ups.hidden ? 0 : Math.max(0, ups.getBoundingClientRect().bottom);
+  const bottom = innerHeight - ($('#selbar').hidden ? 0 : 80);
+  if (r.top >= top && r.bottom <= bottom) return;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  row.scrollIntoView({block: 'center', behavior: still ? 'auto' : 'smooth'});
 }
 // Real icons for games and homebrew, fetched once each when they scroll in.
 const icons = new Map();
@@ -1059,7 +1100,6 @@ async function plan(files) {
   if (F.free >= 0 && need > F.free) return ask('Not enough space', 'These need ' + size(need) + ' and the SD card has ' + size(F.free) + ' free.', {buttons: ['OK']});
   const big = files.find(f => f.file.size > 4294967295);
   if (big) return ask('Too big for the SD card', base(big.path) + " is 4 GiB or more, which the SD card's FAT32 cannot hold.", {buttons: ['OK']});
-  $('#ups').hidden = false;
   for (const f of files) {
     const li = document.createElement('li');
     li.innerHTML = '<span class="n"></span><div class="track"><div class="fill"></div></div><span class="s">Waiting</span><div></div>';
@@ -1090,29 +1130,33 @@ function status(f, text, kind) { const s = f.li.querySelector('.s'); s.textConte
 function progress() {
   const live = U.items.filter(f => f.state !== 'off' && f.state !== 'failed');
   const left = live.filter(f => f.state === 'wait' || f.state === 'up');
-  const bar = $('#upbar');
+  const panel = $('#ups');
+  if (!U.items.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  $('#uptoggle').innerHTML = svg('chevron') + 'Details (' + U.items.length + ')';
   if (!left.length) {
     U.current = null;
-    if (!bar.hidden && !bar.dataset.ending) {
-      bar.dataset.ending = '1';
-      $('#uptitle').textContent = live.length ? 'All uploads finished' : 'Uploads stopped';
-      $('#upsub').textContent = '';
-      $('#upfill').style.width = '100%';
-      $('#upcancel').hidden = true;
-      setTimeout(() => { bar.hidden = true; delete bar.dataset.ending; }, 1600);
-      U.sent = 0;
-      U.ms = 0;
-    }
+    U.sent = 0;
+    U.ms = 0;
+    const failed = U.items.length - live.length;
+    panel.classList.add('done');
+    $('#uptitle').textContent = !live.length ? 'Uploads stopped'
+      : live.length === 1 ? 'Upload finished' : 'All ' + live.length + ' uploads finished';
+    $('#upsub').textContent = failed ? failed + ' did not finish; Retry is next to each.' : size(live.reduce((n, f) => n + f.file.size, 0)) + ' sent';
+    $('#upfill').style.width = live.length ? '100%' : '0';
+    $('#upcancel').hidden = true;
+    $('#upclear').hidden = false;
     showStatus();
     return;
   }
-  delete bar.dataset.ending;
-  bar.hidden = false;
+  panel.classList.remove('done');
   $('#upcancel').hidden = false;
+  $('#upclear').hidden = left.length === U.items.length;
   const total = live.reduce((n, f) => n + f.file.size, 0), done = live.reduce((n, f) => n + (f.state === 'done' ? f.file.size : f.loaded), 0);
   const rate = U.ms > 1000 ? U.sent / (U.ms / 1000) : 0, at = live.length - left.length + 1;
   const pct = total ? Math.floor(100 * done / total) : 0;
-  $('#uptitle').textContent = 'Uploading ' + Math.min(at, live.length) + ' of ' + live.length;
+  const now = U.current || left[0];
+  $('#uptitle').textContent = 'Uploading ' + base(now.path) + (live.length > 1 ? ' (' + Math.min(at, live.length) + ' of ' + live.length + ')' : '');
   $('#upsub').textContent = [pct + '%', rate ? size(rate) + '/s' : '', rate ? duration((total - done) / rate) + ' left' : ''].filter(Boolean).join(' · ');
   $('#upfill').style.width = pct + '%';
   U.pill = 'Sending to the 3DS · ' + pct + '%';
@@ -1160,7 +1204,12 @@ async function send(f) {
         f.li.classList.add('ok');
         if (ext(f.path) === 'cia') U.arrived.push(f.path);
         const top = f.path.startsWith(F.cwd === '/' ? '/' : F.cwd + '/') ? f.path.slice(F.cwd === '/' ? 1 : F.cwd.length + 1).split('/')[0] : '';
-        if (top) F.fresh.add(join(F.cwd, top));
+        if (top) {
+          // Shown now, ahead of the next upload, rather than once all are done.
+          F.fresh.add(join(F.cwd, top));
+          F.scrollTo = join(F.cwd, top);
+          load(F.cwd, true, 0);
+        }
         end('done', 'Done, ' + size(f.file.size) + (s > 1 ? ' at ' + size(f.file.size / s) + '/s' : ''), 'ok');
       } else {
         if (x.status === 403 && j.access) gate(j.access);
@@ -1185,6 +1234,17 @@ function finish(f, state, text, kind) {
     U.arrived = [];
   }
 }
+function openDetails(open) {
+  $('#ups').classList.toggle('open', open);
+  $('#uptoggle').setAttribute('aria-expanded', String(open));
+  store.set('uploadDetails', open);
+}
+openDetails(store.get('uploadDetails', false));
+$('#uptoggle').onclick = () => openDetails(!$('#ups').classList.contains('open'));
+addEventListener('scroll', () => {
+  const ups = $('#ups');
+  if (!ups.hidden) ups.classList.toggle('stuck', ups.getBoundingClientRect().top <= 8.5 && scrollY > 0);
+}, {passive: true});
 $('#upcancel').onclick = () => {
   for (const f of U.items) if (f.state === 'wait') { f.state = 'off'; status(f, 'Cancelled', 'err'); buttons(f); }
   if (U.current && U.current.xhr) U.current.xhr.abort();
@@ -1192,7 +1252,7 @@ $('#upcancel').onclick = () => {
 };
 $('#upclear').onclick = () => {
   U.items = U.items.filter(f => { const keep = f.state === 'wait' || f.state === 'up'; if (!keep) f.li.remove(); return keep; });
-  $('#ups').hidden = !U.items.length;
+  progress();
 };
 addEventListener('beforeunload', e => { if (U.items.some(f => f.state === 'wait' || f.state === 'up')) { e.preventDefault(); e.returnValue = ''; } });
 const pick = list => plan([...list].map(file => ({file, path: join(F.cwd, file.webkitRelativePath || file.name)})));
