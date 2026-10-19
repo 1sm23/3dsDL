@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -13,7 +14,8 @@
 //   open and waits for one byte back, sent once everything has downloaded;
 //   servefiles.py stops serving its files when it arrives.
 // - A small web page, so a phone or computer on the same Wi-Fi can paste
-//   links into a form.
+//   links into a form, and browse, upload and download files on the SD card
+//   through a little JSON API under /api/.
 //
 // Only parsing and page text live here; net/remote_server has the sockets.
 namespace remote {
@@ -30,15 +32,25 @@ std::vector<std::string> extractLinks(const std::string &text);
 // The length FBI's protocol puts first, from its 4 bytes.
 size_t payloadLength(const unsigned char *bytes);
 
+// FAT32 cannot hold a file of 4 GiB or more.
+constexpr uint64_t MaxFileSize = 0xFFFFFFFFull;
+
 struct HttpRequest {
     std::string method; // "GET"
     std::string path;   // "/send", without the query
     std::string query;  // after '?', still encoded
     std::map<std::string, std::string> headers; // names in lower case
+    uint64_t contentLength = 0;
     std::string body;
 };
 
 enum class Parse { Incomplete, Done, Bad };
+
+// Reads a request's head from the bytes received so far. Done once the
+// blank line after the headers has arrived; bodyStart is then where the body
+// begins in data. Bad for anything malformed, or a Content-Length over
+// MaxFileSize.
+Parse parseHead(const std::string &data, HttpRequest &out, size_t &bodyStart);
 
 // Reads a request from the bytes received so far. Done once the head and a
 // body of Content-Length bytes have arrived; Bad for anything malformed or
@@ -53,6 +65,31 @@ std::string formValue(const std::string &form, const std::string &field);
 // A whole response with Connection: close.
 std::string httpResponse(int status, const std::string &contentType,
                          const std::string &body);
+
+// The file API answers in JSON: {"error":"message"} for failures.
+std::string jsonString(const std::string &value);
+std::string jsonError(int status, const std::string &message);
+
+// Whether a request may use the file API. Host must be an IPv4 address or a
+// .local name, so another website cannot reach the API through a DNS name
+// that points at the console. Anything that changes files must carry
+// X-Requested-With: 3dsDL, which a page on another site cannot send without
+// asking first, and 3dsDL never says yes. why says what was wrong.
+bool apiRequestAllowed(const HttpRequest &request, std::string &why);
+
+// Maps a path from the page ("/", "/3ds/app") onto root ("sdmc:"), giving
+// "sdmc:/" or "sdmc:/3ds/app". Every part must be a valid FAT name, so ".."
+// and the like cannot leave root.
+bool localPath(const std::string &root, const std::string &webPath,
+               std::string &out);
+
+// The Content-Type to send a file as. Pages and scripts are sent as plain
+// text, so a file opened from the SD card can never run in the page.
+const char *mimeType(const std::string &name);
+
+// A Content-Disposition header value for name, with an ASCII fallback and
+// the UTF-8 name for browsers that read it.
+std::string contentDisposition(const std::string &name, bool asAttachment);
 
 // The page a phone sees: a box to paste links into. message, if any, shows
 // above it, e.g. after links were sent.

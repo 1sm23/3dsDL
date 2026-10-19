@@ -16,7 +16,20 @@ qrencode -t ansiutf8 "https://example.com/some-homebrew.3dsx"
 
 **Add to Queue** on the confirm screen saves a link for later. From the scanner the camera comes straight back, so a page of codes goes quickly. **Queue** on the home screen downloads them all with **Download All**, keeping both files on a name clash and asking about CIAs once.
 
-**Receive** listens for links while it's open. Scan its QR code with a phone on the same Wi-Fi, paste links into the page and press **Send to 3DS**. FBI's `servefiles.py`, `sendurls.py` and Boop send to port 5000 as they did with FBI.
+**Receive** listens for links and files while it's open. Scan its QR code with a phone on the same Wi-Fi, or type the address it shows. Most computers and iPhones can also open `http://3ds.local/` (`3ds-2.local` if another console already uses the name); some Android phones can't, which is why the QR code uses the IP address. Paste links into the page and press **Send to 3DS**. FBI's `servefiles.py`, `sendurls.py` and Boop send to port 5000 as they did with FBI.
+
+The page's **Files** tab is a file manager for the SD card, with no FTP app needed. The first time a device opens it, the console asks whether to allow that device, and the answer lasts until you leave Receive. From the page you can:
+
+- upload files or whole folders with the buttons or by dropping them on the page, up to the 4 GiB a FAT32 card allows, with progress, speed and cancel for each file;
+- download files, open pictures and text in the browser, and edit text files in place;
+- make folders, rename, move and delete, one entry or several at once;
+- send CIAs to the console to install. With **Offer to install CIAs** ticked, the console asks once a batch of uploads finishes.
+
+One transfer runs at a time, and the console shows it on the touch screen and stays out of Sleep Mode until it ends. Uploads go to a hidden `.3dsdl-upload.part` file and only take their real name once every byte has arrived. From a computer, `curl` works too:
+
+```sh
+curl -T game.cia -H 'X-Requested-With: 3dsDL' 'http://192.168.1.20/api/file?path=/cia/game.cia'
+```
 
 ## Files
 

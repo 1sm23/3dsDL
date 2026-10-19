@@ -65,3 +65,84 @@ TEST("remote: responses and the page")
     CHECK(html.find("class=\"note good\"") != std::string::npos);
     CHECK(remote::page().find("class=\"note") == std::string::npos);
 }
+
+TEST("remote: heads of large uploads, without their bodies")
+{
+    remote::HttpRequest request;
+    size_t bodyStart = 0;
+    const std::string head = "PUT /api/file?path=%2Fa.cia HTTP/1.1\r\n"
+                             "Content-Length: 3000000000\r\n\r\nabc";
+    CHECK(remote::parseHead(head, request, bodyStart) == remote::Parse::Done);
+    CHECK_EQ(request.contentLength, static_cast<uint64_t>(3000000000ull));
+    CHECK_EQ(head.substr(bodyStart), std::string("abc"));
+    // A whole body that large is never buffered.
+    CHECK(remote::parseRequest(head, request) == remote::Parse::Bad);
+    // 4 GiB does not fit on FAT32.
+    CHECK(remote::parseHead("PUT / HTTP/1.1\r\nContent-Length: 4294967296\r\n\r\n",
+                            request, bodyStart) == remote::Parse::Bad);
+}
+
+TEST("remote: paths from the page stay on the SD card")
+{
+    std::string path;
+    CHECK(remote::localPath("sdmc:", "/", path));
+    CHECK_EQ(path, std::string("sdmc:/"));
+    CHECK(remote::localPath("sdmc:", "/3ds/3dsDL", path));
+    CHECK_EQ(path, std::string("sdmc:/3ds/3dsDL"));
+    CHECK(remote::localPath("sdmc:", "/cia/", path));
+    CHECK_EQ(path, std::string("sdmc:/cia"));
+    CHECK(remote::localPath("sdmc:", "/Nintendo 3DS/a b.cia", path));
+    CHECK_EQ(path, std::string("sdmc:/Nintendo 3DS/a b.cia"));
+    for (const char *bad : {"", "cia", "/..", "/a/../..", "/a/./b", "/a//b",
+                            "/a\\b", "/c:", "/ a", "/a ", "/a."}) {
+        CHECK(!remote::localPath("sdmc:", bad, path));
+    }
+}
+
+TEST("remote: the file API only answers its own page")
+{
+    remote::HttpRequest request;
+    std::string why;
+    request.method = "GET";
+    request.headers["host"] = "192.168.1.20";
+    CHECK(remote::apiRequestAllowed(request, why));
+    request.headers["host"] = "192.168.1.20:8080";
+    CHECK(remote::apiRequestAllowed(request, why));
+    request.headers["host"] = "3DS.local";
+    CHECK(remote::apiRequestAllowed(request, why));
+    // A name another site controls, pointed at the console.
+    request.headers["host"] = "attacker.example";
+    CHECK(!remote::apiRequestAllowed(request, why));
+    request.headers["host"] = "1.2.3.4.attacker.example";
+    CHECK(!remote::apiRequestAllowed(request, why));
+    request.headers.erase("host");
+    CHECK(!remote::apiRequestAllowed(request, why));
+
+    request.headers["host"] = "192.168.1.20";
+    request.method = "POST";
+    CHECK(!remote::apiRequestAllowed(request, why));
+    CHECK(!why.empty());
+    request.headers["x-requested-with"] = "XMLHttpRequest";
+    CHECK(!remote::apiRequestAllowed(request, why));
+    request.headers["x-requested-with"] = "3dsDL";
+    CHECK(remote::apiRequestAllowed(request, why));
+}
+
+TEST("remote: JSON text, file types and download names")
+{
+    CHECK_EQ(remote::jsonString("a\"b\\c\nd\x01"),
+             std::string("\"a\\\"b\\\\c\\nd\\u0001\""));
+    CHECK_EQ(remote::jsonString("日本"), std::string("\"日本\""));
+    CHECK_EQ(std::string(remote::mimeType("a.PNG")), std::string("image/png"));
+    CHECK_EQ(std::string(remote::mimeType("x.cia")),
+             std::string("application/octet-stream"));
+    // Never run as a page.
+    CHECK(std::string(remote::mimeType("evil.html")).rfind("text/plain", 0) == 0);
+    CHECK(std::string(remote::mimeType("evil.svg")).rfind("text/plain", 0) == 0);
+    CHECK_EQ(remote::contentDisposition("a \"b\".cia", true),
+             std::string("attachment; filename=\"a _b_.cia\"; "
+                         "filename*=UTF-8''a%20%22b%22.cia"));
+    CHECK(remote::contentDisposition("é.txt", false)
+              .find("filename*=UTF-8''%C3%A9.txt") != std::string::npos);
+    CHECK(remote::page().find("id=\"files\"") != std::string::npos);
+}

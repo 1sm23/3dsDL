@@ -4,7 +4,10 @@
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "mdns.hpp"
+#include "mdns_responder.hpp"
 #include "naming.hpp"
+#include "platform.hpp"
 #include "qr_code.hpp"
 #include "remote.hpp"
 #include "remote_server.hpp"
@@ -21,10 +24,11 @@
 #include <atomic>
 #include <cstdio>
 #include <deque>
+#include <set>
 
-// The download queue, receiving links from other devices on the network
-// (FBI's remote install protocol and a small web page), and installing a
-// CIA without saving it.
+// The download queue, receiving links and files from other devices on the
+// network (FBI's remote install protocol and a web page with a file
+// manager), and installing a CIA without saving it.
 
 namespace {
 
@@ -63,16 +67,31 @@ std::string localAddress()
     return inet_ntoa(address);
 }
 
-// Listens on a worker thread while the Receive screen is open.
+// The name the console answers to on the network, as in http://3ds.local/.
+constexpr const char *NetworkName = "3ds";
+
+// Listens on a worker thread while the Receive screen is open, and answers
+// for 3ds.local on another.
 struct ReceiveJob {
-    net::LinkReceiver receiver;
+    net::Receiver receiver;
+    net::MdnsResponder mdns;
     std::atomic<bool> stop {false};
+    // Set once mdns has settled on its name; it does not change after.
+    std::atomic<bool> named {false};
     LightLock lock;
-    std::deque<net::ReceivedLinks> arrived;
+    std::deque<net::Received> arrived;
+    // Devices that asked to use the SD card: those waiting for an answer
+    // on the console, and the answers. They last while Receive is open.
+    std::deque<std::string> asking;
+    std::set<std::string> allowed;
+    std::set<std::string> denied;
+    net::Transfer transfer;
+    bool transferring = false;
+    std::string lastFile;
 
     ReceiveJob() { LightLock_Init(&lock); }
 
-    bool take(net::ReceivedLinks &out)
+    bool take(net::Received &out)
     {
         LightLock_Lock(&lock);
         const bool any = !arrived.empty();
@@ -83,18 +102,87 @@ struct ReceiveJob {
         LightLock_Unlock(&lock);
         return any;
     }
+
+    bool takeAsking(std::string &out)
+    {
+        LightLock_Lock(&lock);
+        const bool any = !asking.empty();
+        if (any) {
+            out = asking.front();
+            asking.pop_front();
+        }
+        LightLock_Unlock(&lock);
+        return any;
+    }
+
+    void answer(const std::string &from, bool allow)
+    {
+        LightLock_Lock(&lock);
+        (allow ? allowed : denied).insert(from);
+        LightLock_Unlock(&lock);
+    }
+
+    // Runs on the listener's thread.
+    net::Access access(const std::string &from)
+    {
+        LightLock_Lock(&lock);
+        net::Access result = net::Access::Pending;
+        if (allowed.count(from) != 0) {
+            result = net::Access::Allowed;
+        } else if (denied.count(from) != 0) {
+            result = net::Access::Denied;
+        } else if (std::find(asking.begin(), asking.end(), from) ==
+                   asking.end()) {
+            asking.push_back(from);
+        }
+        LightLock_Unlock(&lock);
+        return result;
+    }
+
+    // Runs on the listener's thread.
+    void progress(const net::Transfer &update)
+    {
+        LightLock_Lock(&lock);
+        transfer = update;
+        transferring = !update.finished;
+        if (update.finished && update.ok && update.upload) {
+            lastFile = update.name + " from " + update.from;
+        }
+        LightLock_Unlock(&lock);
+    }
+
+    // The transfer in progress, if there is one.
+    bool current(net::Transfer &out, std::string &last)
+    {
+        LightLock_Lock(&lock);
+        const bool busy = transferring;
+        out = transfer;
+        last = lastFile;
+        LightLock_Unlock(&lock);
+        return busy;
+    }
 };
 
 void receiveMain(void *argument)
 {
     ReceiveJob &job = *static_cast<ReceiveJob *>(argument);
     while (!job.stop.load()) {
-        net::ReceivedLinks received;
+        net::Received received;
         if (job.receiver.wait(250, received)) {
             LightLock_Lock(&job.lock);
             job.arrived.push_back(received);
             LightLock_Unlock(&job.lock);
         }
+    }
+}
+
+void mdnsMain(void *argument)
+{
+    ReceiveJob &job = *static_cast<ReceiveJob *>(argument);
+    job.mdns.claim();
+    job.named.store(true);
+    while (!job.stop.load()) {
+        job.mdns.serve(250);
     }
 }
 
@@ -412,9 +500,8 @@ void App::receiveScreen()
 {
     if (platform::wifiStatus() == platform::Wifi::Disconnected) {
         ui::message("Not Connected",
-                    "Receiving links needs the same Wi-Fi network as the "
-                    "phone or computer sending them. Turn wireless "
-                    "communication on first.",
+                    "Receiving needs the same Wi-Fi network as the phone or "
+                    "computer sending. Turn wireless communication on first.",
                     ui::Tone::Warning);
         return;
     }
@@ -433,30 +520,104 @@ void App::receiveScreen()
         ui::message("Cannot Receive", error, ui::Tone::Error);
         return;
     }
+    net::FileSharing sharing;
+    sharing.root = "sdmc:";
+    sharing.access = [&job](const std::string &from) {
+        return job.access(from);
+    };
+    sharing.freeSpace = []() { return platform::sdFreeBytes(); };
+    sharing.progress = [&job](const net::Transfer &transfer) {
+        job.progress(transfer);
+    };
+    sharing.socketBufferSize = http::SocketBufferSize;
+    job.receiver.shareFiles(sharing);
+
     s32 priority = 0x30;
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-    Thread thread = threadCreate(receiveMain, &job, 32 * 1024,
-                                 std::min(0x3f, static_cast<int>(priority) + 1),
+    const int workerPriority = std::min(0x3f, static_cast<int>(priority) + 1);
+    Thread thread = threadCreate(receiveMain, &job, 32 * 1024, workerPriority,
                                  -2, false);
     if (thread == nullptr) {
         ui::message("Cannot Receive", "The network listener could not start.",
                     ui::Tone::Error);
         return;
     }
+    // 3ds.local is a convenience: without multicast the address still works.
+    std::string mdnsError;
+    Thread mdnsThread =
+        job.mdns.open(NetworkName, static_cast<uint32_t>(gethostid()),
+                      mdns::Port, true, mdnsError)
+            ? threadCreate(mdnsMain, &job, 16 * 1024, workerPriority, -2, false)
+            : nullptr;
 
-    const std::string page =
-        "http://" + address +
-        (job.receiver.webPort() == 80
-             ? std::string("/")
-             : ":" + std::to_string(job.receiver.webPort()) + "/");
+    const std::string port =
+        job.receiver.webPort() == 80
+            ? std::string("/")
+            : ":" + std::to_string(job.receiver.webPort()) + "/";
+    const std::string page = "http://" + address + port;
+    std::string namedPage;
     const QrCode code(page);
     std::string last;
     bool backPressed = false;
+    bool awake = false;
+    units::RateMeter meter;
+    std::string meterName;
     const ui::Rect back = ui::tabRect(ui::Tab::Left);
 
     while (ui::keepRunning() && !quit_) {
-        net::ReceivedLinks received;
+        if (namedPage.empty() && job.named.load()) {
+            namedPage = "http://" + job.mdns.hostname() + port;
+        }
+
+        std::string asker;
+        if (job.takeAsking(asker)) {
+            ui::Dialog dialog;
+            dialog.header = "Receive";
+            dialog.title = "Let " + asker + " use the SD card?";
+            dialog.tone = ui::Tone::Warning;
+            dialog.body.push_back({"A device at " + asker +
+                                       " wants to open the SD card's files "
+                                       "from the 3dsDL page.",
+                                   ui::color::Text, 0.5f, 3});
+            dialog.body.push_back({"It could add, change and delete any file "
+                                   "while Receive is open. Only allow your "
+                                   "own phone or computer.",
+                                   ui::color::Muted, 0.44f, 3});
+            dialog.buttons = {"Allow", "Don't Allow"};
+            dialog.cancelButton = 1;
+            job.answer(asker, ui::choose(dialog) == 0);
+            continue;
+        }
+
+        net::Received received;
         if (job.take(received)) {
+            if (!received.install.empty()) {
+                ui::Dialog dialog;
+                dialog.header = "Receive";
+                dialog.title = "Install " +
+                               plural(received.install.size(), "CIA") +
+                               " sent from " + received.from + "?";
+                dialog.tone = ui::Tone::Info;
+                std::string names;
+                for (size_t index = 0;
+                     index < received.install.size() && index < 4; ++index) {
+                    names += (index > 0 ? ", " : "") +
+                             basename(received.install[index]);
+                }
+                if (received.install.size() > 4) {
+                    names += " and " +
+                             std::to_string(received.install.size() - 4) +
+                             " more";
+                }
+                dialog.body.push_back({names, ui::color::Text, 0.5f, 3});
+                dialog.buttons = {"Install", "Install and Delete", "Not Now"};
+                dialog.cancelButton = 2;
+                const int choice = ui::choose(dialog);
+                if (choice == 0 || choice == 1) {
+                    installCias(received.install, choice == 1);
+                }
+                continue;
+            }
             const bool fromFbiTool = received.replySocket >= 0;
             ui::Dialog dialog;
             dialog.header = "Receive";
@@ -507,6 +668,25 @@ void App::receiveScreen()
             continue;
         }
 
+        net::Transfer transfer;
+        std::string lastFile;
+        const bool busy = job.current(transfer, lastFile);
+        if (!lastFile.empty()) {
+            last = lastFile;
+        }
+        // Sleep turns Wi-Fi off, which would cut the transfer.
+        if (busy != awake) {
+            awake = busy;
+            aptSetSleepAllowed(!awake);
+        }
+        if (busy && transfer.name != meterName) {
+            meter.reset();
+            meterName = transfer.name;
+        }
+        if (busy) {
+            meter.sample(osGetTime(), transfer.done);
+        }
+
         const ui::Input input = ui::readInput();
         if (input.down & KEY_B) {
             break;
@@ -532,33 +712,75 @@ void App::receiveScreen()
         const float left = qrX + qrSide + 2 * px + 12;
         const float width = ui::TopPanel.x + ui::TopPanel.w - 12 - left;
         // The address itself is large on the touch screen.
-        const float y = ui::drawWrapped("Scan this with a phone on the same "
-                                        "Wi-Fi, or open the address below.",
-                                        left, ui::TopPanel.y + 12,
-                                        ui::type::Small, ui::color::Ink, width,
-                                        4) +
-                        10;
-        ui::drawWrapped(job.receiver.fbiPort() != 0
-                            ? "FBI's tools (servefiles.py, Boop): " + address +
-                                  ", port " +
-                                  std::to_string(job.receiver.fbiPort()) + "."
-                            : "FBI's tools cannot connect: port 5000 is busy.",
-                        left, y, ui::type::Tiny, ui::color::InkSoft, width, 3);
+        float y = ui::drawWrapped("Scan this with a phone on the same Wi-Fi, "
+                                  "or open the address below, to send links "
+                                  "and manage the SD card's files.",
+                                  left, ui::TopPanel.y + 12, ui::type::Small,
+                                  ui::color::Ink, width, 5) +
+                  10;
+        y = ui::drawWrapped(job.receiver.fbiPort() != 0
+                                ? "FBI's tools (servefiles.py, Boop): " +
+                                      address + ", port " +
+                                      std::to_string(job.receiver.fbiPort()) +
+                                      "."
+                                : "FBI's tools cannot connect: port 5000 is "
+                                  "busy.",
+                            left, y, ui::type::Tiny, ui::color::InkSoft, width,
+                            3) +
+            6;
+        if (!namedPage.empty()) {
+            ui::drawWrapped("Most computers and iPhones can also open " +
+                                namedPage + ".",
+                            left, y, ui::type::Tiny, ui::color::InkSoft, width,
+                            3);
+        }
 
         ui::beginBottom();
         const ui::Rect panel = {13, 12, 294, 136};
         ui::drawPanel(panel);
-        ui::drawSpinner(160, panel.y + 26, 12);
-        ui::drawText("Waiting for links at", 160, panel.y + 46, ui::type::Body,
-                     ui::color::Ink, C2D_AlignCenter);
-        ui::drawMarquee(page, 160, panel.y + 76, ui::type::Body,
-                        ui::color::Accent, 280, C2D_AlignCenter);
-        ui::drawText(last.empty() ? "Keep this screen open while sending."
-                                  : "Last: " + last,
-                     160, panel.y + 112, ui::type::Tiny, ui::color::InkSoft,
-                     C2D_AlignCenter);
+        if (busy) {
+            ui::drawText(transfer.upload ? "Receiving" : "Sending", 160,
+                         panel.y + 14, ui::type::Small, ui::color::InkSoft,
+                         C2D_AlignCenter);
+            ui::drawMarquee(transfer.name, 160, panel.y + 34, ui::type::Body,
+                            ui::color::Ink, 270, C2D_AlignCenter);
+            const float fraction =
+                transfer.total > 0
+                    ? static_cast<float>(static_cast<double>(transfer.done) /
+                                         static_cast<double>(transfer.total))
+                    : 1.0f;
+            ui::drawProgressBar({33, panel.y + 64, 254, 14}, fraction);
+            ui::drawText(units::bytes(transfer.done) + " of " +
+                             units::bytes(transfer.total),
+                         160, panel.y + 88, ui::type::Small, ui::color::Ink,
+                         C2D_AlignCenter);
+            ui::drawText(meter.hasRate()
+                             ? units::rate(meter.bytesPerSecond()) + ", " +
+                                   (transfer.upload ? "from " : "to ") +
+                                   transfer.from
+                             : (transfer.upload ? "From " : "To ") +
+                                   transfer.from,
+                         160, panel.y + 110, ui::type::Tiny, ui::color::InkSoft,
+                         C2D_AlignCenter);
+        } else {
+            ui::drawSpinner(160, panel.y + 24, 12);
+            ui::drawText("Waiting at", 160, panel.y + 42, ui::type::Body,
+                         ui::color::Ink, C2D_AlignCenter);
+            ui::drawMarquee(page, 160, panel.y + 68, ui::type::Body,
+                            ui::color::Accent, 280, C2D_AlignCenter);
+            if (!namedPage.empty()) {
+                ui::drawMarquee("or " + namedPage, 160, panel.y + 92,
+                                ui::type::Small, ui::color::InkSoft, 280,
+                                C2D_AlignCenter);
+            }
+            ui::drawMarquee(last.empty()
+                                ? "Keep this screen open while sending."
+                                : "Last: " + last,
+                            160, panel.y + 114, ui::type::Tiny,
+                            ui::color::InkSoft, 280, C2D_AlignCenter);
+        }
         ui::drawWrapped("Links download into " + settings_.destination +
-                            " one after another.",
+                            ". Files go where you put them on the page.",
                         160, 160, ui::type::Tiny, ui::color::InkSoft, 270, 2,
                         C2D_AlignCenter);
         ui::drawTab(ui::Tab::Left, "Back", "", false,
@@ -569,12 +791,20 @@ void App::receiveScreen()
     job.stop.store(true);
     threadJoin(thread, U64_MAX);
     threadFree(thread);
+    if (mdnsThread != nullptr) {
+        threadJoin(mdnsThread, U64_MAX);
+        threadFree(mdnsThread);
+    }
+    if (awake) {
+        aptSetSleepAllowed(true);
+    }
     // Senders still waiting are told the links are done, so they exit.
-    net::ReceivedLinks pending;
+    net::Received pending;
     while (job.take(pending)) {
         net::finishReceived(pending);
     }
     job.receiver.close();
+    job.mdns.close();
 }
 
 void App::installDirectly(const std::string &address)

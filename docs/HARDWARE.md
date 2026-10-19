@@ -203,6 +203,21 @@ with a few hundred files.
 57. Install Directly of an older version than the installed one is refused
     with a clear message, and the installed copy still starts.
 58. SHA-256 of a downloaded 3dsDL.cia next to 3dsDL.sha256 says it matches.
+58a. Files on the Receive page: the console asks Allow or Don't Allow for
+    the phone; Don't Allow keeps the page waiting until Receive reopens.
+58b. Upload a CIA of 1 GiB or more from a phone and from a computer: the
+    touch screen shows progress, the console does not sleep with the lid
+    closed, and the file's SHA-256 matches. Note the speed.
+58c. With Offer to Install ticked, uploading two CIAs asks once on the
+    console and installs both.
+58d. Download, rename, move, delete and edit a text file from the page, and
+    upload a folder of homebrew into sdmc:/3ds/.
+58e. Close the page halfway through an upload: nothing is left behind, and
+    the next upload works.
+58f. http://3ds.local/ opens on a Mac or iPhone and on Windows; with two
+    consoles on Receive the second answers to 3ds-2.local. Record whether
+    the console joined the multicast group at all (the line about .local
+    is missing from the top screen if it did not).
 
 ### Saves, tickets and sounds
 

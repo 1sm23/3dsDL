@@ -1,9 +1,13 @@
 #include "remote.hpp"
 
+#include "file_ops.hpp"
 #include "text.hpp"
 #include "url.hpp"
 
+#include <arpa/inet.h>
+
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <set>
 
@@ -46,30 +50,6 @@ std::string formDecode(const std::string &value)
     return out;
 }
 
-std::string escapeHtml(const std::string &value)
-{
-    std::string out;
-    for (const char c : value) {
-        switch (c) {
-        case '&':
-            out += "&amp;";
-            break;
-        case '<':
-            out += "&lt;";
-            break;
-        case '>':
-            out += "&gt;";
-            break;
-        case '"':
-            out += "&quot;";
-            break;
-        default:
-            out += c;
-        }
-    }
-    return out;
-}
-
 const char *statusText(int status)
 {
     switch (status) {
@@ -79,12 +59,22 @@ const char *statusText(int status)
         return "See Other";
     case 400:
         return "Bad Request";
+    case 403:
+        return "Forbidden";
     case 404:
         return "Not Found";
     case 405:
         return "Method Not Allowed";
+    case 409:
+        return "Conflict";
+    case 411:
+        return "Length Required";
     case 413:
         return "Payload Too Large";
+    case 500:
+        return "Internal Server Error";
+    case 507:
+        return "Insufficient Storage";
     default:
         return "Error";
     }
@@ -132,7 +122,7 @@ size_t payloadLength(const unsigned char *bytes)
            static_cast<size_t>(bytes[2]) << 8 | static_cast<size_t>(bytes[3]);
 }
 
-Parse parseRequest(const std::string &data, HttpRequest &out, size_t maxBody)
+Parse parseHead(const std::string &data, HttpRequest &out, size_t &bodyStart)
 {
     const size_t headEnd = data.find("\r\n\r\n");
     if (headEnd == std::string::npos) {
@@ -174,21 +164,34 @@ Parse parseRequest(const std::string &data, HttpRequest &out, size_t maxBody)
             text::trim(line.substr(colon + 1));
     }
 
-    size_t length = 0;
     const auto found = out.headers.find("content-length");
     if (found != out.headers.end()) {
         const std::string &value = found->second;
         if (value.empty() ||
             value.find_first_not_of("0123456789") != std::string::npos ||
-            value.size() > 9) {
+            value.size() > 10) {
             return Parse::Bad;
         }
-        length = static_cast<size_t>(std::strtoul(value.c_str(), nullptr, 10));
+        out.contentLength = std::strtoull(value.c_str(), nullptr, 10);
+        if (out.contentLength > MaxFileSize) {
+            return Parse::Bad;
+        }
     }
-    if (length > maxBody) {
+    bodyStart = headEnd + 4;
+    return Parse::Done;
+}
+
+Parse parseRequest(const std::string &data, HttpRequest &out, size_t maxBody)
+{
+    size_t bodyStart = 0;
+    const Parse head = parseHead(data, out, bodyStart);
+    if (head != Parse::Done) {
+        return head;
+    }
+    if (out.contentLength > maxBody) {
         return Parse::Bad;
     }
-    const size_t bodyStart = headEnd + 4;
+    const size_t length = static_cast<size_t>(out.contentLength);
     if (data.size() < bodyStart + length) {
         return Parse::Incomplete;
     }
@@ -228,47 +231,152 @@ std::string httpResponse(int status, const std::string &contentType,
     return response + body;
 }
 
-std::string page(const std::string &message, bool good)
+std::string jsonString(const std::string &value)
 {
-    std::string html =
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-        "<title>Send to 3dsDL</title><style>"
-        ":root{color-scheme:light}"
-        "body{margin:0;font:16px/1.45 system-ui,-apple-system,sans-serif;"
-        "background:linear-gradient(#f2ebb2,#f0e694);color:#4f493b;"
-        "min-height:100vh}"
-        "main{max-width:34rem;margin:0 auto;padding:24px 16px}"
-        "h1{margin:0 0 4px;font-size:1.5rem;color:#1c93c2}"
-        "p{margin:0 0 16px;color:#615a4b}"
-        "form{background:#dcd49a;border-radius:12px;padding:14px}"
-        "textarea{box-sizing:border-box;width:100%;min-height:9rem;"
-        "border:1px solid #b3aa83;border-radius:8px;padding:10px;"
-        "font:15px/1.4 ui-monospace,monospace;background:#fffdf4;"
-        "color:#141414;resize:vertical}"
-        "button{margin-top:12px;width:100%;padding:12px;border:1px solid #8f8659;"
-        "border-radius:10px;font:600 17px system-ui,sans-serif;color:#615a4b;"
-        "background:linear-gradient(#fefcf5,#e0dccb);cursor:pointer}"
-        "button:active{background:#e0dccb}"
-        ".note{border-radius:10px;padding:10px 12px;margin-bottom:14px;"
-        "color:#fff}"
-        ".good{background:#3fa65a}.bad{background:#e0301a}"
-        "small{display:block;margin-top:14px;color:#8c8466}"
-        "</style></head><body><main>"
-        "<h1>Send to 3dsDL</h1>"
-        "<p>Paste one or more direct download links. They go to the 3DS, "
-        "which downloads them one after another.</p>";
-    if (!message.empty()) {
-        html += std::string("<div class=\"note ") + (good ? "good" : "bad") +
-                "\">" + escapeHtml(message) + "</div>";
+    std::string out = "\"";
+    for (const char c : value) {
+        switch (c) {
+        case '"':
+            out += "\\\"";
+            break;
+        case '\\':
+            out += "\\\\";
+            break;
+        case '\n':
+            out += "\\n";
+            break;
+        default:
+            if (static_cast<unsigned char>(c) < 0x20) {
+                char escaped[8];
+                std::snprintf(escaped, sizeof(escaped), "\\u%04x", c);
+                out += escaped;
+            } else {
+                out += c;
+            }
+        }
     }
-    html += "<form method=\"post\" action=\"/send\">"
-            "<textarea name=\"links\" placeholder=\"https://...\" "
-            "autofocus required></textarea>"
-            "<button type=\"submit\">Send to 3DS</button></form>"
-            "<small>Only links are sent. Keep 3dsDL on the Receive screen "
-            "while you send.</small></main></body></html>";
-    return html;
+    return out + "\"";
+}
+
+std::string jsonError(int status, const std::string &message)
+{
+    return httpResponse(status, "application/json",
+                        "{\"error\":" + jsonString(message) + "}");
+}
+
+bool apiRequestAllowed(const HttpRequest &request, std::string &why)
+{
+    const auto host = request.headers.find("host");
+    std::string name = host == request.headers.end() ? "" : host->second;
+    const size_t colon = name.rfind(':');
+    if (colon != std::string::npos &&
+        name.find_first_not_of("0123456789", colon + 1) == std::string::npos) {
+        name.erase(colon);
+    }
+    name = text::lower(name);
+    in_addr parsed {};
+    const bool address = !name.empty() &&
+                         name.find_first_not_of("0123456789.") ==
+                             std::string::npos &&
+                         inet_aton(name.c_str(), &parsed) != 0;
+    const bool local = name.size() > 6 &&
+                       name.compare(name.size() - 6, 6, ".local") == 0;
+    if (!address && !local) {
+        why = "Open this page by the console's address.";
+        return false;
+    }
+    if (request.method != "GET") {
+        const auto marker = request.headers.find("x-requested-with");
+        if (marker == request.headers.end() || marker->second != "3dsDL") {
+            why = "Changes must come from the 3dsDL page.";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool localPath(const std::string &root, const std::string &webPath,
+               std::string &out)
+{
+    if (webPath.empty() || webPath[0] != '/') {
+        return false;
+    }
+    std::string path = root;
+    size_t start = 1;
+    while (start < webPath.size()) {
+        size_t end = webPath.find('/', start);
+        if (end == std::string::npos) {
+            end = webPath.size();
+        }
+        const std::string part = webPath.substr(start, end - start);
+        start = end + 1;
+        if (part.empty() && end == webPath.size()) {
+            break; // a trailing '/'
+        }
+        std::string error;
+        if (part != text::trim(part) || !fileops::validName(part, error)) {
+            return false;
+        }
+        path += "/" + part;
+    }
+    out = path == root ? root + "/" : path;
+    return true;
+}
+
+const char *mimeType(const std::string &name)
+{
+    const size_t dot = name.rfind('.');
+    const std::string extension =
+        dot == std::string::npos ? "" : text::lower(name.substr(dot + 1));
+    static const struct {
+        const char *extension;
+        const char *type;
+    } types[] = {
+        {"png", "image/png"},        {"jpg", "image/jpeg"},
+        {"jpeg", "image/jpeg"},      {"gif", "image/gif"},
+        {"bmp", "image/bmp"},        {"webp", "image/webp"},
+        {"mp3", "audio/mpeg"},       {"ogg", "audio/ogg"},
+        {"wav", "audio/wav"},        {"mp4", "video/mp4"},
+        {"pdf", "application/pdf"},  {"json", "text/plain; charset=utf-8"},
+        {"txt", "text/plain; charset=utf-8"},
+        {"ini", "text/plain; charset=utf-8"},
+        {"cfg", "text/plain; charset=utf-8"},
+        {"log", "text/plain; charset=utf-8"},
+        {"md", "text/plain; charset=utf-8"},
+        {"xml", "text/plain; charset=utf-8"},
+        {"html", "text/plain; charset=utf-8"},
+        {"htm", "text/plain; charset=utf-8"},
+        {"svg", "text/plain; charset=utf-8"},
+        {"js", "text/plain; charset=utf-8"},
+    };
+    for (const auto &entry : types) {
+        if (extension == entry.extension) {
+            return entry.type;
+        }
+    }
+    return "application/octet-stream";
+}
+
+std::string contentDisposition(const std::string &name, bool asAttachment)
+{
+    std::string fallback;
+    std::string encoded;
+    for (const char c : name) {
+        const unsigned char byte = static_cast<unsigned char>(c);
+        fallback += byte >= 0x20 && byte < 0x7f && c != '"' && c != '\\'
+                        ? c
+                        : '_';
+        if (std::isalnum(byte) || std::string("-._~").find(c) !=
+                                      std::string::npos) {
+            encoded += c;
+        } else {
+            char escaped[4];
+            std::snprintf(escaped, sizeof(escaped), "%%%02X", byte);
+            encoded += escaped;
+        }
+    }
+    return std::string(asAttachment ? "attachment" : "inline") +
+           "; filename=\"" + fallback + "\"; filename*=UTF-8''" + encoded;
 }
 
 } // namespace remote

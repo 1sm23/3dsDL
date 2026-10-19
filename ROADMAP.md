@@ -125,6 +125,21 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
 - DSiWare saves, DS game cards and GBA Virtual Console saves are left to
   Checkpoint for now; they need different routes.
 
+## 0.8: Files over Wi-Fi
+
+- [x] A Files tab on the Receive page: browse the SD card, upload files and
+      folders (streamed to the card, up to 4 GiB), download, open, edit
+      text, make folders, rename, move and delete, without FTPd.
+- [x] Each device has to be allowed on the console first; the API only
+      answers its own page, so other websites cannot reach the card.
+- [x] Send uploaded CIAs to the console to install.
+- [x] Progress for each transfer on the touch screen, and no Sleep Mode
+      while one runs.
+- [x] Answer for 3ds.local over multicast DNS, with 3ds-2.local and so on
+      when the name is taken.
+- [ ] Hardware pass (items 58a to 58f in [docs/HARDWARE.md](docs/HARDWARE.md)),
+      including whether the console's network service delivers multicast.
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.
