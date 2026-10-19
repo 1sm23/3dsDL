@@ -95,8 +95,17 @@ bool wantsCancel(const ui::Input &input)
 
 std::string footer(bool keepAwake)
 {
-    return keepAwake ? "Sleep mode is paused until this finishes."
-                     : "Closing the lid will interrupt this.";
+    return keepAwake ? "Sleep Mode is paused until this finishes, so "
+                       "closing the system will not stop it."
+                     : "Closing the system will interrupt this.";
+}
+
+std::string capitalised(std::string value)
+{
+    if (!value.empty() && value[0] >= 'a' && value[0] <= 'z') {
+        value[0] = static_cast<char>(value[0] - 'a' + 'A');
+    }
+    return value;
 }
 
 struct DownloadJob : net::Observer {
@@ -333,13 +342,14 @@ net::Result download(const net::Request &request, bool keepAwake)
         ui::ProgressView view;
         {
             Guard guard(job.lock);
-            view.title = job.filename.empty() ? host : job.filename;
-            view.status = job.cancel ? "stopping"
-                        : job.phase == net::Phase::Connecting  ? "connecting"
-                        : job.phase == net::Phase::Restarting ? "starting over"
-                        : job.connections > 1
-                            ? std::to_string(job.connections) + " connections"
-                            : "downloading";
+            view.name = job.filename.empty() ? host : job.filename;
+            view.title = job.phase == net::Phase::Connecting ? "Connecting"
+                       : job.phase == net::Phase::Restarting
+                           ? "Starting Over"
+                           : "Downloading";
+            if (job.connections > 1) {
+                view.tag = std::to_string(job.connections) + " connections";
+            }
             if (job.resumedFrom > 0) {
                 view.note = "Continuing from " +
                             units::bytes(job.resumedFrom) +
@@ -351,10 +361,7 @@ net::Result download(const net::Request &request, bool keepAwake)
                     static_cast<double>(job.received) /
                     static_cast<double>(job.total));
                 view.amounts = units::bytes(job.received) + " of " +
-                               units::bytes(job.total) + " (" +
-                               std::to_string(static_cast<int>(
-                                   view.fraction * 100.0f)) +
-                               "%)";
+                               units::bytes(job.total);
             } else {
                 view.amounts = units::bytes(job.received);
             }
@@ -370,10 +377,12 @@ net::Result download(const net::Request &request, bool keepAwake)
                 view.speed = "Measuring speed...";
             }
         }
-        view.header = "downloading";
-        view.subtitle = host;
-        view.folder = request.folder;
-        view.footer = footer(keepAwake);
+        view.icon = ui::Icon::Download;
+        view.iconColor = ui::color::IconGreen;
+        view.source = "from " + host;
+        view.message = "Saving to " + request.folder;
+        view.detail = footer(keepAwake);
+        view.stopping = job.cancel;
         ui::drawProgress(view);
     });
     return job.result;
@@ -402,8 +411,8 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
         ui::ProgressView view;
         {
             Guard guard(job.lock);
-            view.subtitle = job.current.empty() ? "Reading the archive..."
-                                                : job.current;
+            view.source = job.current.empty() ? "Reading the archive..."
+                                              : job.current;
             const uint64_t total = archive.totalSize;
             view.fraction = total > 0
                 ? static_cast<float>(static_cast<double>(job.done) /
@@ -412,19 +421,22 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
             view.amounts = units::bytes(job.done) + " of " +
                            units::bytes(total);
         }
-        view.header = "extracting";
-        view.title = name;
-        view.status = job.cancel ? "stopping" : "extracting";
-        view.speed = std::to_string(archive.fileCount) + " files";
-        view.folder = folder;
-        view.footer = footer(keepAwake);
+        view.title = "Extracting";
+        view.icon = ui::Icon::Zip;
+        view.iconColor = ui::color::IconGold;
+        view.name = name;
+        view.tag = std::to_string(archive.fileCount) + " files";
+        view.message = "Extracting into " + folder;
+        view.detail = footer(keepAwake);
+        view.stopping = job.cancel;
         ui::drawProgress(view);
     });
     return job.result;
 }
 
 installer::Result install(const std::string &path, uint64_t titleId,
-                          const std::string &name, bool keepAwake)
+                          const std::string &name, bool keepAwake,
+                          const std::vector<uint16_t> &icon)
 {
     InstallJob job;
     job.path = path;
@@ -459,13 +471,15 @@ installer::Result install(const std::string &path, uint64_t titleId,
                 }
             }
         }
-        view.header = "installing";
-        view.title = name;
-        view.subtitle = path.substr(path.find_last_of('/') + 1);
-        view.status = job.cancel ? "stopping" : "installing";
-        view.folderLabel = "Installing from";
-        view.folder = path.substr(0, path.find_last_of('/') + 1);
-        view.footer = footer(keepAwake);
+        view.title = "Installing";
+        view.icon = ui::Icon::Package;
+        view.iconColor = ui::color::IconBlue;
+        view.name = name;
+        view.source = path.substr(path.find_last_of('/') + 1);
+        view.titleIcon = icon;
+        view.message = "Do not turn off the power or remove the SD card.";
+        view.detail = "Installing from " + path;
+        view.stopping = job.cancel;
         ui::drawProgress(view);
     });
     if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
@@ -513,14 +527,16 @@ fileops::Result fileOperation(
                     view.speed = units::rate(meter.bytesPerSecond());
                 }
             }
-            view.subtitle = job.current;
+            view.source = job.current;
         }
-        view.header = header;
-        view.title = title;
-        view.status = job.cancel ? "stopping" : header;
-        view.folderLabel = "In";
-        view.folder = folder;
-        view.footer = footer(keepAwake);
+        view.title = capitalised(header);
+        view.icon = header == "deleting" ? ui::Icon::Trash : ui::Icon::Folder;
+        view.iconColor = header == "deleting" ? ui::color::Bad
+                                              : ui::color::IconOrange;
+        view.name = title;
+        view.message = "In " + folder;
+        view.detail = footer(keepAwake);
+        view.stopping = job.cancel;
         ui::drawProgress(view);
     });
     return job.result;

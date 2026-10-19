@@ -337,8 +337,11 @@ bool decodeAny(quirc *decoder, std::string &payload)
 
 } // namespace
 
-std::string scan()
+std::string scan(bool *typeInstead)
 {
+    if (typeInstead != nullptr) {
+        *typeInstead = false;
+    }
     Camera camera;
     std::string error;
     if (!camera.open(error)) {
@@ -378,6 +381,12 @@ std::string scan()
         const ui::Input input = ui::readInput();
         if ((input.down & (KEY_B | KEY_START)) ||
             input.tapped(ui::ScannerCancelButton)) {
+            break;
+        }
+        if ((input.down & KEY_Y) || input.tapped(ui::ScannerTypeButton)) {
+            if (typeInstead != nullptr) {
+                *typeInstead = true;
+            }
             break;
         }
         if (camera.failed()) {

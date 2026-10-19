@@ -45,26 +45,6 @@ Kind kindOf(const fs::Entry &entry)
     return entry.folder ? Kind::Folder : filetype::fromName(entry.name);
 }
 
-u32 kindColor(Kind kind, const std::string &name)
-{
-    if (!name.empty() && name[0] == '.') {
-        return ui::color::Muted;
-    }
-    switch (kind) {
-    case Kind::Cia:
-    case Kind::Homebrew:
-    case Kind::CartridgeImage:
-    case Kind::Nds:
-        return ui::color::Primary;
-    case Kind::Zip:
-        return ui::color::Warning;
-    case Kind::Image:
-        return ui::color::Success;
-    default:
-        return ui::color::Text;
-    }
-}
-
 const char *sortLabel(fs::SortOrder order)
 {
     switch (order) {
@@ -80,48 +60,9 @@ const char *sortLabel(fs::SortOrder order)
     return "Name";
 }
 
-fs::SortOrder nextSort(fs::SortOrder order)
-{
-    switch (order) {
-    case fs::SortOrder::Name:
-        return fs::SortOrder::Size;
-    case fs::SortOrder::Size:
-        return fs::SortOrder::Date;
-    case fs::SortOrder::Date:
-        return fs::SortOrder::Type;
-    case fs::SortOrder::Type:
-        break;
-    }
-    return fs::SortOrder::Name;
-}
-
 std::string sizeText(int64_t size)
 {
     return size >= 0 ? units::bytes(static_cast<uint64_t>(size)) : "";
-}
-
-// A pick-one list that returns the chosen index, or -1.
-struct MenuItem {
-    std::string label;
-    std::string detail;
-    u32 color = ui::color::Text;
-};
-
-int menu(const std::string &header, const std::string &title,
-         const std::vector<MenuItem> &items,
-         const std::function<void(int)> &drawTop)
-{
-    ui::ListSpec spec;
-    spec.header = header;
-    spec.title = title;
-    spec.hint = "A: Choose    B: Back";
-    for (const MenuItem &item : items) {
-        spec.items.push_back({item.label, item.detail, item.color});
-    }
-    spec.drawTop = drawTop;
-    int cursor = 0;
-    const ui::ListResult result = ui::runList(spec, cursor);
-    return result.key == KEY_A ? result.index : -1;
 }
 
 bool confirm(const std::string &header, const std::string &title,
@@ -133,7 +74,7 @@ bool confirm(const std::string &header, const std::string &title,
     dialog.title = title;
     dialog.tone = dangerous ? ui::Tone::Warning : ui::Tone::Info;
     dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
-    dialog.buttons = {yes, "CANCEL"};
+    dialog.buttons = {yes, "Cancel"};
     dialog.dangerous = dangerous ? 0 : -1;
     dialog.initial = dangerous ? 1 : 0;
     dialog.cancelButton = 1;
@@ -199,33 +140,74 @@ Details loadDetails(const std::string &path, Kind kind)
     return details;
 }
 
-void drawRows(float y, const std::vector<std::pair<std::string, std::string>>
-                           &rows)
+struct KindLook {
+    ui::Icon icon;
+    u32 color;
+};
+
+KindLook lookOf(Kind kind)
 {
-    for (const auto &row : rows) {
-        if (row.second.empty() || y > 210) {
-            continue;
-        }
-        ui::drawText(row.first, 34, y, 0.44f, ui::color::Muted);
-        ui::drawText(ui::fitEnd(row.second, 0.46f, 252), 118, y, 0.46f,
-                     ui::color::Text);
-        y += 18;
+    switch (kind) {
+    case Kind::Folder:
+        return {ui::Icon::Folder, ui::color::IconOrange};
+    case Kind::Cia:
+        return {ui::Icon::Package, ui::color::IconBlue};
+    case Kind::Ticket:
+        return {ui::Icon::Lock, ui::color::IconGrey};
+    case Kind::Homebrew:
+        return {ui::Icon::App, ui::color::IconTeal};
+    case Kind::Smdh:
+        return {ui::Icon::Picture, ui::color::IconTeal};
+    case Kind::CartridgeImage:
+    case Kind::Nds:
+        return {ui::Icon::GameCard, ui::color::IconRed};
+    case Kind::Firm:
+        return {ui::Icon::Chip, ui::color::IconGrey};
+    case Kind::Image:
+        return {ui::Icon::Picture, ui::color::IconPink};
+    case Kind::Text:
+        return {ui::Icon::Text, ui::color::IconGrey};
+    case Kind::Zip:
+        return {ui::Icon::Zip, ui::color::IconGold};
+    case Kind::Audio:
+        return {ui::Icon::Music, ui::color::IconPink};
+    case Kind::Video:
+        return {ui::Icon::Video, ui::color::IconPink};
+    case Kind::Other:
+        break;
     }
+    return {ui::Icon::File, ui::color::IconGrey};
 }
 
-// The header block with an optional icon: name and a second line.
-void drawTitleBlock(const std::vector<uint16_t> &icon,
-                    const std::string &name, const std::string &second)
+// The Files top screen: the title row, then a panel about the highlighted
+// entry with its icon, name, a second line and label tags.
+void drawEntryPanel(const std::vector<uint16_t> &titleIcon, Kind kind,
+                    const std::string &name, const std::string &second,
+                    const std::vector<std::pair<std::string, std::string>> &tags)
 {
-    float x = 34;
-    if (const C2D_Image *image = ui::showIcon(icon)) {
-        C2D_DrawImageAt(*image, 34, 64, 0.5f);
-        x = 94;
+    ui::drawPanel();
+    const float left = ui::TopPanel.x + 18;
+    const float top = ui::TopPanel.y + 12;
+    if (!titleIcon.empty()) {
+        ui::drawTitleIcon(titleIcon, left, top);
+    } else {
+        const KindLook look = lookOf(kind);
+        ui::fillRound({left - 1, top - 1, 50, 50}, 9, ui::color::rgb(0xC9C08A));
+        ui::fillRound({left, top, 48, 48}, 8,
+                      {{0, ui::color::rgb(0xFEFCF5)}, {1, ui::color::rgb(0xE6E2D0)}});
+        ui::drawIcon(look.icon, left + 9, top + 9, 30, look.color);
     }
-    ui::drawText(ui::fitEnd(name, 0.6f, 366 - x), x, 66, 0.6f,
-                 ui::color::Text);
-    ui::drawText(ui::fitEnd(second, 0.44f, 366 - x), x, 90, 0.44f,
-                 ui::color::Muted);
+    ui::drawText(ui::fitMiddle(name, 0.74f, 290), left + 60, top + 2, 0.74f,
+                 ui::color::InkStrong);
+    ui::drawText(ui::fitEnd(second, ui::type::Small, 290), left + 60, top + 30,
+                 ui::type::Small, ui::color::InkSoft);
+    float y = top + 58;
+    for (const auto &tag : tags) {
+        if (tag.second.empty() || y > ui::TopPanel.y + ui::TopPanel.h - 24) {
+            continue;
+        }
+        y = ui::drawTagRow(left, y, 82, tag.first, tag.second);
+    }
 }
 
 void drawEntryTop(const std::string &path, const fs::Entry &entry,
@@ -234,70 +216,75 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
     const Kind kind = kindOf(entry);
     const std::string modified =
         entry.modified > 0 ? units::dateTime(entry.modified) : "";
-    ui::drawPanel({18, 54, 364, 172});
 
     if (kind == Kind::Folder) {
-        drawTitleBlock({}, entry.name + "/", path + "/");
-        drawRows(122, {{"Type", "Folder"},
-                       {"Contains", plural(details.items, "item")},
-                       {"Modified", modified}});
+        drawEntryPanel({}, kind, entry.name, path + "/",
+                       {{"Type", "Folder"},
+                        {"Contains", plural(details.items, "item")},
+                        {"Changed", modified}});
         return;
     }
     if (kind == Kind::Cia && details.ciaReadable) {
         const cia::Info &info = details.cia;
-        drawTitleBlock(info.smdh.icon, ciaName(info),
+        drawEntryPanel(info.smdh.icon, kind, ciaName(info),
                        info.smdh.publisher.empty() ? entry.name
-                                                   : info.smdh.publisher);
-        drawRows(122,
-                 {{"Type", cia::kindName(cia::kind(info.titleId))},
-                  {"Title ID", cia::titleIdText(info.titleId)},
-                  {"Version", cia::versionText(info.version)},
-                  {"Installed", details.installed
-                                    ? cia::versionText(details.installedVersion)
-                                    : "No"},
-                  {"Size", units::bytes(info.fileSize)}});
+                                                   : info.smdh.publisher,
+                       {{"Type", std::string("CIA, ") +
+                                     cia::kindName(cia::kind(info.titleId))},
+                        {"Version",
+                         cia::versionText(info.version) +
+                             (details.installed
+                                  ? ", installed: " +
+                                        cia::versionText(details.installedVersion)
+                                  : ", not installed")},
+                        {"Size", units::bytes(info.fileSize)}});
         return;
     }
     if (details.metaReadable) {
         const titlemeta::Meta &meta = details.meta;
-        drawTitleBlock(meta.icon, meta.name.empty() ? entry.name : meta.name,
+        drawEntryPanel(meta.icon, kind,
+                       meta.name.empty() ? entry.name : meta.name,
                        meta.publisher.empty() ? filetype::label(kind)
-                                              : meta.publisher);
-        drawRows(122, {{"Type", filetype::label(kind)},
-                       {"Title ID", meta.hasTitleId
-                                        ? cia::titleIdText(meta.titleId)
-                                        : ""},
-                       {"Code", meta.productCode},
-                       {"Size", sizeText(entry.size)},
-                       {"Note", meta.note}});
+                                              : meta.publisher,
+                       {{"Type", filetype::label(kind)},
+                        {"Title ID", meta.hasTitleId
+                                         ? cia::titleIdText(meta.titleId)
+                                         : ""},
+                        {"Code", meta.productCode},
+                        {"Note", meta.note},
+                        {"Size", sizeText(entry.size)}});
         return;
     }
-
-    drawTitleBlock({}, entry.name, filetype::label(kind));
     if (!details.head.empty()) {
-        // The start of a text file.
-        float y = 112;
+        // The start of a text file, as on the canvas.
+        drawEntryPanel({}, kind, entry.name,
+                       std::string(filetype::label(kind)) + ", " +
+                           sizeText(entry.size),
+                       {});
+        float y = ui::TopPanel.y + 70;
         for (const std::string &line : details.head) {
-            ui::drawText(ui::fitEnd(line, 0.42f, 330), 34, y, 0.42f,
-                         ui::color::Muted);
-            y += 12;
+            if (y > ui::TopPanel.y + ui::TopPanel.h - 16) {
+                break;
+            }
+            ui::drawText(ui::fitEnd(line, ui::type::Tiny, 330),
+                         ui::TopPanel.x + 18, y, ui::type::Tiny,
+                         ui::color::InkSoft);
+            y += 13;
         }
         return;
     }
-    drawRows(122,
-             {{"Type", filetype::label(kind)},
-              {"Picture", details.width > 0
-                              ? std::to_string(details.width) + " x " +
-                                    std::to_string(details.height) + " pixels"
-                              : ""},
-              {"Size", sizeText(entry.size)},
-              {"Modified", modified},
-              {"Problem", details.error}});
+    drawEntryPanel({}, kind, entry.name, filetype::label(kind),
+                   {{"Picture", details.width > 0
+                                    ? std::to_string(details.width) + " x " +
+                                          std::to_string(details.height) +
+                                          " pixels"
+                                    : ""},
+                    {"Size", sizeText(entry.size)},
+                    {"Changed", modified},
+                    {"Problem", details.error}});
 }
 
 // --- Text editor helpers -------------------------------------------------------
-
-constexpr float EditorScale = 0.44f;
 
 u32 lineColor(const std::string &line, const std::string &extension)
 {
@@ -336,38 +323,6 @@ std::vector<std::string> splitLines(const std::string &value)
     }
 }
 
-struct TouchButton {
-    ui::Rect rect;
-    std::string label;
-    bool enabled = true;
-};
-
-void drawTouchButtons(const std::vector<TouchButton> &buttons)
-{
-    for (const TouchButton &button : buttons) {
-        C2D_DrawRectSolid(button.rect.x, button.rect.y, 0.4f, button.rect.w,
-                          button.rect.h, ui::color::SurfaceRaised);
-        ui::drawText(ui::fitEnd(button.label, 0.46f, button.rect.w - 8),
-                     button.rect.x + button.rect.w / 2,
-                     button.rect.y + button.rect.h / 2 -
-                         ui::lineHeight(0.46f) / 2,
-                     0.46f,
-                     button.enabled ? ui::color::Text : ui::color::Muted,
-                     C2D_AlignCenter);
-    }
-}
-
-int tappedButton(const ui::Input &input,
-                 const std::vector<TouchButton> &buttons)
-{
-    for (size_t index = 0; index < buttons.size(); ++index) {
-        if (buttons[index].enabled && input.tapped(buttons[index].rect)) {
-            return static_cast<int>(index);
-        }
-    }
-    return -1;
-}
-
 } // namespace
 
 // --- Browsing -------------------------------------------------------------------
@@ -397,7 +352,8 @@ void App::filesScreen()
         }
         fs::sortEntries(entries, settings_.fileSort);
         const bool atRoot = naming::parentFolder(current) == current;
-        const int first = atRoot ? 0 : 1;
+        // The Back tab and B go up a folder, so there is no ".." row.
+        const int first = 0;
 
         // Marks for entries that are gone are dropped.
         marked.erase(std::remove_if(marked.begin(), marked.end(),
@@ -417,49 +373,55 @@ void App::filesScreen()
         }
 
         ui::ListSpec spec;
-        spec.header = !marked.empty() ? plural(marked.size(), "marked item")
-                    : !clipboard_.empty()
-                        ? plural(clipboard_.size(), "item") +
-                              (clipboardCut_ ? " to move" : " to copy")
-                        : "files";
-        spec.title = ui::fitMiddle(current, 0.56f, 290);
+        spec.title = ui::fitMiddle(current, ui::type::Small, 296);
         spec.emptyText = readable
-            ? "This folder is empty. SELECT or FOLDER makes a new file or "
-              "folder here."
+            ? "This folder is empty. Options makes a new file or folder here."
             : "The SD card could not be read.";
-        spec.extraKeys = KEY_X | KEY_Y | KEY_SELECT | KEY_START;
-        spec.buttons = {{"UP", KEY_B},
-                        {"MARK", KEY_Y},
-                        {"OPTIONS", KEY_X},
-                        {"FOLDER", KEY_SELECT}};
-        if (!atRoot) {
-            spec.items.push_back({".. (up one level)", "", ui::color::Muted});
-        }
+        spec.back = atRoot ? "Close" : "Back";
+        spec.action = "Options";
+        spec.actionKey = "X";
+        spec.actionKeys = KEY_X;
+        spec.longPressKey = KEY_X;
+        spec.extraKeys = KEY_Y | KEY_SELECT | KEY_START;
+        spec.hint = !marked.empty() ? std::to_string(marked.size()) + " marked"
+                  : !clipboard_.empty()
+                      ? std::to_string(clipboard_.size()) +
+                            (clipboardCut_ ? " to move" : " to paste")
+                      : "";
         for (const fs::Entry &entry : entries) {
             ui::ListItem item;
-            item.label = entry.folder ? entry.name + "/" : entry.name;
+            const KindLook look = lookOf(kindOf(entry));
+            item.label = entry.name;
             item.detail = entry.folder ? "" : sizeText(entry.size);
-            item.labelColor = kindColor(kindOf(entry), entry.name);
+            item.icon = look.icon;
+            item.iconColor = look.color;
+            item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
+                                                   : ui::color::InkButton;
             item.marked = markedSet.count(current + entry.name) > 0;
+            if (item.marked) {
+                item.badge = "Marked";
+                item.badgeColor = ui::color::Tag;
+            }
             spec.items.push_back(item);
         }
 
         spec.drawTop = [&](int index) {
+            const std::string title =
+                atRoot ? "SD Card" : fileops::name(current);
+            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
             const int position = index - first;
             if (position < 0 ||
                 position >= static_cast<int>(entries.size())) {
-                drawLabelledPanel(56, 74, "BROWSING", current,
-                                  ui::color::Text);
+                ui::drawPanel();
                 std::string summary = plural(entries.size(), "item") +
-                                      ". Sorted by " +
+                                      ", sorted by " +
                                       text::lower(sortLabel(settings_.fileSort)) +
                                       ".";
                 if (!clipboard_.empty()) {
                     summary += " " + plural(clipboard_.size(), "item") +
-                               " ready to paste with FOLDER.";
+                               " ready to paste from Options.";
                 }
-                drawLabelledPanel(144, 76, "CONTENTS", summary,
-                                  ui::color::Text);
+                ui::drawPanelText(summary, ui::TopPanel);
                 return;
             }
             const fs::Entry &entry = entries[position];
@@ -482,8 +444,7 @@ void App::filesScreen()
         if (result.key == 0 || result.key == KEY_START) {
             return;
         }
-        if (result.key == KEY_B ||
-            (result.key == KEY_A && !atRoot && result.index == 0)) {
+        if (result.key == KEY_B) {
             if (atRoot) {
                 return;
             }
@@ -519,9 +480,13 @@ void App::filesScreen()
             continue;
         }
         if (result.key == KEY_X) {
+            std::vector<std::string> all;
+            for (const fs::Entry &entry : entries) {
+                all.push_back(current + entry.name);
+            }
             const std::vector<std::string> targets =
                 marked.empty() ? std::vector<std::string>{highlighted} : marked;
-            if (entryOptions(current, targets)) {
+            if (entryOptions(current, targets, marked, all)) {
                 details.clear();
                 if (!marked.empty() &&
                     std::none_of(marked.begin(), marked.end(),
@@ -601,12 +566,13 @@ void App::ciaOptions(const std::string &path)
     std::string error;
     if (!cia::readInfo(path, info, error)) {
         ui::Dialog dialog;
-        dialog.header = "cia";
-        dialog.title = basename(path);
+        dialog.header = "CIA Installer";
+        dialog.title = "This CIA cannot be installed.";
         dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({"Not installable: " + error,
-                               ui::color::Warning, 0.48f, 3});
-        dialog.buttons = {"VIEW AS HEX", "CLOSE"};
+        dialog.body.push_back({basename(path), ui::color::Text, 0.5f, 2});
+        dialog.body.push_back({error, ui::color::Warning, 0.48f, 3});
+        dialog.buttons = {"Open as Hex", "Close"};
+        dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) == 0) {
             hexViewer(path);
@@ -614,30 +580,48 @@ void App::ciaOptions(const std::string &path)
         return;
     }
 
-    ui::Dialog dialog;
-    dialog.header = "cia";
-    dialog.title = ciaName(info);
-    dialog.icon = ui::showIcon(info.smdh.icon);
-    screens::addCiaParagraphs(dialog, info);
-    if (!installer::available()) {
-        dialog.body.push_back({installer::unavailableReason(),
-                               ui::color::Warning, 0.42f, 3});
-    }
-    dialog.buttons = {"INSTALL", "INSTALL & DELETE", "CLOSE"};
-    dialog.cancelButton = 2;
-    const int choice = ui::choose(dialog);
-    if (choice == 0 || choice == 1) {
-        installCia(path, info, choice == 1, "");
+    ui::ScreenSpec spec;
+    spec.back = "Back";
+    const auto add = [&](ui::Rect rect, const char *label, float scale,
+                         u32 labelColor) {
+        ui::Control control;
+        control.rect = rect;
+        control.label = label;
+        control.scale = scale;
+        control.labelColor = labelColor;
+        control.enabled = installer::available() || labelColor != 0;
+        spec.controls.push_back(control);
+    };
+    add({26, 42, 268, 38}, "Install", ui::type::Button, 0);
+    add({26, 90, 268, 38}, "Install and Delete File", ui::type::Body + 0.06f, 0);
+    add({26, 140, 268, 26}, "Delete File", ui::type::Small + 0.06f,
+        ui::color::Bad);
+    const std::string state = installer::available()
+                                  ? screens::installState(info)
+                                  : "Installing is not available.";
+    spec.drawTop = [&]() { screens::drawCiaTop(info, "CIA Installer"); };
+    spec.drawBottom = [&]() {
+        ui::drawText(ui::fitEnd(state, ui::type::Body, 300), 160, 12,
+                     ui::type::Body, ui::color::Ink, C2D_AlignCenter);
+    };
+    int focus = installer::available() ? 0 : 2;
+    const ui::ScreenResult result = ui::runScreen(spec, focus);
+    if (result.choice == 0 || result.choice == 1) {
+        installCia(path, info, result.choice == 1, "");
+    } else if (result.choice == 2) {
+        deleteEntries({path});
     }
 }
 
 // --- Options --------------------------------------------------------------------
 
 bool App::entryOptions(const std::string &folder,
-                       const std::vector<std::string> &paths)
+                       const std::vector<std::string> &paths,
+                       std::vector<std::string> &marked,
+                       const std::vector<std::string> &all)
 {
     if (paths.empty() || paths.front().empty()) {
-        return false;
+        return folderOptions(folder, all, marked);
     }
     enum class Action {
         Open,
@@ -653,14 +637,19 @@ bool App::entryOptions(const std::string &folder,
         Copy,
         Cut,
         Delete,
-        Properties
+        Properties,
+        Mark,
+        ClearMarks,
+        Folder
     };
-    std::vector<MenuItem> items;
+    std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
+    std::vector<std::string> notes;
     const auto add = [&](const std::string &label, Action action,
-                         u32 color = ui::color::Text) {
-        items.push_back({label, "", color});
+                         const std::string &note, bool danger = false) {
+        items.push_back({label, danger, true});
         actions.push_back(action);
+        notes.push_back(note);
     };
 
     const bool single = paths.size() == 1;
@@ -682,55 +671,65 @@ bool App::entryOptions(const std::string &folder,
             }
         }
     }
+    const bool isMarked =
+        single && std::find(marked.begin(), marked.end(), path) != marked.end();
 
-    if (single) {
-        add(isFolder ? "Open folder" : "Open", Action::Open, ui::color::Primary);
-        if (kind == Kind::Cia) {
-            add("Install", Action::Install);
-            add("Install & delete the file", Action::InstallDelete);
-        }
+    if (single && kind == Kind::Cia) {
+        add("Install", Action::Install, "Installs the software and keeps the CIA file.");
+        add("Install and Delete", Action::InstallDelete,
+            "Installs the software, then removes the CIA file from the SD card.");
+    } else if (single && kind == Kind::Text) {
+        add("Edit", Action::Edit, "Opens the file in the line editor.");
+    } else if (single) {
+        add("Open", Action::Open, isFolder ? "Opens the folder."
+                                           : "Opens the file in the viewer that suits it.");
         if (kind == Kind::Zip) {
-            add("Extract...", Action::Extract);
-        }
-        if (!isFolder) {
-            if (kind == Kind::Text) {
-                add("Edit", Action::Edit);
-            } else {
-                add("Open as text", Action::ViewText);
-            }
-            add("Open as hex", Action::ViewHex);
-        }
-        add("Rename", Action::Rename);
-    }
-    if (!single || isFolder) {
-        if (!cias.empty()) {
-            add("Install " + plural(cias.size(), "CIA"), Action::InstallAll);
-            add("Install & delete " + plural(cias.size(), "CIA"),
-                Action::InstallDeleteAll);
+            add("Extract", Action::Extract, "Extracts the archive here or into a new folder.");
         }
     }
-    const std::string count = single ? "" : " " + plural(paths.size(), "item");
-    add("Copy" + count, Action::Copy);
-    add("Cut" + count, Action::Cut);
-    add("Delete" + count, Action::Delete, ui::color::Danger);
-    add("Properties", Action::Properties);
+    if ((!single || isFolder) && !cias.empty()) {
+        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll,
+            "Installs each CIA one after another.");
+        add("Install and Delete", Action::InstallDeleteAll,
+            "Installs each CIA, then removes the files that installed.");
+    }
+    if (single && !isFolder && kind != Kind::Text && kind != Kind::Cia) {
+        add("Open as Text", Action::ViewText, "Shows the file as text, even if it is not meant to be.");
+    }
+    if (single && !isFolder) {
+        add("Open as Hex", Action::ViewHex, "Shows the file byte by byte.");
+    }
+    if (single) {
+        add("Rename", Action::Rename, "Gives it a new name.");
+    }
+    add("Copy", Action::Copy, "Copies " + std::string(single ? "it" : "them") +
+                                  ". Open another folder and choose Paste.");
+    add("Cut", Action::Cut, "Moves " + std::string(single ? "it" : "them") +
+                                ". Open another folder and choose Paste.");
+    add("Delete", Action::Delete, "Deletes " + std::string(single ? "it" : "them") +
+                                      " for good, after asking.", true);
+    add("Properties", Action::Properties, "Size, date and where it is.");
+    if (single) {
+        add(isMarked ? "Unmark" : "Mark", Action::Mark,
+            "Marked items are copied, moved, installed or deleted together.");
+    } else {
+        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
+    }
+    add("This Folder...", Action::Folder,
+        "Paste, new folder, new file, sorting and hidden files.");
 
-    const int choice = menu(
-        "options",
-        single ? basename(path) : plural(paths.size(), "marked item"), items,
-        [&](int) {
-            drawLabelledPanel(56, 74, single ? filetype::label(kind) : "MARKED",
-                              single ? path
-                                     : plural(paths.size(), "item") + " in " +
-                                           folder,
-                              ui::color::Text);
-            if (!clipboard_.empty()) {
-                drawLabelledPanel(144, 76, "CLIPBOARD",
-                                  plural(clipboard_.size(), "item") +
-                                      (clipboardCut_ ? " to move" : " to copy"),
-                                  ui::color::Muted);
-            }
-        });
+    const std::string title = single ? basename(path)
+                                     : plural(paths.size(), "Marked Item");
+    const KindLook look = lookOf(kind);
+    const int choice = ui::menu(items, [&](int focus) {
+        ui::drawTopChrome(title, single ? look.icon : ui::Icon::Check,
+                          single ? look.color : ui::color::Tag);
+        ui::drawPanel();
+        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
+                              ? notes[focus]
+                              : "",
+                          ui::TopPanel);
+    });
     if (choice < 0) {
         return false;
     }
@@ -739,6 +738,7 @@ bool App::entryOptions(const std::string &folder,
     case Action::Open:
         if (isFolder) {
             filesFolder_ = path + "/";
+            marked.clear();
         } else {
             openFile(path);
         }
@@ -768,17 +768,28 @@ bool App::entryOptions(const std::string &folder,
     case Action::Cut:
         clipboard_ = paths;
         clipboardCut_ = actions[choice] == Action::Cut;
-        ui::message(clipboardCut_ ? "Ready to move" : "Ready to copy",
-                    plural(paths.size(), "item") +
-                        (clipboardCut_ ? " will move" : " will be copied") +
-                        " when you choose Paste. Open the folder to put "
-                        "them in, then press SELECT or FOLDER.");
+        ui::message(clipboardCut_ ? "Ready to Move" : "Ready to Copy",
+                    "Open the folder to put " +
+                        std::string(single ? "it" : "them") +
+                        " in, then choose Paste in Options.");
         return true;
     case Action::Delete:
         return deleteEntries(paths);
     case Action::Properties:
         showProperties(paths);
         return false;
+    case Action::Mark:
+        if (isMarked) {
+            marked.erase(std::find(marked.begin(), marked.end(), path));
+        } else {
+            marked.push_back(path);
+        }
+        return false;
+    case Action::ClearMarks:
+        marked.clear();
+        return false;
+    case Action::Folder:
+        return folderOptions(folder, all, marked);
     }
     return false;
 }
@@ -799,30 +810,37 @@ bool App::folderOptions(const std::string &folder,
         InstallAll,
         Properties
     };
-    std::vector<MenuItem> items;
+    std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    const auto add = [&](const std::string &label, const std::string &detail,
-                         Action action, u32 color = ui::color::Text) {
-        items.push_back({label, detail, color});
+    std::vector<std::string> notes;
+    const auto add = [&](const std::string &label, Action action,
+                         const std::string &note) {
+        items.push_back({label, false, true});
         actions.push_back(action);
+        notes.push_back(note);
     };
 
     if (!clipboard_.empty()) {
-        add(std::string(clipboardCut_ ? "Move " : "Paste ") +
-                plural(clipboard_.size(), "item") + " here",
-            "", Action::Paste, ui::color::Primary);
-        add("Forget the copied items", "", Action::ClearClipboard);
+        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste,
+            std::string(clipboardCut_ ? "Moves " : "Copies ") +
+                plural(clipboard_.size(), "item") + " into this folder.");
+        add("Forget Clipboard", Action::ClearClipboard,
+            "Forgets what was copied or cut. Nothing is deleted.");
     }
-    add("New folder", "", Action::NewFolder);
-    add("New file", "", Action::NewFile);
-    add("Sort by", sortLabel(settings_.fileSort), Action::Sort);
-    add("Show hidden files", settings_.showHiddenFiles ? "On" : "Off",
-        Action::Hidden);
+    add("New Folder", Action::NewFolder, "Makes an empty folder here.");
+    add("New File", Action::NewFile,
+        "Makes an empty file here and opens it in the editor, for configs "
+        "and notes.");
+    add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort,
+        "Sorts by name, size, date or type. Folders always come first.");
+    add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "Shown" : "Hidden"),
+        Action::Hidden, "Shows or hides files and folders whose names start "
+                        "with a dot.");
     if (!entries.empty()) {
-        add("Mark everything", "", Action::MarkAll);
+        add("Mark All", Action::MarkAll, "Marks everything in this folder.");
     }
     if (!marked.empty()) {
-        add("Clear marks", plural(marked.size(), "item"), Action::ClearMarks);
+        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
     }
     size_t cias = 0;
     for (const std::string &entry : entries) {
@@ -832,15 +850,22 @@ bool App::folderOptions(const std::string &folder,
         }
     }
     if (cias > 0) {
-        add("Install every CIA here", plural(cias, "CIA"), Action::InstallAll);
+        add("Install All CIAs", Action::InstallAll,
+            "Installs " + plural(cias, "CIA") + " in this folder, one after "
+            "another.");
     }
-    add("Folder properties", "", Action::Properties);
+    add("Properties", Action::Properties, "How much this folder holds.");
 
-    const int choice = menu("folder", ui::fitMiddle(folder, 0.56f, 290), items,
-                            [&](int) {
-                                drawLabelledPanel(56, 74, "FOLDER", folder,
-                                                  ui::color::Text);
-                            });
+    const std::string name =
+        naming::parentFolder(folder) == folder ? "SD Card" : fileops::name(folder);
+    const int choice = ui::menu(items, [&](int focus) {
+        ui::drawTopChrome(name, ui::Icon::Folder, ui::color::IconOrange);
+        ui::drawPanel();
+        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
+                              ? notes[focus]
+                              : folder,
+                          ui::TopPanel);
+    });
     if (choice < 0) {
         return false;
     }
@@ -854,10 +879,19 @@ bool App::folderOptions(const std::string &folder,
         return createFolder(folder);
     case Action::NewFile:
         return createFile(folder);
-    case Action::Sort:
-        settings_.fileSort = nextSort(settings_.fileSort);
+    case Action::Sort: {
+        const int picked = ui::chooseOption(
+            "Sort Files", "Folders always come first, sorted by name.",
+            {"Name", "Size, Largest First", "Date, Newest First", "Type"},
+            static_cast<int>(settings_.fileSort), ui::Icon::Folder,
+            ui::color::IconOrange);
+        if (picked < 0) {
+            return false;
+        }
+        settings_.fileSort = static_cast<fs::SortOrder>(picked);
         persistSettings();
         return true;
+    }
     case Action::Hidden:
         settings_.showHiddenFiles = !settings_.showHiddenFiles;
         persistSettings();
@@ -880,7 +914,7 @@ bool App::folderOptions(const std::string &folder,
         dialog.header = "install";
         dialog.title = "Install " + plural(paths.size(), "CIA") + "?";
         dialog.body.push_back({"From " + folder, ui::color::Muted, 0.46f, 2});
-        dialog.buttons = {"INSTALL", "INSTALL & DELETE", "CANCEL"};
+        dialog.buttons = {"Install", "Install and Delete", "Cancel"};
         dialog.cancelButton = 2;
         const int answer = ui::choose(dialog);
         if (answer == 0 || answer == 1) {
@@ -997,7 +1031,7 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
     if (totals.folders > 0 || !single) {
         body = "That is " + totalsText(totals) + ". " + body;
     }
-    if (!confirm("delete", "Delete " + what + "?", body, "DELETE", true)) {
+    if (!confirm("delete", "Delete " + what + "?", body, "Delete", true)) {
         return false;
     }
 
@@ -1078,7 +1112,7 @@ bool App::pasteInto(const std::string &folder)
                                        "one's name. REPLACE deletes the one "
                                        "already in " + folder + " first.",
                                        ui::color::Text, 0.46f, 4});
-                dialog.buttons = {"KEEP BOTH", "REPLACE", "SKIP"};
+                dialog.buttons = {"Keep Both", "Replace", "Skip"};
                 dialog.dangerous = 1;
                 dialog.cancelButton = 2;
                 const int answer = ui::choose(dialog);
@@ -1301,44 +1335,143 @@ void App::titleDetails(const std::string &path, Kind kind)
 {
     titlemeta::Meta meta;
     std::string error;
-    ui::Dialog dialog;
-    dialog.header = text::lower(filetype::label(kind));
-    if (!titlemeta::read(path, kind, meta, error)) {
-        dialog.title = basename(path);
-        dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({error, ui::color::Warning, 0.48f, 3});
-    } else {
-        dialog.title = meta.name.empty() ? basename(path) : meta.name;
-        dialog.icon = ui::showIcon(meta.icon);
-        if (!meta.publisher.empty()) {
-            dialog.body.push_back({meta.publisher, ui::color::Muted, 0.46f,
-                                   1});
+    const bool readable = titlemeta::read(path, kind, meta, error);
+    const KindLook look = lookOf(kind);
+
+    ui::ScreenSpec spec;
+    spec.back = "Back";
+    ui::Control hex;
+    hex.rect = {46, 110, 228, 34};
+    hex.label = "Open as Hex";
+    hex.icon = ui::Icon::Hex;
+    hex.scale = ui::type::Body + 0.06f;
+    spec.controls.push_back(hex);
+    spec.drawTop = [&]() {
+        ui::drawTopChrome(filetype::label(kind), look.icon, look.color);
+        if (!readable) {
+            ui::drawPanel();
+            ui::drawPanelText(error, ui::TopPanel, ui::type::Body,
+                              ui::color::Caution);
+            return;
         }
-        std::string facts = filetype::label(kind);
-        if (meta.hasTitleId) {
-            facts += ", " + cia::titleIdText(meta.titleId);
-        }
-        if (!meta.productCode.empty()) {
-            facts += ", " + meta.productCode;
-        }
-        dialog.body.push_back({facts, ui::color::Text, 0.46f, 2});
-        dialog.body.push_back({sizeText(fs::fileSize(path)), ui::color::Text,
-                               0.46f, 1});
-        if (!meta.note.empty()) {
-            dialog.body.push_back({meta.note, ui::color::Muted, 0.44f, 2});
-        }
-        if (kind == Kind::Homebrew) {
-            dialog.body.push_back({"Start it from the Homebrew Launcher.",
-                                   ui::color::Muted, 0.44f, 1});
-        }
-    }
-    dialog.buttons = {"OPEN AS HEX", "CLOSE"};
-    dialog.initial = 1;
-    dialog.cancelButton = 1;
-    if (ui::choose(dialog) == 0) {
+        drawEntryPanel(meta.icon, kind,
+                       meta.name.empty() ? basename(path) : meta.name,
+                       meta.publisher.empty() ? basename(path) : meta.publisher,
+                       {{"Title ID", meta.hasTitleId
+                                         ? cia::titleIdText(meta.titleId)
+                                         : ""},
+                        {"Code", meta.productCode},
+                        {"Size", sizeText(fs::fileSize(path))},
+                        {"Note", meta.note}});
+    };
+    spec.drawBottom = [&]() {
+        const ui::Rect panel = {13, 16, 294, 76};
+        ui::drawPanel(panel);
+        ui::drawPanelText(kind == Kind::Homebrew
+                              ? "Start it from the Homebrew Launcher."
+                          : kind == Kind::Ticket
+                              ? "A ticket lets the console use a title's "
+                                "content."
+                              : basename(path),
+                          panel, ui::type::Small + 0.04f);
+    };
+    int focus = 0;
+    if (ui::runScreen(spec, focus).choice == 0) {
         hexViewer(path);
     }
 }
+
+namespace {
+
+// Touch buttons for screens that run their own loop: pressed on touch,
+// chosen on release over the same button, as on the console.
+struct Pad {
+    std::vector<ui::Rect> rects;
+    std::vector<bool> enabled;
+    int pressed = -1;
+
+    int add(const ui::Rect &rect, bool on = true)
+    {
+        rects.push_back(rect);
+        enabled.push_back(on);
+        return static_cast<int>(rects.size()) - 1;
+    }
+    int hit(const touchPosition &touch) const
+    {
+        for (size_t index = 0; index < rects.size(); ++index) {
+            if (enabled[index] && rects[index].contains(touch)) {
+                return static_cast<int>(index);
+            }
+        }
+        return -1;
+    }
+    // The button released on this frame, or -1.
+    int update(const ui::Input &input)
+    {
+        if (input.down & KEY_TOUCH) {
+            pressed = hit(input.touch);
+        }
+        if ((input.up & KEY_TOUCH) && pressed >= 0) {
+            const int released = hit(input.touch) == pressed ? pressed : -1;
+            pressed = -1;
+            return released;
+        }
+        return -1;
+    }
+    bool isDown(const ui::Input &input, int index) const
+    {
+        return pressed == index && (input.held & KEY_TOUCH) &&
+               rects[index].contains(input.touch);
+    }
+    // A touch that began on a button belongs to it, not to scrolling.
+    bool owns(const ui::Input &input) const
+    {
+        return (input.down & KEY_TOUCH) && hit(input.touch) >= 0;
+    }
+};
+
+// Smooth dragging and flicking in whole steps (lines, rows), for content
+// too long to measure in pixels.
+struct StepScroller {
+    float carry = 0;
+    float velocity = 0;
+    bool dragging = false;
+    float lastY = 0;
+
+    // Returns how many steps to move this frame; positive goes down.
+    int update(const ui::Input &input, bool owned, float stepPixels)
+    {
+        if ((input.down & KEY_TOUCH) && !owned) {
+            dragging = true;
+            lastY = input.touch.py;
+            velocity = 0;
+        }
+        if (dragging && (input.held & KEY_TOUCH)) {
+            const float delta = lastY - input.touch.py;
+            lastY = input.touch.py;
+            carry += delta;
+            velocity = velocity * 0.4f + delta * 0.6f;
+        } else {
+            dragging = false;
+            if (std::fabs(velocity) > 0.2f) {
+                carry += velocity;
+                velocity *= 0.94f;
+            } else {
+                velocity = 0;
+            }
+        }
+        const int steps = static_cast<int>(carry / stepPixels);
+        carry -= steps * stepPixels;
+        return steps;
+    }
+    void stop()
+    {
+        velocity = 0;
+        carry = 0;
+    }
+};
+
+} // namespace
 
 void App::pictureViewer(const std::vector<std::string> &pictures,
                         size_t index)
@@ -1346,77 +1479,110 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
     if (pictures.empty()) {
         return;
     }
-    const ui::Rect previous = {12, 150, 96, 40};
-    const ui::Rect next = {112, 150, 96, 40};
-    const ui::Rect close = {212, 150, 96, 40};
+    Pad pad;
+    const int previous = pad.add({16, 116, 140, 40}, pictures.size() > 1);
+    const int next = pad.add({164, 116, 140, 40}, pictures.size() > 1);
+    const int back = pad.add(ui::tabRect(ui::Tab::Left));
 
     while (ui::keepRunning()) {
         const std::string &path = pictures[index];
         picture::Picture shown;
         std::string error;
-        tasks::busy("picture", "Opening " + basename(path) + "...", [&]() {
-            picture::load(path, 400, 240, PictureBackground, shown, error);
+        picture::Picture loaded;
+        tasks::busy("Pictures", "", [&]() {
+            picture::load(path, 400, 240, PictureBackground, loaded, error);
         });
-
+        shown = std::move(loaded);
         // Uploaded once; drawing it again every frame is cheap.
         const C2D_Image *image =
             error.empty()
                 ? ui::showPicture(shown.pixels, shown.width, shown.height)
                 : nullptr;
 
+        float swipeStart = -1;
         bool moved = false;
         while (ui::keepRunning() && !moved) {
             const ui::Input input = ui::readInput();
-            if ((input.down & (KEY_B | KEY_A)) || input.tapped(close)) {
+            const int released = pad.update(input);
+            if ((input.down & KEY_B) || released == back) {
                 return;
             }
-            if (pictures.size() > 1) {
-                if ((input.down & (KEY_LEFT | KEY_L)) ||
-                    input.tapped(previous)) {
-                    index = (index + pictures.size() - 1) % pictures.size();
-                    moved = true;
+            int step = 0;
+            if ((input.down & (KEY_LEFT | KEY_L)) || released == previous) {
+                step = -1;
+            }
+            if ((input.down & (KEY_RIGHT | KEY_R)) || released == next) {
+                step = 1;
+            }
+            // A sideways swipe anywhere else on the touch screen.
+            if ((input.down & KEY_TOUCH) && !pad.owns(input)) {
+                swipeStart = input.touch.px;
+            }
+            if ((input.up & KEY_TOUCH) && swipeStart >= 0) {
+                const float distance = input.touch.px - swipeStart;
+                if (std::fabs(distance) > 50) {
+                    step = distance < 0 ? 1 : -1;
                 }
-                if ((input.down & (KEY_RIGHT | KEY_R)) || input.tapped(next)) {
-                    index = (index + 1) % pictures.size();
-                    moved = true;
-                }
+                swipeStart = -1;
+            }
+            if (step != 0 && pictures.size() > 1) {
+                index = (index + pictures.size() + step) % pictures.size();
+                moved = true;
             }
 
             ui::beginFrame();
-            C2D_DrawRectSolid(0, 0, 0.1f, ui::TopWidth, ui::ScreenHeight,
-                              C2D_Color32(0x08, 0x10, 0x18, 0xff));
+            ui::fillRound({0, 0, ui::TopWidth, ui::ScreenHeight}, 0,
+                          ui::color::rgb(0x1A1C1E));
             if (image != nullptr) {
-                C2D_DrawImageAt(*image, (ui::TopWidth - shown.width) / 2,
-                                (ui::ScreenHeight - shown.height) / 2, 0.5f);
+                ui::drawImage(*image, (ui::TopWidth - shown.width) / 2,
+                              (ui::ScreenHeight - shown.height) / 2);
             } else {
                 ui::drawWrapped(error.empty() ? "The picture could not be "
                                                 "shown."
                                               : error,
-                                34, 100, 0.5f, ui::color::Warning, 330, 4);
+                                200, 100, ui::type::Body,
+                                ui::color::rgb(0xFFD36B), 330, 4,
+                                C2D_AlignCenter);
             }
 
             ui::beginBottom();
-            ui::drawText(ui::fitMiddle(basename(path), 0.56f, 296), 12, 12,
-                         0.56f, ui::color::Text);
+            const std::string name = ui::fitMiddle(basename(path), 0.68f, 260);
+            const float width = 26 + ui::textWidth(name, 0.68f);
+            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 9, 20,
+                         ui::color::IconPink);
+            ui::drawText(name, 160 - width / 2 + 26, 9, 0.68f, ui::color::Ink);
+            const ui::Rect panel = {13, 44, 294, 54};
+            ui::drawPanel(panel);
             std::string facts = sizeText(fs::fileSize(path));
             if (shown.sourceWidth > 0) {
                 facts = std::to_string(shown.sourceWidth) + " x " +
-                        std::to_string(shown.sourceHeight) + ", " + facts;
+                        std::to_string(shown.sourceHeight) + " pixels, " +
+                        facts;
             }
-            ui::drawText(facts, 12, 38, 0.46f, ui::color::Muted);
+            ui::drawText(facts, 160, panel.y + 7, ui::type::Small,
+                         ui::color::Ink, C2D_AlignCenter);
+            ui::drawText("Picture " + std::to_string(index + 1) + " of " +
+                             std::to_string(pictures.size()) +
+                             " in this folder",
+                         160, panel.y + 28, ui::type::Small,
+                         ui::color::InkSoft, C2D_AlignCenter);
+            ui::drawButton(pad.rects[previous], "Previous",
+                           pictures.size() > 1 ? ui::Style::Normal
+                                               : ui::Style::Disabled,
+                           ui::type::Body + 0.06f, ui::Icon::None, 0,
+                           pad.isDown(input, previous));
+            ui::drawButton(pad.rects[next], "Next",
+                           pictures.size() > 1 ? ui::Style::Normal
+                                               : ui::Style::Disabled,
+                           ui::type::Body + 0.06f, ui::Icon::None, 0,
+                           pad.isDown(input, next));
             if (pictures.size() > 1) {
-                ui::drawText(std::to_string(index + 1) + " of " +
-                                 std::to_string(pictures.size()) +
-                                 " pictures in this folder",
-                             12, 58, 0.46f, ui::color::Muted);
-                ui::drawButton(previous, "PREVIOUS", false);
-                ui::drawButton(next, "NEXT", false);
+                ui::drawText("Swipe, or press L and R, for the others.", 160,
+                             170, ui::type::Tiny, ui::color::InkSoft,
+                             C2D_AlignCenter);
             }
-            ui::drawButton(close, "CLOSE", false);
-            ui::drawText(pictures.size() > 1
-                             ? "L/R or Left/Right: Browse    B: Close"
-                             : "B: Close",
-                         160, 214, 0.44f, ui::color::Muted, C2D_AlignCenter);
+            ui::drawTab(ui::Tab::Left, "Back", "", false,
+                        pad.isDown(input, back));
             ui::endFrame();
         }
     }
@@ -1427,10 +1593,10 @@ void App::zipViewer(const std::string &path)
     zip::Archive archive;
     std::string error;
     bool ok = false;
-    tasks::busy("zip", "Reading " + basename(path) + "...",
+    tasks::busy("ZIP Archive", "Reading " + basename(path) + "...",
                 [&]() { ok = zip::readArchive(path, archive, error); });
     if (!ok) {
-        ui::message("Cannot open the archive", error, ui::Tone::Error,
+        ui::message("Cannot Open the Archive", error, ui::Tone::Error,
                     basename(path));
         return;
     }
@@ -1438,32 +1604,48 @@ void App::zipViewer(const std::string &path)
     int cursor = 0;
     while (ui::keepRunning()) {
         ui::ListSpec spec;
-        spec.header = "zip";
         spec.title = basename(path);
         spec.emptyText = "This archive is empty.";
-        spec.extraKeys = KEY_X;
-        spec.buttons = {{"BACK", KEY_B}, {"EXTRACT", KEY_X}};
+        spec.action = "Extract";
+        spec.actionKey = "X";
+        spec.actionKeys = KEY_X;
         for (const zip::Entry &entry : archive.entries) {
-            spec.items.push_back(
-                {entry.name,
-                 entry.directory ? "" : units::bytes(entry.size),
-                 entry.path.empty() ? ui::color::Danger : ui::color::Text});
+            ui::ListItem item;
+            const KindLook look = lookOf(entry.directory
+                                             ? Kind::Folder
+                                             : filetype::fromName(entry.name));
+            item.label = entry.name;
+            item.detail = entry.directory ? "" : units::bytes(entry.size);
+            item.icon = look.icon;
+            item.iconColor = look.color;
+            if (entry.path.empty()) {
+                item.labelColor = ui::color::Bad;
+            }
+            spec.items.push_back(item);
         }
         spec.drawTop = [&](int index) {
-            drawLabelledPanel(56, 74, "ARCHIVE",
-                              plural(archive.fileCount, "file") + ", " +
-                                  units::bytes(archive.totalSize) +
-                                  " when extracted",
-                              ui::color::Text);
-            if (index >= 0) {
+            ui::drawTopChrome(basename(path), ui::Icon::Zip,
+                              ui::color::IconGold);
+            ui::drawPanel();
+            const float left = ui::TopPanel.x + 18;
+            float y = ui::TopPanel.y + 16;
+            y = ui::drawTagRow(left, y, 92, "Holds",
+                               plural(archive.fileCount, "file"));
+            y = ui::drawTagRow(left, y, 92, "Extracted",
+                               units::bytes(archive.totalSize) +
+                                   ", needs that much free");
+            if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
                 const zip::Entry &entry = archive.entries[index];
-                drawLabelledPanel(
-                    144, 76, entry.directory ? "FOLDER" : "FILE",
-                    entry.path.empty()
-                        ? entry.name + " (skipped: its path is unsafe)"
-                        : entry.name,
-                    ui::color::Text);
+                y = ui::drawTagRow(left, y, 92, "Selected", entry.name);
+                if (entry.path.empty()) {
+                    ui::drawTagRow(left, y, 92, "Skipped",
+                                   "Its path would leave the folder.",
+                                   ui::color::Bad);
+                }
             }
+            ui::drawText("Paths that would leave the folder are skipped.", 200,
+                         ui::TopPanel.y + ui::TopPanel.h - 26, ui::type::Small,
+                         ui::color::InkSoft, C2D_AlignCenter);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
@@ -1482,49 +1664,61 @@ void App::hexViewer(const std::string &path)
     constexpr int Columns = 8;
     constexpr int Rows = 12;
     constexpr uint64_t Page = Columns * Rows;
+    constexpr float RowPitch = 14.5f;
     const int64_t fileSize = fs::fileSize(path);
     const uint64_t size = fileSize > 0 ? static_cast<uint64_t>(fileSize) : 0;
     std::FILE *file = std::fopen(path.c_str(), "rb");
     if (file == nullptr) {
-        ui::message("Cannot open the file", path, ui::Tone::Error);
+        ui::message("Cannot Open the File", path, ui::Tone::Error);
         return;
     }
 
-    const ui::Rect pageUp = {12, 120, 70, 36};
-    const ui::Rect pageDown = {88, 120, 70, 36};
-    const ui::Rect start = {164, 120, 70, 36};
-    const ui::Rect end = {240, 120, 68, 36};
-    const ui::Rect close = {58, 166, 204, 36};
+    Pad pad;
+    const int pageUp = pad.add({16, 72, 140, 32});
+    const int pageDown = pad.add({164, 72, 140, 32});
+    const int start = pad.add({16, 114, 140, 32});
+    const int end = pad.add({164, 114, 140, 32});
+    const int back = pad.add(ui::tabRect(ui::Tab::Left));
     const uint64_t lastTop =
         size > Page ? ((size - Page + Columns - 1) / Columns) * Columns : 0;
+    StepScroller scroller;
 
     uint64_t top = 0;
     uint64_t loadedAt = UINT64_MAX;
     std::vector<uint8_t> bytes(Page);
     size_t count = 0;
+    const auto moveRows = [&](int64_t rows) {
+        const int64_t goal = static_cast<int64_t>(top) + rows * Columns;
+        top = static_cast<uint64_t>(
+            std::max<int64_t>(0, std::min<int64_t>(goal, lastTop)));
+    };
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
-        if ((input.down & KEY_B) || input.tapped(close)) {
+        const int released = pad.update(input);
+        if ((input.down & KEY_B) || released == back) {
             break;
         }
         if (input.repeat & KEY_DOWN) {
-            top = std::min(lastTop, top + Columns);
+            moveRows(1);
         }
         if (input.repeat & KEY_UP) {
-            top = top >= Columns ? top - Columns : 0;
+            moveRows(-1);
         }
-        if ((input.repeat & (KEY_RIGHT | KEY_R)) || input.tapped(pageDown)) {
-            top = std::min(lastTop, top + Page);
+        if ((input.repeat & (KEY_RIGHT | KEY_R)) || released == pageDown) {
+            moveRows(Rows);
         }
-        if ((input.repeat & (KEY_LEFT | KEY_L)) || input.tapped(pageUp)) {
-            top = top >= Page ? top - Page : 0;
+        if ((input.repeat & (KEY_LEFT | KEY_L)) || released == pageUp) {
+            moveRows(-Rows);
         }
-        if (input.tapped(start)) {
+        if (released == start) {
             top = 0;
+            scroller.stop();
         }
-        if (input.tapped(end)) {
+        if (released == end) {
             top = lastTop;
+            scroller.stop();
         }
+        moveRows(scroller.update(input, pad.owns(input), RowPitch));
         if (loadedAt != top) {
             count = 0;
             if (fseeko(file, static_cast<off_t>(top), SEEK_SET) == 0) {
@@ -1534,17 +1728,26 @@ void App::hexViewer(const std::string &path)
         }
 
         ui::beginFrame();
-        ui::drawHeader("hex");
+        ui::drawStatusBar();
+        const std::string name = ui::fitMiddle(basename(path), ui::type::Title, 300);
+        const float width = 28 + ui::textWidth(name, ui::type::Title);
+        ui::drawIcon(ui::Icon::Hex, 200 - width / 2, 22, 22, ui::color::IconGrey);
+        ui::drawText(name, 200 - width / 2 + 28, 21, ui::type::Title,
+                     ui::color::Accent);
+        const ui::Rect paper = {10, 50, 380, 184};
+        ui::fillRound({paper.x - 1, paper.y - 1, paper.w + 2, paper.h + 2}, 7,
+                      ui::color::rgb(0xCFC48A));
+        ui::fillRound(paper, 6, ui::color::rgb(0xFFFDF4));
         for (int row = 0; row < Rows; ++row) {
             const size_t first = static_cast<size_t>(row) * Columns;
             if (first >= count) {
                 break;
             }
-            const float y = 50 + row * 15;
+            const float y = paper.y + 5 + row * RowPitch;
             char offset[16];
             std::snprintf(offset, sizeof(offset), "%08llX",
                           static_cast<unsigned long long>(top + first));
-            ui::drawText(offset, 14, y, 0.42f, ui::color::Muted);
+            ui::drawText(offset, 20, y, 0.44f, ui::color::rgb(0xA79D70));
             for (int column = 0; column < Columns; ++column) {
                 if (first + column >= count) {
                     break;
@@ -1552,32 +1755,42 @@ void App::hexViewer(const std::string &path)
                 const uint8_t value = bytes[first + column];
                 char hex[4];
                 std::snprintf(hex, sizeof(hex), "%02X", value);
-                ui::drawText(hex, 92 + column * 25 + (column >= 4 ? 6 : 0), y,
-                             0.42f, ui::color::Text);
+                ui::drawText(hex, 100 + column * 25 + (column >= 4 ? 8 : 0), y,
+                             0.44f, ui::color::InkStrong);
                 const char shown[2] = {
                     value >= 0x20 && value < 0x7f ? static_cast<char>(value)
                                                   : '.',
                     0};
-                ui::drawText(shown, 306 + column * 10, y, 0.42f,
-                             ui::color::Success);
+                ui::drawText(shown, 318 + column * 8.5f, y, 0.44f,
+                             ui::color::IconGreen);
             }
         }
 
         ui::beginBottom();
-        ui::drawText(ui::fitMiddle(basename(path), 0.54f, 296), 12, 12, 0.54f,
-                     ui::color::Text);
+        const ui::Rect panel = {13, 10, 294, 50};
+        ui::drawPanel(panel);
         char where[96];
         std::snprintf(where, sizeof(where), "Offset 0x%llX of %s",
                       static_cast<unsigned long long>(top),
                       units::bytes(size).c_str());
-        ui::drawText(where, 12, 38, 0.46f, ui::color::Muted);
-        ui::drawText("Up/Down: line    Left/Right, L/R: page", 12, 60, 0.44f,
-                     ui::color::Muted);
-        ui::drawButton(pageUp, "PAGE UP", false);
-        ui::drawButton(pageDown, "PAGE DN", false);
-        ui::drawButton(start, "START", false);
-        ui::drawButton(end, "END", false);
-        ui::drawButton(close, "CLOSE", false);
+        ui::drawText(where, 160, panel.y + 6, ui::type::Small, ui::color::Ink,
+                     C2D_AlignCenter);
+        ui::drawText("Drag or flick to scroll, L and R for a page.", 160,
+                     panel.y + 27, ui::type::Tiny, ui::color::InkSoft,
+                     C2D_AlignCenter);
+        ui::drawButton(pad.rects[pageUp], "Page Up", ui::Style::Normal,
+                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       pad.isDown(input, pageUp));
+        ui::drawButton(pad.rects[pageDown], "Page Down", ui::Style::Normal,
+                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       pad.isDown(input, pageDown));
+        ui::drawButton(pad.rects[start], "Go to Start", ui::Style::Normal,
+                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       pad.isDown(input, start));
+        ui::drawButton(pad.rects[end], "Go to End", ui::Style::Normal,
+                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       pad.isDown(input, end));
+        ui::drawTab(ui::Tab::Left, "Back", "", false, pad.isDown(input, back));
         ui::endFrame();
     }
     std::fclose(file);
@@ -1588,18 +1801,19 @@ void App::textEditor(const std::string &path)
     textdoc::Document document;
     switch (textdoc::load(path, document)) {
     case textdoc::Load::Unreadable:
-        ui::message("Cannot open the file", path, ui::Tone::Error);
+        ui::message("Cannot Open the File", path, ui::Tone::Error);
         return;
     case textdoc::Load::NotText: {
         ui::Dialog dialog;
-        dialog.header = "text";
-        dialog.title = basename(path) + " is not a text file";
+        dialog.header = basename(path);
+        dialog.title = "This is not a text file.";
         dialog.body.push_back({"It holds binary data. The hex view shows it "
                                "byte by byte.",
                                ui::color::Text, 0.48f, 3});
-        dialog.buttons = {"OPEN AS HEX", "CLOSE"};
-        dialog.cancelButton = 1;
-        if (ui::choose(dialog) == 0) {
+        dialog.buttons = {"Close", "Open as Hex"};
+        dialog.initial = 1;
+        dialog.cancelButton = 0;
+        if (ui::choose(dialog) == 1) {
             hexViewer(path);
         }
         return;
@@ -1624,34 +1838,29 @@ void App::textEditor(const std::string &path)
                          "characters you cannot see.";
     }
 
-    const float lineHeight = ui::lineHeight(EditorScale);
-    // Lines start below the header bar.
-    constexpr float FirstLineY = 54;
-    const int visible =
-        static_cast<int>((ui::ScreenHeight - FirstLineY - 2) / lineHeight);
+    constexpr float LinePitch = 16;
+    constexpr float EditorScale = 0.48f;
+    const ui::Rect paper = {10, 50, 380, 184};
+    const float viewport = paper.h - 4;
     int cursor = 0;
-    int top = 0;
     bool dirty = false;
     bool saved = false; // shows "saved" until the next change
+    ui::Scroller scroller;
 
-    std::vector<TouchButton> buttons = {
-        {{12, 112, 96, 36}, "EDIT", !readOnly},
-        {{112, 112, 96, 36}, "NEW LINE", !readOnly},
-        {{212, 112, 96, 36}, "DELETE", !readOnly},
-        {{12, 156, 70, 32}, "PAGE UP", true},
-        {{88, 156, 70, 32}, "PAGE DN", true},
-        {{164, 156, 70, 32}, "SAVE", !readOnly},
-        {{240, 156, 68, 32}, "CLOSE", true},
-    };
-    enum { Edit, Insert, Delete, PageUp, PageDown, Save, Close };
+    Pad pad;
+    const int edit = pad.add({13, 92, 94, 34}, !readOnly);
+    const int insert = pad.add({113, 92, 94, 34}, !readOnly);
+    const int remove = pad.add({213, 92, 94, 34}, !readOnly);
+    const int close = pad.add(ui::tabRect(ui::Tab::Left));
+    const int save = pad.add(ui::tabRect(ui::Tab::Right), !readOnly);
 
-    const auto save = [&]() {
+    const auto store = [&]() {
         if (textdoc::save(path, document)) {
             dirty = false;
             saved = true;
             return true;
         }
-        ui::message("Not saved", "The file could not be written. The SD card "
+        ui::message("Not Saved", "The file could not be written. The SD card "
                                  "may be full or read-only.",
                     ui::Tone::Error, path);
         return false;
@@ -1660,8 +1869,8 @@ void App::textEditor(const std::string &path)
         std::string typed;
         const std::string initial = inserting ? "" : document.lines[index];
         if (initial.size() > 1900) {
-            ui::message("Line too long",
-                        "This line is too long for the 3DS keyboard.",
+            ui::message("Line Too Long",
+                        "This line is too long for the keyboard.",
                         ui::Tone::Warning);
             return;
         }
@@ -1680,6 +1889,7 @@ void App::textEditor(const std::string &path)
                                   lines.begin(), lines.end());
         }
         cursor = index + static_cast<int>(lines.size()) - 1;
+        scroller.reveal(cursor * LinePitch, LinePitch, viewport);
         dirty = true;
         saved = false;
     };
@@ -1687,44 +1897,64 @@ void App::textEditor(const std::string &path)
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         const int count = static_cast<int>(document.lines.size());
-        int action = tappedButton(input, buttons);
+        const int visible = static_cast<int>(viewport / LinePitch);
+        const int released = pad.update(input);
+        int action = released;
         if (input.down & KEY_A) {
-            action = Edit;
+            action = edit;
         } else if (input.down & KEY_X) {
-            action = Insert;
+            action = insert;
         } else if (input.down & KEY_Y) {
-            action = Delete;
+            action = remove;
         } else if (input.down & KEY_START) {
-            action = Save;
+            action = save;
         } else if (input.down & KEY_B) {
-            action = Close;
+            action = close;
         }
+        int moved = cursor;
         if (input.repeat & KEY_DOWN) {
-            cursor = std::min(count - 1, cursor + 1);
+            moved = std::min(count - 1, cursor + 1);
         }
         if (input.repeat & KEY_UP) {
-            cursor = std::max(0, cursor - 1);
+            moved = std::max(0, cursor - 1);
         }
-        if ((input.repeat & (KEY_RIGHT | KEY_R)) || action == PageDown) {
-            cursor = std::min(count - 1, cursor + visible);
+        if (input.repeat & (KEY_RIGHT | KEY_R)) {
+            moved = std::min(count - 1, cursor + visible);
         }
-        if ((input.repeat & (KEY_LEFT | KEY_L)) || action == PageUp) {
-            cursor = std::max(0, cursor - visible);
+        if (input.repeat & (KEY_LEFT | KEY_L)) {
+            moved = std::max(0, cursor - visible);
+        }
+        if (moved != cursor) {
+            cursor = moved;
+            scroller.reveal(cursor * LinePitch, LinePitch, viewport);
+        }
+        // Dragging anywhere on the touch screen but the buttons scrolls the
+        // page on the top screen; the cursor stays on a visible line.
+        if (!pad.owns(input)) {
+            scroller.update(input, {0, 0, 320, 209}, count * LinePitch,
+                            viewport);
+        }
+        if (scroller.dragging() || scroller.offset() != 0) {
+            const int firstLine = static_cast<int>(
+                std::ceil(std::max(0.0f, scroller.offset()) / LinePitch));
+            const int lastLine = static_cast<int>(
+                (std::max(0.0f, scroller.offset()) + viewport) / LinePitch) - 1;
+            if (scroller.dragging() || scroller.moved()) {
+                cursor = std::max(firstLine, std::min(cursor, std::max(firstLine, lastLine)));
+                cursor = std::min(cursor, count - 1);
+            }
         }
 
-        if (readOnly && (action == Edit || action == Insert ||
-                         action == Delete || action == Save)) {
-            ui::message("Read-only", readOnlyReason);
+        if (readOnly && (action == edit || action == insert ||
+                         action == remove || action == save)) {
+            ui::message("Read-Only", readOnlyReason);
             action = -1;
         }
-        switch (action) {
-        case Edit:
+        if (action == edit) {
             editLine(cursor, false);
-            break;
-        case Insert:
+        } else if (action == insert) {
             editLine(cursor + 1, true);
-            break;
-        case Delete:
+        } else if (action == remove) {
             if (document.lines.size() > 1) {
                 document.lines.erase(document.lines.begin() + cursor);
                 cursor = std::min(cursor,
@@ -1734,78 +1964,115 @@ void App::textEditor(const std::string &path)
             }
             dirty = true;
             saved = false;
-            break;
-        case Save:
-            save();
-            break;
-        case Close:
-            if (dirty) {
-                ui::Dialog dialog;
-                dialog.header = "text";
-                dialog.title = "Save the changes to " + basename(path) + "?";
-                dialog.tone = ui::Tone::Warning;
-                dialog.buttons = {"SAVE", "DISCARD", "KEEP EDITING"};
-                dialog.dangerous = 1;
-                dialog.cancelButton = 2;
-                const int answer = ui::choose(dialog);
-                if (answer == 0 && !save()) {
-                    break;
-                }
-                if (answer == 2 || answer < 0) {
-                    break;
-                }
+        } else if (action == save) {
+            store();
+        } else if (action == close) {
+            if (!dirty) {
+                return;
             }
-            return;
-        default:
-            break;
-        }
-
-        if (cursor < top) {
-            top = cursor;
-        } else if (cursor >= top + visible) {
-            top = cursor - visible + 1;
+            ui::Dialog dialog;
+            dialog.header = basename(path);
+            dialog.title = "Save your changes before closing?";
+            dialog.tone = ui::Tone::Warning;
+            dialog.buttons = {"Discard", "Keep Editing", "Save"};
+            dialog.dangerous = 0;
+            dialog.initial = 2;
+            dialog.cancelButton = 1;
+            const int answer = ui::choose(dialog);
+            if (answer == 0 || (answer == 2 && store())) {
+                return;
+            }
         }
 
         ui::beginFrame();
-        ui::drawHeader(dirty      ? "edited"
-                       : saved    ? "saved"
-                       : readOnly ? "read-only"
-                                  : "text");
-        for (int row = 0; row < visible && top + row < static_cast<int>(
-                                                          document.lines.size());
-             ++row) {
-            const int index = top + row;
-            const float y = FirstLineY + row * lineHeight;
-            if (index == cursor) {
-                C2D_DrawRectSolid(0, y, 0.3f, ui::TopWidth, lineHeight,
-                                  ui::color::SurfaceRaised);
+        const std::string name = ui::fitMiddle(basename(path), ui::type::Title, 260);
+        const std::string state = dirty      ? "edited"
+                                : saved    ? "saved"
+                                : readOnly ? "read-only"
+                                           : "";
+        const float width = 28 + ui::textWidth(name, ui::type::Title) +
+                            (state.empty() ? 0 : 8 + ui::textWidth(state, ui::type::Small));
+        // A ruled page with a line number gutter.
+        ui::fillRound({paper.x - 1, paper.y - 1, paper.w + 2, paper.h + 2}, 7,
+                      ui::color::rgb(0xCFC48A));
+        ui::fillRound(paper, 6, ui::color::rgb(0xFFFDF4));
+        const float offset = scroller.offset();
+        const int first = std::max(0, static_cast<int>(offset / LinePitch));
+        ui::fillRound({paper.x, paper.y, 30, paper.h}, 6,
+                      ui::color::rgb(0xEDE6C0), ui::corner::TopLeft |
+                                                    ui::corner::BottomLeft);
+        for (int index = first; index < count; ++index) {
+            const float y = paper.y + 2 + index * LinePitch - offset;
+            if (y > paper.y + paper.h) {
+                break;
             }
-            ui::drawText(std::to_string(index + 1), 40, y, EditorScale,
-                         ui::color::Muted, C2D_AlignRight);
+            if (y + LinePitch < paper.y) {
+                continue;
+            }
+            if (index == cursor) {
+                ui::fillRound({paper.x + 1, y, paper.w - 2, LinePitch}, 2,
+                              {{0, ui::color::rgb(0xD6EEF8)},
+                               {1, ui::color::rgb(0xBFE3F3)}});
+            }
+            ui::fillRound({paper.x + 30, y + LinePitch - 1, paper.w - 31, 1},
+                          0, ui::color::rgb(0xE8E1BE));
+            ui::drawText(std::to_string(index + 1), paper.x + 26, y + 1,
+                         0.4f, ui::color::rgb(0xA79D70), C2D_AlignRight);
             const std::string &line = document.lines[index];
-            ui::drawText(ui::fitEnd(line, EditorScale, 344), 48, y,
-                         EditorScale, lineColor(line, extension));
+            ui::drawText(ui::fitEnd(line, EditorScale, paper.w - 44),
+                         paper.x + 36, y, EditorScale,
+                         lineColor(line, extension));
         }
+        // Lines scrolled past the page are covered again by the chrome.
+        ui::fillRound({0, 0, ui::TopWidth, paper.y - 1}, 0, ui::color::TopA);
+        ui::drawStatusBar();
+        ui::drawIcon(ui::Icon::Text, 200 - width / 2, 22, 22, ui::color::IconGrey);
+        ui::drawText(name, 200 - width / 2 + 28, 21, ui::type::Title,
+                     ui::color::Accent);
+        if (!state.empty()) {
+            ui::drawText(state,
+                         200 - width / 2 + 28 + ui::textWidth(name, ui::type::Title) + 8,
+                         26, ui::type::Small,
+                         dirty ? ui::color::rgb(0xE07A10) : ui::color::InkSoft);
+        }
+        ui::fillRound({0, paper.y + paper.h + 1, ui::TopWidth,
+                       ui::ScreenHeight - paper.y - paper.h - 1},
+                      0, ui::color::TopB);
 
         ui::beginBottom();
-        ui::drawText(ui::fitMiddle(basename(path), 0.52f, 210), 12, 8, 0.52f,
-                     ui::color::Text);
+        const ui::Rect recess = {13, 8, 294, 72};
+        ui::drawRecess(recess);
         ui::drawText("Line " + std::to_string(cursor + 1) + " of " +
-                         std::to_string(document.lines.size()),
-                     308, 10, 0.44f, ui::color::Muted, C2D_AlignRight);
-        ui::drawPanel({12, 30, 296, 74});
-        ui::drawWrapped(document.lines[cursor].empty()
-                            ? "(empty line)"
-                            : document.lines[cursor],
-                        20, 36, 0.46f,
-                        document.lines[cursor].empty() ? ui::color::Muted
-                                                       : ui::color::Text,
-                        280, 4);
-        drawTouchButtons(buttons);
-        ui::drawText("A: Edit  X: New line  Y: Delete  START: Save  B: Close",
-                     160, 202, 0.38f, ui::color::Muted, C2D_AlignCenter);
-        ui::drawText("Up/Down: line    Left/Right, L/R: page", 160, 220, 0.38f,
-                     ui::color::Muted, C2D_AlignCenter);
+                         std::to_string(count),
+                     recess.x + 10, recess.y + 5, ui::type::Tiny,
+                     ui::color::InkSoft);
+        const std::string &current = document.lines[cursor];
+        ui::drawWrapped(current.empty() ? "(empty line)" : current,
+                        recess.x + 10, recess.y + 24, ui::type::Small,
+                        current.empty() ? ui::color::InkSoft
+                                        : ui::color::InkStrong,
+                        recess.w - 20, 2);
+        const char *const labels[] = {"Edit", "New Line", "Delete"};
+        for (int index = 0; index < 3; ++index) {
+            ui::drawButton(pad.rects[index], labels[index],
+                           readOnly ? ui::Style::Disabled : ui::Style::Normal,
+                           ui::type::Body + 0.02f, ui::Icon::None, 0,
+                           pad.isDown(input, index));
+        }
+        if (!readOnly) {
+            ui::drawFocus(pad.rects[edit], 9);
+        }
+        ui::drawText(readOnly ? readOnlyReason
+                              : "A Edit   X New line   Y Delete",
+                     160, 140, ui::type::Tiny, ui::color::InkSoft,
+                     C2D_AlignCenter);
+        ui::drawText("Drag or flick here to scroll the page.", 160, 160,
+                     ui::type::Tiny, ui::color::Counter, C2D_AlignCenter);
+        ui::drawTab(ui::Tab::Left, "Close", "", false, pad.isDown(input, close));
+        if (!readOnly) {
+            ui::drawTab(ui::Tab::Right, "Save", "START", false,
+                        pad.isDown(input, save));
+        }
         ui::endFrame();
     }
 }

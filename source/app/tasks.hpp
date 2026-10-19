@@ -5,8 +5,10 @@
 #include "installer.hpp"
 #include "zip.hpp"
 
+#include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 // Runs long jobs on a worker thread while the main thread keeps drawing the
 // progress screen and reading the cancel button.
@@ -20,7 +22,8 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
 
 // Installs the CIA at path. name is shown while it runs.
 installer::Result install(const std::string &path, uint64_t titleId,
-                          const std::string &name, bool keepAwake);
+                          const std::string &name, bool keepAwake,
+                          const std::vector<uint16_t> &icon = {});
 
 // Runs a copy, move or delete on the worker thread with a progress screen.
 // total is what the observer's done counts towards: bytes, or files when

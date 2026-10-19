@@ -21,4 +21,13 @@ std::string ciaName(const cia::Info &info);
 // Publisher, kind, version, size and the installed version, if any.
 void addCiaParagraphs(ui::Dialog &dialog, const cia::Info &info);
 
+// The top screen for a CIA: the title row, then its icon, name, publisher
+// and Title ID, Version and Size tags.
+void drawCiaTop(const cia::Info &info, const std::string &title,
+                ui::Icon icon = ui::Icon::Package,
+                u32 iconColor = ui::color::IconBlue);
+// One line about the installed copy: "Not installed yet", "An update for
+// the installed version", and so on.
+std::string installState(const cia::Info &info);
+
 } // namespace screens

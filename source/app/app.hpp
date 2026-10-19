@@ -30,7 +30,6 @@ private:
     };
 
     Action home();
-    void drawHome();
     void refreshStatus(bool force);
 
     void startDownload(const std::string &address, std::string folder);
@@ -63,7 +62,9 @@ private:
     // Options for the marked entries, or the highlighted one. Returns true
     // when the folder's contents may have changed.
     bool entryOptions(const std::string &folder,
-                      const std::vector<std::string> &paths);
+                      const std::vector<std::string> &paths,
+                      std::vector<std::string> &marked,
+                      const std::vector<std::string> &all);
     bool folderOptions(const std::string &folder,
                        const std::vector<std::string> &entries,
                        std::vector<std::string> &marked);
@@ -102,7 +103,7 @@ private:
 
     Settings settings_;
     std::vector<HistoryEntry> history_;
-    int homeSelection_ = 0;
+    int homeSelection_ = 1; // Scan QR Code
     std::string filesFolder_;
     // Copied or cut entries waiting to be pasted.
     std::vector<std::string> clipboard_;
