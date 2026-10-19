@@ -1,0 +1,92 @@
+name: Bug report
+description: Something in 3dsDL went wrong, crashed or doesn't work as described.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. On the console, **Settings → Report Issue → Report a Bug** shows a QR code that opens this form with your version and console already filled in.
+
+        Before you start, please check that you're on the latest release (**Settings → Updates**) and that nobody has [reported it already](https://github.com/ankushKun/3dsDL/issues?q=is%3Aissue).
+
+  - type: input
+    id: details
+    attributes:
+      label: 3dsDL version and console
+      description: |
+        Filled in when you scan the code in 3dsDL. Otherwise: the version from the bottom right of the Home screen, CIA or 3DSX, your console model, and the system version from System Settings (bottom right of its top screen).
+      placeholder: 3dsDL 0.7.1 (CIA) on New Nintendo 3DS XL, 11.17.0-50U
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of 3dsDL?
+      options:
+        - Downloading (speed, resuming, failed downloads)
+        - Scanning QR codes
+        - Installing CIAs
+        - Receive or the queue
+        - Files
+        - Titles, tickets or seeds
+        - Save data or extra data
+        - Software updates
+        - Console clock
+        - Starting 3dsDL or the HOME Menu banner
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected to happen, and what happened instead.
+      placeholder: I scanned a QR code for a 1.5 GB CIA. The download got to about 90% and then 3dsDL closed back to the HOME Menu.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can it be made to happen again?
+      description: The steps from opening 3dsDL, as exactly as you can. Say if it happens every time or only sometimes.
+      placeholder: |
+        1. Open 3dsDL and choose Scan QR Code
+        2. Scan the code for ...
+        3. Choose Download
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: |
+        The exact words on the screen, including any code like `0xD8E007F7`. If the console crashed into a Luma3DS exception screen, a photo of it helps a lot.
+      render: text
+
+  - type: input
+    id: link
+    attributes:
+      label: Download link
+      description: For download problems, the link you used, if it's okay to share. The server can matter as much as 3dsDL.
+      placeholder: https://example.com/file.cia
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: |
+        Rosalina can take screenshots of both screens: press L + Down + SELECT, then Take screenshot. They're saved in `sdmc:/luma/screenshots/`. Drag them in here.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I'm using the latest release of 3dsDL.
+          required: true
+        - label: I searched the existing issues and this hasn't been reported.
+          required: true

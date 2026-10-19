@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/ankushKun/3dsDL/discussions/categories/q-a
+    about: How something works, or help getting 3dsDL set up. Other users can answer too.
+  - name: Share an idea
+    url: https://github.com/ankushKun/3dsDL/discussions/categories/ideas
+    about: Ideas that aren't ready to be a feature request yet.
+  - name: Guide
+    url: https://github.com/ankushKun/3dsDL/blob/main/docs/USAGE.md
+    about: How each part of 3dsDL works, the controls and the settings.
+  - name: Discord server
+    url: https://discord.gg/axrWTjyAWG
+    about: Chat about 3dsDL and the developer's other projects.
+  - name: Message the developer on X
+    url: https://x.com/ankushKun_
+    about: For quick questions, or if you don't use GitHub.

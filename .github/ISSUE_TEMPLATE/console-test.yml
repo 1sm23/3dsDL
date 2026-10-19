@@ -1,0 +1,47 @@
+name: Console test report
+description: Tell us how 3dsDL runs on your console, whether everything worked or not.
+labels: ["hardware test"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        3dsDL is tested on a New 3DS, so reports from **Old 3DS, 2DS and New 2DS XL** consoles are especially useful. You don't have to try everything: a few parts of the [console test plan](https://github.com/ankushKun/3dsDL/blob/main/docs/HARDWARE.md) are plenty. If something breaks, a [bug report](https://github.com/ankushKun/3dsDL/issues/new?template=bug.yml) for it is welcome too.
+
+  - type: input
+    id: details
+    attributes:
+      label: 3dsDL version and console
+      description: Shown in 3dsDL under Settings → Report Issue.
+      placeholder: 3dsDL 0.7.1 (3DSX) on Nintendo 2DS, 11.17.0-50E
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: worked
+    attributes:
+      label: What worked?
+      description: Tick what you tried and what worked. Leave the rest empty.
+      options:
+        - label: Starting 3dsDL, and the HOME Menu banner
+        - label: Scanning a QR code
+        - label: Downloading a large file (over 100 MB)
+        - label: Resuming a download after turning Wi-Fi off and on
+        - label: Installing a CIA
+        - label: Receiving links from a phone
+        - label: Files (copying, renaming, deleting)
+        - label: Titles, tickets or seeds
+        - label: Backing up or restoring save data
+        - label: Updating 3dsDL from Settings → Updates
+
+  - type: textarea
+    id: speed
+    attributes:
+      label: Download speed
+      description: The average speed 3dsDL showed when a download finished, and roughly what file it was. This helps tune the connections for each console.
+      placeholder: About 520 KiB/s on a 38 MB video from archive.org, 4 connections.
+
+  - type: textarea
+    id: problems
+    attributes:
+      label: Anything that didn't work or felt slow
+      description: Slow screens, missing text, crashes or anything odd, with the item numbers from the test plan if you used it.

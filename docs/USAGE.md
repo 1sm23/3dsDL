@@ -61,6 +61,16 @@ Everything also works by touch, and lists scroll with a flick.
 
 **Console Clock** compares the console's time with internet time and sets it for your time zone. HTTPS fails when the date is wrong. Setting the clock needs the CIA build; Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>SELECT</kbd>, Miscellaneous options) can also set it.
 
+## Reporting a problem
+
+**Settings → Report Issue** (or **About → Report an Issue**) shows a QR code for each place to get help. Scan it with a phone:
+
+- **Report a Bug** opens the [bug report form](https://github.com/ankushKun/3dsDL/issues/new?template=bug.yml) with your 3dsDL version, CIA or 3DSX, console model and system version already filled in.
+- **Discord Server** is an [invite](https://discord.gg/axrWTjyAWG) to the developer's server, for questions, ideas and chatting with other users.
+- **Developer on X** is [@ankushKun_](https://x.com/ankushKun_), for quick questions or if you don't use GitHub.
+
+A good bug report says what you did, what happened instead, and the exact error on screen. Rosalina takes screenshots of both screens (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>SELECT</kbd>, Take screenshot) into `sdmc:/luma/screenshots/`. Reports of how 3dsDL runs on an Old 3DS or 2DS are welcome as a [console test report](https://github.com/ankushKun/3dsDL/issues/new?template=console-test.yml).
+
 ## Files 3dsDL keeps
 
 | Path | |

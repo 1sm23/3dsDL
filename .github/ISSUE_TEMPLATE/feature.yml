@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest something new for 3dsDL, or a change to how something works.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas that are still loose fit better in [Discussions → Ideas](https://github.com/ankushKun/3dsDL/discussions/categories/ideas), where other people can weigh in first. Open an issue here when you know what you'd like 3dsDL to do.
+
+        The [roadmap](https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md) lists what's already planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or problem behind the request, in your own words. This matters more than the exact feature.
+      placeholder: I download a lot of CIAs from the same site, and choosing the folder every time is slow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like 3dsDL to do?
+      description: How it could work on the console. Which screen it goes on, what the buttons say, anything you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do it today?
+      description: Another app you use for it now, or a workaround, if there is one.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the roadmap and the existing issues for this.
+          required: true

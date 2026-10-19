@@ -1,0 +1,19 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share an idea for 3dsDL, even a rough one. The [roadmap](https://github.com/ankushKun/3dsDL/blob/main/ROADMAP.md) lists what's already planned.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you'd like 3dsDL to do, and what it would help with.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do it today?
+      description: Another app or a workaround you use for it now, if any.
