@@ -1454,7 +1454,11 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
         // Centred on the same line as the label beside it.
         const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, 15};
         fillRound(cap, key.size() == 1 ? 7.5f : 4, color::rgb(0xFFFFFF));
-        drawCentered(key, cap, 0.36f, color::rgb(0x6C6C6C));
+        // The advance width includes the space after the letter, so the
+        // centred glyph sits left of the middle; measured on "X", it is
+        // 1.5 px left and half a pixel high.
+        drawCentered(key, {cap.x + 1.5f, cap.y + 0.5f, cap.w, cap.h}, 0.36f,
+                     color::rgb(0x6C6C6C));
         x += keyWidth;
     }
     drawCentered(label, {x, line.y, labelWidth, line.h}, labelScale,
