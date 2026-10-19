@@ -101,7 +101,7 @@ first guess is cap 15 at scale 0.72.
 ### Bottom screen
 
 - Content from y 6 to 202.
-- Nav tabs at y 209 to 239, 120 px wide, the inner top corner rounded 22.
+- Nav tabs at y 209 to 239, 126 px wide, the inner top corner rounded 22.
 - A page counter ("1/3") sits between the tabs at the bottom right, with a
   small label to its left.
 

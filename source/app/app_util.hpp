@@ -28,6 +28,8 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
                 u32 iconColor = ui::color::IconBlue);
 // One line about the installed copy: "Not installed yet", "An update for
 // the installed version", and so on.
+// The Version row: "1.2.0, installed 1.1.0".
+std::string versionRow(uint16_t version, bool isInstalled, uint16_t installed);
 std::string installState(const cia::Info &info);
 
 } // namespace screens

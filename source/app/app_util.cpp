@@ -98,15 +98,27 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
     uint16_t installed = 0;
     const bool isInstalled = installedCached(info.titleId, installed);
     y = ui::drawTagRow(left, y, 76, "Version",
-                       cia::versionText(info.version) +
-                           (isInstalled ? ", installed: " +
-                                              cia::versionText(installed)
-                                        : ""));
+                       versionRow(info.version, isInstalled, installed));
     ui::drawTagRow(left, y, 76, "Size",
                    units::bytes(info.fileSize) + ", " +
-                       (cia::installsToNand(info.titleId)
-                            ? "installs to the system memory"
-                            : "installs to the SD card"));
+                       (cia::installsToNand(info.titleId) ? "system memory"
+                                                          : "SD card"));
+}
+
+std::string versionRow(uint16_t version, bool isInstalled, uint16_t installed)
+{
+    // "1.2.0 (v1056)" without the raw number, so the state fits beside it.
+    const auto shortText = [](uint16_t value) {
+        const std::string text = cia::versionText(value);
+        return text.substr(0, text.find(' '));
+    };
+    if (!isInstalled) {
+        return shortText(version) + ", not installed";
+    }
+    if (installed == version) {
+        return shortText(version) + ", installed";
+    }
+    return shortText(version) + ", installed " + shortText(installed);
 }
 
 std::string installState(const cia::Info &info)

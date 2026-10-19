@@ -732,7 +732,12 @@ void drawStrip(const Rect &box, const std::vector<std::string> &labels,
                             : static_cast<int>(index) == dangerLabel
                                 ? color::Bad
                                 : color::InkDialog;
-        drawLabel(labels[index], area, type::Tab, textColor);
+        // One line per button; a long label shrinks instead of wrapping.
+        float scale = type::Tab;
+        while (scale > 0.42f && textWidth(labels[index], scale) > area.w - 12) {
+            scale -= 0.02f;
+        }
+        drawCentered(labels[index], area, scale, textColor);
         if (static_cast<int>(index) == selected) {
             const Rect ring = area.inset(3);
             strokeRound(ring, 6, 3, withAlpha(color::Focus, 1.0f), corners);
@@ -1385,9 +1390,9 @@ Rect tabRect(Tab tab)
 {
     switch (tab) {
     case Tab::Left:
-        return {0, 209, 120, 31};
+        return {0, 209, 126, 31};
     case Tab::Right:
-        return {200, 209, 120, 31};
+        return {194, 209, 126, 31};
     case Tab::Full:
         break;
     }
@@ -1422,12 +1427,12 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     // the tab, clear of the rounded corner.
     float labelScale = type::Tab;
     while (labelScale > 0.45f &&
-           textWidth(label, labelScale) + keyWidth > area.w - 40) {
+           textWidth(label, labelScale) + keyWidth > area.w - 34) {
         labelScale -= 0.02f;
     }
     const float labelWidth = textWidth(label, labelScale);
     float x = tab == Tab::Left    ? area.x + 20
-            : tab == Tab::Right ? area.x + area.w - 24 - labelWidth - keyWidth
+            : tab == Tab::Right ? area.x + area.w - 16 - labelWidth - keyWidth
                                 : area.x + (area.w - labelWidth - keyWidth) / 2;
     if (!key.empty()) {
         const float capWidth = keyWidth - 5;
@@ -1589,14 +1594,34 @@ void drawDialogTop(const Dialog &dialog)
         left += 60;
         width -= 60;
     }
-    // Paragraphs top-down, the first in body size, the rest smaller.
+    // Paragraphs top-down, the first in body size, the rest smaller, all
+    // a little smaller still when they would not fit in the panel.
+    const float bottom = TopPanel.y + TopPanel.h - 8;
+    float shrink = 1;
+    for (; shrink > 0.8f; shrink -= 0.05f) {
+        float height = 0;
+        bool first = true;
+        for (const Paragraph &paragraph : dialog.body) {
+            if (paragraph.text.empty()) {
+                continue;
+            }
+            const float scale = (first ? type::Body : type::Small) * shrink;
+            height += wrap(paragraph.text, scale, width, paragraph.maxLines + 1)
+                              .size() *
+                          lineHeight(scale) +
+                      5;
+            first = false;
+        }
+        if (y + height <= bottom) {
+            break;
+        }
+    }
     bool first = true;
     for (const Paragraph &paragraph : dialog.body) {
         if (paragraph.text.empty()) {
             continue;
         }
-        const float scale = first ? type::Body : type::Small;
-        const float bottom = TopPanel.y + TopPanel.h - 8;
+        const float scale = (first ? type::Body : type::Small) * shrink;
         const size_t room = static_cast<size_t>(
             std::max(0.0f, (bottom - y) / lineHeight(scale)));
         const size_t lines = std::min(paragraph.maxLines + 1, room);
@@ -2351,7 +2376,7 @@ ListResult runList(const ListSpec &spec, int &cursor)
                         tabRect(Tab::Right).contains(input.touch));
         }
         if (!spec.hint.empty()) {
-            drawText(fitEnd(spec.hint, type::Tiny, 70), 160, 220, type::Tiny,
+            drawText(fitEnd(spec.hint, type::Tiny, 60), 160, 220, type::Tiny,
                      color::Counter, C2D_AlignCenter);
         }
         endFrame();
@@ -2395,11 +2420,13 @@ void drawProgress(const ProgressView &view)
         drawText(percent, TopPanel.x + TopPanel.w - 18, TopPanel.y + 98,
                  type::Body, color::InkStrong, C2D_AlignRight);
     }
-    drawText(fitEnd(view.speed, type::Small, 230), left, TopPanel.y + 126,
-             type::Small, color::Ink);
+    // The speed gives way to the tag beside it.
+    const float tagWidth = view.tag.empty() ? 0 : textWidth(view.tag, 0.4f) + 16;
+    drawText(fitEnd(view.speed, type::Small, TopPanel.w - 36 - tagWidth - 8),
+             left, TopPanel.y + 126, type::Small, color::Ink);
     if (!view.tag.empty()) {
-        const float width = textWidth(view.tag, 0.4f) + 16;
-        drawTag(TopPanel.x + TopPanel.w - 18 - width, TopPanel.y + 124, view.tag);
+        drawTag(TopPanel.x + TopPanel.w - 18 - tagWidth, TopPanel.y + 124,
+                view.tag);
     }
 
     beginBottom();

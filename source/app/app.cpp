@@ -412,11 +412,11 @@ bool App::confirmDownload(const std::string &address, std::string &folder)
                                ui::color::Good);
             } else if (secure) {
                 ui::drawTagRow(left, y, 74, "HTTPS",
-                               "The certificate will be checked.",
+                               "The certificate is checked.",
                                ui::color::Good);
             } else {
                 ui::drawTagRow(left, y, 74, "HTTP",
-                               "Not encrypted; it could be changed on the way.",
+                               "Not encrypted on the way.",
                                ui::color::rgb(0xD2603A));
             }
         };
@@ -1558,10 +1558,11 @@ void App::settingsScreen()
             ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
             ui::drawPanel();
             const int shown = focus >= 0 && focus < 5 ? focus : 1;
-            ui::drawPanelText(TileHelp[shown],
-                              {ui::TopPanel.x, ui::TopPanel.y, ui::TopPanel.w, 74});
             const float left = ui::TopPanel.x + 18;
-            float y = ui::TopPanel.y + 78;
+            float y = ui::drawWrapped(TileHelp[shown], left, ui::TopPanel.y + 12,
+                                      ui::type::Small, ui::color::Ink,
+                                      ui::TopPanel.w - 36, 3) +
+                      10;
             if (shown == 2) {
                 ui::drawTagRow(left, y, 96, "Saves to", settings_.destination);
             } else if (shown == 3) {

@@ -31,6 +31,7 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::versionRow;
 
 // The background behind pictures, as RGB565: the app's dark blue.
 constexpr uint16_t PictureBackground = 0x0883;
@@ -232,11 +233,8 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                        {{"Type", std::string("CIA, ") +
                                      cia::kindName(cia::kind(info.titleId))},
                         {"Version",
-                         cia::versionText(info.version) +
-                             (details.installed
-                                  ? ", installed: " +
-                                        cia::versionText(details.installedVersion)
-                                  : ", not installed")},
+                         versionRow(info.version, details.installed,
+                                    details.installedVersion)},
                         {"Size", units::bytes(info.fileSize)}});
         return;
     }
@@ -1632,8 +1630,7 @@ void App::zipViewer(const std::string &path)
             y = ui::drawTagRow(left, y, 92, "Holds",
                                plural(archive.fileCount, "file"));
             y = ui::drawTagRow(left, y, 92, "Extracted",
-                               units::bytes(archive.totalSize) +
-                                   ", needs that much free");
+                               units::bytes(archive.totalSize));
             if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
                 const zip::Entry &entry = archive.entries[index];
                 y = ui::drawTagRow(left, y, 92, "Selected", entry.name);
@@ -1643,9 +1640,11 @@ void App::zipViewer(const std::string &path)
                                    ui::color::Bad);
                 }
             }
-            ui::drawText("Paths that would leave the folder are skipped.", 200,
-                         ui::TopPanel.y + ui::TopPanel.h - 26, ui::type::Small,
-                         ui::color::InkSoft, C2D_AlignCenter);
+            ui::drawWrapped("Paths that would leave the folder are "
+                            "skipped.",
+                            left, ui::TopPanel.y + ui::TopPanel.h - 48,
+                            ui::type::Small, ui::color::InkSoft,
+                            ui::TopPanel.w - 36, 2);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
