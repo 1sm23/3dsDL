@@ -5,6 +5,7 @@
 #include "fs_util.hpp"
 #include "remote.hpp"
 #include "socket_wait.hpp"
+#include "title_meta.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -18,6 +19,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <cinttypes>
 
 namespace net {
 
@@ -314,26 +316,153 @@ bool readBody(int client, std::string &data, size_t bodyStart,
 }
 
 void listFolder(int client, const FileSharing &sharing,
-                const std::string &webPath, const std::string &local)
+                const std::string &webPath, const std::string &local,
+                bool hidden)
 {
     bool ok = false;
-    const std::vector<fs::Entry> entries = fs::listEntries(local, &ok);
+    const std::vector<fs::Entry> entries = fs::listEntries(local, &ok, hidden);
     if (!ok) {
         sendAll(client, remote::jsonError(404, "That folder does not exist."));
         return;
     }
     const int64_t free = sharing.freeSpace ? sharing.freeSpace() : -1;
+    const int64_t total = sharing.totalSpace ? sharing.totalSpace() : -1;
     std::string json = "{\"path\":" + remote::jsonString(webPath) +
-                       ",\"free\":" + std::to_string(free) + ",\"entries\":[";
-    for (size_t index = 0; index < entries.size(); ++index) {
-        const fs::Entry &entry = entries[index];
-        json += std::string(index > 0 ? "," : "") +
+                       ",\"free\":" + std::to_string(free) +
+                       ",\"total\":" + std::to_string(total) + ",\"entries\":[";
+    bool first = true;
+    for (const fs::Entry &entry : entries) {
+        if (entry.name == ".3dsdl-upload.part") {
+            continue; // an upload in progress, or one cut off
+        }
+        json += std::string(first ? "" : ",") +
                 "{\"name\":" + remote::jsonString(entry.name) +
                 ",\"dir\":" + (entry.folder ? "true" : "false") +
                 ",\"size\":" + std::to_string(entry.size) +
                 ",\"time\":" + std::to_string(entry.modified) + "}";
+        first = false;
     }
     sendJson(client, json + "]}");
+}
+
+// The name, publisher and icon inside a CIA, a 3DSX or a game image.
+struct Title {
+    std::string name;
+    std::string publisher;
+    std::string product;
+    uint64_t titleId = 0;
+    bool hasTitleId = false;
+    int version = -1;
+    std::string note;
+    std::vector<uint16_t> icon;
+};
+
+bool readTitle(const std::string &local, Title &title, std::string &error)
+{
+    const filetype::Kind kind = filetype::fromName(local);
+    if (kind == filetype::Kind::Cia) {
+        cia::Info info;
+        if (!cia::readInfo(local, info, error)) {
+            return false;
+        }
+        title.name = !info.smdh.englishShortName.empty()
+                         ? info.smdh.englishShortName
+                         : info.smdh.shortName;
+        title.publisher = info.smdh.publisher;
+        title.titleId = info.titleId;
+        title.hasTitleId = true;
+        title.version = info.version;
+        title.icon = info.smdh.icon;
+        return true;
+    }
+    if (!filetype::hasTitleMeta(kind)) {
+        error = "This kind of file has no title.";
+        return false;
+    }
+    titlemeta::Meta meta;
+    if (!titlemeta::read(local, kind, meta, error)) {
+        return false;
+    }
+    title.name = meta.name;
+    title.publisher = meta.publisher;
+    title.product = meta.productCode;
+    title.titleId = meta.titleId;
+    title.hasTitleId = meta.hasTitleId;
+    title.note = meta.note;
+    title.icon = meta.icon;
+    return true;
+}
+
+void sendTitle(int client, const std::string &local, bool iconOnly)
+{
+    Title title;
+    std::string error;
+    if (!readTitle(local, title, error)) {
+        sendAll(client, remote::jsonError(404, error));
+        return;
+    }
+    if (iconOnly) {
+        const std::string bmp = remote::iconBmp(title.icon);
+        if (bmp.empty()) {
+            sendAll(client, remote::jsonError(404, "It has no icon."));
+            return;
+        }
+        // The page asks with the file's time in the address, so a changed
+        // file gets a new icon and an unchanged one comes from the cache.
+        sendAll(client, "HTTP/1.1 200 OK\r\nContent-Type: image/bmp\r\n"
+                        "Content-Length: " +
+                            std::to_string(bmp.size()) +
+                            "\r\nCache-Control: max-age=86400\r\n"
+                            "X-Content-Type-Options: nosniff\r\n"
+                            "Connection: close\r\n\r\n" +
+                            bmp);
+        return;
+    }
+    char titleId[17] = "";
+    if (title.hasTitleId) {
+        std::snprintf(titleId, sizeof(titleId), "%016" PRIX64, title.titleId);
+    }
+    sendJson(client, "{\"name\":" + remote::jsonString(title.name) +
+                         ",\"publisher\":" + remote::jsonString(title.publisher) +
+                         ",\"product\":" + remote::jsonString(title.product) +
+                         ",\"titleId\":" + remote::jsonString(titleId) +
+                         ",\"version\":" + std::to_string(title.version) +
+                         ",\"note\":" + remote::jsonString(title.note) +
+                         ",\"icon\":" + (title.icon.size() == 48 * 48 ? "true" : "false") +
+                         "}");
+}
+
+const char *accessName(Access access)
+{
+    switch (access) {
+    case Access::Allowed:
+        return "allowed";
+    case Access::Pending:
+        return "pending";
+    case Access::Denied:
+        return "denied";
+    default:
+        return "none";
+    }
+}
+
+// What the console is doing. Anyone may ask, so the links page can follow
+// along too; only an allowed device hears the details, which can name files.
+void sendStatus(int client, const FileSharing &sharing, const std::string &from)
+{
+    const Access access = sharing.root.empty() ? Access::Unknown
+                          : sharing.access     ? sharing.access(from, false)
+                                               : Access::Allowed;
+    const ConsoleStatus status = sharing.status ? sharing.status() : ConsoleStatus();
+    const bool allowed = access == Access::Allowed || status.open;
+    sendJson(client, "{\"you\":" + remote::jsonString(from) +
+                         ",\"access\":\"" + accessName(access) +
+                         "\",\"files\":" + (sharing.root.empty() ? "false" : "true") +
+                         ",\"state\":" + remote::jsonString(status.state) +
+                         ",\"text\":" + remote::jsonString(allowed ? status.text : "") +
+                         ",\"result\":" + remote::jsonString(allowed ? status.result : "") +
+                         ",\"resultOk\":" + (status.resultOk ? "true" : "false") +
+                         ",\"resultSeq\":" + std::to_string(status.resultSeq) + "}");
 }
 
 void sendFile(int client, const FileSharing &sharing, const std::string &from,
@@ -501,16 +630,21 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
               remote::HttpRequest &request, std::string &data,
               size_t bodyStart, Clock::time_point deadline, Received &out)
 {
-    if (sharing.root.empty()) {
-        sendAll(client, remote::jsonError(404, "Files are not shared."));
-        return false;
-    }
     std::string why;
     if (!remote::apiRequestAllowed(request, why)) {
         sendAll(client, remote::jsonError(403, why));
         return false;
     }
-    const Access access = sharing.access ? sharing.access(from) : Access::Allowed;
+    if (request.path == "/api/status" && request.method == "GET") {
+        sendStatus(client, sharing, from);
+        return false;
+    }
+    if (sharing.root.empty()) {
+        sendAll(client, remote::jsonError(404, "Files are not shared."));
+        return false;
+    }
+    const Access access =
+        sharing.access ? sharing.access(from, true) : Access::Allowed;
     if (access != Access::Allowed) {
         const bool pending = access == Access::Pending;
         sendAll(client,
@@ -540,7 +674,14 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
     if (route == "/api/list" && method == "GET") {
         const std::string path = remote::formValue(request.query, "path");
         if (mapped(path, local)) {
-            listFolder(client, sharing, path, local);
+            listFolder(client, sharing, path, local,
+                       remote::formValue(request.query, "hidden") == "1");
+        }
+        return false;
+    }
+    if ((route == "/api/meta" || route == "/api/icon") && method == "GET") {
+        if (mapped(remote::formValue(request.query, "path"), local)) {
+            sendTitle(client, local, route == "/api/icon");
         }
         return false;
     }
@@ -837,6 +978,13 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
         out.links = remote::extractLinks(remote::formValue(form, "links"));
         out.from = from;
         got = !out.links.empty();
+        const auto marker = request.headers.find("x-requested-with");
+        if (marker != request.headers.end() && marker->second == "3dsDL") {
+            // The page sent it itself and stays where it is.
+            sendJson(client, "{\"count\":" + std::to_string(out.links.size()) + "}");
+            closeClient(client);
+            return got;
+        }
         // Back to the form, so reloading the page does not send again.
         std::string response = "HTTP/1.1 303 See Other\r\nLocation: /?sent=" +
                                std::to_string(out.links.size()) +

@@ -38,16 +38,36 @@ struct Transfer {
     bool ok = false;       // with finished: the whole file went through
 };
 
-enum class Access { Allowed, Pending, Denied };
+enum class Access { Allowed, Pending, Denied, Unknown };
+
+// What the console is doing, for the page to show: "ready", "asking" (about
+// a device), "choosing" (a question on the console), "installing",
+// "downloading" or "busy". text says it for people. A finished request
+// leaves a result, which seq tells apart from the one before.
+struct ConsoleStatus {
+    std::string state = "ready";
+    std::string text;
+    std::string result;
+    bool resultOk = true;
+    uint32_t resultSeq = 0;
+    // The text and result name nothing private (links, not files), so
+    // devices that were not allowed to see the files may have them too.
+    bool open = false;
+};
 
 // How the page reaches the SD card. Without a root, the file API answers
 // 404 and only links can be sent.
 struct FileSharing {
     std::string root; // "sdmc:"
-    // Whether the device at an address may use the files. Pending makes the
-    // page wait and ask again. Unset allows everyone.
-    std::function<Access(const std::string &from)> access;
-    std::function<int64_t()> freeSpace; // bytes, or -1 when unknown
+    // Whether the device at an address may use the files. When ask is set
+    // and the device is unknown, the console asks and the answer is Pending
+    // until it is given; without ask an unknown device is Unknown. Unset
+    // allows everyone.
+    std::function<Access(const std::string &from, bool ask)> access;
+    std::function<int64_t()> freeSpace;  // bytes, or -1 when unknown
+    std::function<int64_t()> totalSpace; // bytes, or -1 when unknown
+    // Unset reports "ready" with no text.
+    std::function<ConsoleStatus()> status;
     // Called a few times a second during a transfer, on the server's thread.
     std::function<void(const Transfer &)> progress;
     int socketBufferSize = 0; // asked for on each connection when not 0

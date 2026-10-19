@@ -15,6 +15,7 @@
 #include <cstring>
 #include <future>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -427,8 +428,10 @@ TEST("remote server: the file API turns away what it should")
     net::Access access = net::Access::Allowed;
     net::FileSharing sharing;
     sharing.root = root.path;
-    sharing.access = [&](const std::string &from) {
+    bool asked = false;
+    sharing.access = [&](const std::string &from, bool ask) {
         CHECK_EQ(from, std::string("127.0.0.1"));
+        asked = asked || ask;
         return access;
     };
     sharing.freeSpace = []() { return static_cast<int64_t>(10); };
@@ -531,4 +534,83 @@ TEST("remote server: answers end cleanly, and a client that stays does not hold 
     CHECK(startsWith(get(port, "/nothing"), "HTTP/1.1 404"));
     CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(3));
     ::close(stays);
+}
+
+TEST("remote server: status, links for the page, hidden files and titles")
+{
+    TempRoot root;
+    std::mutex lock;
+    std::set<std::string> asked;
+    net::ConsoleStatus status;
+    status.state = "choosing";
+    status.text = "Waiting for you to choose Install on the 3DS.";
+    status.result = "Installed game.cia.";
+    status.resultSeq = 3;
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    bool allowed = false;
+    sharing.access = [&](const std::string &from, bool ask) {
+        std::lock_guard<std::mutex> hold(lock);
+        if (allowed) {
+            return net::Access::Allowed;
+        }
+        if (!ask && asked.count(from) == 0) {
+            return net::Access::Unknown;
+        }
+        asked.insert(from);
+        return net::Access::Pending;
+    };
+    sharing.totalSpace = []() { return static_cast<int64_t>(4) << 30; };
+    sharing.status = [&]() { return status; };
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    // Asking what the console does is not asking for the files, and a
+    // stranger hears the state but not the names in it.
+    std::string body = bodyOf(get(port, "/api/status"));
+    CHECK(body.find("\"access\":\"none\"") != std::string::npos);
+    CHECK(body.find("\"you\":\"127.0.0.1\"") != std::string::npos);
+    CHECK(body.find("\"state\":\"choosing\"") != std::string::npos);
+    CHECK(body.find("\"text\":\"\"") != std::string::npos);
+    CHECK(body.find("\"resultSeq\":3") != std::string::npos);
+    CHECK(asked.empty());
+    CHECK(startsWith(get(port, "/api/list?path=%2F"), "HTTP/1.1 403"));
+    CHECK(bodyOf(get(port, "/api/status")).find("\"access\":\"pending\"") != std::string::npos);
+    {
+        std::lock_guard<std::mutex> hold(lock);
+        allowed = true;
+    }
+    body = bodyOf(get(port, "/api/status"));
+    CHECK(body.find("Waiting for you to choose Install") != std::string::npos);
+    CHECK(body.find("Installed game.cia.") != std::string::npos);
+
+    // The page sends links itself and stays put.
+    const std::string form = "links=https%3A%2F%2Fexample.com%2Fa.cia";
+    std::string response = roundTrip(port, "POST /send HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                           "X-Requested-With: 3dsDL\r\nContent-Length: " +
+                                               std::to_string(form.size()) + "\r\n\r\n" + form);
+    CHECK(startsWith(response, "HTTP/1.1 200"));
+    CHECK_EQ(bodyOf(response), std::string("{\"count\":1}"));
+
+    CHECK(fs::writeFile(root.path + "/.hidden", "x"));
+    CHECK(fs::writeFile(root.path + "/shown.txt", "x"));
+    CHECK(fs::writeFile(root.path + "/.3dsdl-upload.part", "x"));
+    body = bodyOf(get(port, "/api/list?path=%2F"));
+    CHECK(body.find("shown.txt") != std::string::npos);
+    CHECK(body.find(".hidden") == std::string::npos);
+    CHECK(body.find("\"total\":4294967296") != std::string::npos);
+    body = bodyOf(get(port, "/api/list?path=%2F&hidden=1"));
+    CHECK(body.find(".hidden") != std::string::npos);
+    CHECK(body.find(".3dsdl-upload.part") == std::string::npos);
+
+    // A text file has no title; a broken CIA says why.
+    CHECK(startsWith(get(port, "/api/meta?path=%2Fshown.txt"), "HTTP/1.1 404"));
+    CHECK(fs::writeFile(root.path + "/broken.cia", std::string(100, 'x')));
+    response = get(port, "/api/icon?path=%2Fbroken.cia");
+    CHECK(startsWith(response, "HTTP/1.1 404"));
+    CHECK(bodyOf(response).find("error") != std::string::npos);
 }

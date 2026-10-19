@@ -87,6 +87,11 @@ bool localPath(const std::string &root, const std::string &webPath,
 // text, so a file opened from the SD card can never run in the page.
 const char *mimeType(const std::string &name);
 
+// A 48x48 icon (RGB565, row by row, as smdh and titlemeta give it) as a
+// 24-bit BMP, which every browser shows and needs no compressor to make.
+// Empty when icon is not 48x48.
+std::string iconBmp(const std::vector<uint16_t> &icon);
+
 // A Content-Disposition header value for name, with an ASCII fallback and
 // the UTF-8 name for browsers that read it.
 std::string contentDisposition(const std::string &name, bool asAttachment);

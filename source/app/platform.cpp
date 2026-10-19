@@ -29,6 +29,16 @@ int64_t sdFreeBytes()
            static_cast<int64_t>(resource.freeClusters);
 }
 
+int64_t sdTotalBytes()
+{
+    FS_ArchiveResource resource {};
+    if (R_FAILED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD))) {
+        return -1;
+    }
+    return static_cast<int64_t>(resource.clusterSize) *
+           static_cast<int64_t>(resource.totalClusters);
+}
+
 int64_t now()
 {
     return static_cast<int64_t>(std::time(nullptr));

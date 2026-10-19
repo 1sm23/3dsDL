@@ -11,6 +11,8 @@ enum class Wifi { Connected, Disconnected, Unknown };
 Wifi wifiStatus();
 // Free space on the SD card in bytes, or -1 when it cannot be read.
 int64_t sdFreeBytes();
+// The SD card's size in bytes, or -1 when it cannot be read.
+int64_t sdTotalBytes();
 // Seconds since 1970 by the console clock (which has no time zone).
 int64_t now();
 

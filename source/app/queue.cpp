@@ -1,6 +1,7 @@
 #include "app.hpp"
 
 #include "app_util.hpp"
+#include "cia.hpp"
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
@@ -88,6 +89,7 @@ struct ReceiveJob {
     net::Transfer transfer;
     bool transferring = false;
     std::string lastFile;
+    net::ConsoleStatus status;
 
     ReceiveJob() { LightLock_Init(&lock); }
 
@@ -123,20 +125,56 @@ struct ReceiveJob {
     }
 
     // Runs on the listener's thread.
-    net::Access access(const std::string &from)
+    net::Access access(const std::string &from, bool ask)
     {
         LightLock_Lock(&lock);
         net::Access result = net::Access::Pending;
+        const bool waiting =
+            std::find(asking.begin(), asking.end(), from) != asking.end();
         if (allowed.count(from) != 0) {
             result = net::Access::Allowed;
         } else if (denied.count(from) != 0) {
             result = net::Access::Denied;
-        } else if (std::find(asking.begin(), asking.end(), from) ==
-                   asking.end()) {
+        } else if (!waiting && !ask) {
+            result = net::Access::Unknown;
+        } else if (!waiting) {
             asking.push_back(from);
         }
         LightLock_Unlock(&lock);
         return result;
+    }
+
+    // What the page shows the console doing; see net::ConsoleStatus.
+    // open says the text names nothing private; see net::ConsoleStatus.
+    void setState(const std::string &state, const std::string &text = "",
+                  bool open = false)
+    {
+        LightLock_Lock(&lock);
+        status.state = state;
+        status.text = text;
+        status.open = open;
+        LightLock_Unlock(&lock);
+    }
+
+    void finish(const std::string &result, bool ok, bool open = false)
+    {
+        LightLock_Lock(&lock);
+        status.state = "ready";
+        status.text.clear();
+        status.result = result;
+        status.resultOk = ok;
+        status.open = open;
+        ++status.resultSeq;
+        LightLock_Unlock(&lock);
+    }
+
+    // Runs on the listener's thread.
+    net::ConsoleStatus snapshot()
+    {
+        LightLock_Lock(&lock);
+        const net::ConsoleStatus copy = status;
+        LightLock_Unlock(&lock);
+        return copy;
     }
 
     // Runs on the listener's thread.
@@ -522,10 +560,12 @@ void App::receiveScreen()
     }
     net::FileSharing sharing;
     sharing.root = "sdmc:";
-    sharing.access = [&job](const std::string &from) {
-        return job.access(from);
+    sharing.access = [&job](const std::string &from, bool ask) {
+        return job.access(from, ask);
     };
     sharing.freeSpace = []() { return platform::sdFreeBytes(); };
+    sharing.totalSpace = []() { return platform::sdTotalBytes(); };
+    sharing.status = [&job]() { return job.snapshot(); };
     sharing.progress = [&job](const net::Transfer &transfer) {
         job.progress(transfer);
     };
@@ -576,6 +616,51 @@ void App::receiveScreen()
     std::string meterName;
     const ui::Rect back = ui::tabRect(ui::Tab::Left);
 
+    // Installs what the page sent, telling it how each went.
+    const auto installReceived = [this](ReceiveJob &state,
+                                        const std::vector<std::string> &paths,
+                                        bool deleteAfter) {
+        size_t installed = 0;
+        std::vector<std::string> failed;
+        for (size_t index = 0; index < paths.size() && ui::keepRunning();
+             ++index) {
+            const std::string name = basename(paths[index]);
+            state.setState("installing",
+                           "Installing " + name +
+                               (paths.size() > 1
+                                    ? " (" + std::to_string(index + 1) +
+                                          " of " +
+                                          std::to_string(paths.size()) + ")"
+                                    : "") +
+                               ".");
+            cia::Info info;
+            std::string error;
+            if (cia::readInfo(paths[index], info, error) &&
+                installCia(paths[index], info, deleteAfter, "", true)) {
+                ++installed;
+            } else {
+                failed.push_back(name);
+            }
+        }
+        std::string list;
+        for (const std::string &name : failed) {
+            list += (list.empty() ? "" : ", ") + name;
+        }
+        const std::string summary =
+            failed.empty()
+                ? (paths.size() == 1 ? "Installed " + basename(paths[0]) + "."
+                                     : "Installed all " +
+                                           plural(paths.size(), "CIA") + ".")
+                : "Installed " + std::to_string(installed) + " of " +
+                      plural(paths.size(), "CIA") + ". Not installed: " +
+                      list + ".";
+        state.finish(summary, failed.empty());
+        ui::message(failed.empty() ? "Installed" : "Some were not installed",
+                    summary,
+                    failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
+                    failed.empty() ? "Find it on the HOME Menu." : "");
+    };
+
     while (ui::keepRunning() && !quit_) {
         if (namedPage.empty() && job.named.load()) {
             namedPage = "http://" + job.mdns.hostname() + port;
@@ -597,7 +682,10 @@ void App::receiveScreen()
                                    ui::color::Muted, 0.44f, 3});
             dialog.buttons = {"Allow", "Don't Allow"};
             dialog.cancelButton = 1;
+            job.setState("asking", "Asking whether " + asker +
+                                       " may use the SD card.");
             job.answer(asker, ui::choose(dialog) == 0);
+            job.setState("ready");
             continue;
         }
 
@@ -624,9 +712,14 @@ void App::receiveScreen()
                 dialog.body.push_back({names, ui::color::Text, 0.5f, 3});
                 dialog.buttons = {"Install", "Install and Delete", "Not Now"};
                 dialog.cancelButton = 2;
+                job.setState("choosing",
+                             "Waiting for you to choose Install on the 3DS.");
                 const int choice = ui::choose(dialog);
                 if (choice == 0 || choice == 1) {
-                    installCias(received.install, choice == 1);
+                    installReceived(job, received.install, choice == 1);
+                } else {
+                    job.finish("Not installed: Not Now was chosen on the 3DS.",
+                               false);
                 }
                 continue;
             }
@@ -657,7 +750,17 @@ void App::receiveScreen()
                 dialog.buttons = {"Download", "Add to Queue", "Cancel"};
                 dialog.cancelButton = 2;
             }
+            job.setState("choosing",
+                         "Waiting for you to choose Download on the 3DS.", true);
             const int choice = ui::choose(dialog);
+            const std::string count = plural(received.links.size(), "link");
+            if (choice == 1 && !fromFbiTool) {
+                job.finish("Added " + count + " to the Queue on the 3DS.", true,
+                           true);
+            } else if (choice != 0) {
+                job.finish("Not downloaded: Cancel was chosen on the 3DS.",
+                           false, true);
+            }
             if (choice == 0 || (!fromFbiTool && choice == 1)) {
                 const uint64_t first = nextQueueId_;
                 addToQueue(received.links, settings_.destination, choice == 1);
@@ -671,7 +774,12 @@ void App::receiveScreen()
                             ids.push_back(item.id);
                         }
                     }
+                    job.setState("downloading", "Downloading " + count + ".",
+                                 true);
                     runQueue(&ids);
+                    job.finish("Done with " + count +
+                                   " on the 3DS. History has how each went.",
+                               true, true);
                 }
                 last = plural(received.links.size(), "link") + " from " +
                        received.from;

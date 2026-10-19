@@ -146,3 +146,20 @@ TEST("remote: JSON text, file types and download names")
               .find("filename*=UTF-8''%C3%A9.txt") != std::string::npos);
     CHECK(remote::page().find("id=\"files\"") != std::string::npos);
 }
+
+TEST("remote: title icons as BMP pictures")
+{
+    std::vector<uint16_t> icon(48 * 48, 0);
+    icon[0] = 0xF800;           // top left: red
+    icon[47 * 48 + 47] = 0x07E0; // bottom right: green
+    const std::string bmp = remote::iconBmp(icon);
+    CHECK_EQ(bmp.size(), static_cast<size_t>(54 + 48 * 48 * 3));
+    CHECK(bmp.compare(0, 2, "BM") == 0);
+    // Rows go bottom up, in blue, green, red order.
+    const size_t topLeft = 54 + 47 * 48 * 3;
+    CHECK_EQ(static_cast<unsigned char>(bmp[topLeft + 2]), 0xFF);
+    CHECK_EQ(static_cast<unsigned char>(bmp[topLeft]), 0x00);
+    const size_t bottomRight = 54 + 47 * 3;
+    CHECK_EQ(static_cast<unsigned char>(bmp[bottomRight + 1]), 0xFF);
+    CHECK(remote::iconBmp(std::vector<uint16_t>(10)).empty());
+}

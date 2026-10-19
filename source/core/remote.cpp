@@ -357,6 +357,52 @@ const char *mimeType(const std::string &name)
     return "application/octet-stream";
 }
 
+std::string iconBmp(const std::vector<uint16_t> &icon)
+{
+    constexpr uint32_t Side = 48;
+    if (icon.size() != Side * Side) {
+        return "";
+    }
+    const uint32_t pixels = Side * Side * 3; // 144-byte rows need no padding
+    std::string out;
+    const auto put32 = [&out](uint32_t value) {
+        for (int shift = 0; shift < 32; shift += 8) {
+            out += static_cast<char>((value >> shift) & 0xFF);
+        }
+    };
+    const auto put16 = [&out](uint16_t value) {
+        out += static_cast<char>(value & 0xFF);
+        out += static_cast<char>(value >> 8);
+    };
+    out += "BM";
+    put32(54 + pixels);
+    put32(0);
+    put32(54);
+    put32(40);
+    put32(Side);
+    put32(Side); // positive height: rows go bottom up
+    put16(1);
+    put16(24);
+    put32(0);
+    put32(pixels);
+    put32(2835);
+    put32(2835);
+    put32(0);
+    put32(0);
+    for (uint32_t row = Side; row-- > 0;) {
+        for (uint32_t column = 0; column < Side; ++column) {
+            const uint16_t colour = icon[row * Side + column];
+            const uint8_t red = static_cast<uint8_t>((colour >> 11) & 0x1F);
+            const uint8_t green = static_cast<uint8_t>((colour >> 5) & 0x3F);
+            const uint8_t blue = static_cast<uint8_t>(colour & 0x1F);
+            out += static_cast<char>((blue << 3) | (blue >> 2));
+            out += static_cast<char>((green << 2) | (green >> 4));
+            out += static_cast<char>((red << 3) | (red >> 2));
+        }
+    }
+    return out;
+}
+
 std::string contentDisposition(const std::string &name, bool asAttachment)
 {
     std::string fallback;
