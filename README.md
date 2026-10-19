@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.6.0" src="https://img.shields.io/badge/version-0.6.0-34d6e8?style=for-the-badge">
+  <img alt="Version 0.7.0" src="https://img.shields.io/badge/version-0.7.0-34d6e8?style=for-the-badge">
   <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=for-the-badge">
   <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=for-the-badge">
   <img alt="Active development" src="https://img.shields.io/badge/status-in%20development-ffc857?style=for-the-badge">
@@ -34,7 +34,7 @@ It looks and works like the software that came with the console: the same khaki 
 It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownload), the 2017 homebrew downloader, rebuilt around libcurl and mbedTLS with a new Citro2D interface.
 
 > [!IMPORTANT]
-> Version 0.6.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself (0.5.0), the file manager and the new system-style interface (0.6.0) have been tried in the Azahar emulator but not yet on a console. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
+> Version 0.7.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself (0.5.0), the file manager and the system-style interface (0.6.0), and Titles, Receive, the Queue, direct installs, ticket install and self-updating (0.7.0) have been tried in the Azahar emulator but not yet on a console. Save and extra data backup and restore, and ticket export, could not be tried in the emulator at all, so treat them as untested. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## ✨ Features
 
@@ -378,11 +378,11 @@ site/          the website, deployed to GitHub Pages
 
 ## 🗺️ Roadmap
 
-Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, **0.5.0** installing the CIAs it downloads, with a Files screen, and **0.6.0** a full file manager and an interface redrawn in the style of the console's own system software. Next up:
+Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, **0.5.0** installing the CIAs it downloads, with a Files screen, **0.6.0** a full file manager and an interface redrawn in the style of the console's own system software, and **0.7.0** self-updates, Titles with Checkpoint-compatible save and extra data backups, tickets, receiving links from a phone or FBI's tools, a download queue, direct CIA installs and interface sounds. Next up:
 
 - [ ] Hardware pass on New and Old 3DS using [docs/HARDWARE.md](docs/HARDWARE.md)
 - [ ] 1.0 once that pass is clean
-- [ ] Afterwards: sending links from a phone or computer browser, and checksums for finished downloads
+- [ ] Afterwards: receiving links in the background, and resuming direct installs
 
 The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull requests are very welcome over in [Issues](https://github.com/ankushKun/3dsDL/issues).
 
