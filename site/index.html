@@ -81,41 +81,24 @@
           <a class="btn btn-go" href="#install">Install with FBI</a>
         </div>
         <!-- A real New Nintendo 3DS (photo: PantheraLeo1359531, CC BY 4.0).
-             Its two screens are live HTML, drawn in 3DS pixels and mapped onto
-             the photographed screens with a perspective matrix. They power on
-             with a short boot screen, then play a download. The doodles are
+             Its two screens are screenshots of 3dsDL at native 3DS size,
+             mapped onto the photographed screens with a perspective matrix.
+             They power on with a short boot screen, then step through a
+             download and install. The doodles are
              drawn in the photo's own coordinates (1356 x 1177). -->
         <div class="device device-angled reveal" data-tilt>
           <div class="device-stage">
-            <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="An open white New Nintendo 3DS, seen from the front at an angle, running 3dsDL. The top screen shows a download in progress; the touch screen shows where it is being saved and a Cancel button." decoding="async" fetchpriority="high">
+            <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="An open white New Nintendo 3DS, seen from the front at an angle, running 3dsDL. The screens show a CIA downloading with its speed and time left, then the prompt to install it, then the finished installation." decoding="async" fetchpriority="high">
             <div class="screen screen-top" aria-hidden="true">
-              <span class="r" style="--x:18;--y:39;--w:42;--h:3;background:#34d6e8"></span>
-              <span class="t" style="--x:18;--y:13;--s:.8">3dsDL</span>
-              <span class="t t-end t-muted" style="--x:382;--y:18;--s:.6" data-demo-state>downloading</span>
-              <span class="r" style="--x:20;--y:57;--w:364;--h:84;background:rgba(0,0,0,.33)"></span>
-              <span class="r" style="--x:18;--y:54;--w:364;--h:84;background:#102638"></span>
-              <span class="r" style="--x:18;--y:54;--w:4;--h:84;background:#18788a"></span>
-              <span class="t" style="--x:34;--y:64;--s:.68">Universal-Updater.cia</span>
-              <span class="t t-muted" style="--x:34;--y:94;--s:.46">github.com</span>
-              <span class="r" style="--x:24;--y:150;--w:352;--h:16;background:#173449"></span>
-              <span class="r r-fill" style="--x:24;--y:150;--w:352;--h:16" data-demo-bar></span>
-              <span class="t" style="--x:24;--y:174;--s:.52" data-demo-amount>3.10 MiB of 4.42 MiB (70%)</span>
-              <span class="t t-end t-muted" style="--x:376;--y:175;--s:.48" data-demo-phase>downloading</span>
-              <span class="t t-muted" style="--x:24;--y:198;--s:.48" data-demo-speed>1.24 MiB/s, 1s left</span>
+              <img class="shot is-on" src="assets/screens/downloading-top.webp" width="400" height="240" alt="" data-hero-shot>
+              <img class="shot" src="assets/screens/installprompt-top.webp" width="400" height="240" alt="" loading="lazy" data-hero-shot>
+              <img class="shot" src="assets/screens/installed-top.webp" width="400" height="240" alt="" loading="lazy" data-hero-shot>
               <div class="boot boot-top"><img src="assets/icon-64.png" width="64" height="64" alt=""><span>3dsDL</span></div>
             </div>
             <div class="screen screen-bottom" aria-hidden="true">
-              <span class="t t-muted" style="--x:18;--y:14;--s:.48">Saving to</span>
-              <span class="r" style="--x:20;--y:41;--w:284;--h:54;background:rgba(0,0,0,.33)"></span>
-              <span class="r" style="--x:18;--y:38;--w:284;--h:54;background:#102638"></span>
-              <span class="r" style="--x:18;--y:38;--w:4;--h:54;background:#18788a"></span>
-              <span class="t" style="--x:32;--y:55;--s:.52">sdmc:/cias/</span>
-              <span class="r" style="--x:60;--y:140;--w:204;--h:50;background:rgba(0,0,0,.33)"></span>
-              <span class="r" style="--x:58;--y:137;--w:204;--h:50;background:#173449"></span>
-              <span class="r" style="--x:58;--y:184;--w:204;--h:3;background:#ff5d73"></span>
-              <span class="t t-mid" style="--x:160;--y:153;--s:.58">CANCEL</span>
-              <span class="t t-mid t-muted" style="--x:160;--y:204;--s:.42">Sleep mode is paused until this finishes.</span>
-              <span class="t t-mid t-muted" style="--x:160;--y:222;--s:.42">B: Cancel</span>
+              <img class="shot is-on" src="assets/screens/downloading-bottom.webp" width="320" height="240" alt="" data-hero-shot>
+              <img class="shot" src="assets/screens/installprompt-bottom.webp" width="320" height="240" alt="" loading="lazy" data-hero-shot>
+              <img class="shot" src="assets/screens/installed-bottom.webp" width="320" height="240" alt="" loading="lazy" data-hero-shot>
               <div class="boot boot-bottom"><i></i><i></i><i></i></div>
             </div>
             <svg class="doodles" viewBox="0 0 1356 1177" aria-hidden="true">
@@ -159,10 +142,9 @@
             <div class="home-screen">
               <div class="home-app-bar" aria-hidden="true"><span>3dsDL</span><span class="home-app-state">home</span></div>
               <article class="feature is-on" id="feat-install" role="tabpanel" aria-labelledby="feat-install-title">
-                <div class="feature-demo">
-                  <span class="m-line m-green">3dsFM is installed</span>
-                  <span class="m-line m-muted m-small">Game or app, 0.3.3, 4.29 MiB in 1s</span>
-                  <span class="m-buttons"><b class="on">LAUNCH</b><b>CLOSE</b></span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/installprompt-top.webp" width="400" height="240" alt="3dsDL asking whether to install 3dsFM, with its icon, Title ID, version and size" loading="lazy">
+                  <img src="assets/screens/installprompt-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-install-title">Installs CIAs <span class="tag-new">new</span></h3>
@@ -170,11 +152,9 @@
                 </div>
               </article>
               <article class="feature" id="feat-files" role="tabpanel" aria-labelledby="feat-files-title">
-                <div class="feature-demo m-list">
-                  <span class="m-row m-muted">.. (up one level)</span>
-                  <span class="m-row on m-cyan">3dsFM.cia</span>
-                  <span class="m-row m-cyan">Universal-Updater.cia</span>
-                  <span class="m-row">boot.firm</span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/files-top.webp" width="400" height="240" alt="The Files manager listing sdmc:/cias/, with details of the highlighted folder on the top screen" loading="lazy">
+                  <img src="assets/screens/files-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-files-title">Files <span class="tag-new">new</span></h3>
@@ -182,10 +162,9 @@
                 </div>
               </article>
               <article class="feature" id="feat-progress" role="tabpanel" aria-labelledby="feat-progress-title">
-                <div class="feature-demo">
-                  <span class="m-line">homebrew.3dsx</span>
-                  <span class="m-bar"><i style="width:62%"></i></span>
-                  <span class="m-line m-muted">1.24 MiB/s, 27s left</span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/downloading-top.webp" width="400" height="240" alt="A download in progress with its speed, time left and connection count" loading="lazy">
+                  <img src="assets/screens/downloading-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-progress-title">Live progress</h3>
@@ -193,10 +172,9 @@
                 </div>
               </article>
               <article class="feature" id="feat-resume" role="tabpanel" aria-labelledby="feat-resume-title">
-                <div class="feature-demo">
-                  <span class="m-line m-green">Continuing from 12.0 MiB</span>
-                  <span class="m-bar"><i style="width:48%"></i></span>
-                  <span class="m-line m-muted">1.62 MiB/s, 9s left</span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/failed-top.webp" width="400" height="240" alt="A dropped download: 3dsDL kept what arrived and offers to retry from there" loading="lazy">
+                  <img src="assets/screens/failed-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-resume-title">Resume and retry</h3>
@@ -204,21 +182,19 @@
                 </div>
               </article>
               <article class="feature" id="feat-safe" role="tabpanel" aria-labelledby="feat-safe-title">
-                <div class="feature-demo">
-                  <span class="m-line m-warn m-small">A file with this name already exists</span>
-                  <span class="m-buttons"><b class="on">RENAME</b><b>OVERWRITE</b><b>CANCEL</b></span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/exists-top.webp" width="400" height="240" alt="The dialog asking what to do when a file with the same name exists: Keep Both, Replace or Cancel" loading="lazy">
+                  <img src="assets/screens/exists-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-safe-title">Never clobbers files</h3>
-                  <p>Rename keeps both, Overwrite rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
+                  <p>Keep Both saves the new file under a fresh name, Replace rolls back if anything fails, Cancel leaves it alone. A finished download is never lost to an awkward name.</p>
                 </div>
               </article>
               <article class="feature" id="feat-folders" role="tabpanel" aria-labelledby="feat-folders-title">
-                <div class="feature-demo m-list">
-                  <span class="m-row m-cyan">Browse the SD card...</span>
-                  <span class="m-row on">CIA installers</span>
-                  <span class="m-row">Homebrew apps</span>
-                  <span class="m-row">Luma3DS payloads</span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/folders-top.webp" width="400" height="240" alt="Choosing a download folder from presets and recent folders" loading="lazy">
+                  <img src="assets/screens/folders-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-folders-title">Folders made easy</h3>
@@ -226,10 +202,9 @@
                 </div>
               </article>
               <article class="feature" id="feat-clock" role="tabpanel" aria-labelledby="feat-clock-title">
-                <div class="feature-demo">
-                  <span class="m-line">Console: 2025-10-12</span>
-                  <span class="m-line m-green">Actual:&nbsp; 2026-10-12</span>
-                  <span class="m-buttons"><b class="on">SET CLOCK</b><b>TIME ZONE</b></span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/clock-top.webp" width="400" height="240" alt="The console clock screen comparing the console time with internet time" loading="lazy">
+                  <img src="assets/screens/clock-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-clock-title">Fixes the clock</h3>
@@ -237,10 +212,9 @@
                 </div>
               </article>
               <article class="feature" id="feat-unzip" role="tabpanel" aria-labelledby="feat-unzip-title">
-                <div class="feature-demo">
-                  <span class="m-line m-green">Archive extracted</span>
-                  <span class="m-line">6 files extracted into</span>
-                  <span class="m-line m-muted">sdmc:/3ds/Checkpoint/</span>
+                <div class="feature-demo shot-pair">
+                  <img src="assets/screens/zip-top.webp" width="400" height="240" alt="The contents of a ZIP file, ready to extract here or into a new folder" loading="lazy">
+                  <img src="assets/screens/zip-bottom.webp" width="320" height="240" alt="" loading="lazy">
                 </div>
                 <div class="feature-text">
                   <h3 id="feat-unzip-title">Optional unzip</h3>

@@ -229,56 +229,27 @@
     }
   }
 
-  // The download on the 3DS's screens plays on a loop, using the same
-  // wording as 3dsDL's progress screen.
+  // The 3DS's screens step through a download and install: each top and
+  // bottom screenshot pair shows for a few seconds, then the next.
   function setUpDeviceDemo() {
-    var bar = document.querySelector("[data-demo-bar]");
-    var amount = document.querySelector("[data-demo-amount]");
-    var speed = document.querySelector("[data-demo-speed]");
-    var state = document.querySelector("[data-demo-state]");
-    var phase = document.querySelector("[data-demo-phase]");
-    if (!bar || !amount || !speed || !state || !phase || reduceMotion) return;
+    var tops = document.querySelectorAll(".screen-top [data-hero-shot]");
+    var bottoms = document.querySelectorAll(".screen-bottom [data-hero-shot]");
+    if (tops.length < 2 || tops.length !== bottoms.length || reduceMotion) return;
 
-    var total = 4.42 * 1048576;
-    var received = 0.3 * total;
-    var pauseUntil = 0;
-    var step = 250;
-    var smoothed = 0.65 * 1048576;
+    var holds = [4200, 3200, 3200];
+    var index = 0;
 
-    function show(fraction) {
-      bar.style.setProperty("--p", fraction.toFixed(4));
-      amount.textContent =
-        formatBytes(received) + " of " + formatBytes(total) + " (" + Math.floor(fraction * 100) + "%)";
+    function next() {
+      if (!document.hidden) {
+        tops[index].classList.remove("is-on");
+        bottoms[index].classList.remove("is-on");
+        index = (index + 1) % tops.length;
+        tops[index].classList.add("is-on");
+        bottoms[index].classList.add("is-on");
+      }
+      setTimeout(next, holds[index] || 3200);
     }
-
-    setInterval(function () {
-      if (document.hidden) return;
-      var now = Date.now();
-      if (now < pauseUntil) return;
-      if (received >= total) {
-        received = 0;
-        phase.textContent = "connecting";
-        speed.textContent = "";
-        show(0);
-        pauseUntil = now + 900;
-        return;
-      }
-      var rate = (0.5 + Math.random() * 0.3) * 1048576;
-      smoothed += 0.3 * (rate - smoothed);
-      received = Math.min(total, received + rate * (step / 1000));
-      show(received / total);
-      if (received >= total) {
-        state.textContent = "done";
-        phase.textContent = "complete";
-        speed.textContent = "Saved as sdmc:/cias/Universal-Updater.cia";
-        pauseUntil = now + 2800;
-      } else {
-        state.textContent = "downloading";
-        phase.textContent = "downloading";
-        var left = Math.max(1, Math.round((total - received) / smoothed));
-        speed.textContent = formatBytes(smoothed) + "/s, " + left + "s left";
-      }
-    }, step);
+    setTimeout(next, holds[0]);
   }
 
   // The screens are drawn at native 3DS size and projected onto the photo by

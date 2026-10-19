@@ -569,6 +569,20 @@ symbol .fill {
   transform: scale(var(--k)) var(--m-bottom);
 }
 
+/* The screenshots on the hero's screens take turns, cross-fading. */
+.screen .shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 450ms var(--ease-out);
+}
+
+.screen .shot.is-on {
+  opacity: 1;
+}
+
 /* Glass: a faint highlight across each screen so they sit in the photo. */
 .screen::after {
   content: "";
@@ -899,6 +913,16 @@ html:not(.js) .tray {
    Without the script this is a grid of cards. With it, the icons sit on a
    touch screen and the selected one's demo shows on the top screen above. */
 
+/* The features are shown in 3dsDL's own palette, the cream of the 3DS
+   system applets, so the screenshots sit on the colour they were taken in. */
+.home {
+  --app-bg: #f2ebb2;
+  --app-bg-2: #f2e9a3;
+  --app-text: #615a4b;
+  --app-muted: #8c8466;
+  --app-primary: #1c93c2;
+}
+
 .home-screen {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -1014,6 +1038,40 @@ html:not(.js) .tray {
 .m-buttons b.on {
   color: var(--app-bg);
   background: var(--app-primary);
+}
+
+/* A feature shown by the real app: its top and bottom screens side by
+   side at the same height, as captured at native size. */
+.feature-demo.shot-pair,
+.js .home .feature-demo.shot-pair {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 3%;
+  aspect-ratio: auto;
+  padding: 4% 4% 3%;
+  background: linear-gradient(90deg, var(--app-bg), var(--app-bg-2));
+}
+
+.js .home .feature-demo.shot-pair {
+  padding: 2% 3% 3%;
+  background: none;
+}
+
+.shot-pair img {
+  display: block;
+  min-width: 0;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(97, 90, 75, 0.25), 0 2px 6px rgba(64, 56, 16, 0.22);
+}
+
+.shot-pair img:first-child {
+  flex: 400 1 0;
+}
+
+.shot-pair img:last-child {
+  flex: 320 1 0;
 }
 
 .feature-demo.m-list {
