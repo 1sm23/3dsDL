@@ -200,10 +200,9 @@ void drawEntryPanel(const std::vector<uint16_t> &titleIcon, Kind kind,
                       {{0, ui::color::rgb(0xFEFCF5)}, {1, ui::color::rgb(0xE6E2D0)}});
         ui::drawIcon(look.icon, left + 9, top + 9, 30, look.color);
     }
-    ui::drawText(ui::fitMiddle(name, 0.62f, 290), left + 60, top + 2, 0.62f,
-                 ui::color::InkStrong);
-    ui::drawText(ui::fitEnd(second, ui::type::Tiny, 290), left + 60, top + 28,
-                 ui::type::Tiny, ui::color::InkSoft);
+    ui::drawMarquee(name, left + 60, top + 2, 0.62f, ui::color::InkStrong, 290);
+    ui::drawMarquee(second, left + 60, top + 28, ui::type::Tiny,
+                    ui::color::InkSoft, 290);
     float y = top + 58;
     for (const auto &tag : tags) {
         if (tag.second.empty() || y > ui::TopPanel.y + ui::TopPanel.h - 24) {
@@ -373,7 +372,7 @@ void App::filesScreen()
         }
 
         ui::ListSpec spec;
-        spec.title = ui::fitMiddle(current, ui::type::Small, 296);
+        spec.title = current;
         spec.emptyText = readable
             ? "This folder is empty. Options makes a new file or folder here."
             : "The SD card could not be read.";
@@ -601,8 +600,8 @@ void App::ciaOptions(const std::string &path)
                                   : "Installing is not available.";
     spec.drawTop = [&]() { screens::drawCiaTop(info, "CIA Installer"); };
     spec.drawBottom = [&]() {
-        ui::drawText(ui::fitEnd(state, ui::type::Body, 300), 160, 12,
-                     ui::type::Body, ui::color::Ink, C2D_AlignCenter);
+        ui::drawMarquee(state, 160, 12, ui::type::Body, ui::color::Ink, 300,
+                        C2D_AlignCenter);
     };
     int focus = installer::available() ? 0 : 2;
     const ui::ScreenResult result = ui::runScreen(spec, focus);
@@ -1608,11 +1607,13 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             }
 
             ui::beginBottom();
-            const std::string name = ui::fitMiddle(basename(path), 0.68f, 260);
-            const float width = 26 + ui::textWidth(name, 0.68f);
+            const std::string name = basename(path);
+            const float width =
+                26 + std::min(260.0f, ui::textWidth(name, 0.68f));
             ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 9, 20,
                          ui::color::IconPink);
-            ui::drawText(name, 160 - width / 2 + 26, 9, 0.68f, ui::color::Ink);
+            ui::drawMarquee(name, 160 - width / 2 + 26, 9, 0.68f,
+                            ui::color::Ink, 260);
             const ui::Rect panel = {13, 44, 294, 54};
             ui::drawPanel(panel);
             std::string facts = sizeText(fs::fileSize(path));
@@ -1792,11 +1793,12 @@ void App::hexViewer(const std::string &path)
 
         ui::beginFrame();
         ui::drawStatusBar();
-        const std::string name = ui::fitMiddle(basename(path), ui::type::Title, 300);
-        const float width = 28 + ui::textWidth(name, ui::type::Title);
+        const std::string name = basename(path);
+        const float width =
+            28 + std::min(300.0f, ui::textWidth(name, ui::type::Title));
         ui::drawIcon(ui::Icon::Hex, 200 - width / 2, 22, 22, ui::color::IconGrey);
-        ui::drawText(name, 200 - width / 2 + 28, 21, ui::type::Title,
-                     ui::color::Accent);
+        ui::drawMarquee(name, 200 - width / 2 + 28, 21, ui::type::Title,
+                        ui::color::Accent, 300);
         const ui::Rect paper = {10, 50, 380, 184};
         ui::fillRound({paper.x - 1, paper.y - 1, paper.w + 2, paper.h + 2}, 7,
                       ui::color::rgb(0xCFC48A));
@@ -2048,12 +2050,13 @@ void App::textEditor(const std::string &path)
         }
 
         ui::beginFrame();
-        const std::string name = ui::fitMiddle(basename(path), ui::type::Title, 260);
+        const std::string name = basename(path);
+        const float nameWidth = std::min(260.0f, ui::textWidth(name, ui::type::Title));
         const std::string state = dirty      ? "edited"
                                 : saved    ? "saved"
                                 : readOnly ? "read-only"
                                            : "";
-        const float width = 28 + ui::textWidth(name, ui::type::Title) +
+        const float width = 28 + nameWidth +
                             (state.empty() ? 0 : 8 + ui::textWidth(state, ui::type::Small));
         // A ruled page with a line number gutter.
         ui::fillRound({paper.x - 1, paper.y - 1, paper.w + 2, paper.h + 2}, 7,
@@ -2082,19 +2085,24 @@ void App::textEditor(const std::string &path)
             ui::drawText(std::to_string(index + 1), paper.x + 26, y + 2,
                          0.3f, ui::color::rgb(0xA79D70), C2D_AlignRight);
             const std::string &line = document.lines[index];
-            ui::drawText(ui::fitEnd(line, EditorScale, paper.w - 44),
-                         paper.x + 36, y, EditorScale,
-                         lineColor(line, extension));
+            // The current line scrolls to show all of it; the rest are cut.
+            if (index == cursor && !scroller.dragging()) {
+                ui::drawMarquee(line, paper.x + 36, y, EditorScale,
+                                lineColor(line, extension), paper.w - 44);
+            } else {
+                ui::drawText(ui::fitEnd(line, EditorScale, paper.w - 44),
+                             paper.x + 36, y, EditorScale,
+                             lineColor(line, extension));
+            }
         }
         // Lines scrolled past the page are covered again by the chrome.
         ui::fillRound({0, 0, ui::TopWidth, paper.y - 1}, 0, ui::color::TopA);
         ui::drawStatusBar();
         ui::drawIcon(ui::Icon::Text, 200 - width / 2, 22, 22, ui::color::IconGrey);
-        ui::drawText(name, 200 - width / 2 + 28, 21, ui::type::Title,
-                     ui::color::Accent);
+        ui::drawMarquee(name, 200 - width / 2 + 28, 21, ui::type::Title,
+                        ui::color::Accent, 260);
         if (!state.empty()) {
-            ui::drawText(state,
-                         200 - width / 2 + 28 + ui::textWidth(name, ui::type::Title) + 8,
+            ui::drawText(state, 200 - width / 2 + 28 + nameWidth + 8,
                          26, ui::type::Small,
                          dirty ? ui::color::rgb(0xE07A10) : ui::color::InkSoft);
         }

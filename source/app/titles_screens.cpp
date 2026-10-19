@@ -64,16 +64,16 @@ void drawTitleTop(const std::string &header, ui::Icon headerIcon,
         }
     }
     ui::drawTitleIcon(game->icon, left, top, iconFor(title.id));
-    ui::drawText(ui::fitEnd(titles::displayName(title, index), 0.62f, 280),
-                 left + 60, top + 2, 0.62f, ui::color::InkStrong);
+    ui::drawMarquee(titles::displayName(title, index), left + 60, top + 2,
+                    0.62f, ui::color::InkStrong, 280);
     std::string second = game->publisher.empty()
                              ? cia::kindName(cia::kind(title.id))
                              : game->publisher;
     if (!title.productCode.empty()) {
         second += "   " + title.productCode;
     }
-    ui::drawText(ui::fitEnd(second, ui::type::Small, 280), left + 60, top + 30,
-                 ui::type::Small, ui::color::InkSoft);
+    ui::drawMarquee(second, left + 60, top + 30, ui::type::Small,
+                    ui::color::InkSoft, 280);
     float y = top + 60;
     y = ui::drawTagRow(left, y, 76, "Title ID", cia::titleIdText(title.id));
     y = ui::drawTagRow(left, y, 76, "Version", cia::versionText(title.version));
@@ -471,11 +471,10 @@ void App::extraDataScreen()
                                   ? extData.icon
                                   : owner->icon,
                               left, top, ui::Icon::Folder);
-            ui::drawText(ui::fitEnd(nameOf(extData), 0.62f, 280), left + 60,
-                         top + 2, 0.62f, ui::color::InkStrong);
-            ui::drawText(ui::fitEnd(extData.publisher, ui::type::Small, 280),
-                         left + 60, top + 30, ui::type::Small,
-                         ui::color::InkSoft);
+            ui::drawMarquee(nameOf(extData), left + 60, top + 2, 0.62f,
+                            ui::color::InkStrong, 280);
+            ui::drawMarquee(extData.publisher, left + 60, top + 30,
+                            ui::type::Small, ui::color::InkSoft, 280);
             char id[16];
             std::snprintf(id, sizeof(id), "%08llX",
                           static_cast<unsigned long long>(extData.id));
@@ -567,8 +566,8 @@ void App::ticketsScreen()
             const float left = ui::TopPanel.x + 18;
             const float top = ui::TopPanel.y + 12;
             ui::drawTitleIcon(icon, left, top, ui::Icon::Lock);
-            ui::drawText(ui::fitEnd(titles::displayName(ticket, index), 0.62f, 280),
-                         left + 60, top + 2, 0.62f, ui::color::InkStrong);
+            ui::drawMarquee(titles::displayName(ticket, index), left + 60,
+                            top + 2, 0.62f, ui::color::InkStrong, 280);
             ui::drawText(cia::kindName(cia::kind(ticket)), left + 60, top + 30,
                          ui::type::Small, ui::color::InkSoft);
             float y = ui::drawTagRow(left, top + 60, 96, "Title ID",

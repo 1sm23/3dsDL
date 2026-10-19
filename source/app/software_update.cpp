@@ -76,8 +76,8 @@ void drawUpdateTop(const updater::Status &status)
                            ui::color::Good);
         const std::string note = firstNote(release);
         if (!note.empty()) {
-            ui::drawText(ui::fitEnd(note, ui::type::Small, ui::TopPanel.w - 36),
-                         left, y + 2, ui::type::Small, ui::color::Ink);
+            ui::drawMarquee(note, left, y + 2, ui::type::Small, ui::color::Ink,
+                            ui::TopPanel.w - 36);
         }
         return;
     }

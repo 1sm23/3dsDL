@@ -86,13 +86,13 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
     const float left = ui::TopPanel.x + 18;
     const float top = ui::TopPanel.y + 12;
     ui::drawTitleIcon(info.smdh.icon, left, top);
-    ui::drawText(ui::fitEnd(ciaName(info), 0.62f, 280), left + 60, top + 2,
-                 0.62f, ui::color::InkStrong);
-    ui::drawText(ui::fitEnd(info.smdh.publisher.empty()
-                                ? cia::kindName(cia::kind(info.titleId))
-                                : info.smdh.publisher,
-                            ui::type::Small, 280),
-                 left + 60, top + 30, ui::type::Small, ui::color::InkSoft);
+    ui::drawMarquee(ciaName(info), left + 60, top + 2, 0.62f,
+                    ui::color::InkStrong, 280);
+    ui::drawMarquee(info.smdh.publisher.empty()
+                        ? cia::kindName(cia::kind(info.titleId))
+                        : info.smdh.publisher,
+                    left + 60, top + 30, ui::type::Small, ui::color::InkSoft,
+                    280);
     float y = top + 60;
     y = ui::drawTagRow(left, y, 76, "Title ID", cia::titleIdText(info.titleId));
     uint16_t installed = 0;

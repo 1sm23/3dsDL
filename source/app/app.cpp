@@ -224,15 +224,14 @@ App::Action App::home()
         ui::drawText("3dsDL", 200, 116, ui::type::Hero, ui::color::Ink,
                      C2D_AlignCenter);
         const std::string where =
-            "Saves to " + ui::fitMiddle(settings_.destination,
-                                        ui::type::Small, 200) +
+            "Saves to " + settings_.destination +
             (freeBytes_ >= 0 ? "   " +
                                    units::bytes(static_cast<uint64_t>(
                                        freeBytes_)) +
                                    " free"
                              : "");
-        ui::drawText(where, 200, 156, ui::type::Small, ui::color::InkSoft,
-                     C2D_AlignCenter);
+        ui::drawMarquee(where, 200, 156, ui::type::Small, ui::color::InkSoft,
+                        340, C2D_AlignCenter);
         ui::drawDots(196);
         ui::drawText("Ver. " APP_VERSION, 387, 210, 0.66f,
                      ui::color::rgb(0x63593F), C2D_AlignRight);
@@ -456,12 +455,10 @@ App::Confirm App::confirmDownload(const std::string &address,
             ui::drawIcon(name == naming::DefaultFilename ? ui::Icon::File
                                                          : ui::Icon::Package,
                          left, ui::TopPanel.y + 14, 30, ui::color::Accent);
-            ui::drawText(ui::fitMiddle(name == naming::DefaultFilename
-                                           ? url::host(address)
-                                           : name,
-                                       0.62f, 300),
-                         left + 40, ui::TopPanel.y + 10, 0.62f,
-                         ui::color::InkStrong);
+            ui::drawMarquee(name == naming::DefaultFilename ? url::host(address)
+                                                            : name,
+                            left + 40, ui::TopPanel.y + 10, 0.62f,
+                            ui::color::InkStrong, 300);
             ui::drawText("from " + url::host(address), left + 40,
                          ui::TopPanel.y + 36, ui::type::Small,
                          ui::color::InkSoft);
@@ -490,9 +487,8 @@ App::Confirm App::confirmDownload(const std::string &address,
             ui::drawRecess(box);
             ui::drawText("Saves to", box.x + 12, box.y + 8, ui::type::Small,
                          ui::color::InkSoft);
-            ui::drawText(ui::fitMiddle(folder, ui::type::Body, 270),
-                         box.x + 12, box.y + 32, ui::type::Body,
-                         ui::color::InkStrong);
+            ui::drawMarquee(folder, box.x + 12, box.y + 32, ui::type::Body,
+                            ui::color::InkStrong, 270);
         };
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);
@@ -1114,7 +1110,7 @@ bool App::browseFolders(std::string &folder)
         const bool atRoot = naming::parentFolder(current) == current;
 
         ui::ListSpec spec;
-        spec.title = ui::fitMiddle(current, ui::type::Small, 296);
+        spec.title = current;
         spec.back = atRoot ? "Cancel" : "Back";
         spec.action = "Use This";
         spec.actionKey = "Y";
@@ -1300,8 +1296,8 @@ void App::historyScreen()
         ui::drawBadge(left + width, ui::TopPanel.y + 14, badge, fill);
         ui::drawText(units::dateTime(entry.time), left + width + 10,
                      ui::TopPanel.y + 13, ui::type::Small, ui::color::InkSoft);
-        ui::drawText(ui::fitMiddle(entryName(entry), 0.62f, 330), left,
-                     ui::TopPanel.y + 36, 0.62f, ui::color::InkStrong);
+        ui::drawMarquee(entryName(entry), left, ui::TopPanel.y + 36, 0.62f,
+                        ui::color::InkStrong, 330);
         float y = ui::drawWrapped(entry.url, left, ui::TopPanel.y + 62,
                                   ui::type::Tiny, ui::color::InkSoft, 330, 2) +
                   4;

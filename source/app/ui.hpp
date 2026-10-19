@@ -147,6 +147,14 @@ float drawWrapped(const std::string &value, float x, float y, float scale,
 // Centres text vertically in rect, horizontally too unless left is set.
 void drawCentered(const std::string &value, const Rect &rect, float scale,
                   u32 textColor, bool left = false);
+// Text in a box maxWidth wide (flags align it as for drawText). Text that
+// is too long scrolls: it waits, slides to its end inside the box, rests
+// and starts over, so all of it can be read without cutting it off.
+void drawMarquee(const std::string &value, float x, float y, float scale,
+                 u32 textColor, float maxWidth, u32 flags = 0);
+// drawCentered for text that may be too long for rect: it scrolls.
+void drawCenteredMarquee(const std::string &value, const Rect &rect,
+                         float scale, u32 textColor, bool left = false);
 
 // --- Shapes ------------------------------------------------------------------
 

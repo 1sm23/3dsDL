@@ -373,8 +373,8 @@ void App::queueScreen()
             const float left = ui::TopPanel.x + 18;
             ui::drawIcon(ui::Icon::Download, left, ui::TopPanel.y + 14, 30,
                          ui::color::IconGreen);
-            ui::drawText(ui::fitMiddle(nameOf(item.url), 0.62f, 300), left + 40,
-                         ui::TopPanel.y + 10, 0.62f, ui::color::InkStrong);
+            ui::drawMarquee(nameOf(item.url), left + 40, ui::TopPanel.y + 10,
+                            0.62f, ui::color::InkStrong, 300);
             ui::drawText("from " + url::host(item.url), left + 40,
                          ui::TopPanel.y + 36, ui::type::Small,
                          ui::color::InkSoft);
@@ -586,8 +586,8 @@ void App::receiveScreen()
         ui::drawSpinner(160, panel.y + 26, 12);
         ui::drawText("Waiting for links at", 160, panel.y + 46, ui::type::Body,
                      ui::color::Ink, C2D_AlignCenter);
-        ui::drawText(ui::fitEnd(page, ui::type::Body, 280), 160, panel.y + 76,
-                     ui::type::Body, ui::color::Accent, C2D_AlignCenter);
+        ui::drawMarquee(page, 160, panel.y + 76, ui::type::Body,
+                        ui::color::Accent, 280, C2D_AlignCenter);
         ui::drawText(last.empty() ? "Keep this screen open while sending."
                                   : "Last: " + last,
                      160, panel.y + 112, ui::type::Tiny, ui::color::InkSoft,

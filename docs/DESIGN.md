@@ -165,6 +165,11 @@ on its top right corner, drawn over the focus ring.
 - Dialogs dim the screen in 120 ms and scale from 92% to 100% in 140 ms.
 - Screens cross-fade in 100 ms. Progress bars ease.
 - Optional soft clicks for move, select and back, off by default.
+- Text never ends in "..." where it matters: a name, path or value too long
+  for its box waits 1.4 s, slides to its end at 32 px a second inside the
+  box, rests 1.1 s and starts over. Wrapped text that runs out of lines
+  scrolls the rest on its last line. In lists only the highlighted row
+  scrolls, as on the system's lists; the others keep "...".
 
 ## How the code draws it
 

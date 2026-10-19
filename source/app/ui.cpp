@@ -398,22 +398,49 @@ void plainImage(const C2D_Image &image, float x, float y)
     C2D_DrawImageAt(image, x, y, Depth);
 }
 
-// Draws only inside clip on the current screen, until unclip().
-void clip(const Rect &area)
+// Clips nest: a marquee inside a list row stays inside the list too.
+std::vector<Rect> clips;
+
+void applyClip(const Rect &area)
 {
-    C2D_Flush();
     const int screenWidth = onBottom ? 320 : 400;
     const int left = std::max(0, static_cast<int>(240 - (area.y + area.h)));
     const int top = std::max(0, static_cast<int>(screenWidth - (area.x + area.w)));
     const int right = std::min(240, static_cast<int>(240 - area.y));
     const int bottom = std::min(screenWidth, static_cast<int>(screenWidth - area.x));
-    C3D_SetScissor(GPU_SCISSOR_NORMAL, left, top, right, bottom);
+    C3D_SetScissor(GPU_SCISSOR_NORMAL, left, top, std::max(left, right),
+                   std::max(top, bottom));
+}
+
+// Draws only inside area (and any clip already set) on the current screen,
+// until unclip().
+void clip(const Rect &area)
+{
+    C2D_Flush();
+    Rect shown = area;
+    if (!clips.empty()) {
+        const Rect &outer = clips.back();
+        const float x0 = std::max(outer.x, area.x);
+        const float y0 = std::max(outer.y, area.y);
+        const float x1 = std::min(outer.x + outer.w, area.x + area.w);
+        const float y1 = std::min(outer.y + outer.h, area.y + area.h);
+        shown = {x0, y0, std::max(0.0f, x1 - x0), std::max(0.0f, y1 - y0)};
+    }
+    clips.push_back(shown);
+    applyClip(shown);
 }
 
 void unclip()
 {
     C2D_Flush();
-    C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+    if (!clips.empty()) {
+        clips.pop_back();
+    }
+    if (clips.empty()) {
+        C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+    } else {
+        applyClip(clips.back());
+    }
 }
 
 // 0..1, rising and falling every period milliseconds.
@@ -868,6 +895,7 @@ void beginFrame()
         frameHook();
     }
     lastFrameWasDialog = inDialog;
+    clips.clear();
     C2D_TextBufClear(textBuffer);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     // Shapes are drawn in order, like a painter's canvas, without depth.
@@ -1050,12 +1078,62 @@ void drawText(const std::string &value, float x, float y, float scale,
                  scale * TextBoost, scale * TextBoost, textColor);
 }
 
+namespace {
+
+// Wrapped lines where the last one, when text is cut off, holds everything
+// that did not fit, to scroll instead of ending in "...".
+struct ScrollingLines {
+    std::vector<std::string> lines;
+    bool lastScrolls = false;
+};
+
+ScrollingLines wrapScrolling(const std::string &value, float scale,
+                             float maxWidth, size_t maxLines)
+{
+    ScrollingLines out;
+    const std::vector<std::string> all = wrap(value, scale, maxWidth, 4096);
+    if (all.size() <= maxLines || maxLines == 0) {
+        out.lines = all;
+        return out;
+    }
+    // Where the last shown line starts in value; wrap's lines are pieces of
+    // it with the spaces at the breaks left out.
+    size_t position = 0;
+    for (size_t index = 0; index + 1 < maxLines; ++index) {
+        const size_t found = value.find(all[index], position);
+        if (found == std::string::npos) {
+            out.lines = wrap(value, scale, maxWidth, maxLines);
+            return out;
+        }
+        position = found + all[index].size();
+        out.lines.push_back(all[index]);
+    }
+    std::string rest = value.substr(position);
+    for (char &c : rest) {
+        if (c == '\n' || c == '\r') {
+            c = ' ';
+        }
+    }
+    const size_t first = rest.find_first_not_of(' ');
+    out.lines.push_back(first == std::string::npos ? "" : rest.substr(first));
+    out.lastScrolls = true;
+    return out;
+}
+
+} // namespace
+
 float drawWrapped(const std::string &value, float x, float y, float scale,
                   u32 textColor, float maxWidth, size_t maxLines, u32 flags)
 {
     const float step = lineHeight(scale);
-    for (const std::string &line : wrap(value, scale, maxWidth, maxLines)) {
-        drawText(line, x, y, scale, textColor, flags);
+    const ScrollingLines wrapped = wrapScrolling(value, scale, maxWidth, maxLines);
+    for (size_t index = 0; index < wrapped.lines.size(); ++index) {
+        if (wrapped.lastScrolls && index + 1 == wrapped.lines.size()) {
+            drawMarquee(wrapped.lines[index], x, y, scale, textColor, maxWidth,
+                        flags);
+        } else {
+            drawText(wrapped.lines[index], x, y, scale, textColor, flags);
+        }
         y += step;
     }
     return y;
@@ -1070,6 +1148,99 @@ void drawCentered(const std::string &value, const Rect &area, float scale,
     } else {
         drawText(value, area.x + area.w / 2, y, scale, textColor,
                  C2D_AlignCenter);
+    }
+}
+
+namespace {
+
+// When each scrolling text was first shown, so it starts from its beginning
+// and a newly highlighted row does not join a scroll halfway.
+struct MarqueeStart {
+    uint64_t key;
+    uint64_t start;
+    uint64_t seen;
+};
+std::vector<MarqueeStart> marquees;
+
+constexpr float MarqueeSpeed = 32;     // pixels a second
+constexpr uint64_t MarqueeWait = 1400; // ms at the start
+constexpr uint64_t MarqueeRest = 1100; // ms at the end before starting over
+
+uint64_t marqueeKey(const std::string &value, float x, float y)
+{
+    uint64_t hash = 1469598103934665603ULL;
+    for (const char c : value) {
+        hash = (hash ^ static_cast<uint8_t>(c)) * 1099511628211ULL;
+    }
+    hash ^= static_cast<uint64_t>(x * 4) << 20;
+    hash ^= static_cast<uint64_t>(y * 4) << 40;
+    return hash ^ (onBottom ? 1 : 0);
+}
+
+float marqueeOffset(uint64_t key, float overflow)
+{
+    const uint64_t time = now();
+    MarqueeStart *found = nullptr;
+    for (MarqueeStart &entry : marquees) {
+        if (entry.key == key) {
+            found = &entry;
+            break;
+        }
+    }
+    if (found == nullptr || time - found->seen > 400) {
+        // Forget texts that are no longer on screen.
+        marquees.erase(std::remove_if(marquees.begin(), marquees.end(),
+                                      [&](const MarqueeStart &entry) {
+                                          return time - entry.seen > 1000 ||
+                                                 entry.key == key;
+                                      }),
+                       marquees.end());
+        marquees.push_back({key, time, time});
+        found = &marquees.back();
+    }
+    found->seen = time;
+    const uint64_t travel = static_cast<uint64_t>(overflow / MarqueeSpeed * 1000);
+    const uint64_t cycle = MarqueeWait + travel + MarqueeRest;
+    const uint64_t at = (time - found->start) % cycle;
+    if (at < MarqueeWait) {
+        return 0;
+    }
+    if (at >= MarqueeWait + travel) {
+        return overflow;
+    }
+    return static_cast<float>(at - MarqueeWait) / 1000.0f * MarqueeSpeed;
+}
+
+} // namespace
+
+void drawMarquee(const std::string &value, float x, float y, float scale,
+                 u32 textColor, float maxWidth, u32 flags)
+{
+    const float width = textWidth(value, scale);
+    if (width <= maxWidth + 0.5f) {
+        drawText(value, x, y, scale, textColor, flags);
+        return;
+    }
+    const u32 align = flags & C2D_AlignMask;
+    const float left = align == C2D_AlignCenter ? x - maxWidth / 2
+                     : align == C2D_AlignRight  ? x - maxWidth
+                                                : x;
+    const float offset = marqueeOffset(marqueeKey(value, left, y),
+                                       width - maxWidth);
+    clip({left, y - 2, maxWidth, lineHeight(scale) + 6});
+    drawText(value, left - offset, y, scale, textColor, flags & ~C2D_AlignMask);
+    unclip();
+}
+
+void drawCenteredMarquee(const std::string &value, const Rect &area,
+                         float scale, u32 textColor, bool left)
+{
+    const float y = area.y + (area.h - lineHeight(scale)) / 2 + 1;
+    if (left) {
+        drawMarquee(value, area.x, y, scale, textColor, area.w);
+    } else {
+        drawMarquee(value, area.x + area.w / 2, y, scale, textColor, area.w,
+                    C2D_AlignCenter);
     }
 }
 
@@ -1300,15 +1471,14 @@ void drawTopChrome(const std::string &title, Icon icon, u32 iconColor)
     const float textW = textWidth(title, type::Title);
     const float iconW = icon == Icon::None ? 0 : 28;
     const float maxW = 360 - iconW;
-    const std::string shown = fitEnd(title, type::Title, maxW);
     const float width = iconW + std::min(textW, maxW);
     float x = 200 - width / 2;
     if (icon != Icon::None) {
         drawIcon(icon, x, 26, 22, iconColor);
         x += iconW;
     }
-    drawText(shown, x, 37 - lineHeight(type::Title) / 2 + 1, type::Title,
-             color::Accent);
+    drawMarquee(title, x, 37 - lineHeight(type::Title) / 2 + 1, type::Title,
+                color::Accent, maxW);
     drawDots(57);
 }
 
@@ -1327,13 +1497,18 @@ void drawRecess(const Rect &area)
 float drawPanelText(const std::string &value, const Rect &area, float scale,
                     u32 textColor, size_t maxLines)
 {
-    const std::vector<std::string> lines =
-        wrap(value, scale, area.w - 32, maxLines);
+    const ScrollingLines wrapped =
+        wrapScrolling(value, scale, area.w - 32, maxLines);
     const float step = lineHeight(scale) * 1.05f;
-    float y = area.y + (area.h - step * lines.size()) / 2;
-    for (const std::string &line : lines) {
-        drawText(line, area.x + area.w / 2, y, scale, textColor,
-                 C2D_AlignCenter);
+    float y = area.y + (area.h - step * wrapped.lines.size()) / 2;
+    for (size_t index = 0; index < wrapped.lines.size(); ++index) {
+        if (wrapped.lastScrolls && index + 1 == wrapped.lines.size()) {
+            drawMarquee(wrapped.lines[index], area.x + area.w / 2, y, scale,
+                        textColor, area.w - 32, C2D_AlignCenter);
+        } else {
+            drawText(wrapped.lines[index], area.x + area.w / 2, y, scale,
+                     textColor, C2D_AlignCenter);
+        }
         y += step;
     }
     return y;
@@ -1361,9 +1536,10 @@ void drawButton(const Rect &area, const std::string &label, Style style,
     const float width = iconSize + 6 + textWidth(label, scale);
     const float x = area.x + std::max(8.0f, (area.w - width) / 2);
     drawIcon(icon, x, inside.y + (area.h - iconSize) / 2, iconSize, iconColor);
-    drawCentered(fitEnd(label, scale, area.w - iconSize - 22),
-                 {x + iconSize + 6, inside.y, area.w, area.h}, scale, textColor,
-                 true);
+    drawCenteredMarquee(label,
+                        {x + iconSize + 6, inside.y,
+                         area.x + area.w - 10 - (x + iconSize + 6), area.h},
+                        scale, textColor, true);
 }
 
 void drawTile(const Rect &area, const std::string &label, Icon icon,
@@ -1493,8 +1669,8 @@ float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
     fillRound({x, y, tagWidth, 20}, 5, fill);
     drawCentered(fitEnd(tag, 0.4f, tagWidth - 6), {x, y, tagWidth, 20}, 0.4f,
                  color::rgb(0xFFFFFF));
-    drawCentered(fitEnd(value, type::Small, 366 - tagWidth - 40),
-                 {x + tagWidth + 10, y, 300, 20}, type::Small, color::Ink, true);
+    drawCenteredMarquee(value, {x + tagWidth + 10, y, 366 - tagWidth - 40, 20},
+                        type::Small, color::Ink, true);
     return y + 26;
 }
 
@@ -1615,10 +1791,10 @@ void drawNotice()
 
     const float textX = badge.x + badge.w + 10;
     const float textWidthMax = x + Width - 12 - textX;
-    drawText(fitEnd(notice.title, type::Small, textWidthMax), textX, y + 6,
-             type::Small, color::InkStrong);
-    drawText(fitEnd(notice.text, type::Tiny, textWidthMax), textX, y + 27,
-             type::Tiny, color::Ink);
+    drawMarquee(notice.title, textX, y + 6, type::Small, color::InkStrong,
+                textWidthMax);
+    drawMarquee(notice.text, textX, y + 27, type::Tiny, color::Ink,
+                textWidthMax);
 
     // How long it stays, as a line that runs out.
     if (age >= NoticeIn && age <= NoticeIn + NoticeHold) {
@@ -2197,8 +2373,8 @@ int chooseOption(const std::string &title, const std::string &description,
             drawPanelText(description, TopPanel);
         };
         spec.drawBottom = [&]() {
-            drawText(fitEnd(title, type::Small, 300), 160, 3, type::Small,
-                     color::rgb(0x63593F), C2D_AlignCenter);
+            drawMarquee(title, 160, 3, type::Small, color::rgb(0x63593F), 300,
+                        C2D_AlignCenter);
             drawRecess({18, top, 284, height});
         };
         const ScreenResult result = runScreen(spec, focus);
@@ -2425,8 +2601,8 @@ ListResult runList(const ListSpec &spec, int &cursor)
         }
         beginBottom();
         if (titled) {
-            drawText(fitEnd(spec.title, type::Small, 300), 160, 2, type::Small,
-                     color::rgb(0x63593F), C2D_AlignCenter);
+            drawMarquee(spec.title, 160, 2, type::Small, color::rgb(0x63593F),
+                        296, C2D_AlignCenter);
         }
         drawRecess(recess);
         if (count == 0) {
@@ -2471,9 +2647,16 @@ ListResult runList(const ListSpec &spec, int &cursor)
                              type::Tiny, color::InkSoft, true);
                 right -= textWidth(detail, type::Tiny) + 8;
             }
-            drawCentered(fitEnd(item.label, type::Row, right - textX),
-                         {textX, row.y, right - textX, row.h}, type::Row,
-                         item.labelColor, true);
+            // Only the highlighted row scrolls, as on the system's lists.
+            if (index == cursor && !scroller.dragging()) {
+                drawCenteredMarquee(item.label,
+                                    {textX, row.y, right - textX, row.h},
+                                    type::Row, item.labelColor, true);
+            } else {
+                drawCentered(fitEnd(item.label, type::Row, right - textX),
+                             {textX, row.y, right - textX, row.h}, type::Row,
+                             item.labelColor, true);
+            }
             if (index == cursor && !scroller.dragging()) {
                 drawFocus(row, 8, 2.5f, 2.5f);
             }
@@ -2504,8 +2687,8 @@ ListResult runList(const ListSpec &spec, int &cursor)
                         tabRect(Tab::Right).contains(input.touch));
         }
         if (!spec.hint.empty()) {
-            drawText(fitEnd(spec.hint, type::Tiny, 60), 160, 220, type::Tiny,
-                     color::Counter, C2D_AlignCenter);
+            drawMarquee(spec.hint, 160, 220, type::Tiny, color::Counter, 60,
+                        C2D_AlignCenter);
         }
         endFrame();
     }
@@ -2530,14 +2713,15 @@ void drawProgress(const ProgressView &view)
         drawIcon(Icon::Package, left, TopPanel.y + 16, 30, color::Accent);
         nameX += 40;
     }
-    drawText(fitMiddle(view.name, 0.62f, TopPanel.x + TopPanel.w - 18 - nameX),
-             nameX, TopPanel.y + 13, 0.62f, color::InkStrong);
+    const float nameWidth = TopPanel.x + TopPanel.w - 18 - nameX;
+    drawMarquee(view.name, nameX, TopPanel.y + 13, 0.62f, color::InkStrong,
+                nameWidth);
     if (!view.note.empty()) {
-        drawText(fitEnd(view.note, type::Small, 280), nameX, TopPanel.y + 41,
-                 type::Small, color::Good);
+        drawMarquee(view.note, nameX, TopPanel.y + 41, type::Small, color::Good,
+                    nameWidth);
     } else {
-        drawText(fitEnd(view.source, type::Small, 280), nameX, TopPanel.y + 41,
-                 type::Small, color::InkSoft);
+        drawMarquee(view.source, nameX, TopPanel.y + 41, type::Small,
+                    color::InkSoft, nameWidth);
     }
     drawProgressBar({left, TopPanel.y + 72, TopPanel.w - 36, 18}, view.fraction);
     drawText(view.amounts, left, TopPanel.y + 98, type::Body, color::Ink);
@@ -2550,8 +2734,8 @@ void drawProgress(const ProgressView &view)
     }
     // The speed gives way to the tag beside it.
     const float tagWidth = view.tag.empty() ? 0 : textWidth(view.tag, 0.4f) + 16;
-    drawText(fitEnd(view.speed, type::Small, TopPanel.w - 36 - tagWidth - 8),
-             left, TopPanel.y + 126, type::Small, color::Ink);
+    drawMarquee(view.speed, left, TopPanel.y + 126, type::Small, color::Ink,
+                TopPanel.w - 36 - tagWidth - 8);
     if (!view.tag.empty()) {
         drawTag(TopPanel.x + TopPanel.w - 18 - tagWidth, TopPanel.y + 124,
                 view.tag);
@@ -2649,8 +2833,7 @@ void drawScanner(const C2D_Image *preview, const std::string &statusText,
                       color::rgb(0xF2E9A3, 0xEB));
     drawStatusBar();
     rect(0, 206, TopWidth, 34, color::rgb(0x141618, 0xB8));
-    drawCentered(fitEnd(statusText, type::Body, 380), {0, 206, TopWidth, 34},
-                 type::Body,
+    drawCenteredMarquee(statusText, {10, 206, TopWidth - 20, 34}, type::Body,
                  statusColor == color::Warning ? color::rgb(0xFFD36B)
                                                : color::rgb(0xFFFFFF));
 
