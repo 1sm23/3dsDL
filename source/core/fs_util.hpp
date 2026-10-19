@@ -27,4 +27,14 @@ bool renameFile(const std::string &from, const std::string &to);
 // entries (starting with '.') are left out.
 std::vector<std::string> listFolders(const std::string &folder);
 
+struct Entry {
+    std::string name;
+    bool folder = false;
+    int64_t size = -1; // files only; -1 when it cannot be read
+};
+
+// The folders and then the files in folder, each sorted case-insensitively.
+// Hidden entries are left out. ok is false when folder cannot be opened.
+std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr);
+
 } // namespace fs

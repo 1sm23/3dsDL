@@ -161,4 +161,47 @@ std::vector<std::string> listFolders(const std::string &folder)
     return names;
 }
 
+std::vector<Entry> listEntries(const std::string &folder, bool *ok)
+{
+    std::vector<Entry> entries;
+    DIR *directory = opendir(folder.c_str());
+    if (ok != nullptr) {
+        *ok = directory != nullptr;
+    }
+    if (directory == nullptr) {
+        return entries;
+    }
+
+    std::string base = folder;
+    if (!base.empty() && base.back() != '/') {
+        base += '/';
+    }
+
+    while (dirent *item = readdir(directory)) {
+        Entry entry;
+        entry.name = item->d_name;
+        if (entry.name.empty() || entry.name[0] == '.') {
+            continue;
+        }
+        struct stat info {};
+        if (stat((base + entry.name).c_str(), &info) == 0) {
+            entry.folder = S_ISDIR(info.st_mode);
+            if (!entry.folder) {
+                entry.size = static_cast<int64_t>(info.st_size);
+            }
+        }
+        entries.push_back(entry);
+    }
+    closedir(directory);
+
+    std::sort(entries.begin(), entries.end(),
+              [](const Entry &a, const Entry &b) {
+                  if (a.folder != b.folder) {
+                      return a.folder;
+                  }
+                  return text::lower(a.name) < text::lower(b.name);
+              });
+    return entries;
+}
+
 } // namespace fs

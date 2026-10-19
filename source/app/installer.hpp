@@ -1,0 +1,66 @@
+#pragma once
+
+#include <3ds.h>
+
+#include <cstdint>
+#include <string>
+
+// Installs CIA files through the AM service, the way FBI did, and does the
+// small jobs around it: seeds, removing an installed title and launching one.
+// Runs on whichever thread calls it; tasks::install puts it on the worker.
+namespace installer {
+
+// Opens the AM service. 3dsDL still works without it, but cannot install.
+void init();
+void exit();
+bool available();
+// Why installing is unavailable, for the user.
+std::string unavailableReason();
+
+class Observer {
+public:
+    virtual ~Observer() = default;
+    virtual bool cancelRequested() = 0;
+    virtual void onProgress(uint64_t done, uint64_t total)
+    {
+        (void)done;
+        (void)total;
+    }
+};
+
+enum class Outcome { Installed, Failed, Cancelled };
+
+struct Result {
+    Outcome outcome = Outcome::Failed;
+    ::Result code = 0;
+    // AM refused the version in the CIA, usually because the same or a
+    // newer version is installed.
+    bool versionRefused = false;
+    uint64_t bytes = 0;
+    double seconds = 0.0;
+    std::string message;
+};
+
+// path is an sdmc:/ path to a CIA whose title ID is titleId.
+Result installCia(const std::string &path, uint64_t titleId,
+                  Observer &observer);
+
+FS_MediaType destination(uint64_t titleId);
+// False when the title is not installed.
+bool installedVersion(uint64_t titleId, uint16_t &version);
+bool removeTitle(uint64_t titleId, std::string &error);
+// Bytes the install will take, or -1 when AM cannot say.
+int64_t requiredSpace(const std::string &path, uint64_t titleId);
+
+// Adds the seed a title needs to start. It is looked for in
+// sdmc:/3ds/3dsDL/seeds/<title id>.dat and FBI's sdmc:/fbi/seed/ first, then
+// fetched from Nintendo. message says what happened.
+bool installSeed(uint64_t titleId, std::string &message);
+
+// Leaves 3dsDL and starts an installed title.
+bool launch(uint64_t titleId, std::string &error);
+
+// A sentence for the user about an AM or FS failure.
+std::string describe(::Result code);
+
+} // namespace installer

@@ -1,7 +1,9 @@
 #include "app.hpp"
 
+#include "cia.hpp"
 #include "finalize.hpp"
 #include "fs_util.hpp"
+#include "installer.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "scanner.hpp"
@@ -17,6 +19,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iterator>
+#include <map>
 
 namespace {
 
@@ -48,17 +51,30 @@ constexpr Preset Presets[] = {
     {"GodMode9 scripts", "sdmc:/gm9/scripts/"},
 };
 
-// Home screen buttons, in navigation order.
+// Home screen buttons, in navigation order. The first two fill a row each;
+// the rest come in pairs.
 const ui::Rect HomeButtons[] = {
-    {18, 34, 284, 44},  // scan
-    {18, 84, 284, 44},  // enter URL
-    {18, 134, 284, 40}, // history
-    {18, 182, 138, 40}, // folder
-    {164, 182, 138, 40} // settings
+    {18, 34, 284, 44},   // scan
+    {18, 84, 284, 44},   // enter URL
+    {18, 134, 138, 40},  // history
+    {164, 134, 138, 40}, // files
+    {18, 182, 138, 40},  // folder
+    {164, 182, 138, 40}  // settings
 };
 const char *const HomeLabels[] = {"SCAN QR CODE", "ENTER URL", "HISTORY",
-                                  "FOLDER", "SETTINGS"};
-constexpr int HomeButtonCount = 5;
+                                  "FILES",        "FOLDER",    "SETTINGS"};
+constexpr int HomeButtonCount = 6;
+constexpr int HomeRows = 4;
+
+int homeRow(int button)
+{
+    return button < 2 ? button : 2 + (button - 2) / 2;
+}
+
+int homeButton(int row, int column)
+{
+    return row < 2 ? row : 2 + (row - 2) * 2 + column;
+}
 
 std::string basename(const std::string &path)
 {
@@ -68,6 +84,21 @@ std::string basename(const std::string &path)
 std::string onOff(bool value)
 {
     return value ? "On" : "Off";
+}
+
+const char *ciaActionLabel(CiaAction action)
+{
+    switch (action) {
+    case CiaAction::Install:
+        return "Install";
+    case CiaAction::InstallAndDelete:
+        return "Install, delete";
+    case CiaAction::Keep:
+        return "Keep file";
+    case CiaAction::Ask:
+        break;
+    }
+    return "Ask";
 }
 
 std::string plural(uint64_t count, const std::string &word)
@@ -90,6 +121,8 @@ u32 statusColor(HistoryStatus status)
     switch (status) {
     case HistoryStatus::Saved:
         return ui::color::Text;
+    case HistoryStatus::Installed:
+        return ui::color::Success;
     case HistoryStatus::Failed:
         return ui::color::Danger;
     case HistoryStatus::Cancelled:
@@ -103,6 +136,8 @@ const char *statusLabel(HistoryStatus status)
     switch (status) {
     case HistoryStatus::Saved:
         return "Saved";
+    case HistoryStatus::Installed:
+        return "Installed";
     case HistoryStatus::Failed:
         return "Failed";
     case HistoryStatus::Cancelled:
@@ -128,6 +163,35 @@ void drawLabelledPanel(float y, float height, const std::string &label,
     ui::drawText(label, 34, y + 9, 0.44f, ui::color::Muted);
     ui::drawWrapped(value, 34, y + 27, 0.52f, valueColor, 330,
                     static_cast<size_t>((height - 30) / ui::lineHeight(0.52f)));
+}
+
+// The title's name from its icon data, or its title ID when it has none.
+std::string ciaName(const cia::Info &info)
+{
+    return info.smdh.shortName.empty()
+        ? "title " + cia::titleIdText(info.titleId)
+        : info.smdh.shortName;
+}
+
+void addCiaParagraphs(ui::Dialog &dialog, const cia::Info &info)
+{
+    if (!info.smdh.publisher.empty()) {
+        dialog.body.push_back({info.smdh.publisher, ui::color::Muted, 0.46f,
+                               1});
+    }
+    dialog.body.push_back(
+        {std::string(cia::kindName(cia::kind(info.titleId))) + ", " +
+             cia::versionText(info.version) + ", " +
+             units::bytes(info.fileSize),
+         ui::color::Text, 0.46f, 2});
+    uint16_t installed = 0;
+    if (installer::installedVersion(info.titleId, installed)) {
+        dialog.body.push_back({"Installed now: " +
+                                   cia::versionText(installed),
+                               installed > info.version ? ui::color::Warning
+                                                        : ui::color::Muted,
+                               0.44f, 1});
+    }
 }
 
 } // namespace
@@ -159,6 +223,9 @@ void App::run()
         }
         case Action::History:
             historyScreen();
+            break;
+        case Action::Files:
+            filesScreen();
             break;
         case Action::Folder:
             changeDefaultFolder();
@@ -197,16 +264,17 @@ App::Action App::home()
         if (input.down & KEY_START) {
             return Action::Exit;
         }
+        const int row = homeRow(homeSelection_);
+        const int column = homeSelection_ < 2 ? 0 : (homeSelection_ - 2) % 2;
         if (input.repeat & KEY_UP) {
-            homeSelection_ = homeSelection_ == 0 ? 3
-                           : homeSelection_ >= 3 ? 2
-                                                 : homeSelection_ - 1;
+            homeSelection_ = homeButton((row + HomeRows - 1) % HomeRows,
+                                        column);
         }
         if (input.repeat & KEY_DOWN) {
-            homeSelection_ = homeSelection_ >= 3 ? 0 : homeSelection_ + 1;
+            homeSelection_ = homeButton((row + 1) % HomeRows, column);
         }
-        if ((input.repeat & (KEY_LEFT | KEY_RIGHT)) && homeSelection_ >= 3) {
-            homeSelection_ = homeSelection_ == 3 ? 4 : 3;
+        if ((input.repeat & (KEY_LEFT | KEY_RIGHT)) && row >= 2) {
+            homeSelection_ = homeButton(row, 1 - column);
         }
 
         int chosen = -1;
@@ -226,8 +294,10 @@ App::Action App::home()
         case 2:
             return Action::History;
         case 3:
-            return Action::Folder;
+            return Action::Files;
         case 4:
+            return Action::Folder;
+        case 5:
             return Action::Settings;
         default:
             break;
@@ -531,6 +601,10 @@ void App::finishDownload(const std::string &address, const std::string &folder,
         ? saved.message
         : "Saved as " + saved.path + " (" + units::bytes(result.bytes) +
               (speed.empty() ? "" : ", " + speed) + ").";
+    if (cia::isCiaFile(saved.path)) {
+        offerInstall(saved.path, address, summary);
+        return;
+    }
     if (settings_.offerZipExtraction &&
         text::endsWithNoCase(saved.path, ".zip")) {
         offerExtraction(saved.path, folder, summary);
@@ -650,6 +724,517 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
         ui::message("Could not delete the archive", zipPath,
                     ui::Tone::Error);
     }
+}
+
+// --- Installing --------------------------------------------------------------
+
+void App::offerInstall(const std::string &path, const std::string &address,
+                       const std::string &summary)
+{
+    cia::Info info;
+    std::string error;
+    if (!cia::readInfo(path, info, error)) {
+        ui::message("Download complete", summary, ui::Tone::Success,
+                    "It looks like a CIA but cannot be installed: " + error);
+        return;
+    }
+    if (!installer::available()) {
+        ui::message("Download complete", summary, ui::Tone::Success,
+                    installer::unavailableReason());
+        return;
+    }
+
+    CiaAction action = settings_.afterCiaDownload;
+    if (action == CiaAction::Keep) {
+        ui::message("Download complete", summary, ui::Tone::Success,
+                    "Install it from Files on the home screen.");
+        return;
+    }
+    if (action == CiaAction::Ask) {
+        ui::Dialog dialog;
+        dialog.header = "install";
+        dialog.title = "Download complete. Install " + ciaName(info) + "?";
+        dialog.tone = ui::Tone::Success;
+        dialog.icon = ui::showIcon(info.smdh.icon);
+        addCiaParagraphs(dialog, info);
+        dialog.body.push_back({summary, ui::color::Muted, 0.42f, 2});
+        dialog.buttons = {"INSTALL", "INSTALL & DELETE", "KEEP FILE"};
+        dialog.cancelButton = 2;
+        const int choice = ui::choose(dialog);
+        if (choice != 0 && choice != 1) {
+            return;
+        }
+        action = choice == 0 ? CiaAction::Install
+                             : CiaAction::InstallAndDelete;
+    }
+    installCia(path, info, action == CiaAction::InstallAndDelete, address);
+}
+
+bool App::installCia(const std::string &path, const cia::Info &info,
+                     bool deleteAfter, const std::string &address)
+{
+    const std::string name = ciaName(info);
+    if (!installer::available()) {
+        ui::message("Cannot install", installer::unavailableReason(),
+                    ui::Tone::Error);
+        return false;
+    }
+    if (cia::isSystemTitle(info.titleId)) {
+        ui::message("Not installed",
+                    "This is a system title. A broken system title can stop "
+                    "the console from starting, so 3dsDL does not install "
+                    "them.",
+                    ui::Tone::Error, cia::titleIdText(info.titleId));
+        return false;
+    }
+
+    bool isNew3ds = false;
+    APT_CheckNew3DS(&isNew3ds);
+    if (cia::isNew3dsOnly(info.titleId) && !isNew3ds) {
+        ui::Dialog dialog;
+        dialog.header = "install";
+        dialog.title = name + " is made for the New 3DS";
+        dialog.tone = ui::Tone::Warning;
+        dialog.icon = ui::showIcon(info.smdh.icon);
+        dialog.body.push_back({"It will install, but will not start on this "
+                               "console.",
+                               ui::color::Text, 0.5f, 2});
+        dialog.buttons = {"INSTALL ANYWAY", "CANCEL"};
+        dialog.initial = 1;
+        dialog.cancelButton = 1;
+        if (ui::choose(dialog) != 0) {
+            return false;
+        }
+    }
+
+    // AM refuses to go back to an older version, so that takes removing the
+    // installed one first, which can take its save data with it.
+    uint16_t installed = 0;
+    const bool isInstalled = installer::installedVersion(info.titleId,
+                                                         installed);
+    const auto confirmReplace = [&](const std::string &title) {
+        ui::Dialog dialog;
+        dialog.header = "install";
+        dialog.title = title;
+        dialog.tone = ui::Tone::Warning;
+        dialog.icon = ui::showIcon(info.smdh.icon);
+        dialog.body.push_back({"Installed: " + cia::versionText(installed) +
+                                   "\nThis file: " +
+                                   cia::versionText(info.version),
+                               ui::color::Text, 0.48f, 2});
+        dialog.body.push_back({"Replacing it removes the installed copy "
+                               "first, and its save data may go with it. "
+                               "Back the save up with Checkpoint before "
+                               "you replace it.",
+                               ui::color::Warning, 0.46f, 4});
+        dialog.buttons = {"REPLACE", "CANCEL"};
+        dialog.dangerous = 0;
+        dialog.initial = 1;
+        dialog.cancelButton = 1;
+        return ui::choose(dialog) == 0;
+    };
+    bool removeFirst = false;
+    if (isInstalled && installed > info.version) {
+        if (!confirmReplace("A newer version of " + name +
+                            " is installed")) {
+            return false;
+        }
+        removeFirst = true;
+    }
+
+    if (installer::destination(info.titleId) == MEDIATYPE_SD) {
+        const int64_t needed = installer::requiredSpace(path, info.titleId);
+        const int64_t free = platform::sdFreeBytes();
+        if (needed > 0 && free >= 0 && needed > free) {
+            ui::message("Not enough space",
+                        name + " needs " +
+                            units::bytes(static_cast<uint64_t>(needed)) +
+                            " on the SD card and " +
+                            units::bytes(static_cast<uint64_t>(free)) +
+                            " is free.",
+                        ui::Tone::Error);
+            return false;
+        }
+    }
+
+    installer::Result result;
+    while (ui::keepRunning()) {
+        if (removeFirst) {
+            std::string error;
+            if (!installer::removeTitle(info.titleId, error)) {
+                ui::message("Could not replace " + name, error,
+                            ui::Tone::Error);
+                return false;
+            }
+        }
+        result = tasks::install(path, info.titleId, name,
+                                settings_.keepAwake);
+        if (result.outcome == installer::Outcome::Failed &&
+            result.versionRefused && isInstalled && !removeFirst &&
+            ui::keepRunning() &&
+            confirmReplace(name + " is already installed")) {
+            removeFirst = true;
+            continue;
+        }
+        break;
+    }
+
+    if (result.outcome == installer::Outcome::Cancelled) {
+        if (ui::keepRunning()) {
+            ui::message("Install cancelled", result.message);
+        }
+        return false;
+    }
+    if (result.outcome != installer::Outcome::Installed) {
+        if (!address.empty()) {
+            markInstalled(address, path, "Install failed: " + result.message);
+        }
+        ui::message("Install failed", result.message, ui::Tone::Error,
+                    name);
+        return false;
+    }
+
+    std::vector<ui::Paragraph> notes;
+    if (info.seed != cia::Seed::NotNeeded) {
+        std::string seedMessage;
+        bool added = false;
+        tasks::busy("installing", "Getting the seed " + name + " needs...",
+                    [&]() {
+                        added = installer::installSeed(info.titleId,
+                                                       seedMessage);
+                    });
+        // An encrypted CIA may not need a seed at all, so a missing one is
+        // only worth mentioning when the game is known to need it.
+        if (added || info.seed == cia::Seed::Needed) {
+            notes.push_back({seedMessage,
+                             added ? ui::color::Muted : ui::color::Warning,
+                             0.44f, 3});
+        }
+    }
+
+    std::string where = "The CIA file is still at " + path + ".";
+    if (deleteAfter) {
+        where = fs::removeFile(path) ? "The CIA file was deleted."
+                                     : "The CIA file could not be deleted.";
+    }
+    notes.push_back({where, ui::color::Muted, 0.42f, 2});
+    if (!address.empty()) {
+        markInstalled(address, path,
+                      deleteAfter ? "Installed, file deleted" : "Installed");
+    }
+
+    // An update or DLC opens with its game, when that is installed.
+    const uint64_t launchId = cia::baseTitle(info.titleId);
+    uint16_t unused = 0;
+    const cia::Kind kind = cia::kind(launchId);
+    const bool canLaunch =
+        (kind == cia::Kind::Application || kind == cia::Kind::Demo) &&
+        (launchId == info.titleId ||
+         installer::installedVersion(launchId, unused));
+
+    ui::Dialog dialog;
+    dialog.header = "installed";
+    dialog.title = name + " is installed";
+    dialog.tone = ui::Tone::Success;
+    dialog.icon = ui::showIcon(info.smdh.icon);
+    dialog.body.push_back(
+        {std::string(cia::kindName(cia::kind(info.titleId))) + ", " +
+             cia::versionText(info.version) + ", " +
+             units::bytes(result.bytes) +
+             (result.seconds > 0.5
+                  ? " in " + units::duration(static_cast<int64_t>(
+                                 result.seconds + 0.5))
+                  : ""),
+         ui::color::Text, 0.46f, 2});
+    if (kind == cia::Kind::Application || kind == cia::Kind::Demo) {
+        dialog.body.push_back({"Find it on the HOME Menu.", ui::color::Text,
+                               0.46f, 1});
+    }
+    dialog.body.insert(dialog.body.end(), notes.begin(), notes.end());
+    if (canLaunch) {
+        dialog.buttons = {"LAUNCH", "CLOSE"};
+        dialog.initial = 1;
+        dialog.cancelButton = 1;
+    } else {
+        dialog.buttons = {"CLOSE"};
+    }
+    if (ui::choose(dialog) == 0 && canLaunch) {
+        std::string error;
+        if (!installer::launch(launchId, error)) {
+            ui::message("Could not launch", error, ui::Tone::Error);
+        }
+    }
+    return true;
+}
+
+void App::markInstalled(const std::string &address, const std::string &path,
+                        const std::string &message)
+{
+    for (HistoryEntry &entry : history_) {
+        if (entry.url == address && entry.path == path) {
+            if (message.compare(0, 9, "Installed") == 0) {
+                entry.status = HistoryStatus::Installed;
+            }
+            entry.message = message;
+            storage::saveHistory(history_);
+            return;
+        }
+    }
+}
+
+// --- Files -------------------------------------------------------------------
+
+void App::filesScreen()
+{
+    if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
+        filesFolder_ = fs::directoryExists(settings_.destination)
+            ? naming::normaliseFolder(settings_.destination)
+            : "sdmc:/";
+    }
+    std::string &current = filesFolder_;
+    int cursor = 0;
+
+    // What the top screen shows about a CIA takes a few reads of the SD card
+    // and a question to AM, so it is worked out once per file.
+    struct CiaDetails {
+        bool readable = false;
+        cia::Info info;
+        std::string error;
+        bool installed = false;
+        uint16_t installedVersion = 0;
+    };
+    std::map<std::string, CiaDetails> details;
+    const auto describe = [&](const std::string &path) -> const CiaDetails & {
+        auto found = details.find(path);
+        if (found == details.end()) {
+            CiaDetails entry;
+            entry.readable = cia::readInfo(path, entry.info, entry.error);
+            if (entry.readable) {
+                entry.installed = installer::installedVersion(
+                    entry.info.titleId, entry.installedVersion);
+            }
+            found = details.emplace(path, entry).first;
+        }
+        return found->second;
+    };
+
+    while (ui::keepRunning()) {
+        bool readable = false;
+        const std::vector<fs::Entry> entries =
+            fs::listEntries(current, &readable);
+        if (!readable && current != "sdmc:/") {
+            current = "sdmc:/";
+            cursor = 0;
+            continue;
+        }
+        const bool atRoot = naming::parentFolder(current) == current;
+        const int first = atRoot ? 0 : 1;
+
+        ui::ListSpec spec;
+        spec.header = "files";
+        spec.title = ui::fitMiddle(current, 0.56f, 290);
+        spec.emptyText = readable ? "This folder is empty."
+                                  : "The SD card could not be read.";
+        spec.hint = "A: Open    B: Up    START: Home";
+        spec.extraKeys = KEY_START;
+        if (!atRoot) {
+            spec.items.push_back({".. (up one level)", "", ui::color::Muted});
+        }
+        for (const fs::Entry &entry : entries) {
+            if (entry.folder) {
+                spec.items.push_back({entry.name + "/", ""});
+                continue;
+            }
+            const bool isCia = text::endsWithNoCase(entry.name, ".cia");
+            spec.items.push_back(
+                {entry.name,
+                 entry.size >= 0 ? units::bytes(static_cast<uint64_t>(
+                                       entry.size))
+                                 : "",
+                 isCia ? ui::color::Primary : ui::color::Text});
+        }
+
+        spec.drawTop = [&](int index) {
+            const int position = index - first;
+            if (position < 0 || position >= static_cast<int>(entries.size())) {
+                drawLabelledPanel(56, 74, "BROWSING", current,
+                                  ui::color::Text);
+                drawLabelledPanel(144, 76, "CONTENTS",
+                                  plural(entries.size(), "item") + ".",
+                                  ui::color::Text);
+                return;
+            }
+            const fs::Entry &entry = entries[position];
+            const std::string path = current + entry.name;
+            if (entry.folder) {
+                drawLabelledPanel(56, 74, "FOLDER", path + "/",
+                                  ui::color::Text);
+                return;
+            }
+            if (!text::endsWithNoCase(entry.name, ".cia")) {
+                drawLabelledPanel(56, 74, "FILE", path, ui::color::Text);
+                drawLabelledPanel(144, 76, "SIZE",
+                                  entry.size >= 0
+                                      ? units::bytes(static_cast<uint64_t>(
+                                            entry.size))
+                                      : "Unknown",
+                                  ui::color::Text);
+                return;
+            }
+
+            const CiaDetails &cia = describe(path);
+            ui::drawPanel({18, 54, 364, 172});
+            if (!cia.readable) {
+                ui::drawText("CIA FILE", 34, 63, 0.44f, ui::color::Muted);
+                ui::drawWrapped(entry.name, 34, 82, 0.56f, ui::color::Text,
+                                330, 2);
+                ui::drawWrapped(cia.error, 34, 128, 0.48f,
+                                ui::color::Danger, 330, 3);
+                return;
+            }
+            const cia::Info &info = cia.info;
+            float textX = 34;
+            if (const C2D_Image *icon = ui::showIcon(info.smdh.icon)) {
+                C2D_DrawImageAt(*icon, 34, 64, 0.5f);
+                textX = 94;
+            }
+            ui::drawText(ui::fitEnd(ciaName(info), 0.62f, 366 - textX), textX,
+                         66, 0.62f, ui::color::Text);
+            ui::drawText(ui::fitEnd(info.smdh.publisher.empty()
+                                        ? entry.name
+                                        : info.smdh.publisher,
+                                    0.46f, 366 - textX),
+                         textX, 90, 0.46f, ui::color::Muted);
+
+            const struct {
+                const char *label;
+                std::string value;
+                u32 color;
+            } rows[] = {
+                {"Type", cia::kindName(cia::kind(info.titleId)),
+                 ui::color::Text},
+                {"Title ID", cia::titleIdText(info.titleId), ui::color::Text},
+                {"Version", cia::versionText(info.version), ui::color::Text},
+                {"Installed",
+                 cia.installed ? cia::versionText(cia.installedVersion)
+                               : "No",
+                 cia.installed ? ui::color::Success : ui::color::Muted},
+                {"Size", units::bytes(info.fileSize), ui::color::Text},
+            };
+            float y = 122;
+            for (const auto &row : rows) {
+                ui::drawText(row.label, 34, y, 0.46f, ui::color::Muted);
+                ui::drawText(ui::fitEnd(row.value, 0.48f, 250), 120, y, 0.48f,
+                             row.color);
+                y += 19;
+            }
+        };
+
+        const ui::ListResult result = ui::runList(spec, cursor);
+        if (result.key == 0 || result.key == KEY_START) {
+            return;
+        }
+        if (result.key == KEY_B || (result.key == KEY_A && !atRoot &&
+                                    result.index == 0)) {
+            if (atRoot) {
+                return;
+            }
+            // Land on the folder that was just left.
+            const std::string left = current.substr(
+                naming::parentFolder(current).size());
+            current = naming::parentFolder(current);
+            cursor = 0;
+            const std::vector<fs::Entry> parent = fs::listEntries(current);
+            for (size_t index = 0; index < parent.size(); ++index) {
+                if (parent[index].folder &&
+                    parent[index].name + "/" == left) {
+                    cursor = static_cast<int>(index) +
+                             (naming::parentFolder(current) == current ? 0
+                                                                       : 1);
+                }
+            }
+            continue;
+        }
+        const int position = result.index - first;
+        if (result.key != KEY_A || position < 0 ||
+            position >= static_cast<int>(entries.size())) {
+            continue;
+        }
+        const fs::Entry &entry = entries[position];
+        if (entry.folder) {
+            current += entry.name + "/";
+            cursor = 0;
+            continue;
+        }
+        const std::string path = current + entry.name;
+        if (fileOptions(path)) {
+            details.erase(path);
+        }
+    }
+}
+
+bool App::fileOptions(const std::string &path)
+{
+    const std::string name = basename(path);
+    const auto confirmDelete = [&]() {
+        ui::Dialog dialog;
+        dialog.header = "delete";
+        dialog.title = "Delete " + name + "?";
+        dialog.tone = ui::Tone::Warning;
+        dialog.body.push_back({path, ui::color::Muted, 0.46f, 3});
+        dialog.buttons = {"DELETE", "CANCEL"};
+        dialog.dangerous = 0;
+        dialog.initial = 1;
+        dialog.cancelButton = 1;
+        if (ui::choose(dialog) != 0) {
+            return false;
+        }
+        if (!fs::removeFile(path)) {
+            ui::message("Could not delete the file", path, ui::Tone::Error);
+            return false;
+        }
+        return true;
+    };
+
+    cia::Info info;
+    std::string error;
+    if (!cia::isCiaFile(path) || !cia::readInfo(path, info, error)) {
+        ui::Dialog dialog;
+        dialog.header = "file";
+        dialog.title = name;
+        const int64_t size = fs::fileSize(path);
+        if (size >= 0) {
+            dialog.body.push_back({units::bytes(static_cast<uint64_t>(size)),
+                                   ui::color::Text, 0.5f, 1});
+        }
+        if (!error.empty()) {
+            dialog.body.push_back({"Not installable: " + error,
+                                   ui::color::Warning, 0.46f, 3});
+        }
+        dialog.buttons = {"DELETE", "BACK"};
+        dialog.dangerous = 0;
+        dialog.initial = 1;
+        dialog.cancelButton = 1;
+        return ui::choose(dialog) == 0 && confirmDelete();
+    }
+
+    ui::Dialog dialog;
+    dialog.header = "cia";
+    dialog.title = ciaName(info);
+    dialog.icon = ui::showIcon(info.smdh.icon);
+    addCiaParagraphs(dialog, info);
+    if (!installer::available()) {
+        dialog.body.push_back({installer::unavailableReason(),
+                               ui::color::Warning, 0.42f, 3});
+    }
+    dialog.buttons = {"INSTALL", "INSTALL & DELETE", "DELETE"};
+    dialog.dangerous = 2;
+    const int choice = ui::choose(dialog);
+    if (choice == 0 || choice == 1) {
+        installCia(path, info, choice == 1, "");
+        return true;
+    }
+    return choice == 2 && confirmDelete();
 }
 
 // --- Folders -----------------------------------------------------------------
@@ -900,7 +1485,8 @@ void App::historyScreen()
         spec.extraKeys = KEY_X;
         for (const HistoryEntry &entry : history_) {
             std::string detail;
-            if (entry.status == HistoryStatus::Saved) {
+            if (entry.status == HistoryStatus::Saved ||
+                entry.status == HistoryStatus::Installed) {
                 detail = units::bytes(entry.bytes);
             } else if (entry.resumable &&
                        net::partialSize(entry.folder, entry.url) > 0) {
@@ -929,9 +1515,11 @@ void App::historyScreen()
                          ui::color::Muted, C2D_AlignRight);
             float y = ui::drawWrapped(entry.url, 34, 88, 0.44f,
                                       ui::color::Muted, 330, 3) + 6;
-            const std::string where = entry.status == HistoryStatus::Saved
-                ? entry.path
-                : entry.message;
+            const std::string where =
+                entry.status == HistoryStatus::Saved ? entry.path
+                : entry.status == HistoryStatus::Installed
+                    ? entry.message + ": " + entry.path
+                    : entry.message;
             y = ui::drawWrapped(where, 34, y, 0.48f, ui::color::Text, 330, 3) +
                 6;
             const uint64_t partial =
@@ -968,11 +1556,31 @@ void App::historyScreen()
         dialog.body.push_back({entry.url, ui::color::Muted, 0.44f, 4});
         dialog.body.push_back({"Folder: " + entry.folder, ui::color::Text,
                                0.46f, 2});
-        dialog.buttons = {canResume ? "RESUME" : "DOWNLOAD", "REMOVE",
-                          "BACK"};
-        dialog.dangerous = 1;
-        dialog.cancelButton = 2;
-        const int choice = ui::choose(dialog);
+        // A CIA that is still on the SD card can be installed from here.
+        cia::Info info;
+        std::string error;
+        const bool installable = !entry.path.empty() &&
+                                 cia::isCiaFile(entry.path) &&
+                                 cia::readInfo(entry.path, info, error);
+        if (installable) {
+            dialog.icon = ui::showIcon(info.smdh.icon);
+            dialog.buttons = {"INSTALL", "DOWNLOAD", "REMOVE"};
+            dialog.dangerous = 2;
+        } else {
+            dialog.buttons = {canResume ? "RESUME" : "DOWNLOAD", "REMOVE",
+                              "BACK"};
+            dialog.dangerous = 1;
+            dialog.cancelButton = 2;
+        }
+        int choice = ui::choose(dialog);
+        if (installable) {
+            if (choice == 0) {
+                installCia(entry.path, info, false, entry.url);
+                continue;
+            }
+            // The other two buttons work as below.
+            choice = choice < 0 ? -1 : choice - 1;
+        }
         if (choice == 0) {
             startDownload(entry.url, fs::directoryExists(entry.folder)
                                          ? entry.folder
@@ -1030,6 +1638,9 @@ void App::settingsScreen()
         "lid would otherwise turn Wi-Fi off and stop the transfer.",
         "After a .zip file finishes downloading, ask whether to extract it. "
         "Nothing is ever extracted without asking.",
+        "What happens when a CIA finishes downloading: ask each time, "
+        "install it and keep the file, install it and delete the file, or "
+        "only keep the file.",
         "The folder new downloads are saved to.",
         "Compare the console's clock with the time online and set it for "
         "your time zone. HTTPS downloads fail when the date is wrong.",
@@ -1048,6 +1659,7 @@ void App::settingsScreen()
             {"Resume interrupted downloads", onOff(settings_.resumeDownloads)},
             {"Stay awake while downloading", onOff(settings_.keepAwake)},
             {"Offer to extract ZIP files", onOff(settings_.offerZipExtraction)},
+            {"After downloading a CIA", ciaActionLabel(settings_.afterCiaDownload)},
             {"Default download folder", ""},
             {"Console clock", units::dateTime(platform::now())},
             {"Clear download history", std::to_string(history_.size())},
@@ -1058,10 +1670,10 @@ void App::settingsScreen()
                 return;
             }
             const std::string value =
-                index == 3 ? settings_.destination
+                index == 4 ? settings_.destination
                            : std::string(Descriptions[index]);
             drawLabelledPanel(56, 120, text::lower(spec.items[index].label),
-                              index == 3 ? std::string(Descriptions[3]) +
+                              index == 4 ? std::string(Descriptions[4]) +
                                                " Currently " + value
                                          : value,
                               ui::color::Text);
@@ -1085,19 +1697,30 @@ void App::settingsScreen()
             persistSettings();
             break;
         case 3:
-            changeDefaultFolder();
+            settings_.afterCiaDownload =
+                settings_.afterCiaDownload == CiaAction::Ask
+                    ? CiaAction::Install
+                : settings_.afterCiaDownload == CiaAction::Install
+                    ? CiaAction::InstallAndDelete
+                : settings_.afterCiaDownload == CiaAction::InstallAndDelete
+                    ? CiaAction::Keep
+                    : CiaAction::Ask;
+            persistSettings();
             break;
         case 4:
-            clockScreen();
+            changeDefaultFolder();
             break;
         case 5:
+            clockScreen();
+            break;
+        case 6:
             if (history_.empty()) {
                 ui::message("History is empty", "There is nothing to clear.");
             } else {
                 confirmClearHistory();
             }
             break;
-        case 6:
+        case 7:
             aboutScreen();
             break;
         default:
@@ -1268,5 +1891,6 @@ void App::aboutScreen()
                     std::string(storage::DataFolder) + ".",
                 ui::Tone::Info,
                 "GPLv3. Built on libcurl, Mbed TLS, quirc and Citro2D, and "
-                "grew out of Multidownload by hax0kartik.");
+                "grew out of Multidownload by hax0kartik. CIA installing "
+                "follows FBI by Steveice10 (MIT).");
 }

@@ -54,6 +54,17 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(parsed.resumeDownloads, false);
     CHECK_EQ(parsed.keepAwake, false);
     CHECK_EQ(parsed.offerZipExtraction, true);
+    CHECK(parsed.afterCiaDownload == CiaAction::Ask);
+
+    for (const CiaAction action : {CiaAction::Install,
+                                   CiaAction::InstallAndDelete,
+                                   CiaAction::Keep}) {
+        settings.afterCiaDownload = action;
+        CHECK(parseSettings(serializeSettings(settings)).afterCiaDownload ==
+              action);
+    }
+    CHECK(parseSettings("after_cia_download=sometimes\n").afterCiaDownload ==
+          CiaAction::Ask);
 
     const Settings defaults = parseSettings("# nothing\nunknown=1\nbroken\n");
     CHECK_EQ(defaults.destination, std::string("sdmc:/"));
@@ -85,7 +96,8 @@ TEST("records: history round trip, ordering and limit")
     for (int index = 0; index < 5; ++index) {
         HistoryEntry entry;
         entry.time = 1000 + index;
-        entry.status = index % 2 == 0 ? HistoryStatus::Saved
+        entry.status = index == 2       ? HistoryStatus::Installed
+                     : index % 2 == 0 ? HistoryStatus::Saved
                                       : HistoryStatus::Failed;
         entry.bytes = static_cast<uint64_t>(index) * 10;
         entry.resumable = index == 1;
@@ -104,6 +116,7 @@ TEST("records: history round trip, ordering and limit")
     CHECK_EQ(parsed[0].url, std::string("https://x/4"));
     CHECK(parsed[0].status == HistoryStatus::Saved);
     CHECK(parsed[1].status == HistoryStatus::Failed);
+    CHECK(parsed[2].status == HistoryStatus::Installed);
     CHECK_EQ(parsed[2].time, static_cast<int64_t>(1002));
     CHECK_EQ(parsed[0].message, std::string("line one with tab and newline"));
 

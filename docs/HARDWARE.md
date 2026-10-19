@@ -32,7 +32,7 @@ and (on New 3DS) CPU speed.
 2. The top screen shows the download folder, the free space and the Wi-Fi
    state. Turning Wi-Fi off in the HOME Menu settings changes it within a
    couple of seconds of returning.
-3. D-Pad, Circle Pad and touch all move between and open the five buttons.
+3. D-Pad, Circle Pad and touch all move between and open the six buttons.
    START exits.
 4. Settings from 0.2 (`sdmc:/3dsDL.cfg`) are migrated to
    `sdmc:/3ds/3dsDL/settings.ini` and the old file is removed.
@@ -116,12 +116,43 @@ picture instead.
     with 3dsDL already highlighted and crashes again, starting once without
     the SD card should move the cursor elsewhere.
 
+### Installing CIAs
+
+These need a few CIAs: a small homebrew app (3dsFM works), a retail game
+from 2015 or later that uses a seed, an update and a DLC for a game that is
+installed, and a game older than the installed version.
+
+29. Downloading a `.cia` offers INSTALL, INSTALL & DELETE and KEEP FILE with
+    the icon, name, version and installed version. INSTALL installs it and
+    the title appears on the HOME Menu; INSTALL & DELETE also removes the
+    file. The "After downloading a CIA" setting skips the question.
+30. Files lists folders and files, shows a CIA's details on the top screen and
+    installs or deletes it. B goes up and lands on the folder just left.
+31. A game that needs a seed starts after installing (the success message says
+    where the seed came from). Try it once with
+    `sdmc:/3ds/3dsDL/seeds/<title id>.dat` and once from Nintendo's server.
+32. Installing the same version again works, or asks to replace it. Note
+    which one, and whether the save survives REPLACE. An older version asks
+    first and warns about save data.
+33. An update and a DLC install over their game, and LAUNCH opens the game.
+34. Cancelling halfway leaves nothing behind: the title is not on the HOME
+    Menu and installing it again works.
+35. A CIA bigger than the free space is refused before anything is written.
+36. LAUNCH after installing starts the title, from both the `.3dsx` and the
+    CIA build. Installing 3dsDL's own CIA over itself from the CIA build works.
+
 ## Results so far
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over
 the internet (items 11 and 12), installing the CIA with FBI, and ZIP
 extraction (item 24). The console model was not recorded, so the matrix
 below is still open.
+
+On 2026-10-19, before any console run, the CIA installer was tried in Azahar
+2126.2 with the `.3dsx`: install from Files, download then INSTALL & DELETE
+from a local server, same-version reinstall, History marking the download as
+installed, and LAUNCH (items 29, 30 and 36 in part). Azahar's AM is more
+forgiving than a console's, so items 31 to 35 still need hardware.
 
 On 2026-10-18 a test build of 0.4.0 (pre-release `test-fast-downloads-1`)
 downloaded a 38 MB video over 4 connections at an average of 500 to 600

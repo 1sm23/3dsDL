@@ -27,6 +27,10 @@ AccessControlInfo:
   FileSystemAccess:
     - DirectSdmc
     - DirectSdmcWrite
+    # Adding a game's seed after installing it, as FBI does.
+    - SeedDB
+  IoAccessControl:
+    - CreateSeed
 
   MemoryType: Application
   SystemMode: 64MB
@@ -103,6 +107,8 @@ AccessControlInfo:
 
   ServiceAccessControl:
     - APT:U
+    # Installing CIA files.
+    - am:net
     - ac:u
     - cam:u
     - cfg:i
@@ -124,6 +130,7 @@ SystemControlInfo:
 
   Dependency:
     ac: 0x0004013000002402
+    am: 0x0004013000001502
     camera: 0x0004013000001602
     gsp: 0x0004013000001c02
     hid: 0x0004013000001d02

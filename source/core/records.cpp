@@ -92,6 +92,8 @@ const char *statusName(HistoryStatus status)
         return "saved";
     case HistoryStatus::Cancelled:
         return "cancelled";
+    case HistoryStatus::Installed:
+        return "installed";
     case HistoryStatus::Failed:
         break;
     }
@@ -106,10 +108,27 @@ bool parseStatus(const std::string &value, HistoryStatus &status)
         status = HistoryStatus::Failed;
     } else if (value == "cancelled") {
         status = HistoryStatus::Cancelled;
+    } else if (value == "installed") {
+        status = HistoryStatus::Installed;
     } else {
         return false;
     }
     return true;
+}
+
+const char *ciaActionName(CiaAction action)
+{
+    switch (action) {
+    case CiaAction::Install:
+        return "install";
+    case CiaAction::InstallAndDelete:
+        return "install_delete";
+    case CiaAction::Keep:
+        return "keep";
+    case CiaAction::Ask:
+        break;
+    }
+    return "ask";
 }
 
 uint64_t fnv1a64(const std::string &value)
@@ -139,6 +158,14 @@ Settings parseSettings(const std::string &contents)
         } else if (key == "offer_zip_extraction") {
             settings.offerZipExtraction =
                 parseBool(value, settings.offerZipExtraction);
+        } else if (key == "after_cia_download") {
+            for (const CiaAction action :
+                 {CiaAction::Ask, CiaAction::Install,
+                  CiaAction::InstallAndDelete, CiaAction::Keep}) {
+                if (text::lower(value) == ciaActionName(action)) {
+                    settings.afterCiaDownload = action;
+                }
+            }
         } else if (key == "time_zone_minutes") {
             char *end = nullptr;
             const long minutes = std::strtol(value.c_str(), &end, 10);
@@ -162,6 +189,8 @@ std::string serializeSettings(const Settings &settings)
               "\n";
     output += std::string("offer_zip_extraction=") +
               (settings.offerZipExtraction ? "1" : "0") + "\n";
+    output += std::string("after_cia_download=") +
+              ciaActionName(settings.afterCiaDownload) + "\n";
     if (settings.timeZoneSet) {
         output += "time_zone_minutes=" +
                   std::to_string(settings.timeZoneMinutes) + "\n";

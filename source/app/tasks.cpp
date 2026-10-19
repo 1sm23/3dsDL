@@ -191,6 +191,36 @@ void runExtract(void *argument)
     job.finished = true;
 }
 
+struct InstallJob : installer::Observer {
+    std::string path;
+    uint64_t titleId = 0;
+    installer::Result result;
+    std::atomic<bool> cancel {false};
+    std::atomic<bool> closing {false};
+    std::atomic<bool> finished {false};
+
+    LightLock lock;
+    uint64_t done = 0;
+    uint64_t total = 0;
+
+    InstallJob() { LightLock_Init(&lock); }
+
+    bool cancelRequested() override { return cancel.load(); }
+    void onProgress(uint64_t now, uint64_t expected) override
+    {
+        Guard guard(lock);
+        done = now;
+        total = expected;
+    }
+};
+
+void runInstall(void *argument)
+{
+    InstallJob &job = *static_cast<InstallJob *>(argument);
+    job.result = installer::installCia(job.path, job.titleId, job);
+    job.finished = true;
+}
+
 // Waits for the worker while drawing frames with draw(). Returns once the
 // worker has finished, having asked it to stop if the user cancelled.
 template <typename Job, typename Draw>
@@ -358,6 +388,57 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
         view.footer = footer(keepAwake);
         ui::drawProgress(view);
     });
+    return job.result;
+}
+
+installer::Result install(const std::string &path, uint64_t titleId,
+                          const std::string &name, bool keepAwake)
+{
+    InstallJob job;
+    job.path = path;
+    job.titleId = titleId;
+
+    StayAwake awake(keepAwake);
+    Thread thread = startWorker(runInstall, &job);
+    if (thread == nullptr) {
+        job.result.message = "Could not start the install thread.";
+        return job.result;
+    }
+
+    units::RateMeter meter;
+    supervise(job, thread, "installing", [&]() {
+        ui::ProgressView view;
+        {
+            Guard guard(job.lock);
+            meter.sample(osGetTime(), job.done);
+            view.fraction = job.total > 0
+                ? static_cast<float>(static_cast<double>(job.done) /
+                                     static_cast<double>(job.total))
+                : -1.0f;
+            view.amounts = units::bytes(job.done) + " of " +
+                           units::bytes(job.total);
+            if (meter.hasRate()) {
+                view.speed = units::rate(meter.bytesPerSecond());
+                const int64_t left = job.total > job.done
+                    ? meter.secondsLeft(job.total - job.done)
+                    : -1;
+                if (left >= 0) {
+                    view.speed += ", " + units::duration(left) + " left";
+                }
+            }
+        }
+        view.header = "installing";
+        view.title = name;
+        view.subtitle = path.substr(path.find_last_of('/') + 1);
+        view.status = job.cancel ? "stopping" : "installing";
+        view.folderLabel = "Installing from";
+        view.folder = path.substr(0, path.find_last_of('/') + 1);
+        view.footer = footer(keepAwake);
+        ui::drawProgress(view);
+    });
+    if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
+        job.result.message = "Interrupted when 3dsDL closed.";
+    }
     return job.result;
 }
 

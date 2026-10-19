@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "installer.hpp"
 #include "ui.hpp"
 
 #include <3ds.h>
@@ -67,6 +68,9 @@ struct Services {
         // Only used for the Wi-Fi indicator, so failing here is not fatal.
         ac = R_SUCCEEDED(acInit());
 
+        // Without AM, downloads still work; installing explains why not.
+        installer::init();
+
         const CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
         if (code != CURLE_OK) {
             error = std::string("Starting libcurl failed: ") +
@@ -79,6 +83,7 @@ struct Services {
 
     ~Services()
     {
+        installer::exit();
         if (curl) {
             curl_global_cleanup();
         }

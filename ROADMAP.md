@@ -42,6 +42,19 @@ The socket buffer size and the idea that the 3DS caps each connection come
 from Colby Shores' measurements in
 [Steveice10/FBI#4](https://github.com/Steveice10/FBI/pull/4).
 
+## 0.5: Installing CIAs
+
+- [x] Install a CIA after it downloads, or from Files, through the AM
+      service, with INSTALL & DELETE, a version check before replacing a
+      newer title, seeds for newer games, and LAUNCH afterwards.
+- [x] A Files screen that lists files as well as folders, with CIA details.
+- [ ] Hardware pass for installing (items 29 to 36 in
+      [docs/HARDWARE.md](docs/HARDWARE.md)).
+
+FBI is no longer maintained, so 3dsDL is taking over its job of installing
+what it downloads. The longer plan, including a full file manager and title
+management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
+
 ## 1.0: Stable release
 
 - [x] Host-side URL and filename tests.

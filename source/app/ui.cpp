@@ -1,5 +1,6 @@
 #include "ui.hpp"
 
+#include "image.hpp"
 #include "text.hpp"
 
 #include <algorithm>
@@ -21,6 +22,16 @@ float asciiAdvance[128];
 bool asciiReady = false;
 
 constexpr const char *Ellipsis = "...";
+
+// The one title icon on screen at a time. It is static so the texture
+// pointer citro2d remembers between draws never dangles.
+constexpr u16 IconTextureSize = 64;
+C3D_Tex iconTexture;
+bool iconTextureReady = false;
+std::vector<uint16_t> iconPixels;
+const Tex3DS_SubTexture IconSubTexture = {
+    48, 48, 0.0f, 1.0f, 48.0f / IconTextureSize, 1.0f - 48.0f / IconTextureSize};
+const C2D_Image IconImage = {&iconTexture, &IconSubTexture};
 
 void loadFontMetrics()
 {
@@ -128,7 +139,13 @@ void drawTopForDialog(const Dialog &dialog)
         break;
     }
 
-    float y = drawWrapped(dialog.title, 34, 64, 0.68f, titleColor, 334, 2) + 6;
+    // Text stays clear of the icon in the corner.
+    const float titleWidth = dialog.icon != nullptr ? 270 : 334;
+    if (dialog.icon != nullptr) {
+        C2D_DrawImageAt(*dialog.icon, 316, 64, 0.5f);
+    }
+    float y = drawWrapped(dialog.title, 34, 64, 0.68f, titleColor, titleWidth,
+                          2) + 6;
     const float bottom = panel.y + panel.h - 6;
     for (const Paragraph &paragraph : dialog.body) {
         if (paragraph.text.empty()) {
@@ -140,8 +157,10 @@ void drawTopForDialog(const Dialog &dialog)
         if (lines == 0) {
             break;
         }
+        const float width = dialog.icon != nullptr && y < 116 ? titleWidth
+                                                              : 334;
         y = drawWrapped(paragraph.text, 34, y, paragraph.scale,
-                        paragraph.textColor, 334, lines) + 5;
+                        paragraph.textColor, width, lines) + 5;
     }
 }
 
@@ -201,6 +220,11 @@ bool init()
 
 void shutdown()
 {
+    if (iconTextureReady) {
+        C3D_TexDelete(&iconTexture);
+        iconTextureReady = false;
+        iconPixels.clear();
+    }
     if (textBuffer != nullptr) {
         C2D_TextBufDelete(textBuffer);
         textBuffer = nullptr;
@@ -209,6 +233,34 @@ void shutdown()
     C3D_Fini();
     topTarget = nullptr;
     bottomTarget = nullptr;
+}
+
+const C2D_Image *showIcon(const std::vector<uint16_t> &pixels)
+{
+    if (pixels.size() != 48 * 48) {
+        return nullptr;
+    }
+    if (!iconTextureReady) {
+        if (!C3D_TexInit(&iconTexture, IconTextureSize, IconTextureSize,
+                         GPU_RGB565)) {
+            return nullptr;
+        }
+        std::fill_n(static_cast<u16 *>(iconTexture.data),
+                    IconTextureSize * IconTextureSize, 0);
+        C3D_TexSetFilter(&iconTexture, GPU_LINEAR, GPU_LINEAR);
+        C3D_TexSetWrap(&iconTexture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+        iconTextureReady = true;
+    }
+    if (pixels != iconPixels) {
+        // Frames are drawn with C3D_FRAME_SYNCDRAW, so the GPU is done with
+        // the previous icon by the time this runs between frames.
+        image::tileImage(pixels.data(), 48, 48,
+                         static_cast<uint16_t *>(iconTexture.data),
+                         IconTextureSize);
+        C3D_TexFlush(&iconTexture);
+        iconPixels = pixels;
+    }
+    return &IconImage;
 }
 
 bool keepRunning()
@@ -453,6 +505,30 @@ void drawButton(const Rect &rect, const std::string &label, bool selected,
     }
 
     const float scale = 0.58f;
+    // A long label such as "INSTALL & DELETE" goes on two smaller lines when
+    // the button is tall enough, rather than losing its end.
+    constexpr float SmallScale = 0.5f;
+    if (textWidth(label, scale) > rect.w - 12 &&
+        textWidth(label, SmallScale) <= rect.w - 12) {
+        drawText(label, rect.x + rect.w / 2,
+                 rect.y + rect.h / 2 - lineHeight(SmallScale) / 2,
+                 SmallScale, labelColor, C2D_AlignCenter);
+        return;
+    }
+    if (textWidth(label, scale) > rect.w - 12 &&
+        lineHeight(SmallScale) * 2 <= rect.h - 8) {
+        const std::vector<std::string> lines =
+            wrap(label, SmallScale, rect.w - 10, 2);
+        if (lines.size() == 2) {
+            const float top = rect.y + rect.h / 2 - lineHeight(SmallScale);
+            for (size_t index = 0; index < lines.size(); ++index) {
+                drawText(lines[index], rect.x + rect.w / 2,
+                         top + index * lineHeight(SmallScale), SmallScale,
+                         labelColor, C2D_AlignCenter);
+            }
+            return;
+        }
+    }
     drawText(fitEnd(label, scale, rect.w - 12), rect.x + rect.w / 2,
              rect.y + rect.h / 2 - lineHeight(scale) / 2, scale, labelColor,
              C2D_AlignCenter);
@@ -673,7 +749,7 @@ void drawProgress(const ProgressView &view)
     drawText(view.speed, 24, 198, 0.48f, color::Muted);
 
     beginBottom();
-    drawText("Saving to", 18, 14, 0.48f, color::Muted);
+    drawText(view.folderLabel, 18, 14, 0.48f, color::Muted);
     drawPanel({18, 38, 284, 54});
     drawText(fitMiddle(view.folder, 0.52f, 256), 32, 55, 0.52f, color::Text);
     drawButton(ProgressCancelButton, "CANCEL", false, true);

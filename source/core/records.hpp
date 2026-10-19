@@ -10,11 +10,15 @@
 // converts between structs and strings; reading and writing the files is the
 // caller's job.
 
+// What happens after a CIA finishes downloading.
+enum class CiaAction { Ask, Install, InstallAndDelete, Keep };
+
 struct Settings {
     std::string destination = "sdmc:/";
     bool resumeDownloads = true;
     bool keepAwake = true;
     bool offerZipExtraction = false;
+    CiaAction afterCiaDownload = CiaAction::Ask;
     // UTC offset used when setting the clock from the internet.
     bool timeZoneSet = false;
     int timeZoneMinutes = 0;
@@ -25,7 +29,7 @@ std::string serializeSettings(const Settings &settings);
 // The pre-0.3 sdmc:/3dsDL.cfg file held only the folder on its first line.
 std::string parseLegacyDestination(const std::string &contents);
 
-enum class HistoryStatus { Saved, Failed, Cancelled };
+enum class HistoryStatus { Saved, Failed, Cancelled, Installed };
 
 struct HistoryEntry {
     int64_t time = 0;

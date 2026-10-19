@@ -86,6 +86,11 @@ void drawButton(const Rect &rect, const std::string &label, bool selected,
 // fraction < 0 draws an indeterminate, moving bar.
 void drawProgressBar(const Rect &rect, float fraction);
 
+// Puts a 48x48 RGB565 icon (row by row, see smdh::Info) into the shared icon
+// texture and returns it for drawing, or nullptr when pixels is not an icon.
+// Only one icon can be shown at a time.
+const C2D_Image *showIcon(const std::vector<uint16_t> &pixels);
+
 // --- Dialogs ---------------------------------------------------------------
 
 enum class Tone { Info, Success, Warning, Error };
@@ -106,6 +111,8 @@ struct Dialog {
     int initial = 0;
     int dangerous = -1;    // button drawn in red
     int cancelButton = -1; // returned for B; -1 means B returns -1
+    // A 48x48 picture at the top right, such as a title's icon.
+    const C2D_Image *icon = nullptr;
 };
 
 // Shows dialog until a button is chosen. Returns its index, or -1 for B (when
@@ -152,6 +159,7 @@ struct ProgressView {
     std::string amounts;
     std::string status;
     std::string speed;
+    std::string folderLabel = "Saving to";
     std::string folder;
     std::string footer;
 };
