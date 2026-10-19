@@ -2786,21 +2786,41 @@ void drawProgress(const ProgressView &view)
     }
 
     beginBottom();
-    const Rect panel = {13, 16, 294, 104};
+    // Two lines of the message and three of the detail at most, which is
+    // what the panel holds; the detail is secondary, so it is the smaller.
+    const Rect panel = {13, 10, 294, 128};
     drawPanel(panel);
-    const std::vector<std::string> lines = wrap(view.message, type::Body, 266, 2);
-    const std::vector<std::string> more = wrap(view.detail, type::Small, 266, 3);
-    const float block = lines.size() * lineHeight(type::Body) +
-                        more.size() * lineHeight(type::Small) + 6;
+    // A message that ends in a folder ("Saving to sdmc:/Downloads/") breaks
+    // before the path instead of inside it; the path scrolls if it is long.
+    std::vector<std::string> lines;
+    bool pathLine = false;
+    const size_t path = view.message.find(" sdmc:/");
+    if (path != std::string::npos &&
+        textWidth(view.message, type::Body) > 266) {
+        lines = {view.message.substr(0, path), view.message.substr(path + 1)};
+        pathLine = true;
+    } else {
+        lines = wrap(view.message, type::Body, 266, 2);
+    }
+    const std::vector<std::string> more = wrap(view.detail, type::Tiny, 266, 3);
+    const float gap = more.empty() ? 0 : 8;
+    const float block = lines.size() * lineHeight(type::Body) + gap +
+                        more.size() * lineHeight(type::Tiny);
     float y = panel.y + (panel.h - block) / 2;
-    for (const std::string &line : lines) {
-        drawText(line, 160, y, type::Body, color::Ink, C2D_AlignCenter);
+    for (size_t index = 0; index < lines.size(); ++index) {
+        if (pathLine && index == 1) {
+            drawMarquee(lines[index], 160, y, type::Body, color::Ink, 266,
+                        C2D_AlignCenter);
+        } else {
+            drawText(lines[index], 160, y, type::Body, color::Ink,
+                     C2D_AlignCenter);
+        }
         y += lineHeight(type::Body);
     }
-    y += 6;
+    y += gap;
     for (const std::string &line : more) {
-        drawText(line, 160, y, type::Small, color::InkSoft, C2D_AlignCenter);
-        y += lineHeight(type::Small);
+        drawText(line, 160, y, type::Tiny, color::InkSoft, C2D_AlignCenter);
+        y += lineHeight(type::Tiny);
     }
     if (view.stopping) {
         drawButton(ProgressCancelButton, "Stopping...", Style::Disabled,
