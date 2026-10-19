@@ -535,8 +535,18 @@ void App::receiveScreen()
     s32 priority = 0x30;
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
     const int workerPriority = std::min(0x3f, static_cast<int>(priority) + 1);
-    Thread thread = threadCreate(receiveMain, &job, 32 * 1024, workerPriority,
-                                 -2, false);
+    // A New 3DS's third core is free, so receiving a file never waits for
+    // drawing; elsewhere the listener shares the app core.
+    bool isNew3ds = false;
+    Thread thread =
+        R_SUCCEEDED(APT_CheckNew3DS(&isNew3ds)) && isNew3ds
+            ? threadCreate(receiveMain, &job, 32 * 1024, workerPriority, 2,
+                           false)
+            : nullptr;
+    if (thread == nullptr) {
+        thread = threadCreate(receiveMain, &job, 32 * 1024, workerPriority,
+                              -2, false);
+    }
     if (thread == nullptr) {
         ui::message("Cannot Receive", "The network listener could not start.",
                     ui::Tone::Error);

@@ -4,11 +4,13 @@
 #include "file_types.hpp"
 #include "fs_util.hpp"
 #include "remote.hpp"
+#include "socket_wait.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -31,7 +33,11 @@ constexpr int IdleTimeoutMs = 30000;
 constexpr int SpareConnectionMs = 300;
 // Bytes gathered before each write to the SD card, which is much faster at
 // a few large writes than at many small ones.
-constexpr size_t WriteChunk = 128 * 1024;
+constexpr size_t WriteChunk = 256 * 1024;
+// How often a wait asks whether a socket is ready: often while a request
+// is being served, less often while nobody is connected.
+constexpr int ActiveStepMs = 1;
+constexpr int IdleStepMs = 5;
 constexpr size_t ReadChunk = 64 * 1024;
 constexpr int ProgressEveryMs = 200;
 
@@ -96,21 +102,29 @@ bool listenOn(unsigned short port, int &socketFd, unsigned short &bound,
 using Clock = std::chrono::steady_clock;
 
 // Reads up to size bytes, waiting no later than deadline. Returns bytes
-// read, 0 at the end of the stream, -1 on error or timeout.
+// read, 0 at the end of the stream, -1 on error or timeout. It tries the
+// read first, so a busy connection costs one call per read, not two.
 ssize_t readSome(int socketFd, void *buffer, size_t size, Clock::time_point deadline)
 {
-    const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          deadline - Clock::now())
-                          .count();
-    if (left <= 0) {
-        return -1;
+    while (true) {
+        const ssize_t got = recv(socketFd, buffer, size, MSG_DONTWAIT);
+        if (got >= 0) {
+            return got;
+        }
+        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+            return -1;
+        }
+        const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              deadline - Clock::now())
+                              .count();
+        if (left <= 0) {
+            return -1;
+        }
+        pollfd waiting {socketFd, POLLIN, 0};
+        if (waitSockets(&waiting, 1, static_cast<int>(left), ActiveStepMs) < 0) {
+            return -1;
+        }
     }
-    pollfd waiting {socketFd, POLLIN, 0};
-    if (poll(&waiting, 1, static_cast<int>(left)) <= 0) {
-        return -1;
-    }
-    const ssize_t got = recv(socketFd, buffer, size, 0);
-    return got < 0 ? -1 : got;
 }
 
 bool readExactly(int socketFd, void *buffer, size_t size,
@@ -135,8 +149,8 @@ bool sendBytes(int socketFd, const char *data, size_t size, int idleMs)
 {
     size_t sent = 0;
     while (sent < size) {
-        const ssize_t wrote =
-            send(socketFd, data + sent, size - sent, sendFlags());
+        const ssize_t wrote = send(socketFd, data + sent, size - sent,
+                                   sendFlags() | MSG_DONTWAIT);
         if (wrote > 0) {
             sent += static_cast<size_t>(wrote);
             continue;
@@ -146,7 +160,7 @@ bool sendBytes(int socketFd, const char *data, size_t size, int idleMs)
             return false;
         }
         pollfd waiting {socketFd, POLLOUT, 0};
-        if (poll(&waiting, 1, idleMs) <= 0) {
+        if (waitSockets(&waiting, 1, idleMs, ActiveStepMs) <= 0) {
             return false;
         }
     }
@@ -173,7 +187,7 @@ bool firstBytes(int client, int listener, Clock::time_point deadline)
                                                                   now)
                 .count());
         pollfd waiting[2] = {{client, POLLIN, 0}, {listener, POLLIN, 0}};
-        if (poll(waiting, 2, std::min(left, 100)) < 0) {
+        if (waitSockets(waiting, 2, std::min(left, 100), ActiveStepMs) < 0) {
             return false;
         }
         if (waiting[0].revents != 0) {
@@ -392,6 +406,15 @@ void receiveFile(int client, const FileSharing &sharing,
         return;
     }
     std::setvbuf(file, nullptr, _IONBF, 0);
+    // Taking the whole size at once spares the SD card from growing the
+    // file, and finding its clusters, on every write.
+    if (total > 0 && ftruncate(fileno(file), static_cast<off_t>(total)) != 0) {
+        std::fclose(file);
+        fs::removeFile(part);
+        sendAll(client, remote::jsonError(507, "The SD card does not have room for " +
+                                                   name + "."));
+        return;
+    }
 
     Reporter reporter(sharing, name, from, true, total);
     std::vector<char> buffer(WriteChunk);
@@ -652,6 +675,18 @@ void Receiver::close()
     webPort_ = 0;
 }
 
+void Receiver::shareFiles(const FileSharing &sharing)
+{
+    sharing_ = sharing;
+    // Set on the listener, so connections start out with the larger
+    // window instead of growing into it.
+    if (webSocket_ >= 0 && sharing_.socketBufferSize > 0) {
+        const int size = sharing_.socketBufferSize;
+        setsockopt(webSocket_, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
+        setsockopt(webSocket_, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+    }
+}
+
 bool Receiver::wait(int timeoutMs, Received &out)
 {
     out = Received();
@@ -660,7 +695,7 @@ bool Receiver::wait(int timeoutMs, Received &out)
     }
     pollfd listeners[2] = {{webSocket_, POLLIN, 0}, {fbiSocket_, POLLIN, 0}};
     const nfds_t count = fbiSocket_ >= 0 ? 2 : 1;
-    if (poll(listeners, count, timeoutMs) <= 0) {
+    if (waitSockets(listeners, count, timeoutMs, IdleStepMs) <= 0) {
         return false;
     }
     for (nfds_t index = 0; index < count; ++index) {
@@ -675,6 +710,7 @@ bool Receiver::wait(int timeoutMs, Received &out)
             continue;
         }
         quietPipe(client);
+        setNonBlocking(client);
         if (sharing_.socketBufferSize > 0) {
             const int size = sharing_.socketBufferSize;
             setsockopt(client, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));

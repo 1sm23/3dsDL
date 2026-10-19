@@ -1,6 +1,7 @@
 #include "mdns_responder.hpp"
 
 #include "mdns.hpp"
+#include "socket_wait.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -134,14 +135,14 @@ void MdnsResponder::claim()
                         .count();
                 pollfd waiting {socket_, POLLIN, 0};
                 if (left <= 0 ||
-                    poll(&waiting, 1, static_cast<int>(left)) <= 0) {
+                    waitSockets(&waiting, 1, static_cast<int>(left), 5) <= 0) {
                     break;
                 }
                 uint8_t packet[1500];
                 sockaddr_in from {};
                 socklen_t length = sizeof(from);
                 const ssize_t got =
-                    recvfrom(socket_, packet, sizeof(packet), 0,
+                    recvfrom(socket_, packet, sizeof(packet), MSG_DONTWAIT,
                              reinterpret_cast<sockaddr *>(&from), &length);
                 taken = got > 0 && from.sin_addr.s_addr != address_ &&
                         mdns::claims(packet, static_cast<size_t>(got), name);
@@ -152,8 +153,10 @@ void MdnsResponder::claim()
         }
     }
     // Telling everyone up front clears any old address a phone has cached.
+    mdns::Asked everything;
+    everything.address = true;
     const std::vector<uint8_t> announcement =
-        mdns::answer(hostname(), address_, mdns::Asked(), false);
+        mdns::answer(hostname(), address_, everything, false);
     send(announcement.data(), announcement.size(), groupAddress(), mdns::Port);
 }
 
@@ -163,13 +166,15 @@ void MdnsResponder::serve(int timeoutMs)
         return;
     }
     pollfd waiting {socket_, POLLIN, 0};
-    if (poll(&waiting, 1, timeoutMs) <= 0) {
+    // Questions can wait a few milliseconds; the other threads' sockets
+    // cannot wait on this one (see socket_wait.hpp).
+    if (waitSockets(&waiting, 1, timeoutMs, 10) <= 0) {
         return;
     }
     uint8_t packet[1500];
     sockaddr_in from {};
     socklen_t length = sizeof(from);
-    const ssize_t got = recvfrom(socket_, packet, sizeof(packet), 0,
+    const ssize_t got = recvfrom(socket_, packet, sizeof(packet), MSG_DONTWAIT,
                                  reinterpret_cast<sockaddr *>(&from), &length);
     mdns::Asked asked;
     if (got <= 0 ||

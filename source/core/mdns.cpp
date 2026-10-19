@@ -9,6 +9,8 @@ namespace mdns {
 namespace {
 
 constexpr uint16_t TypeA = 1;
+constexpr uint16_t TypeAaaa = 28;
+constexpr uint16_t TypeNsec = 47;
 constexpr uint16_t TypeAny = 255;
 constexpr uint16_t ClassIn = 1;
 constexpr uint16_t TopBit = 0x8000; // QU in questions, cache-flush in answers
@@ -114,14 +116,19 @@ bool readQuery(const uint8_t *data, size_t size, const std::string &name,
         const uint16_t type = read16(data + offset);
         const uint16_t klass = read16(data + offset + 2);
         offset += 4;
-        if (text::lower(asked) == wanted &&
-            (type == TypeA || type == TypeAny) &&
-            (klass & ~TopBit) == ClassIn) {
-            out.address = true;
-            out.unicast = out.unicast || (klass & TopBit) != 0;
+        if (text::lower(asked) != wanted || (klass & ~TopBit) != ClassIn) {
+            continue;
         }
+        if (type == TypeA || type == TypeAny) {
+            out.address = true;
+        } else if (type == TypeAaaa) {
+            out.address6 = true;
+        } else {
+            continue;
+        }
+        out.unicast = out.unicast || (klass & TopBit) != 0;
     }
-    return out.address;
+    return out.address || out.address6;
 }
 
 bool claims(const uint8_t *data, size_t size, const std::string &name)
@@ -153,21 +160,11 @@ bool claims(const uint8_t *data, size_t size, const std::string &name)
     return false;
 }
 
-std::vector<uint8_t> answer(const std::string &name, uint32_t address,
-                            const Asked &asked, bool legacy)
+namespace {
+
+void putAddress(std::vector<uint8_t> &out, const std::string &name,
+                uint32_t address, bool legacy)
 {
-    std::vector<uint8_t> out;
-    put16(out, legacy ? asked.id : 0);
-    put16(out, FlagResponse | FlagAuthoritative);
-    put16(out, legacy ? 1 : 0); // questions
-    put16(out, 1);              // answers
-    put16(out, 0);
-    put16(out, 0);
-    if (legacy) {
-        putName(out, name);
-        put16(out, TypeA);
-        put16(out, ClassIn);
-    }
     putName(out, name);
     put16(out, TypeA);
     // Cache-flush tells others this is the only address for the name; a
@@ -177,6 +174,55 @@ std::vector<uint8_t> answer(const std::string &name, uint32_t address,
     put16(out, 4);
     const uint8_t *bytes = reinterpret_cast<const uint8_t *>(&address);
     out.insert(out.end(), bytes, bytes + 4);
+}
+
+// RFC 6762 section 6.1: the name has an A record and nothing else.
+void putNoOtherAddress(std::vector<uint8_t> &out, const std::string &name)
+{
+    putName(out, name);
+    put16(out, TypeNsec);
+    put16(out, ClassIn | TopBit);
+    put32(out, 120);
+    std::vector<uint8_t> data;
+    putName(data, name); // the next name is the name itself, uncompressed
+    data.push_back(0);   // window 0
+    data.push_back(1);   // one byte of bitmap
+    data.push_back(0x40); // type 1, A
+    put16(out, static_cast<uint16_t>(data.size()));
+    out.insert(out.end(), data.begin(), data.end());
+}
+
+} // namespace
+
+std::vector<uint8_t> answer(const std::string &name, uint32_t address,
+                            const Asked &asked, bool legacy)
+{
+    std::vector<uint8_t> out;
+    put16(out, legacy ? asked.id : 0);
+    put16(out, FlagResponse | FlagAuthoritative);
+    if (legacy) {
+        put16(out, 1);                       // the question again
+        put16(out, asked.address ? 1 : 0);   // answers
+        put16(out, 0);
+        put16(out, 0);
+        putName(out, name);
+        put16(out, asked.address ? TypeA : TypeAaaa);
+        put16(out, ClassIn);
+        if (asked.address) {
+            putAddress(out, name, address, true);
+        }
+        return out;
+    }
+    const bool negativeAnswer = asked.address6;
+    put16(out, 0);
+    put16(out, static_cast<uint16_t>((asked.address ? 1 : 0) +
+                                     (negativeAnswer ? 1 : 0)));
+    put16(out, 0);
+    put16(out, negativeAnswer ? 0 : 1); // additional
+    if (asked.address) {
+        putAddress(out, name, address, false);
+    }
+    putNoOtherAddress(out, name);
     return out;
 }
 

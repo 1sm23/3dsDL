@@ -69,8 +69,8 @@ public:
     unsigned short fbiPort() const { return fbiPort_; }
     unsigned short webPort() const { return webPort_; }
 
-    // Set before wait() is first called.
-    void shareFiles(const FileSharing &sharing) { sharing_ = sharing; }
+    // Set after open() and before wait() is first called.
+    void shareFiles(const FileSharing &sharing);
 
     // Waits up to timeoutMs for a connection and serves it. True when it
     // brought something for the app, which is in out.
