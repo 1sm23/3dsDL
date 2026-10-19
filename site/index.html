@@ -84,7 +84,8 @@
              Its two screens are screenshots of 3dsDL at native 3DS size,
              mapped onto the photographed screens with a perspective matrix.
              They power on with a short boot screen, then step through a
-             download and install. The doodles are
+             download and install. Each screenshot has its own set of
+             doodles, which redraw when the screens change. The doodles are
              drawn in the photo's own coordinates (1356 x 1177). -->
         <div class="device device-angled reveal" data-tilt>
           <div class="device-stage">
@@ -102,23 +103,65 @@
               <div class="boot boot-bottom"><i></i><i></i><i></i></div>
             </div>
             <svg class="doodles" viewBox="0 0 1356 1177" aria-hidden="true">
-              <g class="doodle pen-blue" style="--d: 0">
-                <text x="62" y="236" transform="rotate(-6 62 236)">live speed</text>
-                <text x="84" y="294" transform="rotate(-6 84 294)">&amp; time left!</text>
-                <path pathLength="1" d="M330 318C420 304 480 330 556 372"/>
-                <path pathLength="1" d="M538 343L556 372L522 373"/>
+              <g class="doodle-set is-on" data-hero-notes>
+                <g class="doodle pen-blue" style="--d: 0">
+                  <text x="62" y="236" transform="rotate(-6 62 236)">live speed</text>
+                  <text x="84" y="294" transform="rotate(-6 84 294)">&amp; time left!</text>
+                  <path pathLength="1" d="M330 318Q462 338 551 438"/>
+                  <path pathLength="1" d="M543 405L551 438L519 427"/>
+                </g>
+                <g class="doodle pen-red" style="--d: 1">
+                  <text x="40" y="1012" transform="rotate(4 40 1012)">cancel any</text>
+                  <text x="70" y="1068" transform="rotate(4 70 1068)">time with B</text>
+                  <path pathLength="1" d="M300 985Q399 890 444 761"/>
+                  <path pathLength="1" d="M419 784L444 761L450 795"/>
+                </g>
+                <g class="doodle pen-green" style="--d: 2">
+                  <text x="1046" y="1016" transform="rotate(-4 1046 1016)">resumes if</text>
+                  <text x="1040" y="1072" transform="rotate(-4 1040 1072)">Wi-Fi drops!</text>
+                  <path pathLength="1" d="M1160 952Q1206 694 1010 520"/>
+                  <path pathLength="1" d="M1021 552L1010 520L1043 528"/>
+                </g>
               </g>
-              <g class="doodle pen-red" style="--d: 1">
-                <text x="40" y="1012" transform="rotate(4 40 1012)">cancel any</text>
-                <text x="70" y="1068" transform="rotate(4 70 1068)">time with B</text>
-                <path pathLength="1" d="M300 985C350 930 420 880 486 832"/>
-                <path pathLength="1" d="M452 836L486 832L472 863"/>
+              <g class="doodle-set" data-hero-notes>
+                <g class="doodle pen-blue" style="--d: 0">
+                  <text x="62" y="236" transform="rotate(-6 62 236)">icon, name &amp;</text>
+                  <text x="84" y="294" transform="rotate(-6 84 294)">version first</text>
+                  <path pathLength="1" d="M330 318Q460 258 598 295"/>
+                  <path pathLength="1" d="M573 272L598 295L565 303"/>
+                </g>
+                <g class="doodle pen-red" style="--d: 1">
+                  <text x="40" y="1012" transform="rotate(4 40 1012)">or just</text>
+                  <text x="70" y="1068" transform="rotate(4 70 1068)">keep the file</text>
+                  <path pathLength="1" d="M300 985Q327 889 307 791"/>
+                  <path pathLength="1" d="M297 823L307 791L329 817"/>
+                </g>
+                <g class="doodle pen-green" style="--d: 2">
+                  <text x="1046" y="1016" transform="rotate(-4 1046 1016)">can delete</text>
+                  <text x="1040" y="1072" transform="rotate(-4 1040 1072)">the CIA too!</text>
+                  <path pathLength="1" d="M1160 952Q991 778 754 831"/>
+                  <path pathLength="1" d="M787 840L754 831L780 809"/>
+                </g>
               </g>
-              <g class="doodle pen-green" style="--d: 2">
-                <text x="1046" y="1016" transform="rotate(-4 1046 1016)">resumes if</text>
-                <text x="1040" y="1072" transform="rotate(-4 1040 1072)">Wi-Fi drops!</text>
-                <path pathLength="1" d="M1160 952C1230 820 1170 660 1046 568"/>
-                <path pathLength="1" d="M1060 599L1046 568L1080 572"/>
+              <g class="doodle-set" data-hero-notes>
+                <g class="doodle pen-blue" style="--d: 0">
+                  <text x="62" y="236" transform="rotate(-6 62 236)">installed</text>
+                  <text x="84" y="294" transform="rotate(-6 84 294)">in seconds!</text>
+                  <path pathLength="1" d="M330 318Q501 292 650 381"/>
+                  <path pathLength="1" d="M633 352L650 381L616 380"/>
+                </g>
+                <g class="doodle pen-red" style="--d: 1">
+                  <text x="40" y="1012" transform="rotate(4 40 1012)">launch it</text>
+                  <text x="70" y="1068" transform="rotate(4 70 1068)">right away!</text>
+                  <path pathLength="1" d="M300 985Q402 930 468 835"/>
+                  <path pathLength="1" d="M438 850L468 835L464 869"/>
+                </g>
+                <g class="doodle pen-green" style="--d: 2">
+                  <text x="1046" y="1016" transform="rotate(-4 1046 1016)">file kept or</text>
+                  <text x="1040" y="1072" transform="rotate(-4 1040 1072)">cleaned up!</text>
+                  <path pathLength="1" d="M1160 952Q1188 722 1007 578"/>
+                  <path pathLength="1" d="M1020 609L1007 578L1040 584"/>
+                </g>
               </g>
               <g class="doodle doodle-stars pen-yellow" style="--d: 3">
                 <path pathLength="1" d="M1180 58L1188 92L1222 100L1188 108L1180 142L1172 108L1138 100L1172 92Z"/>

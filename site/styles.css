@@ -745,6 +745,15 @@ symbol .fill {
   pointer-events: none;
 }
 
+/* One set of notes per hero screenshot; only the current one shows. */
+.doodle-set {
+  transition: opacity 250ms ease;
+}
+
+.doodle-set:not(.is-on) {
+  opacity: 0;
+}
+
 .doodle path {
   fill: none;
   stroke: var(--pen);
@@ -805,6 +814,30 @@ html:not(.js) .tray {
 
   .reveal-ready .device.is-in .doodle path + path {
     transition: stroke-dashoffset 220ms var(--ease-out) calc(2250ms + var(--d) * 380ms);
+  }
+
+  /* When the screens change, the old notes fade and reset out of sight
+     and the new ones draw themselves in, without the boot's wait. */
+  .reveal-ready .device.is-cycling .doodle-set:not(.is-on) .doodle path {
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 0s linear 300ms;
+  }
+
+  .reveal-ready .device.is-cycling .doodle-set:not(.is-on) .doodle text {
+    opacity: 0;
+    transition: opacity 0s linear 300ms;
+  }
+
+  .reveal-ready .device.is-cycling .doodle-set.is-on .doodle text {
+    transition-delay: calc(250ms + var(--d) * 260ms);
+  }
+
+  .reveal-ready .device.is-cycling .doodle-set.is-on .doodle path {
+    transition-delay: calc(400ms + var(--d) * 260ms);
+  }
+
+  .reveal-ready .device.is-cycling .doodle-set.is-on .doodle path + path {
+    transition-delay: calc(950ms + var(--d) * 260ms);
   }
 
   .reveal-ready .doodle-stars path {

@@ -230,24 +230,33 @@
   }
 
   // The 3DS's screens step through a download and install: each top and
-  // bottom screenshot pair shows for a few seconds, then the next.
+  // bottom screenshot pair shows for a few seconds with its own doodled
+  // notes, then the next.
   function setUpDeviceDemo() {
     var tops = document.querySelectorAll(".screen-top [data-hero-shot]");
     var bottoms = document.querySelectorAll(".screen-bottom [data-hero-shot]");
+    var notes = document.querySelectorAll("[data-hero-notes]");
+    var device = document.querySelector(".device-angled");
     if (tops.length < 2 || tops.length !== bottoms.length || reduceMotion) return;
 
-    var holds = [4200, 3200, 3200];
+    // The first set waits for the boot screen, so it stays up longest.
+    var holds = [7000, 5500, 5500];
     var index = 0;
+
+    function show(on) {
+      [tops, bottoms, notes].forEach(function (list) {
+        if (list[index]) list[index].classList.toggle("is-on", on);
+      });
+    }
 
     function next() {
       if (!document.hidden) {
-        tops[index].classList.remove("is-on");
-        bottoms[index].classList.remove("is-on");
+        if (device) device.classList.add("is-cycling");
+        show(false);
         index = (index + 1) % tops.length;
-        tops[index].classList.add("is-on");
-        bottoms[index].classList.add("is-on");
+        show(true);
       }
-      setTimeout(next, holds[index] || 3200);
+      setTimeout(next, holds[index] || 5500);
     }
     setTimeout(next, holds[0]);
   }
