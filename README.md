@@ -52,7 +52,7 @@ You need a 3DS with custom firmware ([3ds.hacks.guide](https://3ds.hacks.guide/)
 3dsDL tells you about new versions and updates itself in **Settings → Updates**. If you installed the 0.7.0 CIA, which crashes at start-up, install the latest release with FBI once.
 
 > [!NOTE]
-> 3dsDL is in development. Version 0.7.1 runs on real consoles, both the CIA and the `.3dsx`. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
+> 3dsDL is in development. Version 0.7.1 runs on real consoles. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Building
 
