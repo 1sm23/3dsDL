@@ -49,10 +49,17 @@ See the [guide](docs/USAGE.md) for how each part works, the controls and the set
 
 You need a 3DS with custom firmware ([3ds.hacks.guide](https://3ds.hacks.guide/)) and Wi-Fi.
 
-- **CIA:** in FBI, choose Remote Install → Scan QR Code and scan the code on the [website](https://ankush.one/3dsDL/), or install `3dsDL.cia` from the [latest release](https://github.com/ankushKun/3dsDL/releases/latest).
+<p align="center">
+  <img src="site/qr/install-cia.svg" width="180" alt="QR code for the latest 3dsDL.cia"><br>
+  <sub>In FBI, choose Remote Install → Scan QR Code and scan this.</sub>
+</p>
+
+- **CIA:** scan the code above in FBI, or install `3dsDL.cia` from the [latest release](https://github.com/ankushKun/3dsDL/releases/latest).
 - **3DSX:** copy `3dsDL.3dsx` to `sdmc:/3ds/3dsDL/` and open it from the Homebrew Launcher.
 
-3dsDL tells you about new versions and updates itself in **Settings → Updates**. If you installed the 0.7.0 CIA, which crashes at start-up, install the latest release with FBI once.
+### Updating
+
+You only install 3dsDL once. It checks GitHub for a new version when it opens and shows a notification when there is one. **Settings → Updates** downloads the right build, checks it against the release's SHA-256 checksum and installs it, without FBI or a computer. The one exception is the 0.7.0 CIA, which crashes at start-up: install the latest release with FBI once.
 
 > [!NOTE]
 > 3dsDL is in development. Version 0.7.1 runs on real consoles. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).

@@ -287,6 +287,45 @@ symbol .fill {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
+/* The GitHub link: a tab-shaped pill in GitHub's own near-black. */
+.gh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #1b1f24;
+  background: linear-gradient(#3b434b, #24292f);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 #11151a;
+  color: #fff;
+  font: 700 0.84rem var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform var(--dur-press, 120ms) ease;
+}
+
+.gh-link:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(#454e57, #2c3238);
+}
+
+.gh-link:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 #11151a;
+}
+
+.gh-link:focus-visible {
+  outline: 2px solid var(--a);
+  outline-offset: 2px;
+}
+
+.gh-mark {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex: none;
+}
+
 .tray {
   display: flex;
   align-items: center;
@@ -356,6 +395,13 @@ symbol .fill {
   .tabs a {
     padding: 4px 10px;
     font-size: 0.8rem;
+  }
+  /* Just the mark on a phone. */
+  .gh-link {
+    padding: 5px 7px;
+  }
+  .gh-label {
+    display: none;
   }
 }
 

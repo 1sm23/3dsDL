@@ -782,7 +782,7 @@
     });
 
     document.addEventListener("pointerover", function (event) {
-      var target = event.target.closest("[data-sound], .btn, .tabs a, .app-icon, .pick, .faq summary, .sbtn");
+      var target = event.target.closest("[data-sound], .btn, .tabs a, .gh-link, .app-icon, .pick, .faq summary, .sbtn");
       if (!target || target.contains(event.relatedTarget)) return;
       var now = Date.now();
       if (now - lastHover < 70) return;
@@ -791,7 +791,7 @@
     });
     // Buttons and tabs click; the menu, installer and FAQ play their own.
     document.addEventListener("click", function (event) {
-      var target = event.target.closest("[data-sound], .btn, .tabs a, .sbtn, .brand");
+      var target = event.target.closest("[data-sound], .btn, .tabs a, .gh-link, .sbtn, .brand");
       if (target) sfx.play(target.getAttribute("data-sound") || "click");
     });
   }

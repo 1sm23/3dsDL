@@ -11,8 +11,8 @@ LATEST="https://github.com/${REPO}/releases/latest/download"
 TOOL="$(mktemp -d)/qr-svg"
 trap 'rm -rf "$(dirname "${TOOL}")"' EXIT
 
-cc -O2 -I"${ROOT}/tests/third_party" "${ROOT}/scripts/qr-svg.c" \
-    "${ROOT}/tests/third_party/qrcodegen.c" -o "${TOOL}"
+cc -O2 -I"${ROOT}/source/qrcodegen" "${ROOT}/scripts/qr-svg.c" \
+    "${ROOT}/source/qrcodegen/qrcodegen.c" -o "${TOOL}"
 
 "${TOOL}" "${LATEST}/3dsDL.cia" "${ROOT}/site/qr/install-cia.svg" \
     "QR code that installs the latest 3dsDL CIA with FBI"
