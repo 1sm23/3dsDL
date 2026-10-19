@@ -113,7 +113,7 @@ The host tests (`make -C tests check`) need a C++17 compiler, libcurl and zlib h
 
 ### Versions and releases
 
-`VERSION` holds a release, `0.8.0`, or a pre-release of one, `0.8.0-beta.1` or `0.8.0-rc.2`. 3dsDL shows it as written. A CIA can only carry three numbers (up to 63.63.15), so a pre-release is packed as the version just below the release it leads up to: every `0.8.0-*` build is CIA version 0.7.15, installs over 0.7.x and over the other 0.8.0 pre-releases, and 0.8.0 installs over all of them. `scripts/version.sh` prints the numbers for the current `VERSION`.
+`VERSION` holds a release, `0.8.1`, or a pre-release of one that ends in a number from 1 to 14, `0.8.1-beta.1` or `0.8.1-rc.3`. 3dsDL shows it as written. A CIA's version is a single number that the console only lets go up, the same number again included, so each build gets a build number made from its version (`major × 16384 + minor × 256 + patch × 16 + step`, where step is the pre-release's last number and 15 for the release). Every build installs over the one before it, so keep that last number rising across labels for one version: beta.1, beta.2, rc.3. `scripts/version.sh` prints the numbers for the current `VERSION`.
 
 To publish, commit the new `VERSION` and push a matching tag (`v0.8.0-beta.1`). CI builds it, checks the tag against `VERSION`, and either publishes a GitHub pre-release straight away (testers install it from the release page) or, for a release, creates a draft to review and publish. The updater in 3dsDL only looks at the latest release, so it never offers a pre-release, and someone on `0.8.0-beta.3` is offered `0.8.0` as soon as it is out.
 
