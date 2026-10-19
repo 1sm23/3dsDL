@@ -49,10 +49,10 @@ You need a 3DS with custom firmware ([3ds.hacks.guide](https://3ds.hacks.guide/)
 - **CIA:** in FBI, choose Remote Install → Scan QR Code and scan the code on the [website](https://ankush.one/3dsDL/), or install `3dsDL.cia` from the [latest release](https://github.com/ankushKun/3dsDL/releases/latest).
 - **3DSX:** copy `3dsDL.3dsx` to `sdmc:/3ds/3dsDL/` and open it from the Homebrew Launcher.
 
-From 0.7.0 on, 3dsDL tells you about new versions and updates itself in **Settings → Updates**.
+3dsDL tells you about new versions and updates itself in **Settings → Updates**. If you installed the 0.7.0 CIA, which crashes at start-up, install the latest release with FBI once.
 
 > [!NOTE]
-> 3dsDL is in development. Downloading and installing with FBI are confirmed on real consoles. Most features from 0.5.0 onwards have only run in the Azahar emulator so far. Save and extra data restore and ticket export haven't been run anywhere yet, so back up with Checkpoint as well until they have. The console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
+> 3dsDL is in development. Version 0.7.1 runs on real consoles, both the CIA and the `.3dsx`. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Building
 
