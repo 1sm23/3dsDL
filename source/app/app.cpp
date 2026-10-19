@@ -925,12 +925,14 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         dialog.cancelButton = 1;
         return ui::choose(dialog) == 0;
     };
+    // Removing the software that is running would leave it uninstalled
+    // halfway, as FBI knows, so 3dsDL never does that to itself.
+    u64 running = 0;
+    const bool isRunning = R_SUCCEEDED(APT_GetProgramID(&running)) &&
+                           running == info.titleId;
     bool removeFirst = false;
     if (isInstalled && installed == info.version) {
         // AM answers 0xC8E083FC to the same version, after the whole file.
-        u64 running = 0;
-        const bool isRunning = R_SUCCEEDED(APT_GetProgramID(&running)) &&
-                               running == info.titleId;
         bool reinstall = false;
         if (isRunning) {
             ui::message("Already Installed",
@@ -955,6 +957,15 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         }
         removeFirst = true;
     } else if (isInstalled && installed > info.version) {
+        if (isRunning) {
+            ui::message("Newer Version Running",
+                        name + " " + cia::versionText(installed) +
+                            " is installed and running now, so it cannot "
+                            "be replaced by this older " +
+                            cia::versionText(info.version) + ".",
+                        ui::Tone::Info);
+            return false;
+        }
         if (!confirmReplace("A newer version of " + name +
                             " is installed")) {
             return false;
@@ -999,6 +1010,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
                                 settings_.keepAwake, info.smdh.icon);
         if (result.outcome == installer::Outcome::Failed &&
             result.versionRefused && isInstalled && !removeFirst &&
+            !isRunning &&
             ui::keepRunning() &&
             confirmReplace(name + " is already installed")) {
             removeFirst = true;
