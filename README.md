@@ -1,413 +1,83 @@
 <p align="center">
-  <img src="resources/banner-3dsdl-source.png" width="640" alt="3dsDL: download directly to your 3DS">
+  <img src="resources/banner-3dsdl-source.png" width="560" alt="3dsDL">
 </p>
 
 <p align="center">
-  <b>Download files straight onto your Nintendo 3DS from a URL or a QR code.</b><br>
-  No pulling the SD card, no powering down, no computer in the loop.
+  <b>Download files straight onto your Nintendo 3DS, from a link, a QR code or your phone.</b>
 </p>
 
 <p align="center">
-  <img alt="Version 0.7.0" src="https://img.shields.io/badge/version-0.7.0-34d6e8?style=for-the-badge">
-  <img alt="Nintendo 3DS" src="https://img.shields.io/badge/platform-Nintendo%203DS-e60012?style=for-the-badge">
-  <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-56e39f?style=for-the-badge">
-  <img alt="Active development" src="https://img.shields.io/badge/status-in%20development-ffc857?style=for-the-badge">
+  <a href="https://github.com/ankushKun/3dsDL/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ankushKun/3dsDL?label=release&color=1c93c2"></a>
+  <a href="https://github.com/ankushKun/3dsDL/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/ankushKun/3dsDL/total?color=3fa65a"></a>
+  <a href="https://github.com/ankushKun/3dsDL/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/ankushKun/3dsDL/ci.yml?branch=main&label=CI"></a>
+  <a href="LICENSE"><img alt="License: GPLv3" src="https://img.shields.io/badge/license-GPLv3-8c8466"></a>
 </p>
 
 <p align="center">
-  <a href="https://ankush.one/3dsDL/"><b>Website</b></a> &nbsp;•&nbsp;
-  <a href="#-features">Features</a> &nbsp;•&nbsp;
-  <a href="#-install">Install</a> &nbsp;•&nbsp;
-  <a href="#%EF%B8%8F-using-3dsdl">Usage</a> &nbsp;•&nbsp;
-  <a href="#%EF%B8%8F-building">Build</a> &nbsp;•&nbsp;
-  <a href="#-testing">Tests</a> &nbsp;•&nbsp;
-  <a href="ROADMAP.md">Roadmap</a> &nbsp;•&nbsp;
-  <a href="#-credits">Credits</a>
+  <a href="https://ankush.one/3dsDL/">Website</a> &nbsp;·&nbsp;
+  <a href="https://github.com/ankushKun/3dsDL/releases/latest">Download</a> &nbsp;·&nbsp;
+  <a href="docs/USAGE.md">Guide</a> &nbsp;·&nbsp;
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
-<br>
+3dsDL downloads files onto the SD card while the console stays on, with no card reader and no computer. Scan a QR code, type a link or send one from your phone, and it saves the file, installs it if it's a CIA, and lets you manage what's on the card. It's built to replace FBI, which is no longer maintained, and it looks and feels like the console's own system software.
 
-Getting a file onto a 3DS usually means powering it off, pulling the SD card and finding a card reader. 3dsDL skips all of that. Point the camera at a QR code, or type a direct link with the on-screen keyboard, pick a folder, and the file streams straight onto the SD card while the console stays on.
+<p align="center">
+  <img src="docs/images/downloading.png" width="200" alt="A download in progress">
+  <img src="docs/images/installprompt.png" width="200" alt="Installing a CIA">
+  <img src="docs/images/titles.png" width="200" alt="The Titles screen">
+  <img src="docs/images/receive.png" width="200" alt="Receiving links from a phone">
+</p>
 
-It looks and works like the software that came with the console: the same khaki screens, embossed buttons, Back and OK tabs and system dialogs as System Settings, with touch scrolling that you can flick.
+## Features
 
-It's a modern take on [Multidownload](https://github.com/hax0kartik/Multidownload), the 2017 homebrew downloader, rebuilt around libcurl and mbedTLS with a new Citro2D interface.
+- Downloads over verified HTTPS, split across four connections when the server allows it, with resume after a dropped connection.
+- Installs CIAs with their seeds, or streams them straight into the install service when the SD card is too full.
+- Receives links from a phone on the same Wi-Fi, and from FBI's `servefiles.py`, `sendurls.py` and Boop.
+- A queue for scanning many QR codes in a row and downloading them together.
+- Files: a file manager with a picture viewer, a text editor, ZIP extraction, a hex view and SHA-256 checks.
+- Titles: launch and delete installed software, manage tickets and seeds, and clear stuck installs.
+- Save data and extra data backup, restore and browsing, compatible with Checkpoint's backups.
+- Updates itself from GitHub releases, checking each download against its SHA-256 checksum.
 
-> [!IMPORTANT]
-> Version 0.7.0 is a development build. Downloads over the internet, downloads split across several connections, installing the CIA with FBI, ZIP extraction and the 3D HOME Menu banner have been confirmed on a console. Installing CIAs from 3dsDL itself (0.5.0), the file manager and the system-style interface (0.6.0), and Titles, Receive, the Queue, direct installs, ticket install and self-updating (0.7.0) have been tried in the Azahar emulator but not yet on a console. Save and extra data backup and restore, and ticket export, could not be tried in the emulator at all, so treat them as untested. The download engine, file handling, CIA reading, ZIP extraction and QR decoding are covered by automated tests. The rest of the New and Old 3DS hardware pass is planned in [docs/HARDWARE.md](docs/HARDWARE.md).
+See the [guide](docs/USAGE.md) for how each part works, the controls and the settings.
 
-## ✨ Features
+## Install
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h4>📷 Scan or type</h4>
-      Scan a QR code with the console camera, or enter a link with the 3DS keyboard. QR codes that aren't links are pointed out instead of ending the scan.
-    </td>
-    <td width="50%" valign="top">
-      <h4>🔒 Real HTTPS</h4>
-      Certificates are checked against a bundled Mozilla CA store, redirects stay on HTTP and HTTPS, and plain <code>http://</code> links get a warning before you download.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>📊 Live progress</h4>
-      Speed, time left, size and percentage while the file streams straight to the SD card, with free space checked before anything is written. Large files from servers that allow it come down over four connections at once, which gets around the speed limit the 3DS network stack puts on each connection.
-    </td>
-    <td valign="top">
-      <h4>⏯️ Resume and retry</h4>
-      A dropped connection keeps what already arrived. Retry, or pick the download from History later, and it carries on from there, but only when the server confirms the file hasn't changed.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>🤝 Never clobbers your files</h4>
-      If a file already exists you choose: <b>Rename</b> keeps both as <code>file (1).zip</code>, <b>Overwrite</b> replaces it with rollback protection, or <b>Cancel</b> leaves it alone. A finished download is never thrown away because of an awkward filename.
-    </td>
-    <td valign="top">
-      <h4>📁 Folders made easy</h4>
-      Presets for common places like <code>sdmc:/cias/</code> and <code>sdmc:/3ds/</code>, recent folders, a folder browser that can create new folders, or type any path.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>🕘 History</h4>
-      The last 50 downloads, saved, failed or cancelled, with their links and where they went. Download again, resume or remove any of them.
-    </td>
-    <td valign="top">
-      <h4>🗜️ Optional ZIP extraction</h4>
-      Off by default. When you turn it on, 3dsDL offers to extract a downloaded <code>.zip</code> into the same folder or a new one, asks before overwriting, and refuses paths that would escape the folder.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>📦 Installs CIAs</h4>
-      When a <code>.cia</code> finishes downloading, install it, install it and delete the file, or keep it. 3dsDL shows the title's icon, name and version first, warns before replacing a newer version, fetches the seed newer games need, and can launch the title straight away.
-    </td>
-    <td valign="top">
-      <h4>🗂️ Files</h4>
-      A file manager for the SD card: copy, cut, paste, rename and delete files and whole folders, mark several at once, and make new folders and files. Pictures (PNG, JPEG, BMP, GIF) open full screen, text and config files open in a line editor, ZIPs show what's inside, anything else opens in a hex view, and CIAs, homebrew, 3DS and DS games show their icon and title.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>🌙 Stays awake</h4>
-      Sleep mode is paused while a download or extraction runs, so closing the lid doesn't cut the Wi-Fi halfway through.
-    </td>
-    <td valign="top">
-      <h4>🕐 Fixes the clock</h4>
-      HTTPS fails when the console's date is wrong. 3dsDL compares the clock with internet time and sets it for the time zone you pick, and certificate errors say exactly why they happened.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>🎮 Buttons or touch</h4>
-      A Citro2D interface that works with the D-Pad, Circle Pad, buttons or touch screen everywhere, including every dialog.
-    </td>
-    <td valign="top">
-      <h4>🧪 Tested off the console</h4>
-      The download engine, ZIP extraction and QR decoding run in automated tests against a local HTTP, HTTPS and NTP fixture server on every push.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>📡 Receive links</h4>
-      Send links from a phone or computer on the same Wi-Fi: a small web page on the console, reached by scanning a QR code on the top screen, or FBI's own remote install protocol, so <code>servefiles.py</code>, <code>sendurls.py</code> and Boop keep working.
-    </td>
-    <td valign="top">
-      <h4>📋 Queue</h4>
-      Add links to a queue as you scan or receive them, then download them all in one go. Scanning goes straight back to the camera, so a page of QR codes takes seconds.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h4>💾 Saves and extra data</h4>
-      Back up and restore game saves and extra data in Checkpoint's own folders (<code>sdmc:/3ds/Checkpoint/</code>), so a backup made by either app restores in the other. Restoring backs up what's there first, clears the secure value games check, and skips computer junk like <code>._</code> files. You can also look inside a save and copy files out.
-    </td>
-    <td valign="top">
-      <h4>🎟️ Tickets</h4>
-      Install <code>.tik</code> files from Files, the way FBI did, and export an installed title's ticket to <code>sdmc:/3ds/3dsDL/tickets/</code>.
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" valign="top">
-      <h4>🎮 Titles</h4>
-      Everything installed, like System Settings' Data Management: games, updates and DLC, extra data and tickets, with their icons. Launch a game, fetch its seed, delete it with or without its ticket, delete extra data, import seeds from a <code>seeddb.bin</code>, and clean up the unfinished installs that make a CIA refuse to install again. System titles never show up, so they can't be deleted by mistake.
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" valign="top">
-      <h4>🔔 Keeps itself up to date</h4>
-      When it opens, 3dsDL asks GitHub whether a newer version is out and shows a notification if there is. <b>Settings → Updates</b> shows what's new and updates in place: it downloads the CIA or the <code>.3dsx</code>, whichever you run, checks it against the release's SHA-256 checksums, then installs it or swaps the file. Turn the check at startup off in the same screen.
-    </td>
-  </tr>
-</table>
+You need a 3DS with custom firmware ([3ds.hacks.guide](https://3ds.hacks.guide/)) and Wi-Fi.
 
-## 🔄 How it works
+- **CIA:** in FBI, choose Remote Install → Scan QR Code and scan the code on the [website](https://ankush.one/3dsDL/), or install `3dsDL.cia` from the [latest release](https://github.com/ankushKun/3dsDL/releases/latest).
+- **3DSX:** copy `3dsDL.3dsx` to `sdmc:/3ds/3dsDL/` and open it from the Homebrew Launcher.
 
-```mermaid
-flowchart LR
-    A["📷 QR code<br>or ⌨️ typed link"] --> B["Confirm link<br>and folder"]
-    B --> C["libcurl + mbedTLS<br>verified HTTPS"]
-    C -- "connection drops" --> R["Partial file kept<br>Retry resumes"]
-    R --> C
-    C --> D{"File already<br>on the SD card?"}
-    D -- no --> F["💾 Saved in<br>sdmc:/your/folder"]
-    D -- yes --> E["Rename, Overwrite<br>or Cancel"]
-    E --> F
-    F -. "ZIP, if enabled" .-> X["Extract here<br>or into a new folder"]
-```
-
-## 📦 Install
-
-**You'll need**
-
-- A Nintendo 3DS that can run homebrew
-- A working Wi-Fi connection set up on the console
-- `3dsDL.3dsx` or `3dsDL.cia` from the [releases page](https://github.com/ankushKun/3dsDL/releases), or your own build (see [Building](#%EF%B8%8F-building))
-
-The [website](https://ankush.one/3dsDL/) has QR codes that install the latest release straight from FBI, and a tool that turns any download link into a QR code for 3dsDL.
-
-**Homebrew Launcher (.3dsx)**
-
-Copy the executable to this path on the SD card and launch **3dsDL** from the Homebrew Launcher:
-
-```text
-sdmc:/3ds/3dsDL/3dsDL.3dsx
-```
-
-If you already run an FTP server such as FTPD on the console, you can send new builds over Wi-Fi instead.
-
-**HOME Menu (.cia)**
-
-Install `3dsDL.cia` with FBI to launch it straight from the HOME Menu. The CIA uses the stable Title ID `0004000003D5D100`, so newer builds upgrade the installed title instead of adding a duplicate.
-
-## 🕹️ Using 3dsDL
-
-1. Launch 3dsDL. The top screen shows the download folder, the free space on the SD card and whether Wi-Fi is connected.
-2. Pick **Scan QR Code** or **Enter URL**.
-3. Check the link and the folder on the confirm screen. **Folder** lets you change where it goes.
-4. Watch the progress screen. Leave it running, or cancel with <kbd>B</kbd>.
-5. If a file with that name already exists, choose **Keep Both**, **Replace** or **Cancel**.
-6. If it's a CIA, choose **Install**, **Install and Delete File** (removes the file once it's installed) or **Keep File**. After installing, **Launch** starts it, and it's on the HOME Menu from then on.
-
-If a CIA doesn't fit on the SD card, the error offers **Install Directly**: it streams the CIA straight into the install service without saving the file, as FBI did. It can't resume, so a dropped connection means starting over.
-
-### Queue and Receive
-
-**Add to Queue** on the confirm screen saves a link for later instead of downloading it. From the scanner, the camera comes straight back, so you can scan a whole page of QR codes in a row. **Queue** on the home screen lists them, and **Download All** fetches them one after another without stopping to ask. A name that's taken keeps both files, and CIAs are asked about once per run.
-
-**Receive** on the home screen listens for links from other devices on the same Wi-Fi:
-
-- **A phone or computer browser:** scan the QR code on the top screen, or open the address on the touch screen, paste one or more links and press **Send to 3DS**.
-- **FBI's tools:** `servefiles.py`, `sendurls.py` and Boop send to port 5000 exactly as they did to FBI, and they keep serving their files until 3dsDL has downloaded them.
-
-CIAs already on the SD card install from **Files** on the home screen: open the folder, select the CIA, and choose **Install**.
-
-### Files
-
-**Files** on the home screen browses the whole SD card. Tap a row to select it and tap it again (or press <kbd>A</kbd>) to open it:
-
-- **Pictures** (PNG, JPEG, BMP, GIF, TGA) fill the top screen. <kbd>L</kbd> / <kbd>R</kbd> go to the previous or next picture in the folder. Big phone photos open too.
-- **Text and config files** (`.txt`, `.ini`, `.cfg`, `.json`, `.md`, `.xml`, `.yml`, `.log` and more) open in a line editor: <kbd>A</kbd> edits the highlighted line with the keyboard, <kbd>X</kbd> adds a line below it, <kbd>Y</kbd> deletes it, <kbd>START</kbd> saves. Line endings and encoding are kept as they were, and files over 512 KiB open read-only.
-- **ZIP archives** list their contents and can be extracted here or into a new folder.
-- **CIAs** install, **`.3dsx`**, **`.3ds`/`.cci`**, **`.nds`** and **`.tik`** files show their icon, name, title ID and product code, and anything else opens in a hex view.
-
-**OPTIONS** (<kbd>X</kbd>) on a file or folder offers open, edit, open as text or hex, rename, copy, cut, delete, install, properties and **SHA-256**, which also checks the file against a `.sha256` list in the same folder. **MARK** (<kbd>Y</kbd>) marks several entries so the options apply to all of them. **FOLDER** (<kbd>SELECT</kbd>) pastes what you copied or cut, makes a new folder or a new file (which opens in the editor), changes the sort order (name, size, date, type), shows hidden files, and installs every CIA in the folder. Deleting always asks first and says how much is inside.
-
-If the connection drops, the error dialog offers **Retry**, which continues from where it stopped. The same download can also be resumed later from **History**.
-
-> [!TIP]
-> The quickest way to send a link from your computer is to turn it into a QR code right in the terminal and scan it off the screen:
->
-> ```sh
-> qrencode -t ansiutf8 "https://example.com/some-homebrew.3dsx"
-> ```
-
-The QR code has to contain a **direct** link starting with `http://` or `https://`. Links to download pages that need JavaScript, a login, a confirmation click or anything else that needs a browser won't work, because 3dsDL only fetches the file itself.
-
-### Controls
-
-| Where | Input | What it does |
-| --- | --- | --- |
-| Home | D-Pad, Circle Pad or touch | Choose an action |
-| Home | <kbd>A</kbd> | Open the selected action |
-| Home | <kbd>START</kbd> | Exit 3dsDL |
-| Dialogs | Left / Right, then <kbd>A</kbd>, or touch | Choose a button |
-| Dialogs | <kbd>B</kbd> | Go back or cancel |
-| Lists | Up / Down, <kbd>L</kbd> / <kbd>R</kbd> to page, tap twice to open | Move and open |
-| Folder browser | <kbd>X</kbd> / <kbd>Y</kbd> | New folder / use the current folder |
-| Files | <kbd>A</kbd> / <kbd>B</kbd> / <kbd>START</kbd> | Open / up one folder / back to the home screen |
-| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> | Options for the entry or the marked entries / mark / folder options (paste, new folder, new file, sort, hidden files) |
-| Text editor | <kbd>A</kbd> / <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>START</kbd> | Edit the line / new line below / delete the line / save |
-| Pictures | <kbd>L</kbd> / <kbd>R</kbd> | Previous / next picture in the folder |
-| History | <kbd>X</kbd> | Clear the history |
-| QR scanner | <kbd>B</kbd> | Stop scanning |
-| Download | <kbd>B</kbd> | Ask to cancel |
-
-### Settings
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| Resume interrupted downloads | On | Keep partial downloads and continue them with HTTP range requests. 3dsDL only resumes when the server sends a strong ETag or a Last-Modified date, and starts over if the file changed. |
-| Stay awake while downloading | On | Pause sleep mode during downloads and extraction so closing the lid doesn't drop Wi-Fi. |
-| Offer to extract ZIP files | Off | After a `.zip` finishes, ask whether to extract it. |
-| After downloading a CIA | Ask | Ask each time, install and keep the file, install and delete the file, or only keep the file. |
-| Default download folder | `sdmc:/` | Where new downloads go. |
-| Console clock | | Shows the console's time next to internet time and sets the clock for your time zone. The time zone you pick is remembered. |
+From 0.7.0 on, 3dsDL tells you about new versions and updates itself in **Settings → Updates**.
 
 > [!NOTE]
-> Setting the clock needs the CIA build, which asks for access to the clock service. If 3dsDL isn't allowed to change it, open Rosalina with <kbd>L</kbd> + <kbd>Down</kbd> + <kbd>Select</kbd> and use **Miscellaneous options → Update time and date via NTP** instead.
+> 3dsDL is in development. Downloading and installing with FBI are confirmed on real consoles. Most features from 0.5.0 onwards have only run in the Azahar emulator so far. Save and extra data restore and ticket export haven't been run anywhere yet, so back up with Checkpoint as well until they have. The console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
 
-### Files on the SD card
-
-| Path | Contents |
-| --- | --- |
-| `sdmc:/3ds/3dsDL/settings.ini` | Settings. Version 0.2's `sdmc:/3dsDL.cfg` is moved here automatically. |
-| `sdmc:/3ds/3dsDL/history.txt` | The last 50 downloads. |
-| `sdmc:/3ds/3dsDL/seeds/<title id>.dat` | Optional 16-byte seeds for games that need one, checked before asking Nintendo's server. FBI's `sdmc:/fbi/seed/` is checked too. |
-| `<folder>/.3dsdl-<id>.part` and `.resume` | A partial download kept for resuming, removed once it finishes, is cancelled or is removed from History. |
-
-## 🛠️ Building
-
-The recommended way is the reproducible container build. All it needs is Docker Desktop, or the Docker CLI with Colima on macOS:
+## Building
 
 ```sh
 git clone https://github.com/ankushKun/3dsDL.git
 cd 3dsDL
-./scripts/build.sh
+./scripts/build.sh        # Docker build; results in dist/
+make -C tests check       # host tests
 ```
 
-When it finishes, everything you need is in `dist/`:
+Build options, building without Docker and the project layout are in the [guide](docs/USAGE.md#building).
 
-```text
-dist/
-├── 3dsDL.3dsx     Homebrew Launcher build
-├── 3dsDL.cia      HOME Menu install
-├── 3dsDL.smdh     icon and title metadata
-└── 3dsDL.sha256   checksums for all of the above
-```
+## Credits
 
-<details>
-<summary><b>What the build script does</b></summary>
+- [Multidownload](https://github.com/hax0kartik/Multidownload) by hax0kartik, which 3dsDL grew out of.
+- [FBI](https://github.com/Steveice10/FBI) by Steveice10, whose install sequence, seed handling and remote install protocol 3dsDL follows.
+- [Checkpoint](https://github.com/BernardoGiordano/Checkpoint) by Bernardo Giordano, whose backup format and restore steps 3dsDL matches.
+- [Colby Shores](https://github.com/colbyshores), for the socket buffer and TLS randomness findings.
+- [libcurl](https://curl.se/), [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), the [Mozilla CA bundle](https://curl.se/docs/caextract.html), [quirc](https://github.com/dlbeer/quirc) ([license](LICENSE-quirc.md)), [QR Code generator](https://www.nayuki.io/page/qr-code-generator-library), [stb_image](https://github.com/nothings/stb), [libjpeg-turbo](https://libjpeg-turbo.org/), and [devkitPro](https://devkitpro.org/) with libctru and Citro2D.
 
-<br>
+## License
 
-1. Checks that Docker is available and starts Colima if it needs to.
-2. Pulls the digest-pinned `devkitpro/devkitarm:20260610` image and builds the checksum-verified CIA tools image if it isn't cached yet.
-3. Makes sure the launcher icon PNG has a real alpha channel.
-4. Cleans out previous build output.
-5. Compiles 3dsDL, running the containers as your user so nothing in the repository ends up owned by root.
-6. Creates the HOME Menu banner and its jingle (see [`resources/banner/`](resources/banner/README.md)) and packages both the 3DSX and CIA builds, taking the version from the `VERSION` file.
-7. Writes the release files and their SHA-256 checksums to `dist/`.
-8. Removes intermediate files so the repository root stays clean.
-
-</details>
-
-<details>
-<summary><b>Build options</b></summary>
-
-<br>
-
-```sh
-# Use more compiler jobs
-THREEDSDL_BUILD_JOBS=4 ./scripts/build.sh
-
-# Pack the flat banner picture instead of the 3D model
-THREEDSDL_FLAT_BANNER=1 ./scripts/build.sh
-
-# Use another devkitPro image (the default is pinned by digest)
-THREEDSDL_BUILD_IMAGE=devkitpro/devkitarm:20260610 ./scripts/build.sh
-
-# Use another CIA packaging image
-THREEDSDL_CIA_IMAGE=3dsdl-cia-tools:1.0.2 ./scripts/build.sh
-
-# Leave a Colima instance the script started running afterwards
-THREEDSDL_KEEP_COLIMA=1 ./scripts/build.sh
-```
-
-</details>
-
-<details>
-<summary><b>Building without Docker</b></summary>
-
-<br>
-
-Install devkitARM, libctru, Citro2D, Citro3D, 3ds-curl, 3ds-mbedTLS and their dependencies through devkitPro's pacman, then run `make` in the repository root.
-
-</details>
-
-<details>
-<summary><b>Reproducibility and releases</b></summary>
-
-<br>
-
-Building the same commit twice gives a byte-identical `3dsDL.3dsx`. The CIA is identical too, except for the ticket ID, title key and content ID that makerom randomises on every run; the packaged app inside it does not change.
-
-GitHub Actions runs the tests and the container build on every push and pull request and keeps `dist/` as a build artifact. Pushing a tag such as `v0.3.0` that matches `VERSION` also creates a draft release with the 3DSX, CIA, SMDH and checksums attached, ready to review and publish.
-
-</details>
-
-## 🧪 Testing
-
-Everything that doesn't need console hardware builds and runs on a normal computer: link and filename handling, the settings and history formats, the download engine, ZIP extraction, QR decoding and the internet time client. The tests run under AddressSanitizer and UBSan.
-
-```sh
-make -C tests check
-```
-
-You need a C++17 compiler, libcurl and zlib development headers, Python 3 and OpenSSL. The integration tests start [`tests/fixtures/server.py`](tests/fixtures/server.py), a local HTTP, HTTPS and NTP server with a throwaway certificate, and drive the real download engine through redirects, chunked responses, TLS failures, dropped and stalled connections, resume, cancellation, a full SD card and oversized files. The QR tests draw codes into camera-sized frames and decode them through the same code the scanner uses.
-
-The parts that need a console (camera, graphics, keyboard, Wi-Fi and sleep) are covered by the checklist in [docs/HARDWARE.md](docs/HARDWARE.md).
-
-<details>
-<summary><b>Project layout</b></summary>
-
-<br>
-
-```text
-source/app/    3DS-only code: screens, UI toolkit, camera scanner, worker threads
-source/core/   portable logic: naming, links, settings, history, ZIP, image maths
-source/net/    portable download engine on libcurl
-source/quirc/  vendored QR decoder (see VENDORED.md)
-tests/         host tests, fixture server and ZIP fixtures
-site/          the website, deployed to GitHub Pages
-```
-
-</details>
-
-## 🗺️ Roadmap
-
-Version **0.3.0** brought the download quality-of-life work and the 1.0 test and release tooling, **0.3.1** a new icon and an animated 3D HOME Menu banner, **0.3.2** larger socket buffers for faster downloads and a fix for how HTTPS gets its randomness, **0.4.0** large downloads split across four connections, **0.5.0** installing the CIAs it downloads, with a Files screen, **0.6.0** a full file manager and an interface redrawn in the style of the console's own system software, and **0.7.0** self-updates, Titles with Checkpoint-compatible save and extra data backups, tickets, receiving links from a phone or FBI's tools, a download queue, direct CIA installs and interface sounds. Next up:
-
-- [ ] Hardware pass on New and Old 3DS using [docs/HARDWARE.md](docs/HARDWARE.md)
-- [ ] 1.0 once that pass is clean
-- [ ] Afterwards: receiving links in the background, and resuming direct installs
-
-The full plan lives in [ROADMAP.md](ROADMAP.md). Bug reports and focused pull requests are very welcome over in [Issues](https://github.com/ankushKun/3dsDL/issues).
-
-## 💙 Credits
-
-3dsDL stands on the shoulders of these projects:
-
-- [**Multidownload**](https://github.com/hax0kartik/Multidownload) by [hax0kartik](https://github.com/hax0kartik), the original 3DS URL and QR downloader that this project grew out of
-- [**quirc**](https://github.com/dlbeer/quirc) by Daniel Beer, for QR code decoding (see [LICENSE-quirc.md](LICENSE-quirc.md))
-- [**QR Code generator**](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki (MIT), which draws the Receive screen's QR code and the tests' codes (vendored in `source/qrcodegen/`)
-- [**FBI's remote install**](https://github.com/Steveice10/FBI/tree/master/servefiles) protocol, which Receive speaks so `servefiles.py`, `sendurls.py` and Boop keep working
-- [**stb_image**](https://github.com/nothings/stb) by Sean Barrett (public domain or MIT, see [source/stb/VENDORED.md](source/stb/VENDORED.md)) and [**libjpeg-turbo**](https://libjpeg-turbo.org/), for showing pictures
-- [**FBI**](https://github.com/Steveice10/FBI) by Steveice10 (MIT), whose CIA install sequence, seed handling and title ID rules 3dsDL's installer follows
-- [**Colby Shores**](https://github.com/colbyshores), whose [FBI pull request](https://github.com/Steveice10/FBI/pull/4) measured how much the 3DS socket buffer size limits download speed and found the size that works best, and pointed out that the 3DS build of Mbed TLS needs a system service open to get its randomness
-- [**libcurl**](https://curl.se/) and [**Mbed TLS**](https://github.com/Mbed-TLS/mbedtls), for downloads and HTTPS
-- The [Mozilla CA certificate bundle](https://curl.se/docs/caextract.html), for checking who you're talking to
-- [**devkitPro**](https://devkitpro.org/), **libctru** and **Citro2D**, which make 3DS homebrew possible at all
-
-## 📄 License
-
-3dsDL is released under the [GNU General Public License v3.0](LICENSE). Bundled third-party components keep their own notices.
-
-<br>
+GPLv3. Bundled components keep their own licenses.
 
 <p align="center">
-  <img src="resources/icon-3dsdl.png" width="48" alt="3dsDL icon"><br>
-  Made by <a href="https://ankush.one">ankushKun</a> &nbsp;•&nbsp; <a href="https://github.com/ankushKun">GitHub</a> &nbsp;•&nbsp; <a href="https://x.com/ankushKun_">X</a>
+  <img src="resources/icon-3dsdl.png" width="40" alt=""><br>
+  <sub>Made by <a href="https://ankush.one">ankushKun</a></sub>
 </p>
