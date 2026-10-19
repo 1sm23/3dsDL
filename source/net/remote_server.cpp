@@ -40,6 +40,8 @@ constexpr int ActiveStepMs = 1;
 constexpr int IdleStepMs = 5;
 constexpr size_t ReadChunk = 64 * 1024;
 constexpr int ProgressEveryMs = 200;
+// How long a finished connection waits for the other side to close first.
+constexpr int LingerMs = 2000;
 
 void closeSocket(int &socketFd)
 {
@@ -170,6 +172,27 @@ bool sendBytes(int socketFd, const char *data, size_t size, int idleMs)
 void sendAll(int socketFd, const std::string &data)
 {
     sendBytes(socketFd, data.data(), data.size(), ReadTimeoutMs);
+}
+
+// Closes a connection that was sent an answer, without losing its end.
+// The 3DS network service resets a non-blocking socket that is closed with
+// data still waiting to go out, and drops that data: the last kilobyte of
+// a page or a download never arrived. Shutting down the sending side
+// queues the end of the stream behind the data instead, and the other side
+// closes once it has read everything.
+void closeClient(int &socketFd)
+{
+    if (socketFd < 0) {
+        return;
+    }
+    shutdown(socketFd, SHUT_WR);
+    const Clock::time_point deadline =
+        Clock::now() + std::chrono::milliseconds(LingerMs);
+    char rest[512];
+    while (readSome(socketFd, rest, sizeof(rest), deadline) > 0) {
+    }
+    ::close(socketFd);
+    socketFd = -1;
 }
 
 // Waits for a connection's first bytes. False when nothing comes before
@@ -638,7 +661,7 @@ void finishReceived(Received &received)
     if (received.replySocket >= 0) {
         const char done = 1;
         send(received.replySocket, &done, 1, sendFlags());
-        closeSocket(received.replySocket);
+        closeClient(received.replySocket);
     }
 }
 
@@ -783,7 +806,7 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
             sendAll(client, remote::httpResponse(400, "text/plain",
                                                  "Bad request\n"));
         }
-        closeSocket(client);
+        closeClient(client);
         return false;
     }
 
@@ -806,7 +829,7 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
                (request.method == "POST" || request.method == "GET")) {
         if (request.method == "POST" &&
             !readBody(client, data, bodyStart, request, deadline)) {
-            closeSocket(client);
+            closeClient(client);
             return false;
         }
         const std::string &form =
@@ -825,7 +848,7 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
     } else {
         sendAll(client, remote::httpResponse(404, "text/plain", "Not found\n"));
     }
-    closeSocket(client);
+    closeClient(client);
     return got;
 }
 

@@ -529,7 +529,9 @@ void App::receiveScreen()
     sharing.progress = [&job](const net::Transfer &transfer) {
         job.progress(transfer);
     };
-    sharing.socketBufferSize = http::SocketBufferSize;
+    // Room for the network to keep filling while an upload's last piece is
+    // written to the SD card, so the sender is not told to wait.
+    sharing.socketBufferSize = 128 * 1024;
     job.receiver.shareFiles(sharing);
 
     s32 priority = 0x30;

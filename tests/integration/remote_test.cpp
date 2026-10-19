@@ -496,3 +496,39 @@ TEST("remote server: a silent spare connection does not hold up the next")
     CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(2));
     ::close(spare);
 }
+
+TEST("remote server: answers end cleanly, and a client that stays does not hold it")
+{
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    // The whole page arrives and the connection ends with a close, not a
+    // reset (the 3DS dropped the end of non-blocking sockets on close).
+    const int client = connectTo(port);
+    sendText(client, "GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+    std::string data;
+    char buffer[4096];
+    ssize_t got = 0;
+    while ((got = recv(client, buffer, sizeof(buffer), 0)) > 0) {
+        data.append(buffer, static_cast<size_t>(got));
+    }
+    CHECK_EQ(got, static_cast<ssize_t>(0));
+    const size_t length = data.find("Content-Length: ");
+    CHECK(length != std::string::npos);
+    CHECK_EQ(bodyOf(data).size(),
+             static_cast<size_t>(std::atol(data.c_str() + length + 16)));
+    CHECK(data.find("</html>") != std::string::npos);
+    ::close(client);
+
+    // This one reads its answer and never closes; the next is still served
+    // once the linger runs out.
+    const int stays = connectTo(port);
+    sendText(stays, "GET /nothing HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+    const auto started = std::chrono::steady_clock::now();
+    CHECK(startsWith(get(port, "/nothing"), "HTTP/1.1 404"));
+    CHECK(std::chrono::steady_clock::now() - started < std::chrono::seconds(3));
+    ::close(stays);
+}
