@@ -137,8 +137,15 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       while one runs.
 - [x] Answer for 3ds.local over multicast DNS, with 3ds-2.local and so on
       when the name is taken.
-- [ ] Hardware pass (items 58a to 58f in [docs/HARDWARE.md](docs/HARDWARE.md)),
-      including whether the console's network service delivers multicast.
+- [x] The page follows the console (waiting for a choice, installing,
+      the result), shows the real icons and details of CIAs and homebrew,
+      and keeps uploads in view at the top of the list.
+- [x] Pre-release versions (`0.8.0-beta.1`): CI publishes them as GitHub
+      pre-releases, the CIA packs them just below the release, and the
+      updater offers the release to anyone on a pre-release of it.
+- [ ] Hardware pass (items 58a to 58f in [docs/HARDWARE.md](docs/HARDWARE.md)).
+      Partly done on 2026-10-20: see the results there. Multicast works,
+      so 3ds.local does.
 
 ## 1.0: Stable release
 

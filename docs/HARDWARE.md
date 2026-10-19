@@ -246,6 +246,32 @@ the internet (items 11 and 12), installing the CIA with FBI, and ZIP
 extraction (item 24). The console model was not recorded, so the matrix
 below is still open.
 
+On 2026-10-19 and 20 the Files over Wi-Fi pre-releases (0.7.9 to 0.7.13,
+which became 0.8.0) ran on a console, tested from a Mac on the same Wi-Fi.
+The console model was not recorded.
+
+- 58a in part: Allow worked and lasted until Receive closed. Don't Allow was
+  not tried.
+- 58b in part: 16 MiB uploads ran at 0.90 to 0.99 MB/s and the download back
+  at 0.98 MB/s, byte for byte the same file. A 1 GiB file, a phone, and the
+  lid closed during a transfer were not tried.
+- 58c in part: a CIA uploaded from the Mac and installed after Install on the
+  console, five times (3dsDL over itself). Two at once was not tried.
+- 58d in part: folder listings took 35 to 220 ms; a text file was written and
+  deleted, and file dates matched the Mac's clock to the minute.
+- 58f in part: http://3ds.local/ opened on the Mac, so the console's network
+  service does deliver multicast. Windows, an iPhone and two consoles at once
+  were not tried.
+
+That run found three problems, all fixed before 0.8.0: every web request took
+one to two seconds and uploads crawled at 21 KB/s, because the listener's and
+the mDNS responder's blocking waits held up each other inside the network
+service; the end of every answer was lost once client sockets became
+non-blocking, because the service drops unsent data when such a socket
+closes; and no file ever showed a date, because stat() on the SD card always
+reports 0. 3ds.local also took five seconds to look up on the Mac until the
+console answered its IPv6 question.
+
 On 2026-10-19, before any console run, the CIA installer was tried in Azahar
 2126.2 with the `.3dsx`: install from Files, download then INSTALL & DELETE
 from a local server, same-version reinstall, History marking the download as
