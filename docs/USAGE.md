@@ -25,6 +25,8 @@ The page's **Files** tab is a file manager for the SD card, with no FTP app need
 - make folders, rename, move and delete, one entry or several at once;
 - send CIAs to the console to install. With **Offer to install CIAs** ticked, the console asks once a batch of uploads finishes.
 
+The page follows the console: a status at the top says when it is waiting for you to choose on the 3DS, installing or downloading, and how that ended. Tap a file for its details, with the real icon, title, title ID and version for CIAs and homebrew. Uploads sit at the top of the list, with each file shown as soon as it arrives. There is a filter, hidden files, select all, a picture viewer, keyboard shortcuts on a computer, and a warning before you change `boot.firm`, `luma` or `Nintendo 3DS`.
+
 One transfer runs at a time, and the console shows it on the touch screen and stays out of Sleep Mode until it ends. Uploads go to a hidden `.3dsdl-upload.part` file and only take their real name once every byte has arrived. From a computer, `curl` works too:
 
 ```sh
@@ -107,7 +109,13 @@ A good bug report says what you did, what happened instead, and the exact error 
 
 Without Docker, install devkitARM, libctru, Citro2D, Citro3D, 3ds-curl and 3ds-mbedtls with devkitPro's pacman and run `make`.
 
-The host tests (`make -C tests check`) need a C++17 compiler, libcurl and zlib headers, Python 3 and OpenSSL. They run under AddressSanitizer and UBSan against a local HTTP, HTTPS and NTP server. Pushing a tag that matches `VERSION` makes CI attach the builds to a draft release.
+The host tests (`make -C tests check`) need a C++17 compiler, libcurl and zlib headers, Python 3 and OpenSSL. They run under AddressSanitizer and UBSan against a local HTTP, HTTPS and NTP server.
+
+### Versions and releases
+
+`VERSION` holds a release, `0.8.0`, or a pre-release of one, `0.8.0-beta.1` or `0.8.0-rc.2`. 3dsDL shows it as written. A CIA can only carry three numbers (up to 63.63.15), so a pre-release is packed as the version just below the release it leads up to: every `0.8.0-*` build is CIA version 0.7.15, installs over 0.7.x and over the other 0.8.0 pre-releases, and 0.8.0 installs over all of them. `scripts/version.sh` prints the numbers for the current `VERSION`.
+
+To publish, commit the new `VERSION` and push a matching tag (`v0.8.0-beta.1`). CI builds it, checks the tag against `VERSION`, and either publishes a GitHub pre-release straight away (testers install it from the release page) or, for a release, creates a draft to review and publish. The updater in 3dsDL only looks at the latest release, so it never offers a pre-release, and someone on `0.8.0-beta.3` is offered `0.8.0` as soon as it is out.
 
 | Folder | |
 | --- | --- |

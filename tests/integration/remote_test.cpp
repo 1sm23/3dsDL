@@ -1,5 +1,6 @@
 #include "../check.hpp"
 
+#include "file_ops.hpp"
 #include "fs_util.hpp"
 #include "remote_server.hpp"
 
@@ -316,7 +317,14 @@ struct TempRoot {
         char pattern[] = "/tmp/3dsdl-files-XXXXXX";
         path = mkdtemp(pattern);
     }
-    ~TempRoot() { std::system(("rm -rf '" + path + "'").c_str()); }
+    ~TempRoot()
+    {
+        struct Quiet : fileops::Observer {
+            bool cancelRequested() override { return false; }
+        } observer;
+        uint64_t done = 0;
+        fileops::remove(path, observer, done, 0);
+    }
 };
 
 } // namespace

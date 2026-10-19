@@ -55,13 +55,13 @@ trap cleanup EXIT
 
 [[ "${BUILD_JOBS}" =~ ^[1-9][0-9]*$ ]] || fail "THREEDSDL_BUILD_JOBS must be a positive integer."
 
+# shellcheck source=scripts/version.sh
+source "${SCRIPT_DIR}/version.sh"
 VERSION="$(tr -d '[:space:]' < "${PROJECT_ROOT}/VERSION")"
-[[ "${VERSION}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || \
-    fail "VERSION must look like MAJOR.MINOR.PATCH, found '${VERSION}'."
-VERSION_MAJOR="${BASH_REMATCH[1]}"
-VERSION_MINOR="${BASH_REMATCH[2]}"
-VERSION_MICRO="${BASH_REMATCH[3]}"
-printf 'Building 3dsDL %s\n' "${VERSION}"
+CIA_VERSION="$(cia_version "${VERSION}")" || fail "See VERSION."
+read -r VERSION_MAJOR VERSION_MINOR VERSION_MICRO VERSION_KIND <<< "${CIA_VERSION}"
+printf 'Building 3dsDL %s (CIA version %s.%s.%s, %s)\n' "${VERSION}" \
+    "${VERSION_MAJOR}" "${VERSION_MINOR}" "${VERSION_MICRO}" "${VERSION_KIND}"
 
 step "Checking the container tools"
 command -v docker >/dev/null 2>&1 || fail "Docker is required. Install Docker Desktop or Docker CLI with Colima."

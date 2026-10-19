@@ -2,10 +2,11 @@
 # the vendored quirc). They build with the system compiler, libcurl and zlib,
 # and run under AddressSanitizer and UBSan by default.
 #
-#   make -C tests check          unit + integration tests
+#   make -C tests check          unit, integration and script tests
 #   make -C tests unit           unit tests only
 #   make -C tests integration    download engine and ZIP tests (needs python3
 #                                and openssl for the fixture server)
+#   make -C tests scripts        the build scripts' version rules
 #   make -C tests SAN=           build without sanitizers
 
 CC       ?= cc
@@ -32,17 +33,20 @@ INTEGRATION_SRC := $(wildcard integration/*.cpp)
 QUIRC_OBJ       := $(patsubst $(QUIRC)/%.c,$(BUILD)/quirc/%.o,$(wildcard $(QUIRC)/*.c))
 HEADERS         := $(wildcard $(CORE)/*.hpp $(NET)/*.hpp $(QUIRC)/*.h *.hpp)
 
-.PHONY: all check unit integration clean
+.PHONY: all check unit integration scripts clean
 
 all: $(BUILD)/unit_tests $(BUILD)/integration_tests
 
-check: unit integration
+check: unit integration scripts
 
 unit: $(BUILD)/unit_tests
 	./$(BUILD)/unit_tests
 
 integration: $(BUILD)/integration_tests
 	./run_integration.sh ./$(BUILD)/integration_tests
+
+scripts:
+	./version_test.sh
 
 # quirc is vendored unmodified, so its upstream warnings are not ours to fix.
 # quirc_resize() calls memcpy(dst, NULL, 0) on first use, which UBSan's

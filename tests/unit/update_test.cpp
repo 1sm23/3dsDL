@@ -117,7 +117,7 @@ TEST("update: compares versions number by number")
     CHECK(!update::isNewer("0.6.0", "0.6.0"));
     CHECK(!update::isNewer("v0.5.9", "0.6.0"));
     CHECK_EQ(update::compareVersions("1.0", "1.0.0"), 0);
-    CHECK_EQ(update::compareVersions("0.7.0-beta", "0.7.0"), 0);
+    CHECK_EQ(update::compareVersions("0.7.0-beta", "0.7.0"), -1);
     CHECK_EQ(update::compareVersions("garbage", "0.0.0"), 0);
     CHECK_EQ(update::compareVersions("0.6.0", "0.6.2"), -1);
 }
@@ -154,4 +154,30 @@ TEST("update: turns release notes into plain lines")
     // Without a "What's new" heading everything is kept.
     const std::vector<std::string> plain = update::noteLines("Fixes.\n\n\n- One");
     CHECK_EQ(plain.size(), static_cast<size_t>(3));
+}
+
+TEST("update: pre-releases come before their release, in SemVer order")
+{
+    // A tester on a beta is offered the release, and nothing older.
+    CHECK(update::isNewer("v0.8.0", "0.8.0-beta.3"));
+    CHECK(!update::isNewer("v0.8.0-beta.3", "0.8.0"));
+    CHECK(update::isNewer("0.8.0-beta.1", "0.7.13"));
+    CHECK(!update::isNewer("0.7.2", "0.8.0-beta.1"));
+    const char *order[] = {"0.8.0-alpha", "0.8.0-alpha.1", "0.8.0-alpha.beta",
+                           "0.8.0-beta", "0.8.0-beta.2", "0.8.0-beta.10",
+                           "0.8.0-rc.1", "0.8.0"};
+    for (size_t index = 0; index + 1 < sizeof(order) / sizeof(order[0]); ++index) {
+        CHECK_EQ(update::compareVersions(order[index], order[index + 1]), -1);
+        CHECK_EQ(update::compareVersions(order[index + 1], order[index]), 1);
+    }
+    CHECK_EQ(update::compareVersions("0.8.0-beta.1", "v0.8.0-beta.1"), 0);
+    CHECK_EQ(update::compareVersions("0.8.0+abc", "0.8.0"), 0);
+    CHECK_EQ(update::compareVersions("0.8.0-rc.1+abc", "0.8.0-rc.1"), 0);
+    CHECK_EQ(update::compareVersions("0.8.0-beta.01", "0.8.0-beta.1"), 0);
+
+    update::Release release;
+    std::string error;
+    CHECK(update::parseRelease(R"({"tag_name":"v0.8.0-beta.2","name":"3dsDL v0.8.0-beta.2","assets":[]})",
+                               release, error));
+    CHECK_EQ(release.version, std::string("0.8.0-beta.2"));
 }

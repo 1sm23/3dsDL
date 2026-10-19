@@ -10,8 +10,16 @@ namespace update {
 
 namespace {
 
-std::vector<long> versionParts(const std::string &text)
+struct Version {
+    std::vector<long> numbers;
+    std::string label; // "beta.1" in "0.8.0-beta.1"; empty for a release
+};
+
+// Reads "v1.2.3-beta.1+build" leniently: the numbers until something else,
+// then a label after '-', and nothing after '+'.
+Version parseVersion(const std::string &text)
 {
+    Version out;
     size_t position = 0;
     while (position < text.size() &&
            std::isspace(static_cast<unsigned char>(text[position]))) {
@@ -20,7 +28,6 @@ std::vector<long> versionParts(const std::string &text)
     if (position < text.size() && (text[position] == 'v' || text[position] == 'V')) {
         ++position;
     }
-    std::vector<long> parts;
     while (position < text.size() &&
            std::isdigit(static_cast<unsigned char>(text[position]))) {
         long value = 0;
@@ -31,14 +38,75 @@ std::vector<long> versionParts(const std::string &text)
             }
             ++position;
         }
-        parts.push_back(value);
-        if (position < text.size() && text[position] == '.') {
+        out.numbers.push_back(value);
+        if (position + 1 < text.size() && text[position] == '.' &&
+            std::isdigit(static_cast<unsigned char>(text[position + 1]))) {
             ++position;
         } else {
             break;
         }
     }
-    return parts;
+    if (!out.numbers.empty() && position < text.size() && text[position] == '-') {
+        const size_t end = text.find_first_of("+ \t\r\n", position + 1);
+        out.label = text.substr(position + 1, end == std::string::npos
+                                                  ? std::string::npos
+                                                  : end - position - 1);
+    }
+    return out;
+}
+
+std::vector<long> versionParts(const std::string &text)
+{
+    return parseVersion(text).numbers;
+}
+
+std::vector<std::string> labelParts(const std::string &label)
+{
+    std::vector<std::string> parts;
+    size_t start = 0;
+    while (true) {
+        const size_t dot = label.find('.', start);
+        parts.push_back(label.substr(start, dot == std::string::npos
+                                                ? std::string::npos
+                                                : dot - start));
+        if (dot == std::string::npos) {
+            return parts;
+        }
+        start = dot + 1;
+    }
+}
+
+bool isNumber(const std::string &part)
+{
+    return !part.empty() && part.find_first_not_of("0123456789") == std::string::npos;
+}
+
+// SemVer's order for pre-release labels: part by part, numbers by value and
+// below words, words by their characters, and a shorter label first when
+// one runs out.
+int compareLabels(const std::string &a, const std::string &b)
+{
+    const std::vector<std::string> left = labelParts(a);
+    const std::vector<std::string> right = labelParts(b);
+    for (size_t index = 0; index < left.size() && index < right.size(); ++index) {
+        const std::string &x = left[index];
+        const std::string &y = right[index];
+        int order = 0;
+        if (isNumber(x) && isNumber(y)) {
+            const std::string xs = x.substr(std::min(x.find_first_not_of('0'), x.size() - 1));
+            const std::string ys = y.substr(std::min(y.find_first_not_of('0'), y.size() - 1));
+            order = xs.size() != ys.size() ? (xs.size() < ys.size() ? -1 : 1)
+                                           : xs.compare(ys);
+        } else if (isNumber(x) != isNumber(y)) {
+            order = isNumber(x) ? -1 : 1;
+        } else {
+            order = x.compare(y);
+        }
+        if (order != 0) {
+            return order < 0 ? -1 : 1;
+        }
+    }
+    return left.size() == right.size() ? 0 : (left.size() < right.size() ? -1 : 1);
 }
 
 std::string trim(const std::string &text)
@@ -155,8 +223,10 @@ bool parseRelease(const std::string &text, Release &out, std::string &error)
 
 int compareVersions(const std::string &a, const std::string &b)
 {
-    std::vector<long> left = versionParts(a);
-    std::vector<long> right = versionParts(b);
+    const Version first = parseVersion(a);
+    const Version second = parseVersion(b);
+    std::vector<long> left = first.numbers;
+    std::vector<long> right = second.numbers;
     const size_t length = std::max(left.size(), right.size());
     left.resize(length, 0);
     right.resize(length, 0);
@@ -165,7 +235,13 @@ int compareVersions(const std::string &a, const std::string &b)
             return left[index] < right[index] ? -1 : 1;
         }
     }
-    return 0;
+    // The same numbers: a pre-release comes before its release.
+    if (first.label.empty() || second.label.empty()) {
+        return first.label.empty() == second.label.empty()
+                   ? 0
+                   : (first.label.empty() ? 1 : -1);
+    }
+    return compareLabels(first.label, second.label);
 }
 
 bool isNewer(const std::string &candidate, const std::string &current)

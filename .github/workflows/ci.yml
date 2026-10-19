@@ -68,13 +68,22 @@ jobs:
       - name: Verify checksums
         run: cd dist && sha256sum -c 3dsDL.sha256
 
-      # Created as a draft so a maintainer can review it before publishing.
-      - name: Create the draft release
+      # A release (v1.2.3) is created as a draft, so a maintainer can review
+      # it before publishing. A pre-release (v1.2.3-beta.1) is for testers
+      # and goes out at once: GitHub never calls a pre-release the latest,
+      # so 3dsDL's updater does not offer it to anyone.
+      - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          read -r _ _ _ kind < <(scripts/version.sh)
+          if [ "${kind}" = "prerelease" ]; then
+            stage=(--prerelease)
+          else
+            stage=(--draft)
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             dist/3dsDL.3dsx dist/3dsDL.cia dist/3dsDL.smdh dist/3dsDL.sha256 \
             --title "3dsDL ${GITHUB_REF_NAME}" \
             --generate-notes \
-            --draft
+            "${stage[@]}"
