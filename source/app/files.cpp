@@ -197,10 +197,10 @@ void drawEntryPanel(const std::vector<uint16_t> &titleIcon, Kind kind,
                       {{0, ui::color::rgb(0xFEFCF5)}, {1, ui::color::rgb(0xE6E2D0)}});
         ui::drawIcon(look.icon, left + 9, top + 9, 30, look.color);
     }
-    ui::drawText(ui::fitMiddle(name, 0.74f, 290), left + 60, top + 2, 0.74f,
+    ui::drawText(ui::fitMiddle(name, 0.62f, 290), left + 60, top + 2, 0.62f,
                  ui::color::InkStrong);
-    ui::drawText(ui::fitEnd(second, ui::type::Small, 290), left + 60, top + 30,
-                 ui::type::Small, ui::color::InkSoft);
+    ui::drawText(ui::fitEnd(second, ui::type::Tiny, 290), left + 60, top + 28,
+                 ui::type::Tiny, ui::color::InkSoft);
     float y = top + 58;
     for (const auto &tag : tags) {
         if (tag.second.empty() || y > ui::TopPanel.y + ui::TopPanel.h - 24) {
@@ -1106,10 +1106,10 @@ bool App::pasteInto(const std::string &folder)
             } else {
                 ui::Dialog dialog;
                 dialog.header = "paste";
-                dialog.title = name + " is already here";
+                dialog.title = name + " is already here.";
                 dialog.tone = ui::Tone::Warning;
-                dialog.body.push_back({"KEEP BOTH adds a number to the new "
-                                       "one's name. REPLACE deletes the one "
+                dialog.body.push_back({"Keep Both adds a number to the new "
+                                       "one's name. Replace deletes the one "
                                        "already in " + folder + " first.",
                                        ui::color::Text, 0.46f, 4});
                 dialog.buttons = {"Keep Both", "Replace", "Skip"};
@@ -1569,12 +1569,12 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             ui::drawButton(pad.rects[previous], "Previous",
                            pictures.size() > 1 ? ui::Style::Normal
                                                : ui::Style::Disabled,
-                           ui::type::Body + 0.06f, ui::Icon::None, 0,
+                           ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, previous));
             ui::drawButton(pad.rects[next], "Next",
                            pictures.size() > 1 ? ui::Style::Normal
                                                : ui::Style::Disabled,
-                           ui::type::Body + 0.06f, ui::Icon::None, 0,
+                           ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, next));
             if (pictures.size() > 1) {
                 ui::drawText("Swipe, or press L and R, for the others.", 160,
@@ -1747,7 +1747,7 @@ void App::hexViewer(const std::string &path)
             char offset[16];
             std::snprintf(offset, sizeof(offset), "%08llX",
                           static_cast<unsigned long long>(top + first));
-            ui::drawText(offset, 20, y, 0.44f, ui::color::rgb(0xA79D70));
+            ui::drawText(offset, 20, y, 0.34f, ui::color::rgb(0xA79D70));
             for (int column = 0; column < Columns; ++column) {
                 if (first + column >= count) {
                     break;
@@ -1756,12 +1756,12 @@ void App::hexViewer(const std::string &path)
                 char hex[4];
                 std::snprintf(hex, sizeof(hex), "%02X", value);
                 ui::drawText(hex, 100 + column * 25 + (column >= 4 ? 8 : 0), y,
-                             0.44f, ui::color::InkStrong);
+                             0.34f, ui::color::InkStrong);
                 const char shown[2] = {
                     value >= 0x20 && value < 0x7f ? static_cast<char>(value)
                                                   : '.',
                     0};
-                ui::drawText(shown, 318 + column * 8.5f, y, 0.44f,
+                ui::drawText(shown, 318 + column * 8.5f, y, 0.34f,
                              ui::color::IconGreen);
             }
         }
@@ -1779,16 +1779,16 @@ void App::hexViewer(const std::string &path)
                      panel.y + 27, ui::type::Tiny, ui::color::InkSoft,
                      C2D_AlignCenter);
         ui::drawButton(pad.rects[pageUp], "Page Up", ui::Style::Normal,
-                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, pageUp));
         ui::drawButton(pad.rects[pageDown], "Page Down", ui::Style::Normal,
-                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, pageDown));
         ui::drawButton(pad.rects[start], "Go to Start", ui::Style::Normal,
-                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, start));
         ui::drawButton(pad.rects[end], "Go to End", ui::Style::Normal,
-                       ui::type::Body + 0.04f, ui::Icon::None, 0,
+                       ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, end));
         ui::drawTab(ui::Tab::Left, "Back", "", false, pad.isDown(input, back));
         ui::endFrame();
@@ -1839,7 +1839,7 @@ void App::textEditor(const std::string &path)
     }
 
     constexpr float LinePitch = 16;
-    constexpr float EditorScale = 0.48f;
+    constexpr float EditorScale = 0.38f;
     const ui::Rect paper = {10, 50, 380, 184};
     const float viewport = paper.h - 4;
     int cursor = 0;
@@ -2016,8 +2016,8 @@ void App::textEditor(const std::string &path)
             }
             ui::fillRound({paper.x + 30, y + LinePitch - 1, paper.w - 31, 1},
                           0, ui::color::rgb(0xE8E1BE));
-            ui::drawText(std::to_string(index + 1), paper.x + 26, y + 1,
-                         0.4f, ui::color::rgb(0xA79D70), C2D_AlignRight);
+            ui::drawText(std::to_string(index + 1), paper.x + 26, y + 2,
+                         0.3f, ui::color::rgb(0xA79D70), C2D_AlignRight);
             const std::string &line = document.lines[index];
             ui::drawText(ui::fitEnd(line, EditorScale, paper.w - 44),
                          paper.x + 36, y, EditorScale,
@@ -2056,7 +2056,7 @@ void App::textEditor(const std::string &path)
         for (int index = 0; index < 3; ++index) {
             ui::drawButton(pad.rects[index], labels[index],
                            readOnly ? ui::Style::Disabled : ui::Style::Normal,
-                           ui::type::Body + 0.02f, ui::Icon::None, 0,
+                           ui::type::Small, ui::Icon::None, 0,
                            pad.isDown(input, index));
         }
         if (!readOnly) {

@@ -257,8 +257,8 @@ void App::startDownload(const std::string &address, std::string folder)
 
     if (platform::wifiStatus() == platform::Wifi::Disconnected) {
         ui::Dialog dialog;
-        dialog.header = "no wi-fi";
-        dialog.title = "The console is not connected to Wi-Fi";
+        dialog.header = "Download";
+        dialog.title = "The system is not connected to the internet.";
         dialog.tone = ui::Tone::Warning;
         dialog.body.push_back({"Turn wireless communication on, or check the "
                                "connection in System Settings.",
@@ -317,8 +317,8 @@ void App::startDownload(const std::string &address, std::string folder)
         record(entry);
 
         ui::Dialog dialog;
-        dialog.header = "error";
-        dialog.title = "Download failed";
+        dialog.header = "Download";
+        dialog.title = "The download could not be completed.";
         dialog.tone = ui::Tone::Error;
         dialog.body.push_back({result.message, ui::color::Text, 0.5f, 4});
         if (result.resumable) {
@@ -396,8 +396,8 @@ bool App::confirmDownload(const std::string &address, std::string &folder)
             ui::drawText(ui::fitMiddle(name == naming::DefaultFilename
                                            ? url::host(address)
                                            : name,
-                                       0.74f, 300),
-                         left + 40, ui::TopPanel.y + 10, 0.74f,
+                                       0.62f, 300),
+                         left + 40, ui::TopPanel.y + 10, 0.62f,
                          ui::color::InkStrong);
             ui::drawText("from " + url::host(address), left + 40,
                          ui::TopPanel.y + 36, ui::type::Small,
@@ -458,15 +458,18 @@ void App::finishDownload(const std::string &address, const std::string &folder,
             naming::unusedPath(folder, result.filename, fs::fileExists));
 
         ui::Dialog dialog;
-        dialog.header = "file exists";
-        dialog.title = "A file with this name already exists";
+        dialog.header = "Download";
+        dialog.title = "A file with this name already exists. What would "
+                       "you like to do?";
         dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({result.filename, ui::color::Text, 0.56f, 2});
-        dialog.body.push_back({"Rename saves the new download as " +
-                                   suggestion + " and keeps the old file.",
+        dialog.body.push_back({result.filename + " is already in " + folder +
+                                   ".",
+                               ui::color::Text, 0.56f, 2});
+        dialog.body.push_back({"Keep Both saves the new file as " + suggestion +
+                                   ".",
                                ui::color::Muted, 0.46f, 3});
-        dialog.body.push_back({"Overwrite replaces the old file.",
-                               ui::color::Muted, 0.46f, 1});
+        dialog.body.push_back({"Replace swaps the old file for the new one.",
+                               ui::color::Muted, 0.46f, 2});
         dialog.buttons = {"Keep Both", "Replace", "Cancel"};
         dialog.dangerous = 1;
         dialog.cancelButton = 2;
@@ -553,8 +556,8 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
     dialog.body.push_back({"It holds " + plural(archive.fileCount, "file") +
                                " (" + units::bytes(archive.totalSize) +
-                               "). HERE extracts into " + folder +
-                               ", NEW FOLDER into " + ownFolder + ".",
+                               "). Here extracts into " + folder +
+                               ", New Folder into " + ownFolder + ".",
                            ui::color::Text, 0.46f, 5});
     dialog.buttons = {"Here", "New Folder", "Not Now"};
     dialog.cancelButton = 2;
@@ -582,7 +585,7 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
     if (!clashes.empty()) {
         ui::Dialog question;
         question.header = "extract";
-        question.title = plural(clashes.size(), "file") + " already exist";
+        question.title = plural(clashes.size(), "file") + " already exist. Replace them?";
         question.tone = ui::Tone::Warning;
         question.body.push_back({"For example " + clashes.front() + " in " +
                                      target,
@@ -632,7 +635,7 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
 
     ui::Dialog done;
     done.header = "done";
-    done.title = "Archive extracted";
+    done.title = "The archive has been extracted.";
     done.tone = ui::Tone::Success;
     done.body.push_back({extracted, ui::color::Text, 0.5f, 3});
     done.body.push_back({notes, ui::color::Muted, 0.44f, 4});
@@ -730,7 +733,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     if (cia::isNew3dsOnly(info.titleId) && !isNew3ds) {
         ui::Dialog dialog;
         dialog.header = "install";
-        dialog.title = name + " is made for the New 3DS";
+        dialog.title = name + " is made for New Nintendo 3DS systems.";
         dialog.tone = ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
         dialog.body.push_back({"It will install, but will not start on this "
@@ -1227,12 +1230,12 @@ void App::historyScreen()
         std::string badge;
         u32 fill = 0;
         badgeFor(entry, badge, fill);
-        const float width = std::max(34.0f, ui::textWidth(badge, 0.42f) + 10);
+        const float width = std::max(34.0f, ui::textWidth(badge, 0.34f) + 10);
         ui::drawBadge(left + width, ui::TopPanel.y + 14, badge, fill);
         ui::drawText(units::dateTime(entry.time), left + width + 10,
                      ui::TopPanel.y + 13, ui::type::Small, ui::color::InkSoft);
-        ui::drawText(ui::fitMiddle(entryName(entry), 0.74f, 330), left,
-                     ui::TopPanel.y + 36, 0.74f, ui::color::InkStrong);
+        ui::drawText(ui::fitMiddle(entryName(entry), 0.62f, 330), left,
+                     ui::TopPanel.y + 36, 0.62f, ui::color::InkStrong);
         float y = ui::drawWrapped(entry.url, left, ui::TopPanel.y + 62,
                                   ui::type::Tiny, ui::color::InkSoft, 330, 2) +
                   4;
@@ -1671,8 +1674,8 @@ bool App::clockScreen()
 
         if (!network.ok) {
             ui::Dialog dialog;
-            dialog.header = "clock";
-            dialog.title = "Could not get the time online";
+            dialog.header = "Console Clock";
+            dialog.title = "The time could not be checked online.";
             dialog.tone = ui::Tone::Error;
             dialog.body.push_back({network.error, ui::color::Text, 0.5f, 3});
             dialog.body.push_back({"Check the Wi-Fi connection. Some networks "

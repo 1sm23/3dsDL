@@ -35,6 +35,12 @@ bool asciiReady = false;
 
 constexpr const char *Ellipsis = "...";
 
+// The type scales in ui.hpp were set before measuring: at them the system
+// font came out about 1.4 times smaller than the cap heights measured from
+// the system applets (a tab label 9 px tall instead of 14). Every size is
+// scaled by this one factor, so measuring and drawing always agree.
+constexpr float TextBoost = 1.4f;
+
 // --- Textures ------------------------------------------------------------------
 
 // The icon atlas: white with alpha, tinted when drawn.
@@ -110,6 +116,7 @@ struct Glyph {
 
 std::vector<Glyph> glyphs(const std::string &value, float scale)
 {
+    scale *= TextBoost;
     std::vector<Glyph> output;
     output.reserve(value.size());
     for (size_t index = 0; index < value.size();) {
@@ -900,7 +907,7 @@ float textWidth(const std::string &value, float scale)
 
 float lineHeight(float scale)
 {
-    return std::ceil(scale * fontScale * fontLineFeed);
+    return std::ceil(scale * TextBoost * fontScale * fontLineFeed);
 }
 
 std::string fitEnd(const std::string &value, float scale, float maxWidth)
@@ -1023,8 +1030,8 @@ void drawText(const std::string &value, float x, float y, float scale,
     C2D_Text textObject;
     C2D_TextParse(&textObject, textBuffer, value.c_str());
     C2D_TextOptimize(&textObject);
-    C2D_DrawText(&textObject, flags | C2D_WithColor, x, y, Depth, scale,
-                 scale, textColor);
+    C2D_DrawText(&textObject, flags | C2D_WithColor, x, y, Depth,
+                 scale * TextBoost, scale * TextBoost, textColor);
 }
 
 float drawWrapped(const std::string &value, float x, float y, float scale,
@@ -1239,12 +1246,12 @@ void drawStatusBar()
         fillRound(pill.inset(1), 4,
                   {{0, color::rgb(0xA8DEF7)}, {0.5f, color::rgb(0x63C4F1)},
                    {1, color::rgb(0x2DA8DE)}});
-        drawCentered("Connected", pill, 0.42f, color::rgb(0xFFFFFF));
+        drawCentered("Connected", pill, 0.32f, color::rgb(0xFFFFFF));
     } else {
         fillRound(pill, 5, color::rgb(0xC8C8C8));
         fillRound(pill.inset(1), 4,
                   {{0, color::rgb(0xEFEFEF)}, {1, color::rgb(0xD6D6D6)}});
-        drawCentered("Not Connected", pill, 0.42f, color::rgb(0x8B8B8B));
+        drawCentered("Not Connected", pill, 0.3f, color::rgb(0x8B8B8B));
     }
 
     const time_t seconds = static_cast<time_t>(platform::now());
@@ -1256,7 +1263,7 @@ void drawStatusBar()
     std::snprintf(clock, sizeof(clock), "%d/%d (%s)  %d:%02d",
                   parts.tm_mon + 1, parts.tm_mday, Days[parts.tm_wday % 7],
                   parts.tm_hour, parts.tm_min);
-    drawText(clock, 362, 2, 0.5f, color::rgb(0x323232), C2D_AlignRight);
+    drawText(clock, 364, 1, 0.4f, color::rgb(0x323232), C2D_AlignRight);
 
     // Battery, four cells.
     const Rect battery = {371, 3, 24, 13};
@@ -1348,14 +1355,15 @@ void drawTile(const Rect &area, const std::string &label, Icon icon,
 {
     drawButtonBody(area, 10, Style::Normal, pressed);
     const float lift = pressed ? 1 : 0;
-    const std::vector<std::string> lines = wrap(label, type::Body, area.w - 16, 2);
-    const float step = lineHeight(type::Body) * 0.92f;
+    constexpr float TileScale = 0.5f;
+    const std::vector<std::string> lines = wrap(label, TileScale, area.w - 14, 2);
+    const float step = lineHeight(TileScale) * 0.88f;
     const float block = 30 + 3 + step * lines.size();
     float y = area.y + (area.h - block) / 2 + lift;
     drawIcon(icon, area.x + area.w / 2 - 15, y, 30, iconColor);
     y += 33;
     for (const std::string &line : lines) {
-        drawText(line, area.x + area.w / 2, y, type::Body, color::InkButton,
+        drawText(line, area.x + area.w / 2, y, TileScale, color::InkButton,
                  C2D_AlignCenter);
         y += step;
     }
@@ -1409,20 +1417,27 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     // Label, with the button that also does this as a white key cap.
     const float keyWidth =
         key.empty() ? 0
-                    : std::max(15.0f, textWidth(key, 0.4f) + 7) + 5;
-    const float labelWidth = textWidth(label, type::Tab);
+                    : std::max(15.0f, textWidth(key, 0.36f) + 7) + 5;
+    // Shrink a long label so it and its key cap stay on the flat part of
+    // the tab, clear of the rounded corner.
+    float labelScale = type::Tab;
+    while (labelScale > 0.45f &&
+           textWidth(label, labelScale) + keyWidth > area.w - 40) {
+        labelScale -= 0.02f;
+    }
+    const float labelWidth = textWidth(label, labelScale);
     float x = tab == Tab::Left    ? area.x + 20
             : tab == Tab::Right ? area.x + area.w - 24 - labelWidth - keyWidth
                                 : area.x + (area.w - labelWidth - keyWidth) / 2;
     if (!key.empty()) {
         const float capWidth = keyWidth - 5;
-        fillRound({x, area.y + 10, capWidth, 15}, key.size() == 1 ? 7.5f : 4,
-                  color::rgb(0xFFFFFF));
-        drawCentered(key, {x, area.y + 10, capWidth, 15}, 0.4f,
-                     color::rgb(0x6C6C6C));
+        // Centred on the same line as the label beside it.
+        const Rect cap = {x, area.y + 2 + (area.h - 2 - 15) / 2, capWidth, 15};
+        fillRound(cap, key.size() == 1 ? 7.5f : 4, color::rgb(0xFFFFFF));
+        drawCentered(key, cap, 0.36f, color::rgb(0x6C6C6C));
         x += keyWidth;
     }
-    drawCentered(label, {x, area.y + 2, labelWidth, area.h - 2}, type::Tab,
+    drawCentered(label, {x, area.y + 2, labelWidth, area.h - 2}, labelScale,
                  color::rgb(0xFFFFFF), true);
 
     if (focused) {
@@ -1433,17 +1448,17 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
 
 float drawTag(float x, float y, const std::string &label, u32 fill)
 {
-    const float width = textWidth(label, 0.48f) + 16;
+    const float width = textWidth(label, 0.4f) + 16;
     fillRound({x, y, width, 20}, 5, fill);
-    drawCentered(label, {x, y, width, 20}, 0.48f, color::rgb(0xFFFFFF));
+    drawCentered(label, {x, y, width, 20}, 0.4f, color::rgb(0xFFFFFF));
     return width;
 }
 
 float drawBadge(float right, float y, const std::string &label, u32 fill)
 {
-    const float width = std::max(34.0f, textWidth(label, 0.42f) + 10);
+    const float width = std::max(34.0f, textWidth(label, 0.34f) + 10);
     fillRound({right - width, y, width, 16}, 4, fill);
-    drawCentered(label, {right - width, y, width, 16}, 0.42f,
+    drawCentered(label, {right - width, y, width, 16}, 0.34f,
                  color::rgb(0xFFFFFF));
     return width;
 }
@@ -1452,7 +1467,7 @@ float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
                  const std::string &value, u32 fill)
 {
     fillRound({x, y, tagWidth, 20}, 5, fill);
-    drawCentered(fitEnd(tag, 0.48f, tagWidth - 6), {x, y, tagWidth, 20}, 0.48f,
+    drawCentered(fitEnd(tag, 0.4f, tagWidth - 6), {x, y, tagWidth, 20}, 0.4f,
                  color::rgb(0xFFFFFF));
     drawCentered(fitEnd(value, type::Small, 366 - tagWidth - 40),
                  {x + tagWidth + 10, y, 300, 20}, type::Small, color::Ink, true);
@@ -2336,7 +2351,7 @@ ListResult runList(const ListSpec &spec, int &cursor)
                         tabRect(Tab::Right).contains(input.touch));
         }
         if (!spec.hint.empty()) {
-            drawText(fitEnd(spec.hint, type::Small, 76), 160, 218, type::Small,
+            drawText(fitEnd(spec.hint, type::Tiny, 70), 160, 220, type::Tiny,
                      color::Counter, C2D_AlignCenter);
         }
         endFrame();
@@ -2362,8 +2377,8 @@ void drawProgress(const ProgressView &view)
         drawIcon(Icon::Package, left, TopPanel.y + 16, 30, color::Accent);
         nameX += 40;
     }
-    drawText(fitMiddle(view.name, 0.74f, TopPanel.x + TopPanel.w - 18 - nameX),
-             nameX, TopPanel.y + 13, 0.74f, color::InkStrong);
+    drawText(fitMiddle(view.name, 0.62f, TopPanel.x + TopPanel.w - 18 - nameX),
+             nameX, TopPanel.y + 13, 0.62f, color::InkStrong);
     if (!view.note.empty()) {
         drawText(fitEnd(view.note, type::Small, 280), nameX, TopPanel.y + 41,
                  type::Small, color::Good);
@@ -2383,7 +2398,7 @@ void drawProgress(const ProgressView &view)
     drawText(fitEnd(view.speed, type::Small, 230), left, TopPanel.y + 126,
              type::Small, color::Ink);
     if (!view.tag.empty()) {
-        const float width = textWidth(view.tag, 0.48f) + 16;
+        const float width = textWidth(view.tag, 0.4f) + 16;
         drawTag(TopPanel.x + TopPanel.w - 18 - width, TopPanel.y + 124, view.tag);
     }
 
