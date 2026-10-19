@@ -72,6 +72,11 @@ AccessControlInfo:
   EnableL2Cache: true
   CanAccessCore2: true
 
+  # The DSP's memory, which the interface sounds (NDSP) write to. Without
+  # it the CIA faults on the first write at start-up (0.7.0 did).
+  IORegisterMapping:
+    - 1ff00000-1ff7ffff
+
   MemoryMapping:
     - 1f000000-1f5fffff:r
 
@@ -131,6 +136,8 @@ AccessControlInfo:
     - cam:u
     - cfg:i
     - cfg:s
+    # Interface sounds.
+    - dsp::DSP
     - fs:USER
     - gsp::Gpu
     - hid:USER
@@ -150,6 +157,7 @@ SystemControlInfo:
     ac: 0x0004013000002402
     am: 0x0004013000001502
     camera: 0x0004013000001602
+    dsp: 0x0004013000001a02
     gsp: 0x0004013000001c02
     hid: 0x0004013000001d02
     ndm: 0x0004013000002b02
