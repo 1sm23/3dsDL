@@ -246,6 +246,14 @@ the internet (items 11 and 12), installing the CIA with FBI, and ZIP
 extraction (item 24). The console model was not recorded, so the matrix
 below is still open.
 
+On 2026-10-20 the 0.8.1 pre-releases ran on the same console. Installing a
+CIA of the version already installed had failed with 0xC8E083FC (AM will
+not install the same version again); sending the running 3dsDL's own CIA
+again now says it is already installed, and the Receive page reports the
+same. 0.8.1-beta.2 installed over 0.8.1-beta.1 from inside 3dsDL, which the
+build numbers make possible. Reinstall, with the save backed up first, was
+not tried on a game yet.
+
 On 2026-10-19 and 20 the Files over Wi-Fi pre-releases (0.7.9 to 0.7.13,
 which became 0.8.0) ran on a console, tested from a Mac on the same Wi-Fi.
 The console model was not recorded.

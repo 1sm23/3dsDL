@@ -144,6 +144,9 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
       pre-releases, each build's CIA number is higher than the last so it
       installs over it, and the updater offers the release to anyone on a
       pre-release of it.
+- [x] 0.8.1: Reinstall a CIA that is already installed, backing up its save
+      first, instead of failing with 0xC8E083FC; 3dsDL never removes itself
+      while it runs; and its own versions read as versions.
 - [ ] Hardware pass (items 58a to 58f in [docs/HARDWARE.md](docs/HARDWARE.md)).
       Partly done on 2026-10-20: see the results there. Multicast works,
       so 3ds.local does.
