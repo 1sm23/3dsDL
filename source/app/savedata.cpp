@@ -238,7 +238,7 @@ bool collect(const std::string &root, const std::string &relative,
 {
     bool readable = false;
     const std::vector<fs::Entry> entries =
-        fs::listEntries(root + relative, &readable, true);
+        fs::listEntries(root + relative, &readable, true, false);
     if (!readable) {
         error = "Could not read " + root + relative + ".";
         return false;
@@ -403,7 +403,7 @@ std::string unsupportedReason(const titles::Title &title)
 std::vector<std::string> backups(const Target &target)
 {
     std::vector<std::string> names;
-    for (const fs::Entry &entry : fs::listEntries(target.folder, nullptr, true)) {
+    for (const fs::Entry &entry : fs::listEntries(target.folder, nullptr, true, false)) {
         if (entry.folder) {
             names.push_back(entry.name);
         }

@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <zlib.h>
 
 #include <cerrno>
 #include <algorithm>
@@ -42,6 +43,18 @@ constexpr int ActiveStepMs = 1;
 constexpr int IdleStepMs = 5;
 constexpr size_t ReadChunk = 64 * 1024;
 constexpr int ProgressEveryMs = 200;
+// Finding when a file changed makes the SD card search its folder, which in
+// a folder of hundreds of files takes about a tenth of a second each. Bigger
+// folders are listed without times, and the page asks for them in batches.
+constexpr size_t TimedEntries = 64;
+constexpr size_t TimesPerRequest = 50;
+// Checksums for the page to tell files apart: a request stops after the
+// file that takes it past this many bytes, so each one is quick.
+constexpr uint64_t HashBytesPerRequest = 16 * 1024 * 1024;
+// A replaced file up to this size is copied over the old one in place,
+// which costs one search of its folder; bigger ones are renamed instead,
+// as copying them again would take longer than the searches.
+constexpr uint64_t OverwriteBytes = 512 * 1024;
 // How long a finished connection waits for the other side to close first.
 constexpr int LingerMs = 2000;
 
@@ -317,19 +330,29 @@ bool readBody(int client, std::string &data, size_t bodyStart,
 
 void listFolder(int client, const FileSharing &sharing,
                 const std::string &webPath, const std::string &local,
-                bool hidden)
+                bool hidden, bool times)
 {
     bool ok = false;
-    const std::vector<fs::Entry> entries = fs::listEntries(local, &ok, hidden);
+    std::vector<fs::Entry> entries =
+        fs::listEntries(local, &ok, hidden, false);
     if (!ok) {
         sendAll(client, remote::jsonError(404, "That folder does not exist."));
         return;
+    }
+    times = times && entries.size() <= TimedEntries;
+    if (times) {
+        const std::string base = local.back() == '/' ? local : local + "/";
+        for (fs::Entry &entry : entries) {
+            entry.modified = fs::modifiedTime(base + entry.name);
+        }
     }
     const int64_t free = sharing.freeSpace ? sharing.freeSpace() : -1;
     const int64_t total = sharing.totalSpace ? sharing.totalSpace() : -1;
     std::string json = "{\"path\":" + remote::jsonString(webPath) +
                        ",\"free\":" + std::to_string(free) +
-                       ",\"total\":" + std::to_string(total) + ",\"entries\":[";
+                       ",\"total\":" + std::to_string(total) +
+                       ",\"times\":" + (times ? "true" : "false") +
+                       ",\"entries\":[";
     bool first = true;
     for (const fs::Entry &entry : entries) {
         if (entry.name == ".3dsdl-upload.part") {
@@ -343,6 +366,79 @@ void listFolder(int client, const FileSharing &sharing,
         first = false;
     }
     sendJson(client, json + "]}");
+}
+
+// When each of names (one per line) in local last changed, for a folder
+// listed without times.
+void sendTimes(int client, const std::string &local, const std::string &names)
+{
+    const std::string base = local.back() == '/' ? local : local + "/";
+    std::string json = "{\"times\":{";
+    size_t start = 0;
+    size_t count = 0;
+    while (start < names.size() && count < TimesPerRequest) {
+        size_t end = names.find('\n', start);
+        if (end == std::string::npos) {
+            end = names.size();
+        }
+        const std::string name = names.substr(start, end - start);
+        start = end + 1;
+        if (name.empty() || name.find('/') != std::string::npos ||
+            name == "." || name == "..") {
+            continue;
+        }
+        json += std::string(count == 0 ? "" : ",") + remote::jsonString(name) +
+                ":" + std::to_string(fs::modifiedTime(base + name));
+        ++count;
+    }
+    sendJson(client, json + "}}");
+}
+
+// The CRC-32 of each of names (one per line) in local, as 8 hex digits, or
+// "" for one that cannot be read. Answers for the first names only when
+// they add up to many bytes; the page asks again for the rest.
+void sendHashes(int client, const std::string &local, const std::string &names)
+{
+    const std::string base = local.back() == '/' ? local : local + "/";
+    std::string json = "{\"hashes\":{";
+    std::vector<unsigned char> buffer(ReadChunk);
+    uint64_t bytes = 0;
+    size_t start = 0;
+    bool first = true;
+    while (start < names.size() && bytes < HashBytesPerRequest) {
+        size_t end = names.find('\n', start);
+        if (end == std::string::npos) {
+            end = names.size();
+        }
+        const std::string name = names.substr(start, end - start);
+        start = end + 1;
+        if (name.empty() || name.find('/') != std::string::npos ||
+            name == "." || name == "..") {
+            continue;
+        }
+        std::string hex;
+        if (FILE *file = std::fopen((base + name).c_str(), "rb")) {
+            // Buffered, each read would go to the card a kilobyte at a time.
+            std::setvbuf(file, nullptr, _IONBF, 0);
+            uLong crc = crc32(0L, Z_NULL, 0);
+            size_t got = 0;
+            while ((got = std::fread(buffer.data(), 1, buffer.size(), file)) > 0) {
+                crc = crc32(crc, buffer.data(), static_cast<uInt>(got));
+                bytes += got;
+            }
+            if (!std::ferror(file)) {
+                char text[9];
+                std::snprintf(text, sizeof(text), "%08lx",
+                              static_cast<unsigned long>(crc & 0xffffffffUL));
+                hex = text;
+            }
+            std::fclose(file);
+        }
+        json += std::string(first ? "" : ",") + remote::jsonString(name) +
+                ":" + remote::jsonString(hex);
+        first = false;
+    }
+    sendJson(client, json + "}}");
 }
 
 // The name, publisher and icon inside a CIA, a 3DSX or a game image.
@@ -513,6 +609,52 @@ void sendFile(int client, const FileSharing &sharing, const std::string &from,
     reporter.finish(ok);
 }
 
+// Each look at a path makes the SD card search the folder it is in, about
+// a tenth of a second in a folder of hundreds of files, so an upload touches
+// its folder as few times as it can.
+
+// Gives part the name local unless something has that name already. The
+// 3DS's rename refuses an existing name by itself; elsewhere rename would
+// replace it, so this looks first.
+bool claimName(const std::string &part, const std::string &local)
+{
+#ifndef __3DS__
+    if (fileops::exists(local)) {
+        return false;
+    }
+#endif
+    return fs::renameFile(part, local);
+}
+
+enum class Overwrite { Missing, Done, Failed };
+
+// Copies part over the contents of the file at local, which keeps its place
+// in the folder: one search to open it, where removing and renaming take
+// three. Missing when there is no file at local to open.
+Overwrite overwrite(const std::string &part, const std::string &local,
+                    uint64_t total, std::vector<char> &buffer)
+{
+    FILE *out = std::fopen(local.c_str(), "r+b");
+    if (out == nullptr) {
+        return Overwrite::Missing;
+    }
+    FILE *in = std::fopen(part.c_str(), "rb");
+    std::setvbuf(out, nullptr, _IONBF, 0);
+    bool ok = in != nullptr &&
+              ftruncate(fileno(out), static_cast<off_t>(total)) == 0;
+    if (in != nullptr) {
+        std::setvbuf(in, nullptr, _IONBF, 0);
+        size_t got = 0;
+        while (ok && (got = std::fread(buffer.data(), 1, buffer.size(), in)) > 0) {
+            ok = std::fwrite(buffer.data(), 1, got, out) == got;
+        }
+        ok = ok && !std::ferror(in);
+        std::fclose(in);
+    }
+    ok = std::fclose(out) == 0 && ok;
+    return ok ? Overwrite::Done : Overwrite::Failed;
+}
+
 // Streams a PUT body into local, through a hidden part file that only
 // takes the real name once every byte is on the card.
 void receiveFile(int client, const FileSharing &sharing,
@@ -533,23 +675,13 @@ void receiveFile(int client, const FileSharing &sharing,
                                                    " does not exist."));
         return;
     }
-    if (fileops::isFolder(local)) {
-        sendAll(client,
-                remote::jsonError(409, "A folder is already called " + name + "."));
-        return;
-    }
-    const bool exists = fileops::exists(local);
-    if (exists && !replace) {
-        sendAll(client, remote::jsonError(409, name + " already exists."));
-        return;
-    }
+    // Whether local is taken is found out at the end, by the rename that
+    // refuses it, rather than by searching its folder before and after.
     const uint64_t total = request.contentLength;
     if (sharing.freeSpace) {
+        // The new copy sits beside the old one until it is complete.
         const int64_t free = sharing.freeSpace();
-        const uint64_t freed =
-            exists ? static_cast<uint64_t>(std::max<int64_t>(0, fs::fileSize(local)))
-                   : 0;
-        if (free >= 0 && total > static_cast<uint64_t>(free) + freed) {
+        if (free >= 0 && total > static_cast<uint64_t>(free)) {
             sendAll(client, remote::jsonError(
                                 507, "The SD card does not have room for " +
                                          name + "."));
@@ -557,8 +689,10 @@ void receiveFile(int client, const FileSharing &sharing,
         }
     }
 
-    const std::string part =
-        (folder.back() == '/' ? folder : folder + "/") + ".3dsdl-upload.part";
+    const std::string staging =
+        sharing.stagingFolder.empty() ? folder : sharing.stagingFolder;
+    const std::string part = (staging.back() == '/' ? staging : staging + "/") +
+                             ".3dsdl-upload.part";
     FILE *file = std::fopen(part.c_str(), "wb");
     if (file == nullptr) {
         sendAll(client, remote::jsonError(500, "Could not create " + name +
@@ -613,15 +747,31 @@ void receiveFile(int client, const FileSharing &sharing,
     written = std::fclose(file) == 0 && written;
 
     bool ok = written && connected;
+    int status = 500;
     std::string problem = "Could not write " + name + " to the SD card.";
-    if (ok && exists && !fs::removeFile(local)) {
-        ok = false;
-        problem = "Could not replace " + name + ".";
+    bool placed = false;
+    if (ok && replace && total <= OverwriteBytes) {
+        const Overwrite result = overwrite(part, local, total, buffer);
+        placed = result == Overwrite::Done;
+        if (result == Overwrite::Failed) {
+            ok = false;
+            problem = "Could not replace " + name + ".";
+        }
+    } else if (ok && replace) {
+        fs::removeFile(local); // when it is there
     }
-    if (ok && !fs::renameFile(part, local)) {
+    if (ok && !placed && !claimName(part, local)) {
         ok = false;
+        // Only now is it worth searching the folder to say why.
+        if (fileops::isFolder(local)) {
+            status = 409;
+            problem = "A folder is already called " + name + ".";
+        } else if (fileops::exists(local)) {
+            status = 409;
+            problem = name + " already exists.";
+        }
     }
-    if (!ok) {
+    if (!ok || placed) {
         fs::removeFile(part);
     }
     reporter.finish(ok);
@@ -629,7 +779,7 @@ void receiveFile(int client, const FileSharing &sharing,
         sendJson(client, "{\"name\":" + remote::jsonString(name) +
                              ",\"size\":" + std::to_string(total) + "}");
     } else if (connected) {
-        sendAll(client, remote::jsonError(500, problem));
+        sendAll(client, remote::jsonError(status, problem));
     }
 }
 
@@ -683,7 +833,8 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         const std::string path = remote::formValue(request.query, "path");
         if (mapped(path, local)) {
             listFolder(client, sharing, path, local,
-                       remote::formValue(request.query, "hidden") == "1");
+                       remote::formValue(request.query, "hidden") == "1",
+                       remote::formValue(request.query, "times") != "0");
         }
         return false;
     }
@@ -727,6 +878,18 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             sendAll(client, remote::jsonError(500, "Could not create the folder."));
         } else {
             sendJson(client, "{}");
+        }
+        return false;
+    }
+    if (route == "/api/times") {
+        if (mapped(remote::formValue(form, "path"), local)) {
+            sendTimes(client, local, remote::formValue(form, "names"));
+        }
+        return false;
+    }
+    if (route == "/api/hash") {
+        if (mapped(remote::formValue(form, "path"), local)) {
+            sendHashes(client, local, remote::formValue(form, "names"));
         }
         return false;
     }

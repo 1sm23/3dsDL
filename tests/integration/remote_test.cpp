@@ -430,6 +430,48 @@ TEST("remote server: files go up, come back, move and go away")
     }
 }
 
+TEST("remote server: uploads wait in the staging folder, then take their place")
+{
+    TempRoot root;
+    TempRoot staging;
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.stagingFolder = staging.path;
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    CHECK(startsWith(put(port, "/api/file?path=%2Fa.bin", "first"), "HTTP/1.1 200"));
+    std::string stored;
+    CHECK(fs::readFile(root.path + "/a.bin", stored) && stored == "first");
+    CHECK(!fs::fileExists(staging.path + "/.3dsdl-upload.part"));
+    CHECK(!fs::fileExists(root.path + "/.3dsdl-upload.part"));
+
+    // Taken names are refused once the body is in, and nothing is left.
+    CHECK(startsWith(put(port, "/api/file?path=%2Fa.bin", "again"), "HTTP/1.1 409"));
+    CHECK(fs::readFile(root.path + "/a.bin", stored) && stored == "first");
+    CHECK(fs::makeDirectories(root.path + "/dir"));
+    CHECK(bodyOf(put(port, "/api/file?path=%2Fdir&replace=1", "x"))
+              .find("A folder is already called dir.") != std::string::npos);
+    CHECK(!fs::fileExists(staging.path + "/.3dsdl-upload.part"));
+
+    // Replacing writes over the old copy, shorter or longer.
+    CHECK(startsWith(put(port, "/api/file?path=%2Fa.bin&replace=1", "2nd"),
+                     "HTTP/1.1 200"));
+    CHECK(fs::readFile(root.path + "/a.bin", stored) && stored == "2nd");
+    CHECK(startsWith(put(port, "/api/file?path=%2Fa.bin&replace=1", "the third"),
+                     "HTTP/1.1 200"));
+    CHECK(fs::readFile(root.path + "/a.bin", stored) && stored == "the third");
+    // Replacing a file that is not there yet just adds it.
+    CHECK(startsWith(put(port, "/api/file?path=%2Fnew.bin&replace=1", "n"),
+                     "HTTP/1.1 200"));
+    CHECK(fs::readFile(root.path + "/new.bin", stored) && stored == "n");
+    CHECK(!fs::fileExists(staging.path + "/.3dsdl-upload.part"));
+}
+
 TEST("remote server: the file API turns away what it should")
 {
     TempRoot root;

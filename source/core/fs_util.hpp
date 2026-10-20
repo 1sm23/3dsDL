@@ -36,9 +36,10 @@ struct Entry {
 
 // The folders and then the files in folder, each sorted case-insensitively.
 // Entries starting with '.' are left out unless hidden is true. ok is false
-// when folder cannot be opened.
+// when folder cannot be opened. Without times, modified stays 0: finding it
+// costs the SD card a search of the folder for every entry.
 std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr,
-                               bool hidden = false);
+                               bool hidden = false, bool times = true);
 
 // Seconds since 1970 when path last changed, or 0 when unknown. On the SD
 // card stat() always says 0, so this asks the card's archive instead.

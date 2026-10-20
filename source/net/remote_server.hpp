@@ -73,6 +73,10 @@ struct FileSharing {
     // Called a few times a second during a transfer, on the server's thread.
     std::function<void(const Transfer &)> progress;
     int socketBufferSize = 0; // asked for on each connection when not 0
+    // Where uploads are written until they are complete, then moved into
+    // place. Empty uses the destination's own folder. A small folder here
+    // saves big folders a slow search for room on every upload.
+    std::string stagingFolder;
 };
 
 class Receiver {

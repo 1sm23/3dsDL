@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <set>
@@ -109,14 +110,17 @@ struct Details {
     uint32_t height = 0;
     bool counted = false;
     size_t items = 0;
+    int64_t modified = 0; // for folders listed without times
 };
 
 Details loadDetails(const std::string &path, Kind kind)
 {
     Details details;
+    details.modified = fs::modifiedTime(path);
     switch (kind) {
     case Kind::Folder:
-        details.items = fs::listEntries(path + "/", nullptr, true).size();
+        details.items =
+            fs::listEntries(path + "/", nullptr, true, false).size();
         details.counted = true;
         break;
     case Kind::Cia:
@@ -217,8 +221,8 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                   const Details &details)
 {
     const Kind kind = kindOf(entry);
-    const std::string modified =
-        entry.modified > 0 ? units::dateTime(entry.modified) : "";
+    const int64_t time = entry.modified > 0 ? entry.modified : details.modified;
+    const std::string modified = time > 0 ? units::dateTime(time) : "";
 
     if (kind == Kind::Folder) {
         drawEntryPanel({}, kind, entry.name, path + "/",
@@ -341,10 +345,14 @@ void App::filesScreen()
     std::vector<std::string> marked;
     std::map<std::string, Details> details;
 
-    while (ui::keepRunning()) {
+    // quit_ is set when a .3dsx is started, which happens as 3dsDL closes.
+    while (ui::keepRunning() && !quit_) {
         bool readable = false;
+        // Times cost the SD card a search of the folder for each entry, so
+        // they are only read to sort by them; the details read their own.
         std::vector<fs::Entry> entries =
-            fs::listEntries(current, &readable, settings_.showHiddenFiles);
+            fs::listEntries(current, &readable, settings_.showHiddenFiles,
+                            settings_.fileSort == fs::SortOrder::Date);
         if (!readable && current != "sdmc:/") {
             current = "sdmc:/";
             cursor = 0;
@@ -533,7 +541,8 @@ void App::openFile(const std::string &path)
         std::vector<std::string> pictures;
         size_t index = 0;
         std::vector<fs::Entry> entries =
-            fs::listEntries(folder, nullptr, settings_.showHiddenFiles);
+            fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
+                            settings_.fileSort == fs::SortOrder::Date);
         fs::sortEntries(entries, settings_.fileSort);
         for (const fs::Entry &entry : entries) {
             if (!entry.folder && kindOf(entry) == Kind::Image) {
@@ -631,7 +640,7 @@ void App::showChecksum(const std::string &path)
     const std::string name = basename(path);
     std::string verdict;
     bool matches = false;
-    for (const fs::Entry &entry : fs::listEntries(folder)) {
+    for (const fs::Entry &entry : fs::listEntries(folder, nullptr, false, false)) {
         if (entry.folder || !text::endsWithNoCase(entry.name, ".sha256")) {
             continue;
         }
@@ -721,7 +730,8 @@ bool App::entryOptions(const std::string &folder,
         }
     }
     if (isFolder) {
-        for (const fs::Entry &entry : fs::listEntries(path + "/")) {
+        for (const fs::Entry &entry :
+             fs::listEntries(path + "/", nullptr, false, false)) {
             if (!entry.folder && kindOf(entry) == Kind::Cia) {
                 cias.push_back(path + "/" + entry.name);
             }
@@ -1425,6 +1435,61 @@ void App::installTicketFile(const std::string &path)
     }
 }
 
+namespace {
+
+// Asks Luma3DS's homebrew loader to start path once 3dsDL closes, the way
+// the Homebrew Launcher starts what it lists.
+bool startHomebrew(const std::string &path, std::string &error)
+{
+    Handle loader = 0;
+    if (R_FAILED(srvGetServiceHandle(&loader, "hb:ldr"))) {
+        error = "Starting homebrew needs Luma3DS, and its homebrew loader "
+                "did not answer.";
+        return false;
+    }
+    // The loader takes the path inside the SD card, without "sdmc:".
+    const std::string target =
+        path.compare(0, 5, "sdmc:") == 0 ? path.substr(5) : path;
+    u32 *command = getThreadCommandBuffer();
+    command[0] = IPC_MakeHeader(2, 0, 2); // SetTarget
+    command[1] = IPC_Desc_StaticBuffer(target.size() + 1, 0);
+    command[2] = reinterpret_cast<u32>(target.c_str());
+    ::Result code = svcSendSyncRequest(loader);
+    if (R_SUCCEEDED(code)) {
+        code = static_cast<::Result>(command[1]);
+    }
+    // Its arguments: a count, then each one ending in a zero byte. The
+    // first is the program's own path, as the Homebrew Launcher passes it.
+    std::vector<u32> arguments(0x400 / sizeof(u32), 0);
+    if (R_SUCCEEDED(code) && path.size() < 0x400 - sizeof(u32)) {
+        arguments[0] = 1;
+        std::memcpy(&arguments[1], path.c_str(), path.size() + 1);
+        command = getThreadCommandBuffer();
+        command[0] = IPC_MakeHeader(3, 0, 2); // SetArgv
+        command[1] = IPC_Desc_StaticBuffer(0x400, 1);
+        command[2] = reinterpret_cast<u32>(arguments.data());
+        code = svcSendSyncRequest(loader);
+        if (R_SUCCEEDED(code)) {
+            code = static_cast<::Result>(command[1]);
+        }
+    }
+    svcCloseHandle(loader);
+    if (R_FAILED(code)) {
+        error = "The homebrew loader did not take " + basename(path) + ".";
+        return false;
+    }
+    // Under the Homebrew Launcher this app is the loader's own title, which
+    // loads the target when it starts again. A CIA hands over to that title.
+    if (envIsHomebrew()) {
+        aptSetChainloaderToSelf();
+    } else {
+        aptSetChainloader(0x000400000D921E00ULL, MEDIATYPE_SD);
+    }
+    return true;
+}
+
+} // namespace
+
 void App::titleDetails(const std::string &path, Kind kind)
 {
     titlemeta::Meta meta;
@@ -1435,8 +1500,9 @@ void App::titleDetails(const std::string &path, Kind kind)
     ui::ScreenSpec spec;
     spec.back = "Back";
     const bool ticket = kind == Kind::Ticket && readable;
+    const bool homebrew = kind == Kind::Homebrew;
     ui::Control hex;
-    hex.rect = {46, ticket ? 150.0f : 110.0f, 228, 34};
+    hex.rect = {46, ticket || homebrew ? 150.0f : 110.0f, 228, 34};
     hex.label = "Open as Hex";
     hex.icon = ui::Icon::Hex;
     hex.scale = ui::type::Body + 0.06f;
@@ -1448,6 +1514,14 @@ void App::titleDetails(const std::string &path, Kind kind)
         install.icon = ui::Icon::Lock;
         install.iconColor = ui::color::IconGreen;
         spec.controls.push_back(install);
+    }
+    if (homebrew) {
+        ui::Control start = hex;
+        start.rect = {46, 106, 228, 34};
+        start.label = "Start";
+        start.icon = ui::Icon::App;
+        start.iconColor = ui::color::IconGreen;
+        spec.controls.push_back(start);
     }
     spec.drawTop = [&]() {
         ui::drawTopChrome(filetype::label(kind), look.icon, look.color);
@@ -1471,19 +1545,26 @@ void App::titleDetails(const std::string &path, Kind kind)
         const ui::Rect panel = {13, 16, 294, 76};
         ui::drawPanel(panel);
         ui::drawPanelText(kind == Kind::Homebrew
-                              ? "Start it from the Homebrew Launcher."
+                              ? "Start closes 3dsDL and opens it."
                           : kind == Kind::Ticket
                               ? "A ticket lets the console use a title's "
                                 "content."
                               : basename(path),
                           panel, ui::type::Small + 0.04f);
     };
-    int focus = ticket ? 1 : 0;
+    int focus = ticket || homebrew ? 1 : 0;
     const int choice = ui::runScreen(spec, focus).choice;
     if (choice == 0) {
         hexViewer(path);
-    } else if (choice == 1) {
+    } else if (choice == 1 && ticket) {
         installTicketFile(path);
+    } else if (choice == 1 && homebrew) {
+        std::string error;
+        if (startHomebrew(path, error)) {
+            quit_ = true;
+        } else {
+            ui::message("Cannot Start", error, ui::Tone::Error);
+        }
     }
 }
 

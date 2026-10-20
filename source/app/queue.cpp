@@ -573,6 +573,9 @@ void App::receiveScreen()
     // Room for the network to keep filling while an upload's last piece is
     // written to the SD card, so the sender is not told to wait.
     sharing.socketBufferSize = 128 * 1024;
+    if (fs::makeDirectories(storage::DataFolder)) {
+        sharing.stagingFolder = storage::DataFolder;
+    }
     job.receiver.shareFiles(sharing);
 
     s32 priority = 0x30;
@@ -854,29 +857,21 @@ void App::receiveScreen()
         code.draw(qrX, qrY, px);
         const float left = qrX + qrSide + 2 * px + 12;
         const float width = ui::TopPanel.x + ui::TopPanel.w - 12 - left;
-        // The address itself is large on the touch screen.
-        float y = ui::drawWrapped("Scan this with a phone on the same Wi-Fi, "
-                                  "or open the address below, to send links "
-                                  "and manage the SD card's files.",
-                                  left, ui::TopPanel.y + 12, ui::type::Small,
-                                  ui::color::Ink, width, 5) +
-                  10;
-        y = ui::drawWrapped(job.receiver.fbiPort() != 0
-                                ? "FBI's tools (servefiles.py, Boop): " +
-                                      address + ", port " +
-                                      std::to_string(job.receiver.fbiPort()) +
-                                      "."
-                                : "FBI's tools cannot connect: port 5000 is "
-                                  "busy.",
-                            left, y, ui::type::Tiny, ui::color::InkSoft, width,
-                            3) +
-            6;
-        if (!namedPage.empty()) {
-            ui::drawWrapped("Most computers and iPhones can also open " +
-                                namedPage + ".",
-                            left, y, ui::type::Tiny, ui::color::InkSoft, width,
-                            3);
-        }
+        // The addresses themselves are large on the touch screen.
+        ui::drawWrapped("Scan this with a phone on the same Wi-Fi, or open "
+                        "the address below, to send links and manage files.",
+                        left, ui::TopPanel.y + 12, ui::type::Small,
+                        ui::color::Ink, width, 5);
+        // One line that scrolls, as the column is too narrow for all of it.
+        ui::drawMarquee(job.receiver.fbiPort() != 0
+                            ? "FBI's tools (servefiles.py, Boop): " + address +
+                                  ", port " +
+                                  std::to_string(job.receiver.fbiPort()) + "."
+                            : "FBI's tools cannot connect: port 5000 is busy.",
+                        left,
+                        ui::TopPanel.y + ui::TopPanel.h - 10 -
+                            ui::lineHeight(ui::type::Tiny),
+                        ui::type::Tiny, ui::color::InkSoft, width);
 
         ui::beginBottom();
         const ui::Rect panel = {13, 12, 294, 136};

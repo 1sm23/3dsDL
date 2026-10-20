@@ -183,10 +183,98 @@ int64_t modifiedTime(const std::string &path, int64_t statTime)
 #endif
 }
 
+#ifdef __3DS__
+namespace {
+
+// Lists an SD card folder ("sdmc:/a/b/") from the card's archive, which
+// hands over each entry's size and kind in batches. stat() opens every file
+// to find its size, and in a folder of hundreds of files each open searches
+// the whole folder again, which took the 3DS minutes.
+bool listSdEntries(const std::string &folder, bool hidden, bool times,
+                   std::vector<Entry> &entries)
+{
+    const std::string inside = folder.substr(5); // after "sdmc:"
+    std::vector<uint16_t> units(inside.size() + 1, 0);
+    const ssize_t count =
+        utf8_to_utf16(units.data(),
+                      reinterpret_cast<const uint8_t *>(inside.c_str()),
+                      inside.size());
+    units.resize(count >= 0 ? static_cast<size_t>(count) + 1 : 1);
+    units.back() = 0;
+    const FS_Path path = {PATH_UTF16, static_cast<u32>(units.size() * 2),
+                          units.data()};
+
+    FS_Archive archive = 0;
+    if (R_FAILED(FSUSER_OpenArchive(&archive, ARCHIVE_SDMC,
+                                    fsMakePath(PATH_EMPTY, "")))) {
+        return false;
+    }
+    Handle directory = 0;
+    if (R_FAILED(FSUSER_OpenDirectory(&directory, archive, path))) {
+        FSUSER_CloseArchive(archive);
+        return false;
+    }
+
+    std::string base = folder;
+    if (base.back() != '/') {
+        base += '/';
+    }
+    std::vector<FS_DirectoryEntry> batch(32);
+    while (true) {
+        u32 read = 0;
+        if (R_FAILED(FSDIR_Read(directory, &read,
+                                static_cast<u32>(batch.size()), batch.data())) ||
+            read == 0) {
+            break;
+        }
+        for (u32 index = 0; index < read; ++index) {
+            const FS_DirectoryEntry &item = batch[index];
+            size_t length = 0;
+            while (length < 0x106 && item.name[length] != 0) {
+                ++length;
+            }
+            std::string name(length * 3 + 1, '\0');
+            const ssize_t bytes = utf16_to_utf8(
+                reinterpret_cast<uint8_t *>(&name[0]), item.name, length);
+            name.resize(bytes > 0 ? static_cast<size_t>(bytes) : 0);
+            if (name.empty() || name == "." || name == ".." ||
+                (name[0] == '.' && !hidden)) {
+                continue;
+            }
+            Entry entry;
+            entry.name = name;
+            entry.folder = (item.attributes & FS_ATTRIBUTE_DIRECTORY) != 0;
+            if (!entry.folder) {
+                entry.size = static_cast<int64_t>(item.fileSize);
+            }
+            if (times) {
+                entry.modified = modifiedTime(base + name);
+            }
+            entries.push_back(entry);
+        }
+    }
+    FSDIR_Close(directory);
+    FSUSER_CloseArchive(archive);
+    return true;
+}
+
+} // namespace
+#endif
+
 std::vector<Entry> listEntries(const std::string &folder, bool *ok,
-                               bool hidden)
+                               bool hidden, bool times)
 {
     std::vector<Entry> entries;
+#ifdef __3DS__
+    if (folder.compare(0, 6, "sdmc:/") == 0) {
+        const bool listed = listSdEntries(folder, hidden, times, entries);
+        if (ok != nullptr) {
+            *ok = listed;
+        }
+        sortEntries(entries, SortOrder::Name);
+        return entries;
+    }
+#endif
     DIR *directory = opendir(folder.c_str());
     if (ok != nullptr) {
         *ok = directory != nullptr;
@@ -210,8 +298,10 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok,
         struct stat info {};
         if (stat((base + entry.name).c_str(), &info) == 0) {
             entry.folder = S_ISDIR(info.st_mode);
-            entry.modified = modifiedTime(base + entry.name,
-                                          static_cast<int64_t>(info.st_mtime));
+            if (times) {
+                entry.modified = modifiedTime(
+                    base + entry.name, static_cast<int64_t>(info.st_mtime));
+            }
             if (!entry.folder) {
                 entry.size = static_cast<int64_t>(info.st_size);
             }

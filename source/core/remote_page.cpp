@@ -707,12 +707,39 @@ async function load(path, quietly, priority) {
     $('#browser').hidden = false;
     render(moved || !quietly);
     showStatus();
+    if (j.times === false) fillTimes(path, token);
   } catch (e) {
     if (token !== F.token || e.quiet) return;
     if (S.offline) { if (!$('#browser').hidden) render(false); return; }
     if (path !== '/') { toast(e.message, 'bad'); go(parent(path)); } else fail(e);
   } finally { clearTimeout(slow); if (token === F.token) loading(false); }
 }
+// When each of names in the folder at path changed, for folders too big to
+// list with times: the 3DS takes about a tenth of a second for each.
+async function timesOf(path, names, priority, each) {
+  const out = new Map();
+  for (let i = 0; i < names.length; i += 50) {
+    const part = names.slice(i, i + 50);
+    const j = await api('POST', '/api/times', {path, names: part.join('\n')}, priority);
+    for (const n of part) out.set(n, j.times[n] || 0);
+    if (each && each(out, part) === false) break;
+  }
+  return out;
+}
+// Fills in the dates of a big folder after it is shown, while nothing more
+// urgent waits.
+async function fillTimes(path, token) {
+  const byName = new Map(F.entries.map(e => [e.name, e]));
+  try {
+    await timesOf(path, [...byName.keys()], 3, (got, part) => {
+      if (token !== F.token) return false;
+      for (const n of part) byName.get(n).time = got.get(n);
+      for (const li of $('#list').children) if (li.entry && part.includes(li.entry.name)) li.querySelector('.meta').textContent = meta(li.entry);
+    });
+  } catch (e) {}
+  if (token === F.token && $('#sort').value === 'time') render(false);
+}
+const meta = e => [e.dir ? 'Folder' : size(e.size), when(e.time)].filter(Boolean).join(' · ');
 function sorted() {
   const by = $('#sort').value, byName = (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'});
   return F.entries.slice().sort((a, b) => a.dir !== b.dir ? (a.dir ? -1 : 1)
@@ -771,7 +798,7 @@ function render(animate) {
     li.tabIndex = 0;
     li.dataset.path = path;
     li.innerHTML = '<input type="checkbox" aria-label="Select ' + esc(e.name) + '"' + (F.sel.has(path) ? ' checked' : '') + '>' + badge(e) +
-      '<div class="what"><span class="name">' + marked(e.name) + '</span><span class="meta">' + esc([e.dir ? 'Folder' : size(e.size), when(e.time)].filter(Boolean).join(' · ')) +
+      '<div class="what"><span class="name">' + marked(e.name) + '</span><span class="meta">' + esc(meta(e)) +
       '</span></div><button class="more" aria-label="Options for ' + esc(e.name) + '">' + svg('more') + '</button>';
     li.entry = e;
     ul.append(li);
@@ -1080,22 +1107,37 @@ async function plan(files) {
   if (!files.length) return;
   const dirs = new Map();
   for (const f of files) dirs.set(parent(f.path), null);
+  let checked = 0;
+  if (dirs.size > 3) toast('Checking ' + dirs.size + ' folders on the 3DS...');
   for (const d of dirs.keys()) {
-    try { const j = await api('GET', '/api/list?path=' + enc(d)); dirs.set(d, new Map(j.entries.map(e => [e.name, e.dir]))); } catch (e) { if (e.quiet || S.offline) return; dirs.set(d, new Map()); }
+    try {
+      const j = await api('GET', '/api/list?times=0&path=' + enc(d));
+      dirs.set(d, new Map(j.entries.map(e => [e.name, e])));
+    } catch (e) {
+      if (e.quiet) return;
+      // A folder that is not there yet is made when its files go up.
+      if (S.offline || !/does not exist/.test(e.message)) return ask('Cannot upload', 'Could not check ' + d + ' on the 3DS: ' + e.message, {buttons: ['OK']});
+      dirs.set(d, new Map());
+    }
+    if (++checked % 20 === 0) toast('Checked ' + checked + ' of ' + dirs.size + ' folders...');
   }
-  const there = f => dirs.get(parent(f.path));
-  const blocked = files.find(f => there(f).get(base(f.path)) === true);
+  const there = f => dirs.get(parent(f.path)), card = f => there(f).get(base(f.path));
+  const blocked = files.find(f => card(f) && card(f).dir);
   if (blocked) return ask('Cannot upload', 'A folder already has the name ' + blocked.path + '.', {buttons: ['OK']});
-  const clash = files.filter(f => there(f).has(base(f.path)));
+  const clash = files.filter(f => card(f));
   let skip = new Set();
   if (clash.length) {
     const names = clash.slice(0, 5).map(f => base(f.path)).join('\n') + (clash.length > 5 ? '\n...and ' + (clash.length - 5) + ' more' : '');
-    const c = await ask(clash.length === 1 ? 'Replace this file?' : 'Replace ' + clash.length + ' files?', names, {buttons: ['Cancel', 'Skip', 'Replace'], warn: risk(clash.map(f => f.path))});
-    if (c < 1) return;
-    if (c === 1) skip = new Set(clash); else clash.forEach(f => { f.replace = true; });
+    const c = await ask(clash.length === 1 ? 'Replace this file?' : 'Replace ' + clash.length + ' files?',
+      names + '\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.',
+      {buttons: ['Cancel', 'Skip', 'Replace all', 'Replace changed'], warn: risk(clash.map(f => f.path)), action: () => changed(clash, there)});
+    if (c === null || c < 1) return;
+    if (c === 1) skip = new Set(clash);
+    else if (c === 2) clash.forEach(f => { f.replace = true; });
+    else for (const f of clash) if (c.has(f)) f.replace = true; else skip.add(f);
   }
   files = files.filter(f => !skip.has(f));
-  if (!files.length) return;
+  if (!files.length) return toast(clash.length ? 'Nothing to send: the SD card already has all of them.' : 'Nothing to send.');
   const need = files.reduce((n, f) => n + f.file.size, 0);
   if (F.free >= 0 && need > F.free) return ask('Not enough space', 'These need ' + size(need) + ' and the SD card has ' + size(F.free) + ' free.', {buttons: ['OK']});
   const big = files.find(f => f.file.size > 4294967295);
@@ -1111,6 +1153,48 @@ async function plan(files) {
     run(() => send(f), 1, 'upload');
   }
   progress();
+}
+// CRC-32, as zlib computes it on the console, read in pieces so large
+// files never sit in memory whole.
+const CRC = Uint32Array.from({length: 256}, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+async function crcOf(file) {
+  let c = 0xffffffff;
+  const reader = file.stream().getReader();
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    for (let i = 0; i < value.length; i++) c = CRC[(c ^ value[i]) & 255] ^ (c >>> 8);
+  }
+  return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0');
+}
+// Which of clash differ from the copies on the SD card: by size, or else by
+// content, whatever their dates say. The console checksums its copies in
+// batches while this computer does its own.
+async function changed(clash, there) {
+  const out = new Set(), same = new Map();
+  for (const f of clash) {
+    if (f.file.size !== there(f).get(base(f.path)).size) out.add(f);
+    else { const d = parent(f.path); if (!same.has(d)) same.set(d, []); same.get(d).push(f); }
+  }
+  const total = [...same.values()].reduce((n, l) => n + l.length, 0), t0 = performance.now();
+  let done = 0;
+  for (const [d, list] of same) {
+    let left = list;
+    while (left.length) {
+      const part = left.slice(0, 50);
+      const [j, mine] = await Promise.all([
+        api('POST', '/api/hash', {path: d, names: part.map(f => base(f.path)).join('\n')}, 1, {timeout: 120000}),
+        Promise.all(part.map(f => crcOf(f.file)))]);
+      const answered = part.filter(f => base(f.path) in j.hashes);
+      if (!answered.length) throw new Error('The 3DS did not check ' + base(part[0].path) + '.');
+      answered.forEach(f => { const h = j.hashes[base(f.path)]; if (!h || h !== mine[part.indexOf(f)]) out.add(f); });
+      left = left.slice(answered.length);
+      done += answered.length;
+      const left = done > 50 ? duration((performance.now() - t0) / 1e3 / done * (total - done)) : '';
+      $('#dp').textContent = 'Comparing with the SD card: ' + done + ' of ' + total + ' files' + (left ? ', ' + left + ' left.' : '...');
+    }
+  }
+  return out;
 }
 function buttons(f) {
   const box = f.li.lastChild;
@@ -1204,8 +1288,10 @@ async function send(f) {
         f.li.classList.add('ok');
         if (ext(f.path) === 'cia') U.arrived.push(f.path);
         const top = f.path.startsWith(F.cwd === '/' ? '/' : F.cwd + '/') ? f.path.slice(F.cwd === '/' ? 1 : F.cwd.length + 1).split('/')[0] : '';
-        if (top) {
-          // Shown now, ahead of the next upload, rather than once all are done.
+        if (top && !F.entries.some(e => e.name === top)) {
+          // Shown now, ahead of the next upload, rather than once all are
+          // done. Something already listed waits for the end: each listing
+          // keeps the console from the next upload.
           F.fresh.add(join(F.cwd, top));
           F.scrollTo = join(F.cwd, top);
           load(F.cwd, true, 0);
