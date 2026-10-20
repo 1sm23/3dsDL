@@ -447,16 +447,27 @@ async function pump() {
   try { job.resolve(await job.task()); } catch (e) { job.reject(e); } finally { lane.busy = false; pump(); }
 }
 function quiet() { const e = new Error(''); e.quiet = true; return e; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// A request that cannot reach the 3DS is tried again a few times before the
+// page calls it lost: a tab in the background has its connections held up
+// and its timers slowed, and one dropped request is not a lost console.
+// Only requests that do the same the second time are repeated: reads, and
+// those passed retry.
 async function call(method, url, body, options = {}) {
   const request = {method, headers: {...H}};
   if (typeof body === 'string') request.body = body;
   else if (body) { request.headers['Content-Type'] = 'application/x-www-form-urlencoded'; request.body = new URLSearchParams(body).toString(); }
-  const stop = new AbortController();
-  const timer = setTimeout(() => stop.abort(), options.timeout || 20000);
-  request.signal = stop.signal;
+  const tries = method === 'GET' || options.retry ? 4 : 1;
   let response;
-  try { response = await fetch(url, request); } catch (e) { clearTimeout(timer); offline(true); throw new Error('Lost the connection to the 3DS.'); }
-  clearTimeout(timer);
+  for (let n = 1; !response; n++) {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), options.timeout || 20000);
+    request.signal = stop.signal;
+    try { response = await fetch(url, request); } catch (e) {
+      if (n >= tries) { offline(true); throw new Error('Lost the connection to the 3DS.'); }
+      await sleep(750 * n);
+    } finally { clearTimeout(timer); }
+  }
   offline(false);
   if (options.raw) return response;
   let json = {};
@@ -720,7 +731,7 @@ async function timesOf(path, names, priority, each) {
   const out = new Map();
   for (let i = 0; i < names.length; i += 50) {
     const part = names.slice(i, i + 50);
-    const j = await api('POST', '/api/times', {path, names: part.join('\n')}, priority);
+    const j = await api('POST', '/api/times', {path, names: part.join('\n')}, priority, {retry: true});
     for (const n of part) out.set(n, j.times[n] || 0);
     if (each && each(out, part) === false) break;
   }
@@ -990,7 +1001,7 @@ async function move(paths) {
 async function remove(paths) {
   const many = paths.length > 1;
   const ok = await ask('Delete ' + (many ? paths.length + ' items' : '"' + base(paths[0]) + '"') + '?', 'Deleted files and folders cannot be brought back.',
-    {buttons: ['Cancel', 'Delete'], danger: true, warn: risk(paths), action: async () => { for (const p of paths) await api('POST', '/api/delete', {path: p}); }});
+    {buttons: ['Cancel', 'Delete'], danger: true, warn: risk(paths), action: async () => { for (const p of paths) await api('POST', '/api/delete', {path: p}, 0, {retry: true}); }});
   if (ok !== true) return;
   for (const r of $('#list').querySelectorAll('.row')) if (paths.includes(r.dataset.path)) r.classList.add('gone');
   F.sel.clear();
@@ -1015,7 +1026,7 @@ $('#mkdir').onclick = async () => {
   const r = await ask('New Folder', null, {input: '', buttons: ['Cancel', 'Create'], action: async name => {
     name = name.trim();
     if (!name) throw new Error('Type a name for the folder.');
-    await api('POST', '/api/folder', {path: join(F.cwd, name)});
+    await api('POST', '/api/folder', {path: join(F.cwd, name)}, 0, {retry: true});
     F.fresh.add(join(F.cwd, name));
   }});
   if (r === true) load(F.cwd, true);
@@ -1081,7 +1092,7 @@ async function save() {
   const b = $('#esave'), text = $('#etext').value;
   b.classList.add('busy');
   try {
-    await api('PUT', '/api/file?replace=1&path=' + enc(E.path), text);
+    await api('PUT', '/api/file?replace=1&path=' + enc(E.path), text, 0, {retry: true});
     E.saved = text;
     editInfo();
     toast('Saved ' + base(E.path), 'good');
@@ -1128,9 +1139,11 @@ async function plan(files) {
   let skip = new Set();
   if (clash.length) {
     const names = clash.slice(0, 5).map(f => base(f.path)).join('\n') + (clash.length > 5 ? '\n...and ' + (clash.length - 5) + ' more' : '');
+    const stop = {done: false};
     const c = await ask(clash.length === 1 ? 'Replace this file?' : 'Replace ' + clash.length + ' files?',
       names + '\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.',
-      {buttons: ['Cancel', 'Skip', 'Replace all', 'Replace changed'], warn: risk(clash.map(f => f.path)), action: () => changed(clash, there)});
+      {buttons: ['Cancel', 'Skip', 'Replace all', 'Replace changed'], warn: risk(clash.map(f => f.path)), action: () => changed(clash, there, stop)});
+    stop.done = true;
     if (c === null || c < 1) return;
     if (c === 1) skip = new Set(clash);
     else if (c === 2) clash.forEach(f => { f.replace = true; });
@@ -1170,7 +1183,8 @@ async function crcOf(file) {
 // Which of clash differ from the copies on the SD card: by size, or else by
 // content, whatever their dates say. The console checksums its copies in
 // batches while this computer does its own.
-async function changed(clash, there) {
+// Stops, quietly, once stop.done is set: the dialog it runs in was closed.
+async function changed(clash, there, stop) {
   const out = new Set(), same = new Map();
   for (const f of clash) {
     if (f.file.size !== there(f).get(base(f.path)).size) out.add(f);
@@ -1183,8 +1197,9 @@ async function changed(clash, there) {
     while (left.length) {
       const part = left.slice(0, 50);
       const [j, mine] = await Promise.all([
-        api('POST', '/api/hash', {path: d, names: part.map(f => base(f.path)).join('\n')}, 1, {timeout: 120000}),
+        api('POST', '/api/hash', {path: d, names: part.map(f => base(f.path)).join('\n')}, 1, {timeout: 120000, retry: true}),
         Promise.all(part.map(f => crcOf(f.file)))]);
+      if (stop.done) throw quiet();
       const answered = part.filter(f => base(f.path) in j.hashes);
       if (!answered.length) throw new Error('The 3DS did not check ' + base(part[0].path) + '.');
       answered.forEach(f => { const h = j.hashes[base(f.path)]; if (!h || h !== mine[part.indexOf(f)]) out.add(f); });
@@ -1256,7 +1271,7 @@ async function send(f) {
   progress();
   const dir = parent(f.path);
   if (dir !== F.cwd && !U.made.has(dir)) {
-    try { await call('POST', '/api/folder', {path: dir}); U.made.add(dir); } catch (e) { return finish(f, 'failed', e.message || 'Not allowed', 'err'); }
+    try { await call('POST', '/api/folder', {path: dir}, {retry: true}); U.made.add(dir); } catch (e) { return finish(f, 'failed', e.message || 'Not allowed', 'err'); }
   }
   await new Promise(resolve => {
     const x = new XMLHttpRequest(), fill = f.li.querySelector('.fill');
@@ -1302,7 +1317,23 @@ async function send(f) {
         end('failed', j.error || 'Failed (' + x.status + ')', 'err');
       }
     };
-    x.onerror = () => { offline(true); end('failed', 'The connection to the 3DS was lost.', 'err'); };
+    x.onerror = () => {
+      // Sent again a couple of times before it counts as failed. The first
+      // try may have landed before the answer was lost, so the next one
+      // replaces whatever it left.
+      if ((f.tries = (f.tries || 0) + 1) <= 2) {
+        f.xhr = null;
+        f.state = 'wait';
+        f.replace = true;
+        f.loaded = 0;
+        status(f, 'Trying again...');
+        resolve();
+        sleep(1500 * f.tries).then(() => run(() => send(f), 1, 'upload'));
+        return;
+      }
+      offline(true);
+      end('failed', 'The connection to the 3DS was lost.', 'err');
+    };
     x.onabort = () => end('off', 'Cancelled', 'err');
     x.send(f.file);
   });
