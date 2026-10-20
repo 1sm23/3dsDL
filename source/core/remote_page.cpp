@@ -1190,8 +1190,8 @@ async function changed(clash, there) {
       answered.forEach(f => { const h = j.hashes[base(f.path)]; if (!h || h !== mine[part.indexOf(f)]) out.add(f); });
       left = left.slice(answered.length);
       done += answered.length;
-      const left = done > 50 ? duration((performance.now() - t0) / 1e3 / done * (total - done)) : '';
-      $('#dp').textContent = 'Comparing with the SD card: ' + done + ' of ' + total + ' files' + (left ? ', ' + left + ' left.' : '...');
+      const eta = done > 50 ? duration((performance.now() - t0) / 1e3 / done * (total - done)) : '';
+      $('#dp').textContent = 'Comparing with the SD card: ' + done + ' of ' + total + ' files' + (eta ? ', ' + eta + ' left.' : '...');
     }
   }
   return out;
