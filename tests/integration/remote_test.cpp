@@ -472,6 +472,36 @@ TEST("remote server: uploads wait in the staging folder, then take their place")
     CHECK(!fs::fileExists(staging.path + "/.3dsdl-upload.part"));
 }
 
+TEST("remote server: a stopping listener gives up an upload part way")
+{
+    TempRoot root;
+    std::atomic<bool> stop {false};
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.cancelled = [&stop]() { return stop.load(); };
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    // Half the body, then the listener is told to stop: it lets go well
+    // before the 30 seconds it would wait for the rest.
+    int client = connectTo(port);
+    sendText(client, "PUT /api/file?path=%2Fslow.bin HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                     "X-Requested-With: 3dsDL\r\nContent-Length: 8\r\n\r\nabcd");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    const auto asked = std::chrono::steady_clock::now();
+    stop = true;
+    const std::string response = readAll(client);
+    ::close(client);
+    CHECK(std::chrono::steady_clock::now() - asked < std::chrono::seconds(2));
+    CHECK(response.empty());
+    CHECK(!fs::fileExists(root.path + "/slow.bin"));
+    CHECK(!fs::fileExists(root.path + "/.3dsdl-upload.part"));
+}
+
 TEST("remote server: the file API turns away what it should")
 {
     TempRoot root;

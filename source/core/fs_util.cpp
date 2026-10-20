@@ -190,19 +190,33 @@ namespace {
 // hands over each entry's size and kind in batches. stat() opens every file
 // to find its size, and in a folder of hundreds of files each open searches
 // the whole folder again, which took the 3DS minutes.
+// A path on the SD card ("sdmc:/a/b") as the card's archive takes it.
+class SdPath {
+public:
+    explicit SdPath(const std::string &path)
+    {
+        const std::string inside = path.substr(5); // after "sdmc:"
+        units_.assign(inside.size() + 1, 0);
+        const ssize_t count = utf8_to_utf16(
+            units_.data(), reinterpret_cast<const uint8_t *>(inside.c_str()),
+            inside.size());
+        units_.resize(count >= 0 ? static_cast<size_t>(count) + 1 : 1);
+        units_.back() = 0;
+    }
+    FS_Path get() const
+    {
+        return {PATH_UTF16, static_cast<u32>(units_.size() * 2), units_.data()};
+    }
+
+private:
+    std::vector<uint16_t> units_;
+};
+
 bool listSdEntries(const std::string &folder, bool hidden, bool times,
                    std::vector<Entry> &entries)
 {
-    const std::string inside = folder.substr(5); // after "sdmc:"
-    std::vector<uint16_t> units(inside.size() + 1, 0);
-    const ssize_t count =
-        utf8_to_utf16(units.data(),
-                      reinterpret_cast<const uint8_t *>(inside.c_str()),
-                      inside.size());
-    units.resize(count >= 0 ? static_cast<size_t>(count) + 1 : 1);
-    units.back() = 0;
-    const FS_Path path = {PATH_UTF16, static_cast<u32>(units.size() * 2),
-                          units.data()};
+    const SdPath sdPath(folder);
+    const FS_Path path = sdPath.get();
 
     FS_Archive archive = 0;
     if (R_FAILED(FSUSER_OpenArchive(&archive, ARCHIVE_SDMC,
@@ -260,6 +274,32 @@ bool listSdEntries(const std::string &folder, bool hidden, bool times,
 
 } // namespace
 #endif
+
+bool removeFolderTree(const std::string &folder)
+{
+#ifdef __3DS__
+    if (folder.compare(0, 6, "sdmc:/") != 0) {
+        return false;
+    }
+    std::string path = folder;
+    while (path.size() > 6 && path.back() == '/') {
+        path.pop_back();
+    }
+    FS_Archive archive = 0;
+    if (R_FAILED(FSUSER_OpenArchive(&archive, ARCHIVE_SDMC,
+                                    fsMakePath(PATH_EMPTY, "")))) {
+        return false;
+    }
+    const SdPath sdPath(path);
+    const bool removed =
+        R_SUCCEEDED(FSUSER_DeleteDirectoryRecursively(archive, sdPath.get()));
+    FSUSER_CloseArchive(archive);
+    return removed;
+#else
+    (void)folder;
+    return false;
+#endif
+}
 
 std::vector<Entry> listEntries(const std::string &folder, bool *ok,
                                bool hidden, bool times)

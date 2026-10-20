@@ -21,6 +21,10 @@ bool readFile(const std::string &path, std::string &contents);
 // Writes through a temporary file so a failed write never truncates path.
 bool writeFile(const std::string &path, const std::string &contents);
 bool removeFile(const std::string &path);
+// Deletes a folder on the SD card and everything in it with one request to
+// the card, which walks it far faster than one path at a time. False where
+// that is not available (off the console, or outside sdmc:/) or it failed.
+bool removeFolderTree(const std::string &folder);
 bool renameFile(const std::string &from, const std::string &to);
 
 // Names of the sub-folders of folder, sorted case-insensitively. Hidden

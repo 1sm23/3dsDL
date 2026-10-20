@@ -43,6 +43,8 @@ constexpr int ActiveStepMs = 1;
 constexpr int IdleStepMs = 5;
 constexpr size_t ReadChunk = 64 * 1024;
 constexpr int ProgressEveryMs = 200;
+// How long a wait for data goes before asking whether to stop.
+constexpr int StopCheckMs = 250;
 // Finding when a file changed makes the SD card search its folder, which in
 // a folder of hundreds of files takes about a tenth of a second each. Bigger
 // folders are listed without times, and the page asks for them in batches.
@@ -121,6 +123,8 @@ using Clock = std::chrono::steady_clock;
 // Reads up to size bytes, waiting no later than deadline. Returns bytes
 // read, 0 at the end of the stream, -1 on error or timeout. It tries the
 // read first, so a busy connection costs one call per read, not two.
+// Bytes read, 0 when the other side closed, -1 on an error and -2 when
+// nothing came before deadline.
 ssize_t readSome(int socketFd, void *buffer, size_t size, Clock::time_point deadline)
 {
     while (true) {
@@ -135,7 +139,7 @@ ssize_t readSome(int socketFd, void *buffer, size_t size, Clock::time_point dead
                               deadline - Clock::now())
                               .count();
         if (left <= 0) {
-            return -1;
+            return -2;
         }
         pollfd waiting {socketFd, POLLIN, 0};
         if (waitSockets(&waiting, 1, static_cast<int>(left), ActiveStepMs) < 0) {
@@ -288,9 +292,19 @@ private:
     Clock::time_point last_;
 };
 
-class NoCancel : public fileops::Observer {
+bool stopping(const FileSharing &sharing)
+{
+    return sharing.cancelled && sharing.cancelled();
+}
+
+// Gives up a delete when the listener is stopping.
+class StopWith : public fileops::Observer {
 public:
-    bool cancelRequested() override { return false; }
+    explicit StopWith(const FileSharing &sharing) : sharing_(sharing) {}
+    bool cancelRequested() override { return stopping(sharing_); }
+
+private:
+    const FileSharing &sharing_;
 };
 
 // The folder that holds path: "sdmc:/a/b" -> "sdmc:/a", "sdmc:/a" ->
@@ -370,13 +384,14 @@ void listFolder(int client, const FileSharing &sharing,
 
 // When each of names (one per line) in local last changed, for a folder
 // listed without times.
-void sendTimes(int client, const std::string &local, const std::string &names)
+void sendTimes(int client, const FileSharing &sharing, const std::string &local,
+               const std::string &names)
 {
     const std::string base = local.back() == '/' ? local : local + "/";
     std::string json = "{\"times\":{";
     size_t start = 0;
     size_t count = 0;
-    while (start < names.size() && count < TimesPerRequest) {
+    while (start < names.size() && count < TimesPerRequest && !stopping(sharing)) {
         size_t end = names.find('\n', start);
         if (end == std::string::npos) {
             end = names.size();
@@ -397,7 +412,8 @@ void sendTimes(int client, const std::string &local, const std::string &names)
 // The CRC-32 of each of names (one per line) in local, as 8 hex digits, or
 // "" for one that cannot be read. Answers for the first names only when
 // they add up to many bytes; the page asks again for the rest.
-void sendHashes(int client, const std::string &local, const std::string &names)
+void sendHashes(int client, const FileSharing &sharing, const std::string &local,
+                const std::string &names)
 {
     const std::string base = local.back() == '/' ? local : local + "/";
     std::string json = "{\"hashes\":{";
@@ -405,7 +421,8 @@ void sendHashes(int client, const std::string &local, const std::string &names)
     uint64_t bytes = 0;
     size_t start = 0;
     bool first = true;
-    while (start < names.size() && bytes < HashBytesPerRequest) {
+    while (start < names.size() && bytes < HashBytesPerRequest &&
+           !stopping(sharing)) {
         size_t end = names.find('\n', start);
         if (end == std::string::npos) {
             end = names.size();
@@ -422,11 +439,12 @@ void sendHashes(int client, const std::string &local, const std::string &names)
             std::setvbuf(file, nullptr, _IONBF, 0);
             uLong crc = crc32(0L, Z_NULL, 0);
             size_t got = 0;
-            while ((got = std::fread(buffer.data(), 1, buffer.size(), file)) > 0) {
+            while (!stopping(sharing) &&
+                   (got = std::fread(buffer.data(), 1, buffer.size(), file)) > 0) {
                 crc = crc32(crc, buffer.data(), static_cast<uInt>(got));
                 bytes += got;
             }
-            if (!std::ferror(file)) {
+            if (!std::ferror(file) && !stopping(sharing)) {
                 char text[9];
                 std::snprintf(text, sizeof(text), "%08lx",
                               static_cast<unsigned long>(crc & 0xffffffffUL));
@@ -596,7 +614,8 @@ void sendFile(int client, const FileSharing &sharing, const std::string &from,
     std::vector<char> buffer(ReadChunk);
     uint64_t done = 0;
     while (ok && done < static_cast<uint64_t>(size)) {
-        const size_t got = std::fread(buffer.data(), 1, buffer.size(), file);
+        const size_t got =
+            stopping(sharing) ? 0 : std::fread(buffer.data(), 1, buffer.size(), file);
         if (got == 0) {
             ok = false;
             break;
@@ -734,9 +753,15 @@ void receiveFile(int client, const FileSharing &sharing,
         }
         const size_t want = static_cast<size_t>(
             std::min<uint64_t>(buffer.size() - used, total - received));
-        const ssize_t got =
-            readSome(client, buffer.data() + used, want,
-                     Clock::now() + std::chrono::milliseconds(IdleTimeoutMs));
+        // Waited for in short slices, so a stop is noticed mid-upload.
+        const Clock::time_point idle =
+            Clock::now() + std::chrono::milliseconds(IdleTimeoutMs);
+        ssize_t got = -2;
+        while (got == -2 && Clock::now() < idle && !stopping(sharing)) {
+            got = readSome(client, buffer.data() + used, want,
+                           std::min(idle, Clock::now() + std::chrono::milliseconds(
+                                                             StopCheckMs)));
+        }
         if (got <= 0) {
             connected = false;
             break;
@@ -883,13 +908,13 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
     }
     if (route == "/api/times") {
         if (mapped(remote::formValue(form, "path"), local)) {
-            sendTimes(client, local, remote::formValue(form, "names"));
+            sendTimes(client, sharing, local, remote::formValue(form, "names"));
         }
         return false;
     }
     if (route == "/api/hash") {
         if (mapped(remote::formValue(form, "path"), local)) {
-            sendHashes(client, local, remote::formValue(form, "names"));
+            sendHashes(client, sharing, local, remote::formValue(form, "names"));
         }
         return false;
     }
@@ -926,10 +951,16 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             sendJson(client, "{}"); // already gone
             return false;
         }
-        NoCancel observer;
+        // A folder goes in one call where the card can do it itself, rather
+        // than by searching its folder for every entry; the page shows no
+        // progress, so nothing is counted first.
+        if (fileops::isFolder(local) && fs::removeFolderTree(local)) {
+            sendJson(client, "{}");
+            return false;
+        }
+        StopWith observer(sharing);
         uint64_t done = 0;
-        const fileops::Result result = fileops::remove(
-            local, observer, done, fileops::measure(local).files);
+        const fileops::Result result = fileops::remove(local, observer, done, 0);
         if (result.status == fileops::Status::Ok) {
             sendJson(client, "{}");
         } else {

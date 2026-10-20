@@ -77,6 +77,9 @@ struct FileSharing {
     // place. Empty uses the destination's own folder. A small folder here
     // saves big folders a slow search for room on every upload.
     std::string stagingFolder;
+    // Asked between pieces of long work (an upload, a download, checksums,
+    // a delete): true gives it up, so the listener can stop quickly.
+    std::function<bool()> cancelled;
 };
 
 class Receiver {

@@ -576,6 +576,9 @@ void App::receiveScreen()
     if (fs::makeDirectories(storage::DataFolder)) {
         sharing.stagingFolder = storage::DataFolder;
     }
+    // Leaving Receive stops whatever request is being served, rather than
+    // waiting for an upload or a big delete to finish.
+    sharing.cancelled = [&job]() { return job.stop.load(); };
     job.receiver.shareFiles(sharing);
 
     s32 priority = 0x30;
