@@ -111,6 +111,11 @@ struct Input {
     bool tapped(const Rect &rect) const;
 };
 Input readInput();
+// Call as a screen opens. It ignores touch until it settles and the stylus
+// lifts, and fades in when id differs from the last screen's.
+void enterScreen(const std::string &id);
+// Only the touch guard, for a dialog drawn over the current screen.
+void lockTouch();
 
 // Milliseconds since 3dsDL started, for animation.
 uint64_t now();

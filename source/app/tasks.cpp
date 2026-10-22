@@ -271,6 +271,7 @@ void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
     // the time not spent drawing goes to the worker.
     constexpr unsigned FramesPerDraw = 3;
     unsigned frame = 0;
+    ui::enterScreen("progress|" + what);
     while (!job.finished) {
         if (!ui::keepRunning()) {
             job.closing = true;

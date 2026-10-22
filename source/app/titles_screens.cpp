@@ -519,7 +519,7 @@ void App::extraDataScreen()
             char id[16];
             std::snprintf(id, sizeof(id), "%08llX",
                           static_cast<unsigned long long>(extData.id));
-            float y = ui::drawTagRow(left, top + 60, 96, "ID", id);
+            float y = ui::drawTagRow(left, top + 52, 96, "ID", id);
             y = ui::drawTagRow(left, y, 96, "Software",
                                owner != nullptr ? "Installed"
                                                 : "Not installed",
@@ -527,7 +527,7 @@ void App::extraDataScreen()
                                                 : ui::color::Neutral);
             ui::drawWrapped("Delete removes what the software keeps outside "
                             "its save. The save itself stays.",
-                            left, y + 2, ui::type::Tiny, ui::color::InkSoft,
+                            left, y, ui::type::Tiny, ui::color::InkSoft,
                             ui::TopPanel.w - 36, 2);
         };
         if (!shown.empty()) {
@@ -644,7 +644,8 @@ void App::ticketsScreen()
                             top + 2, 0.62f, ui::color::InkStrong, 280);
             ui::drawText(cia::kindName(cia::kind(ticket)), left + 60, top + 30,
                          ui::type::Small, ui::color::InkSoft);
-            float y = ui::drawTagRow(left, top + 60, 96, "Title ID",
+            // Tight under the 48 px icon, so a two-line note still fits.
+            float y = ui::drawTagRow(left, top + 52, 96, "Title ID",
                                      cia::titleIdText(ticket));
             const bool isUnused = unused.count(ticket) != 0;
             y = ui::drawTagRow(left, y, 96, "Software",
@@ -655,7 +656,7 @@ void App::ticketsScreen()
                                   "brings its ticket back."
                                 : "The software will not start without its "
                                   "ticket.",
-                            left, y + 2, ui::type::Tiny,
+                            left, y, ui::type::Tiny,
                             isUnused ? ui::color::InkSoft : ui::color::Caution,
                             ui::TopPanel.w - 36, 2);
         };
@@ -792,11 +793,10 @@ void App::cleanUpScreen()
             ui::drawPanel();
             const float left = ui::TopPanel.x + 18;
             float y = ui::drawWrapped(
-                          "An install that stopped halfway leaves an "
-                          "unfinished entry behind, and the same software "
-                          "can then refuse to install again.",
+                          "A stopped install can leave an unfinished entry "
+                          "that blocks installing the software again.",
                           left, ui::TopPanel.y + 12, ui::type::Small,
-                          ui::color::Ink, ui::TopPanel.w - 36, 4) +
+                          ui::color::Ink, ui::TopPanel.w - 36, 3) +
                       10;
             y = ui::drawTagRow(left, y, 110, "Unfinished",
                                plural(pending, "install"),

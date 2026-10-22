@@ -914,7 +914,7 @@ bool App::folderOptions(const std::string &folder,
         "and notes.");
     add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort,
         "Sorts by name, size, date or type. Folders always come first.");
-    add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "Shown" : "Hidden"),
+    add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
         Action::Hidden, "Shows or hides files and folders whose names start "
                         "with a dot.");
     if (!entries.empty()) {
@@ -1688,6 +1688,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
 
         float swipeStart = -1;
         bool moved = false;
+        ui::enterScreen("picture");
         while (ui::keepRunning() && !moved) {
             const ui::Input input = ui::readInput();
             const int released = pad.update(input);
@@ -1882,6 +1883,7 @@ void App::hexViewer(const std::string &path)
         top = static_cast<uint64_t>(
             std::max<int64_t>(0, std::min<int64_t>(goal, lastTop)));
     };
+    ui::enterScreen("hex");
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         const int released = pad.update(input);
@@ -2085,6 +2087,7 @@ void App::textEditor(const std::string &path)
         saved = false;
     };
 
+    ui::enterScreen("editor");
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         const int count = static_cast<int>(document.lines.size());

@@ -266,6 +266,7 @@ void App::showReleaseNotes(const update::Release &release)
     ui::Scroller scroller;
     bool backPressed = false;
     const ui::Rect back = ui::tabRect(ui::Tab::Left);
+    ui::enterScreen("whats-new");
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         if (input.down & KEY_B) {

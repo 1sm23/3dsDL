@@ -86,6 +86,17 @@ uint64_t noticeStart = 0;
 std::function<void()> frameHook;
 void drawNotice();
 
+// A new screen fades in. Touch is ignored until the screen has been open
+// ScreenIn ms and the stylus has lifted, so a touch held from the last
+// screen does not press the control under it.
+constexpr uint64_t ScreenIn = 150;
+constexpr uint64_t FadeIn = 320;
+uint64_t touchLockStart = 0;
+bool touchLocked = false;
+uint64_t fadeStart = 0;
+bool fading = false;
+std::string lastScreen;
+
 // --- Font ----------------------------------------------------------------------
 
 void loadFontMetrics()
@@ -105,6 +116,29 @@ float advance(uint32_t codePoint)
                          C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint),
                          0, 1.0f, 1.0f);
     return glyph.xAdvance * fontScale;
+}
+
+fontGlyphPos_s glyphPos(uint32_t codePoint)
+{
+    fontGlyphPos_s glyph;
+    C2D_FontCalcGlyphPos(nullptr, &glyph,
+                         C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint),
+                         0, 1.0f, 1.0f);
+    return glyph;
+}
+
+// The x offset that centres value's ink rather than its advance width:
+// half the difference between the last glyph's right bearing and the
+// first glyph's left bearing.
+float inkOffset(const std::string &value, float scale)
+{
+    if (value.empty()) {
+        return 0;
+    }
+    const fontGlyphPos_s first = glyphPos(static_cast<unsigned char>(value.front()));
+    const fontGlyphPos_s last = glyphPos(static_cast<unsigned char>(value.back()));
+    const float trailing = last.xAdvance - (last.xOffset + last.width);
+    return (trailing - first.xOffset) / 2 * fontScale * scale * TextBoost;
 }
 
 void prepareAscii()
@@ -289,9 +323,9 @@ void rect(float x, float y, float w, float h, u32 fill)
 }
 
 // A quarter of the disc (ring < 0) or of ring n, scaled to radius, for the
-// corner whose square starts at (x, y).
+// corner whose square starts at (x, y); only rows from..to (0..1) of it.
 void cornerQuad(unsigned which, int ring, float x, float y, float radius,
-                u32 top, u32 bottom)
+                u32 top, u32 bottom, float from = 0, float to = 1)
 {
     const float half = ShapeSize / 2.0f;
     const float cellX = (ring + 1) * static_cast<float>(ShapeSize);
@@ -300,8 +334,9 @@ void cornerQuad(unsigned which, int ring, float x, float y, float radius,
     const bool lower = which == corner::BottomLeft || which == corner::BottomRight;
     const float u0 = cellX + (right ? half : 0);
     const float v0 = cellY + (lower ? half : 0);
-    atlasQuad(x, y, radius, radius, u0, v0, u0 + half, v0 + half, top, top,
-              bottom, bottom);
+    atlasQuad(x, y + radius * from, radius, radius * (to - from), u0,
+              v0 + half * from, u0 + half, v0 + half * to, top, top, bottom,
+              bottom);
 }
 
 int ringFor(float width, float radius)
@@ -347,40 +382,35 @@ void fillShape(const Rect &area, float radius, unsigned corners,
         if (y1 - y0 < 0.05f) {
             continue;
         }
-        float left = 0;
-        float right = 0;
-        if (y1 <= r + 0.01f) {
-            left = corners & corner::TopLeft ? r : 0;
-            right = corners & corner::TopRight ? r : 0;
-        } else if (y0 >= area.h - r - 0.01f) {
-            left = corners & corner::BottomLeft ? r : 0;
-            right = corners & corner::BottomRight ? r : 0;
+        const u32 c0 = colorAt(stops, count, y0 / area.h);
+        const u32 c1 = colorAt(stops, count, y1 / area.h);
+        // Corners use the same bands as the middle, so they follow every
+        // stop of the gradient.
+        unsigned leftCorner = 0;
+        unsigned rightCorner = 0;
+        float cornerY = 0;
+        if (r > 0 && y1 <= r + 0.01f) {
+            leftCorner = corners & corner::TopLeft;
+            rightCorner = corners & corner::TopRight;
+        } else if (r > 0 && y0 >= area.h - r - 0.01f) {
+            leftCorner = corners & corner::BottomLeft;
+            rightCorner = corners & corner::BottomRight;
+            cornerY = area.h - r;
+        }
+        const float from = (y0 - cornerY) / std::max(r, 0.01f);
+        const float to = (y1 - cornerY) / std::max(r, 0.01f);
+        const float left = leftCorner ? r : 0;
+        const float right = rightCorner ? r : 0;
+        if (leftCorner) {
+            cornerQuad(leftCorner, -1, area.x, area.y + cornerY, r, c0, c1,
+                       from, to);
+        }
+        if (rightCorner) {
+            cornerQuad(rightCorner, -1, area.x + area.w - r, area.y + cornerY,
+                       r, c0, c1, from, to);
         }
         solidQuad(area.x + left, area.y + y0, area.w - left - right, y1 - y0,
-                  colorAt(stops, count, y0 / area.h),
-                  colorAt(stops, count, y1 / area.h));
-    }
-    if (r <= 0) {
-        return;
-    }
-    const u32 top0 = colorAt(stops, count, 0);
-    const u32 top1 = colorAt(stops, count, r / area.h);
-    const u32 bottom0 = colorAt(stops, count, (area.h - r) / area.h);
-    const u32 bottom1 = colorAt(stops, count, 1);
-    if (corners & corner::TopLeft) {
-        cornerQuad(corner::TopLeft, -1, area.x, area.y, r, top0, top1);
-    }
-    if (corners & corner::TopRight) {
-        cornerQuad(corner::TopRight, -1, area.x + area.w - r, area.y, r, top0,
-                   top1);
-    }
-    if (corners & corner::BottomLeft) {
-        cornerQuad(corner::BottomLeft, -1, area.x, area.y + area.h - r, r,
-                   bottom0, bottom1);
-    }
-    if (corners & corner::BottomRight) {
-        cornerQuad(corner::BottomRight, -1, area.x + area.w - r,
-                   area.y + area.h - r, r, bottom0, bottom1);
+                  c0, c1);
     }
 }
 
@@ -874,6 +904,24 @@ bool Input::tapped(const Rect &area) const
     return (down & KEY_TOUCH) != 0 && area.contains(touch);
 }
 
+void lockTouch()
+{
+    touchLockStart = now();
+    touchLocked = true;
+}
+
+void enterScreen(const std::string &id)
+{
+    lockTouch();
+    // The same screen shown again (after a dialog, or a key that redraws
+    // it) does not fade.
+    if (id != lastScreen) {
+        lastScreen = id;
+        fadeStart = now();
+        fading = true;
+    }
+}
+
 Input readInput()
 {
     static touchPosition last {};
@@ -887,6 +935,16 @@ Input readInput()
         hidTouchRead(&last);
     }
     input.touch = last;
+    if (touchLocked && !(input.held & KEY_TOUCH) &&
+        now() - touchLockStart >= ScreenIn) {
+        touchLocked = false;
+    }
+    if (touchLocked) {
+        input.down &= ~KEY_TOUCH;
+        input.repeat &= ~KEY_TOUCH;
+        input.held &= ~KEY_TOUCH;
+        input.up &= ~KEY_TOUCH;
+    }
     return input;
 }
 
@@ -923,6 +981,20 @@ void beginBottom()
 
 void endFrame()
 {
+    const uint64_t age = now() - fadeStart;
+    if (fading && age >= FadeIn) {
+        fading = false;
+    }
+    if (fading) {
+        // Eases out of the plain background into the new screen.
+        const float u = 1 - static_cast<float>(age) / FadeIn;
+        const float alpha = u * u;
+        C2D_SceneBegin(bottomTarget);
+        rect(0, 0, BottomWidth, ScreenHeight, withAlpha(color::BottomB, alpha));
+        C2D_SceneBegin(topTarget);
+        rect(0, 0, TopWidth, ScreenHeight, withAlpha(color::TopB, alpha));
+        onBottom = false;
+    }
     drawNotice();
     C3D_FrameEnd(0);
 }
@@ -1608,9 +1680,14 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     fillShape({area.x, area.y + 2, area.w, area.h - 2}, 21, corners, body, 4);
 
     // Label, with the button that also does this as a white key cap.
+    // A single letter gets a 16 px circle: its ink is an even number of
+    // pixels each way, so it centres exactly.
+    const bool round = key.size() == 1;
+    const float capSize = round ? 16 : 15;
     const float keyWidth =
         key.empty() ? 0
-                    : std::max(15.0f, textWidth(key, 0.36f) + 7) + 5;
+                    : std::max(capSize, textWidth(key, 0.36f) + (round ? 7 : 11)) +
+                          5;
     // Shrink a long label so it and its key cap stay on the flat part of
     // the tab, clear of the rounded corner.
     float labelScale = type::Tab;
@@ -1624,18 +1701,22 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     const float inset = tab == Tab::Full ? 0 : 6;
     const float centre = tab == Tab::Right ? area.x + inset + (area.w - inset) / 2
                                            : area.x + (area.w - inset) / 2;
-    float x = centre - (labelWidth + keyWidth) / 2;
+    // Whole pixels, so the key cap and its letter line up exactly.
+    float x = std::round(centre - (labelWidth + keyWidth) / 2);
     const Rect line = {x, area.y + 3.5f, labelWidth + keyWidth, area.h - 3};
     if (!key.empty()) {
         const float capWidth = keyWidth - 5;
         // Centred on the same line as the label beside it.
-        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, 15};
-        fillRound(cap, key.size() == 1 ? 7.5f : 4, color::rgb(0xFFFFFF));
-        // The advance width includes the space after the letter, so the
-        // centred glyph sits left of the middle; measured on "X", it is
-        // 1.5 px left and half a pixel high.
-        drawCentered(key, {cap.x + 1.5f, cap.y + 0.5f, cap.w, cap.h}, 0.36f,
-                     color::rgb(0x6C6C6C));
+        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, capSize};
+        fillRound(cap, round ? capSize / 2 : 4, color::rgb(0xFFFFFF));
+        // Centred on the ink, as side bearings differ by letter. Raised
+        // half a pixel, and rounded to whole pixels so it stays sharp.
+        // Placed as in a 15 px cap; the 16 px circle adds its row below.
+        drawText(key,
+                 std::round(cap.x + (cap.w - textWidth(key, 0.36f)) / 2 +
+                            inkOffset(key, 0.36f)),
+                 std::round(cap.y - 0.5f + (15 - lineHeight(0.36f)) / 2 + 1),
+                 0.36f, color::rgb(0x6C6C6C));
         x += keyWidth;
     }
     drawCentered(label, {x, line.y, labelWidth, line.h}, labelScale,
@@ -1931,6 +2012,7 @@ int choose(const Dialog &dialog)
         captureBackdrop();
     }
     inDialog = true;
+    lockTouch();
     const std::vector<std::string> labels =
         dialog.buttons.empty() ? std::vector<std::string>{"OK"}
                                : dialog.buttons;
@@ -2141,6 +2223,15 @@ int nearest(const std::vector<Target> &targets, int from, u32 key)
 
 ScreenResult runScreen(const ScreenSpec &spec, int &focus)
 {
+    // Known by its layout, not its labels, which can change in place
+    // (e.g. "Check at Startup: On").
+    std::string id = "screen|" + spec.back + "|" + spec.action;
+    for (const Control &control : spec.controls) {
+        id += "|" + std::to_string(static_cast<int>(control.rect.x)) + "," +
+              std::to_string(static_cast<int>(control.rect.y)) + "," +
+              std::to_string(static_cast<int>(control.icon));
+    }
+    enterScreen(id);
     std::vector<Target> targets;
     for (size_t index = 0; index < spec.controls.size(); ++index) {
         if (spec.controls[index].enabled) {
@@ -2529,10 +2620,12 @@ namespace {
 
 ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
+    enterScreen("list|" + spec.title + "|" + spec.back + "|" + spec.action);
     constexpr float RowHeight = 25;
     constexpr float Pitch = 31;
     const bool titled = !spec.title.empty();
-    const Rect recess = {8, titled ? 21.0f : 6.0f, 304, titled ? 183.0f : 198.0f};
+    // Titled, it starts below the title's descenders.
+    const Rect recess = {8, titled ? 25.0f : 6.0f, 304, titled ? 179.0f : 198.0f};
     const Rect inner = {recess.x, recess.y + 4, recess.w, recess.h - 8};
     const int count = static_cast<int>(spec.items.size());
     const float content = count * Pitch + 2;
