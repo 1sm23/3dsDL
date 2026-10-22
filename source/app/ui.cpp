@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <ctime>
 
 namespace ui {
@@ -86,16 +87,23 @@ uint64_t noticeStart = 0;
 std::function<void()> frameHook;
 void drawNotice();
 
-// A new screen fades in. Touch is ignored until the screen has been open
-// ScreenIn ms and the stylus has lifted, so a touch held from the last
-// screen does not press the control under it.
+// A new screen fades in over the last frame of the one before, so what both
+// show stays put. Touch is ignored until the screen has been open ScreenIn
+// ms and the stylus has lifted, so a touch held from the last screen does
+// not press the control under it.
 constexpr uint64_t ScreenIn = 150;
-constexpr uint64_t FadeIn = 320;
+constexpr uint64_t FadeIn = 200;
 uint64_t touchLockStart = 0;
 bool touchLocked = false;
 uint64_t fadeStart = 0;
 bool fading = false;
 std::string lastScreen;
+// That last frame, kept as RGB8 so gradients do not band as it fades. The
+// first screen has none and fades in from the plain background.
+C3D_Tex fromTextures[2];
+bool fromReady[2] = {false, false};
+bool fromCapture = false;
+bool frameShown = false;
 
 // --- Font ----------------------------------------------------------------------
 
@@ -508,6 +516,38 @@ bool makeTexture(C3D_Tex &texture, u16 width, u16 height, GPU_TEXCOLOR format)
     return true;
 }
 
+// Copies the screen as last shown into fromTextures[index]. The framebuffer
+// and an RGB8 texture both keep pixels as blue, green, red bytes.
+bool captureFrom(int index, gfxScreen_t screen, u16 width)
+{
+    if (gfxGetScreenFormat(screen) != GSP_BGR8_OES) {
+        return false;
+    }
+    u16 fbWidth = 0;
+    u16 fbHeight = 0;
+    const uint8_t *framebuffer =
+        gfxGetFramebuffer(screen, GFX_LEFT, &fbWidth, &fbHeight);
+    if (framebuffer == nullptr || fbWidth != 240 || fbHeight != width) {
+        return false;
+    }
+    if (!fromReady[index]) {
+        if (!makeTexture(fromTextures[index], 512, 256, GPU_RGB8)) {
+            return false;
+        }
+        fromReady[index] = true;
+    }
+    uint8_t *texels = static_cast<uint8_t *>(fromTextures[index].data);
+    for (uint32_t x = 0; x < width; ++x) {
+        const uint8_t *column = framebuffer + x * 240 * 3;
+        for (uint32_t y = 0; y < 240; ++y) {
+            std::memcpy(texels + image::tiledIndex(x, y, 512) * 3,
+                        column + (239 - y) * 3, 3);
+        }
+    }
+    C3D_TexFlush(&fromTextures[index]);
+    return true;
+}
+
 void captureScreen(int index, gfxScreen_t screen, u16 width)
 {
     if (gfxGetScreenFormat(screen) != GSP_BGR8_OES) {
@@ -554,6 +594,29 @@ void drawBackdrop(bool bottom)
     } else {
         drawTopBackground();
     }
+}
+
+// A screen's plain background at alpha, over whatever is drawn.
+void drawBackground(bool bottom, float alpha)
+{
+    const u32 a = withAlpha(bottom ? color::BottomA : color::TopA, alpha);
+    const u32 b = withAlpha(bottom ? color::BottomB : color::TopB, alpha);
+    C2D_DrawRectangle(0, 0, Depth, bottom ? BottomWidth : TopWidth,
+                      ScreenHeight, a, a, b, b);
+}
+
+// The screen before, at alpha, over the new one.
+void drawFrom(int index, float alpha)
+{
+    const C2D_Image image = {&fromTextures[index], &BackdropSubs[index]};
+    C2D_ImageTint tint;
+    C2D_AlphaImageTint(&tint, alpha);
+    C2D_DrawRectSolid(0, 0, Depth, 0, 0, 0);
+    C2D_DrawImageAt(image, 0, 0, Depth, &tint);
+    // Drawn now, with citro2d's own combiner: queued past useVertexColor it
+    // would take the tint's colour, which is black.
+    C2D_Flush();
+    useVertexColor();
 }
 
 void loadAtlas()
@@ -858,6 +921,10 @@ void shutdown()
             C3D_TexDelete(&backdropTextures[index]);
             backdropReady[index] = false;
         }
+        if (fromReady[index]) {
+            C3D_TexDelete(&fromTextures[index]);
+            fromReady[index] = false;
+        }
     }
     if (atlasReady) {
         C3D_TexDelete(&atlasTexture);
@@ -917,6 +984,8 @@ void enterScreen(const std::string &id)
     // it) does not fade.
     if (id != lastScreen) {
         lastScreen = id;
+        fromCapture = frameShown && captureFrom(0, GFX_TOP, 400) &&
+                      captureFrom(1, GFX_BOTTOM, 320);
         fadeStart = now();
         fading = true;
     }
@@ -986,17 +1055,25 @@ void endFrame()
         fading = false;
     }
     if (fading) {
-        // Eases out of the plain background into the new screen.
-        const float u = 1 - static_cast<float>(age) / FadeIn;
-        const float alpha = u * u;
-        C2D_SceneBegin(bottomTarget);
-        rect(0, 0, BottomWidth, ScreenHeight, withAlpha(color::BottomB, alpha));
-        C2D_SceneBegin(topTarget);
-        rect(0, 0, TopWidth, ScreenHeight, withAlpha(color::TopB, alpha));
+        // The last screen fades to the plain background in the first half
+        // and the new one comes up from it in the second. The first screen
+        // has nothing to fade out, so it takes the whole time coming up.
+        const float t = static_cast<float>(age) / FadeIn;
+        const bool leaving = fromCapture && t < 0.5f;
+        const float p = leaving ? t * 2 : fromCapture ? t * 2 - 1 : t;
+        const float alpha = 1 - p * p * (3 - 2 * p);
+        for (int index = 1; index >= 0; --index) {
+            C2D_SceneBegin(index == 1 ? bottomTarget : topTarget);
+            drawBackground(index == 1, leaving ? 1 : alpha);
+            if (leaving) {
+                drawFrom(index, alpha);
+            }
+        }
         onBottom = false;
     }
     drawNotice();
     C3D_FrameEnd(0);
+    frameShown = true;
 }
 
 void drawTopBackground()
@@ -1809,6 +1886,9 @@ void drawSpinner(float centerX, float centerY, float radius)
 
 void captureBackdrop()
 {
+    // A dialog opened mid-fade would otherwise fade in too, over a backdrop
+    // caught half faded.
+    fading = false;
     captureScreen(0, GFX_TOP, 400);
     captureScreen(1, GFX_BOTTOM, 320);
 }

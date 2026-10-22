@@ -267,7 +267,7 @@ App::Action App::home()
         spec.controls.push_back(control);
     };
     // 30 tall, so the icons get their full 20 px.
-    add({16, 6, 140, 30}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
+    add({16, 6, 140, 30}, "Settings", ui::Icon::Gear, ui::color::IconGrey,
         false);
     add({164, 6, 140, 30}, "Queue", ui::Icon::Download, ui::color::IconGreen,
         false);
@@ -1683,7 +1683,7 @@ void App::settingsScreen()
     };
     const auto filesAndHistory = [&]() {
         settingsList(
-            "Other Settings", ui::Icon::Wrench, ui::color::IconGrey,
+            "Other Settings", ui::Icon::Gear, ui::color::IconGrey,
             [&]() {
                 static const char *const Sorts[] = {"Name", "Size", "Date",
                                                     "Type"};
@@ -1782,10 +1782,10 @@ void App::settingsScreen()
             ui::color::IconOrange, true);
         add({16, 127, 140, 76}, "Console Clock", ui::Icon::Clock,
             ui::color::IconBlue, true);
-        add({164, 127, 140, 76}, "Other Settings", ui::Icon::Wrench,
+        add({164, 127, 140, 76}, "Other Settings", ui::Icon::Gear,
             ui::color::IconGrey, true);
         spec.drawTop = [&]() {
-            ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
+            ui::drawTopChrome("Settings", ui::Icon::Gear, ui::color::IconGrey);
             ui::drawPanel();
             spec.controls[1].badge = updateAvailable_ ? "New" : "";
             const float left = ui::TopPanel.x + 18;

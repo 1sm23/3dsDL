@@ -355,7 +355,7 @@ int menu(const std::vector<MenuItem> &items,
 // picked index, or -1 for Back.
 int chooseOption(const std::string &title, const std::string &description,
                  const std::vector<std::string> &options, int current,
-                 Icon icon = Icon::Wrench, u32 iconColor = color::IconGrey);
+                 Icon icon = Icon::Gear, u32 iconColor = color::IconGrey);
 
 // --- Lists ---------------------------------------------------------------------
 

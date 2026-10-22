@@ -13,7 +13,7 @@ enum class Icon : uint8_t {
     Globe,
     History,
     Folder,
-    Wrench,
+    Gear,
     Download,
     Package,
     Picture,
