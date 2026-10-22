@@ -690,6 +690,7 @@ void App::receiveScreen()
         }
     };
 
+    ui::enterScreen("receive");
     while (ui::keepRunning() && !quit_) {
         if (namedPage.empty() && job.named.load()) {
             namedPage = "http://" + job.mdns.hostname() + port;
@@ -814,6 +815,7 @@ void App::receiveScreen()
                        received.from;
             }
             net::finishReceived(received);
+            ui::enterScreen("receive");
             continue;
         }
 
@@ -861,20 +863,30 @@ void App::receiveScreen()
         const float left = qrX + qrSide + 2 * px + 12;
         const float width = ui::TopPanel.x + ui::TopPanel.w - 12 - left;
         // The addresses themselves are large on the touch screen.
-        ui::drawWrapped("Scan this with a phone on the same Wi-Fi, or open "
-                        "the address below, to send links and manage files.",
+        // Four lines at most, to leave room for the FBI address below.
+        ui::drawWrapped("Scan this with a phone on the same Wi-Fi to send "
+                        "links and files.",
                         left, ui::TopPanel.y + 12, ui::type::Small,
-                        ui::color::Ink, width, 5);
-        // One line that scrolls, as the column is too narrow for all of it.
-        ui::drawMarquee(job.receiver.fbiPort() != 0
-                            ? "FBI's tools (servefiles.py, Boop): " + address +
-                                  ", port " +
-                                  std::to_string(job.receiver.fbiPort()) + "."
-                            : "FBI's tools cannot connect: port 5000 is busy.",
-                        left,
-                        ui::TopPanel.y + ui::TopPanel.h - 10 -
-                            ui::lineHeight(ui::type::Tiny),
-                        ui::type::Tiny, ui::color::InkSoft, width);
+                        ui::color::Ink, width, 4);
+        // The address on a line of its own, so it shows whole instead of
+        // scrolling past in a long sentence.
+        const float bottom = ui::TopPanel.y + ui::TopPanel.h - 10;
+        if (job.receiver.fbiPort() != 0) {
+            // Small enough that "192.168.185.97:5000" fits the column.
+            constexpr float AddressScale = 0.48f;
+            const float addressY = bottom - ui::lineHeight(AddressScale);
+            ui::drawMarquee("FBI's tools (servefiles.py, Boop):", left,
+                            addressY - ui::lineHeight(ui::type::Tiny),
+                            ui::type::Tiny, ui::color::InkSoft, width);
+            ui::drawMarquee(address + ":" +
+                                std::to_string(job.receiver.fbiPort()),
+                            left, addressY, AddressScale, ui::color::Ink,
+                            width);
+        } else {
+            ui::drawMarquee("FBI's tools cannot connect: port 5000 is busy.",
+                            left, bottom - ui::lineHeight(ui::type::Tiny),
+                            ui::type::Tiny, ui::color::InkSoft, width);
+        }
 
         ui::beginBottom();
         const ui::Rect panel = {13, 12, 294, 136};

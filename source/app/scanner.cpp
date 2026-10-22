@@ -377,6 +377,7 @@ std::string scan(bool *typeInstead)
     u64 noticeUntil = 0;
     std::string found;
 
+    ui::enterScreen("scanner");
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         if ((input.down & (KEY_B | KEY_START)) ||

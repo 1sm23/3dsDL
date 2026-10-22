@@ -263,12 +263,13 @@ App::Action App::home()
         control.icon = icon;
         control.iconColor = iconColor;
         control.tile = tile;
-        control.scale = ui::type::Small + 0.06f;
+        control.scale = ui::type::Small;
         spec.controls.push_back(control);
     };
-    add({16, 6, 140, 26}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
+    // 30 tall, so the icons get their full 20 px.
+    add({16, 6, 140, 30}, "Settings", ui::Icon::Wrench, ui::color::IconGrey,
         false);
-    add({164, 6, 140, 26}, "Queue", ui::Icon::Download, ui::color::IconGreen,
+    add({164, 6, 140, 30}, "Queue", ui::Icon::Download, ui::color::IconGreen,
         false);
     if (!queue_.empty()) {
         spec.controls.back().badge = std::to_string(queue_.size());
