@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Snapshots the thumbnail in index.html and writes a YouTube-ready JPG
-# (1280 x 720, well under 2 MB) to renders/thumbnails/.
+# (1280 x 720, well under 2 MB) to renders/thumbnails/thumbnail.jpg.
 set -euo pipefail
 cd "$(dirname "$0")"
 rm -rf snapshots

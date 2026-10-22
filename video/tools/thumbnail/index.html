@@ -4,47 +4,64 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1280, height=720" />
     <title>3dsDL thumbnails</title>
-    <!-- The YouTube thumbnail, 1280 x 720. make.sh snapshots it and writes
-         the JPG. The console is a still of the film's white console
-         (tools/console-blender/still.py, cropped to the console). -->
+    <!-- The YouTube thumbnail, 1280 x 720; make.sh writes the JPG. A split
+         screen sells "5x faster 3DS downloads": FBI and its icon crawling
+         at ~110 KiB/s, the white console on 3dsDL's own Downloading screen
+         at 600 KiB/s (the film's measured figures), a 5x badge on the seam.
+         Nothing important sits in the bottom right, under YouTube's duration.
+         The console is tools/console-blender/still.py at azimuth 22 with
+         SCREEN_TOP/SCREEN_BOTTOM set to the engine's download screens. -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
       @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
-      html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #f2e9a3; }
+      html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #071a2c; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
-      .v { position: absolute; inset: 0; overflow: hidden; font-family: "M PLUS Rounded 1c", sans-serif;
-        background: radial-gradient(ellipse 70% 80% at 72% 55%, #d7f0f2 0%, rgba(215, 240, 242, 0) 60%),
-                    linear-gradient(180deg, #f8f2cc 0%, #f2e9a3 100%); }
-      .dots { position: absolute; inset: 0; background-image: radial-gradient(#b0a66e 1.4px, transparent 1.6px); background-size: 22px 22px; opacity: 0.18; }
-      .console { position: absolute; width: 720px; height: 543px; filter: drop-shadow(0 26px 30px rgba(60, 50, 20, 0.28)); }
-      .headline { position: absolute; left: 56px; font-weight: 800; color: #2a2722; line-height: 0.92; letter-spacing: -0.01em;
-        text-shadow: 0 4px 0 rgba(255, 253, 240, 0.9), 0 10px 24px rgba(70, 60, 20, 0.25); white-space: nowrap; }
-      .blue { color: #1179a6; }
-      .icon { position: absolute; width: 120px; height: 120px; border-radius: 28px; box-shadow: 0 6px 14px rgba(70, 60, 20, 0.2); }
-      .ring { position: absolute; box-sizing: border-box; border: 7px solid #3cdc78; border-radius: 38px; box-shadow: 0 0 18px rgba(160, 250, 160, 0.9); }
-      .pill { position: absolute; left: 60px; padding: 10px 26px; border-radius: 999px; background: #17799f; color: #fff;
-        font-weight: 800; font-size: 34px; box-shadow: 0 8px 18px rgba(23, 121, 159, 0.35); white-space: nowrap; }
-      .qr { position: absolute; width: 190px; height: 190px; border-radius: 22px; background: #fff; display: flex; align-items: center;
-        justify-content: center; box-shadow: 0 16px 30px rgba(70, 60, 20, 0.28); transform: rotate(-8deg); }
-      .qr img { width: 160px; height: 160px; }
-      .arrow { position: absolute; }
+      .v { position: absolute; inset: 0; overflow: hidden; font-family: "M PLUS Rounded 1c", sans-serif; }
+      .night { background: radial-gradient(ellipse 55% 70% at 72% 50%, #3aa6e0 0%, #1a5f93 38%, #0a2944 70%, #061424 100%); }
+      .vignette { position: absolute; inset: 0; box-shadow: inset 0 0 160px 40px rgba(0, 0, 0, 0.55); pointer-events: none; }
+      .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.55) 1.4px, transparent 1.7px); background-size: 26px 26px; opacity: 0.1; }
+      .console { position: absolute; filter: drop-shadow(0 34px 38px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 40px rgba(140, 220, 255, 0.35)); }
+      .t { position: absolute; font-weight: 800; line-height: 0.86; letter-spacing: -0.02em; white-space: nowrap; }
+      .x-white { color: #fff; -webkit-text-stroke: 8px #0b1e30; paint-order: stroke fill;
+        text-shadow: 0 3px 0 #c9d8e4, 0 6px 0 #a8bccb, 0 9px 0 #8aa0b1, 0 12px 0 #0b1e30, 0 22px 30px rgba(0, 0, 0, 0.5); }
+      .x-green { color: #43e07f; -webkit-text-stroke: 8px #062214; paint-order: stroke fill;
+        text-shadow: 0 3px 0 #2aa85c, 0 6px 0 #1f8a4a, 0 9px 0 #062214, 0 20px 28px rgba(0, 0, 0, 0.5); }
+      .x-grey { color: #9aa3ab; -webkit-text-stroke: 8px #1c1416; paint-order: stroke fill; text-shadow: 0 8px 0 #1c1416, 0 18px 26px rgba(0, 0, 0, 0.5); }
+      .track { position: absolute; height: 66px; border-radius: 20px; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.12); overflow: hidden; }
+      .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 20px; }
+      .fill.red { background: linear-gradient(180deg, #ff6b5b, #c9302c); }
+      .fill::after { content: ""; position: absolute; left: 10px; right: 10px; top: 7px; height: 14px; border-radius: 8px; background: rgba(255, 255, 255, 0.45); }
+      svg { position: absolute; overflow: visible; }
     </style>
   </head>
   <body>
     <div id="root" data-composition-id="thumbs" data-start="0" data-duration="1" data-width="1280" data-height="720">
-      <div id="vc" class="v clip" data-start="0" data-duration="1" data-track-index="0">
+
+      <!-- B: versus. A split screen, the 5x badge on the seam. -->
+      <div id="vb" class="v night clip" data-start="0" data-duration="1" data-track-index="0">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 90% at 20% 50%, #5a2a2d 0%, #2a1416 70%);clip-path:polygon(0 0, 47% 0, 37% 100%, 0 100%)"></div>
         <div class="dots"></div>
-        <img class="console" src="assets/console-white-crop.png" style="left:560px;top:105px;width:720px;height:530px" alt="" />
-        <div class="ring" style="left:54px;top:98px;width:152px;height:152px"></div>
-        <img class="icon" src="assets/icon.png" style="left:70px;top:114px" alt="" />
-        <div class="headline" style="top:285px;font-size:150px">3ds<span class="blue">DL</span></div>
-        <div class="pill" style="top:480px">The homebrew downloader</div>
+        <div class="t x-white" style="left:0;right:0;top:26px;text-align:center;font-size:56px">3DS DOWNLOAD SPEED</div>
+        <img src="assets/fbi-icon.png" style="position:absolute;left:58px;top:150px;width:144px;height:144px;image-rendering:pixelated;border-radius:14px;box-shadow:0 12px 26px rgba(0,0,0,0.5);filter:saturate(0.8)" alt="" />
+        <div class="t x-grey" style="left:222px;top:162px;font-size:128px">FBI</div>
+        <div class="t" style="left:60px;top:350px;font-size:58px;color:#ff7a6b;text-shadow:0 4px 0 #2a1416">110 KiB/s</div>
+        <div class="track" style="left:60px;top:440px;width:330px;height:46px"><div class="fill red" style="width:19%"></div></div>
+        <img class="console" src="assets/console-dl-22.png" style="left:640px;top:150px;width:600px" alt="" />
+        <img src="assets/icon.png" style="position:absolute;left:600px;top:588px;width:92px;height:92px;border-radius:24px;box-shadow:0 0 0 6px #3cdc78,0 0 24px rgba(120,255,170,0.9)" alt="" />
+        <div class="t x-green" style="left:714px;top:600px;font-size:64px">600 KiB/s</div>
+        <svg style="left:400px;top:230px" width="300" height="300" viewBox="-150 -150 300 300">
+          <polygon fill="#ffd23f" stroke="#1b1206" stroke-width="8" stroke-linejoin="round"
+            points="0,-140 31,-76 102,-102 81,-31 140,0 81,31 102,102 31,76 0,140 -31,76 -102,102 -81,31 -140,0 -81,-31 -102,-102 -31,-76" />
+          <text x="0" y="34" text-anchor="middle" font-family="M PLUS Rounded 1c" font-weight="800" font-size="104" fill="#1b1206" transform="rotate(-8)">5×</text>
+        </svg>
+        <div class="vignette"></div>
       </div>
+
     </div>
     <script>
-      const tl = gsap.timeline({ paused: true });
-      window.__timelines["thumbs"] = tl;
+      window.__timelines = window.__timelines || {};
+      window.__timelines["thumbs"] = gsap.timeline({ paused: true });
     </script>
   </body>
 </html>
