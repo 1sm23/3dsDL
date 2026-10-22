@@ -1437,14 +1437,40 @@ void App::installTicketFile(const std::string &path)
 
 namespace {
 
+// The title Luma3DS will swap for homebrew once 3dsDL closes: the Homebrew
+// Launcher Loader unless Rosalina's "Switch the hb. title" picked another,
+// such as Download Play. Luma keeps it in its config page, readable by
+// every process (luma_shared_config.h, "selected_hbldr_3dsx_tid").
+uint64_t homebrewTitle()
+{
+    return *reinterpret_cast<volatile const u64 *>(OS_SHAREDCFG_VADDR + 0x808);
+}
+
 // Asks Luma3DS's homebrew loader to start path once 3dsDL closes, the way
 // the Homebrew Launcher starts what it lists.
 bool startHomebrew(const std::string &path, std::string &error)
 {
+    // A global port, as the Homebrew Launcher opens it. Asking srv for it
+    // waits forever, since Luma never registers it there.
     Handle loader = 0;
-    if (R_FAILED(srvGetServiceHandle(&loader, "hb:ldr"))) {
+    if (R_FAILED(svcConnectToPort(&loader, "hb:ldr"))) {
         error = "Starting homebrew needs Luma3DS, and its homebrew loader "
                 "did not answer.";
+        return false;
+    }
+    // Under the Homebrew Launcher this app is the loader's own title, which
+    // loads the target when it starts again. A CIA jumps to that title, and
+    // libctru ignores a failed jump, which leaves 3dsDL hung on its last
+    // frame, so it has to be installed.
+    const uint64_t title = envIsHomebrew() ? 0 : homebrewTitle();
+    uint16_t version = 0;
+    if (!envIsHomebrew() &&
+        (title == 0 || !installer::installedVersion(title, version))) {
+        svcCloseHandle(loader);
+        error = "Luma3DS starts homebrew in place of " +
+                cia::titleIdText(title) +
+                ", which is not installed. Open the Homebrew Launcher "
+                "and start it from there.";
         return false;
     }
     // The loader takes the path inside the SD card, without "sdmc:".
@@ -1478,12 +1504,10 @@ bool startHomebrew(const std::string &path, std::string &error)
         error = "The homebrew loader did not take " + basename(path) + ".";
         return false;
     }
-    // Under the Homebrew Launcher this app is the loader's own title, which
-    // loads the target when it starts again. A CIA hands over to that title.
     if (envIsHomebrew()) {
         aptSetChainloaderToSelf();
     } else {
-        aptSetChainloader(0x000400000D921E00ULL, MEDIATYPE_SD);
+        aptSetChainloader(title, installer::destination(title));
     }
     return true;
 }
