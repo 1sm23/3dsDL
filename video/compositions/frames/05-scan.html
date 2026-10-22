@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Scan: the camera finds a QR code, Download, four connections. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+      </style>
+
+      <div id="root" data-composition-id="s05-scan" data-width="1920" data-height="1080">
+        <div id="s05-scan-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="sc-top" class="screen-card " style="left:760px;top:96px;width:1000px;height:600px"><video id="sc-top-v" src="assets/footage/qrScan-top.mp4" muted playsinline data-start="0" data-duration="8" data-media-start="0.8" data-track-index="1"></video></div>
+          <div id="sc-bot" class="screen-card " style="left:1330px;top:650px;width:520px;height:390px"><video id="sc-bot-v" src="assets/footage/qrScan-bottom.mp4" muted playsinline data-start="0" data-duration="8" data-media-start="0.8" data-track-index="1"></video></div>
+          <div id="sc-doodle" class="doodle" style="left:1080px;top:22px"><div id="sc-dt">4 connections at once!</div></div>
+          <svg id="sc-arrow" class="doodle" style="left:1500px;top:70px" width="220" height="280" viewBox="0 0 220 280"><path id="sc-a1" d="M60 6 C 130 40, 150 140, 120 236"/><path id="sc-a2" d="M96 214 L 120 238 L 140 210"/></svg>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(".screen-card", { y: 70, scale: 0.96, opacity: 0, filter: "blur(8px)" },
+          { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.1 }, 0.03);
+        tl.to(".screen-card", { y: "-=10", duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.3 }, 1.0);
+
+        tl.fromTo("#sc-dt", { opacity: 0, rotation: -7, y: 12 }, { opacity: 1, rotation: -3, y: 0, duration: 0.35, ease: "back.out(2)" }, 6.25);
+        tl.fromTo("#sc-a1", { strokeDasharray: 300, strokeDashoffset: 300 }, { strokeDashoffset: 0, duration: 0.45, ease: "power2.out" }, 6.4);
+        tl.fromTo("#sc-a2", { strokeDasharray: 80, strokeDashoffset: 80 }, { strokeDashoffset: 0, duration: 0.2, ease: "power2.out" }, 6.8);
+        tl.to("#sc-doodle, #sc-arrow", { opacity: 0, duration: 0.3 }, 7.55);
+        tl.to(".screen-card", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 7.66);
+        window.__timelines["s05-scan"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

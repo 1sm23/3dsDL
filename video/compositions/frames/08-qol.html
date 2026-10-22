@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- The little things: six moving screens on the beat, a tag each. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        .q-cell { position: absolute; width: 370px; height: 280px; }
+        .q-cell .screen-card { border-width: 6px; border-radius: 20px; }
+        .q-tag { position: absolute; left: 14px; top: 200px; font-size: 26px; box-shadow: 0 8px 16px rgba(70, 60, 20, 0.2); }
+
+      </style>
+
+      <div id="root" data-composition-id="s08-qol" data-width="1920" data-height="1080">
+        <div id="s08-qol-stage" class="clip" data-layout-allow-overflow>
+
+          <div class="q-cell" id="q-cell0" style="left:720px;top:250px">
+            <div id="q-c0" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/qolQueue-top-last.jpg" alt="" /><video id="q-c0-v" src="assets/footage/qolQueue-top.mp4" muted playsinline data-start="0.3" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Download Queue</div>
+          </div>
+          <div class="q-cell" id="q-cell1" style="left:1100px;top:250px">
+            <div id="q-c1" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/qolResume-top-last.jpg" alt="" /><video id="q-c1-v" src="assets/footage/qolResume-top.mp4" muted playsinline data-start="0.75" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Resume failed downloads</div>
+          </div>
+          <div class="q-cell" id="q-cell2" style="left:1480px;top:250px">
+            <div id="q-c2" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/moreUpdates-top-last.jpg" alt="" /><video id="q-c2-v" src="assets/footage/moreUpdates-top.mp4" muted playsinline data-start="1.2" data-duration="2.75" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Updates itself</div>
+          </div>
+          <div class="q-cell" id="q-cell3" style="left:720px;top:620px">
+            <div id="q-c3" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/moreClock-top-last.jpg" alt="" /><video id="q-c3-v" src="assets/footage/moreClock-top.mp4" muted playsinline data-start="1.65" data-duration="2.3" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Fixes the clock</div>
+          </div>
+          <div class="q-cell" id="q-cell4" style="left:1100px;top:620px">
+            <div id="q-c4" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/qolZip-top-last.jpg" alt="" /><video id="q-c4-v" src="assets/footage/qolZip-top.mp4" muted playsinline data-start="2.1" data-duration="1.85" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Extract ZIPs</div>
+          </div>
+          <div class="q-cell" id="q-cell5" style="left:1480px;top:620px">
+            <div id="q-c5" class="screen-card " style="left:0px;top:0px;width:370px;height:222px"><img src="assets/footage/posters/qolHttps-top-last.jpg" alt="" /><video id="q-c5-v" src="assets/footage/qolHttps-top.mp4" muted playsinline data-start="2.55" data-duration="1.4" data-media-start="0" data-track-index="1"></video></div>
+            <div class="tag q-tag">Verified HTTPS</div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo(".q-cell", { y: 70, scale: 0.85, opacity: 0, rotation: (i) => (i % 2 ? 3 : -3) },
+          { y: 0, scale: 1, opacity: 1, rotation: 0, duration: 0.55, ease: "back.out(1.7)", stagger: 0.45 }, 0.3);
+        tl.fromTo(".q-tag", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.4)", stagger: 0.45 }, 0.5);
+        tl.to(".q-cell", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 3.66);
+        window.__timelines["s08-qol"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

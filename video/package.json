@@ -1,0 +1,16 @@
+{
+  "name": "3dsdl-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "python3 tools/film/first-build.py",
+    "score": "node tools/score/build.mjs",
+    "mix": "./tools/music/make-mix.sh",
+    "clips": "./tools/screen-clips/render-clips.sh",
+    "console": "./tools/console-blender/render-console.sh",
+    "dev": "npx --yes hyperframes@0.8.145 preview",
+    "check": "npx --yes hyperframes@0.8.145 check",
+    "render": "./tools/render-4k.sh",
+    "thumbnail": "./tools/thumbnail/make.sh"
+  }
+}

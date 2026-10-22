@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- End card: icon, wordmark, the line, the real install QR with the ring on it. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #e-icon { position: absolute; left: 160px; top: 150px; width: 170px; height: 170px; border-radius: 40px;
+          box-shadow: 0 24px 50px rgba(70, 60, 20, 0.24); }
+        #e-word { position: absolute; left: 150px; top: 340px; display: flex; font-size: 150px; }
+        #e-word span { display: block; }
+        #e-line { position: absolute; left: 160px; top: 540px; }
+        #e-line .t-story { font-size: 70px; }
+        #e-url { position: absolute; left: 160px; top: 760px; font-size: 46px; color: #17799f; }
+        #e-tags { position: absolute; left: 160px; top: 840px; display: flex; gap: 14px; }
+        #e-qr { position: absolute; left: 1180px; top: 230px; width: 480px; height: 480px; border-radius: 36px; background: #fff;
+          box-shadow: 0 34px 70px rgba(70, 60, 20, 0.26); display: flex; align-items: center; justify-content: center; }
+        #e-qr img { width: 400px; height: 400px; }
+        #e-cap { position: absolute; left: 1000px; width: 840px; top: 752px; text-align: center; font-size: 34px; }
+        #e-console { position: absolute; inset: 0; }
+        #e-console video { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+        #e-credit { position: absolute; left: 0; right: 0; top: 1028px; text-align: center; font-size: 14px; letter-spacing: 0.01em; color: #716a52; }
+
+      </style>
+
+      <div id="root" data-composition-id="s15-end" data-width="1920" data-height="1080">
+        <div id="s15-end-stage" class="clip" data-layout-allow-overflow>
+
+          <img id="e-icon" src="assets/brand/icon-1024.png" alt="" />
+          <div id="e-word" class="t-hero"><span>3</span><span>d</span><span>s</span><span class="blue">D</span><span class="blue">L</span></div>
+          <div id="e-line"><div class="t-story"><span class="mask"><span class="w">Scan</span></span> <span class="mask"><span class="w">it</span></span> <span class="mask"><span class="w">in</span></span> <span class="mask"><span class="w">FBI.</span></span></div><div class="t-story blue"><span class="mask"><span class="w">One</span></span> <span class="mask"><span class="w">last</span></span> <span class="mask"><span class="w">time.</span></span></div></div>
+          <div id="e-url" class="t-code">ankush.one/3dsDL</div>
+          <div id="e-tags"><div class="tag good">Free</div><div class="tag">Open source</div><div class="tag">GPLv3</div></div>
+          <div id="e-qr"><img src="assets/qr/install-cia.svg" alt="" /></div>
+          <div id="e-cap" class="t-line">In FBI: Remote Install, then Scan QR Code</div>
+          <div id="e-console"><video id="e-console-v" src="assets/footage/console-close.webm" muted playsinline data-start="5.4" data-duration="2.6" data-media-start="0" data-track-index="1"></video></div>
+          <div id="e-credit" class="t-small">3DS photo by PantheraLeo1359531 (CC BY 4.0). 3D model "New Nintendo 3DS" by Geng4d. Music: "Home Menu" and "Software Download" (Nintendo eShop) from the Nintendo 3DS system, © Nintendo. Not affiliated with Nintendo.</div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#e-icon", { scale: 0, rotation: -12 }, { scale: 1, rotation: 0, duration: 0.7, ease: "back.out(2.2)" }, 0.1);
+        tl.fromTo("#e-word span", { y: 40, opacity: 0, filter: "blur(10px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.3);
+        tl.fromTo("#e-qr", { y: 60, scale: 0.96, opacity: 0, filter: "blur(8px)" }, { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out" }, 0.15);
+        tl.fromTo("#e-line .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.9);
+        tl.fromTo("#e-cap", { opacity: 0, y: 18, filter: "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 1.4);
+        tl.fromTo("#e-url", { opacity: 0, y: 18, filter: "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 1.8);
+        tl.fromTo("#e-tags .tag", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.4)", stagger: 0.1 }, 2.1);
+        tl.fromTo("#e-credit", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 2.6);
+        tl.to("#e-qr", { y: -10, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 1 }, 1.1);
+        tl.to("#e-icon, #e-word, #e-line, #e-url, #e-tags, #e-qr, #e-cap", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.34, ease: "power2.in", stagger: 0.02 }, 5.0);
+        tl.fromTo("#e-console", { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power2.out" }, 5.5);
+        window.__timelines["s15-end"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Install: prompt, progress, Installed, Launch. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+      </style>
+
+      <div id="root" data-composition-id="s07-install" data-width="1920" data-height="1080">
+        <div id="s07-install-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="in-bot" class="screen-card " style="left:740px;top:100px;width:720px;height:540px"><video id="in-bot-v" src="assets/footage/install-bottom.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="1.2" data-track-index="1"></video></div>
+          <div id="in-top" class="screen-card " style="left:1240px;top:610px;width:600px;height:360px"><video id="in-top-v" src="assets/footage/install-top.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="1.2" data-track-index="1"></video></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(".screen-card", { y: 70, scale: 0.96, opacity: 0, filter: "blur(8px)" },
+          { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.1 }, 0.03);
+        tl.to(".screen-card", { y: "-=10", duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.3 }, 1.0);
+
+        tl.to(".screen-card", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 3.66);
+        window.__timelines["s07-install"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

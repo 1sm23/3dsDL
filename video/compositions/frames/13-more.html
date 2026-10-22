@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- A labelled grid of moving screens: History, Tickets, Hex view, SHA-256, Settings, Report an issue. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #mo-head { position: absolute; left: 110px; top: 350px; width: 580px; font-size: 112px; }
+        #mo-sub { position: absolute; left: 114px; top: 625px; width: 500px; font-size: 34px; line-height: 1.3; }
+        #mo-wall { position: absolute; left: 735px; top: 205px; width: 1160px; height: 700px; perspective: 2200px; }
+        #mo-plane { position: absolute; inset: 0; transform-style: preserve-3d; transform-origin: 30% 50%; }
+        .mo-cell { position: absolute; width: 360px; height: 290px; }
+        .mo-card { border-width: 6px; border-radius: 20px; }
+        .mo-tag { position: absolute; left: 14px; top: 196px; font-size: 28px; box-shadow: 0 8px 16px rgba(70, 60, 20, 0.2); }
+
+      </style>
+
+      <div id="root" data-composition-id="s13-more" data-width="1920" data-height="1080">
+        <div id="s13-more-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="mo-head" class="t-chapter"><span class="mask"><span class="w">And</span></span> <span class="mask"><span class="w">a</span></span> <span class="mask"><span class="w">lot</span></span> <span class="blue"><span class="mask"><span class="w">more.</span></span></span></div>
+          <div id="mo-sub" class="t-line">History, tickets, checksums and the tools you reach for.</div>
+          <div id="mo-wall"><div id="mo-plane">
+            <div class="mo-cell" id="mo-cell0" style="left:0px;top:0px">
+              <div id="mo-c0" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/moreHistory-top-last.jpg" alt="" /><video id="mo-c0-v" src="assets/footage/moreHistory-top.mp4" muted playsinline data-start="0.25" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+              <div class="tag mo-tag">History</div>
+            </div>
+            <div class="mo-cell" id="mo-cell1" style="left:394px;top:44px">
+              <div id="mo-c1" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/titles-tickets-top.jpg" alt="" /><video id="mo-c1-v" src="assets/footage/titles-top.mp4" muted playsinline data-start="0.32" data-duration="1.4" data-media-start="5.3" data-track-index="1"></video></div>
+              <div class="tag mo-tag">Tickets & seeds</div>
+            </div>
+            <div class="mo-cell" id="mo-cell2" style="left:788px;top:0px">
+              <div id="mo-c2" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/moreHex-top-last.jpg" alt="" /><video id="mo-c2-v" src="assets/footage/moreHex-top.mp4" muted playsinline data-start="0.39" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+              <div class="tag mo-tag">Hex view</div>
+            </div>
+            <div class="mo-cell" id="mo-cell3" style="left:0px;top:312px">
+              <div id="mo-c3" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/moreSha-top-last.jpg" alt="" /><video id="mo-c3-v" src="assets/footage/moreSha-top.mp4" muted playsinline data-start="0.46" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+              <div class="tag mo-tag">SHA-256 checks</div>
+            </div>
+            <div class="mo-cell" id="mo-cell4" style="left:394px;top:356px">
+              <div id="mo-c4" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/moreSettings-top-last.jpg" alt="" /><video id="mo-c4-v" src="assets/footage/moreSettings-top.mp4" muted playsinline data-start="0.53" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+              <div class="tag mo-tag">Settings</div>
+            </div>
+            <div class="mo-cell" id="mo-cell5" style="left:788px;top:312px">
+              <div id="mo-c5" class="screen-card mo-card" style="left:0px;top:0px;width:360px;height:216px"><img src="assets/footage/posters/moreReport-top-last.jpg" alt="" /><video id="mo-c5-v" src="assets/footage/moreReport-top.mp4" muted playsinline data-start="0.6" data-duration="3.0" data-media-start="0" data-track-index="1"></video></div>
+              <div class="tag mo-tag">Report an issue</div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#mo-head .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.1);
+        tl.fromTo("#mo-sub", { opacity: 0, y: 18, filter: "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8, ease: "expo.out" }, 0.55);
+        tl.fromTo("#mo-plane", { rotationY: -12, rotationX: 5 }, { rotationY: -6, rotationX: 3, duration: 4, ease: "sine.inOut" }, 0);
+        tl.fromTo(".mo-cell", { y: 60, opacity: 0, filter: "blur(8px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.8, ease: "expo.out", stagger: 0.07 }, 0.15);
+        tl.to(".mo-cell", { y: "-=10", duration: 1.5, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.15 }, 1.0);
+        tl.to("#mo-head, #mo-sub, #mo-wall", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 3.66);
+        window.__timelines["s13-more"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Speed: three of the app's progress bars, measured figures, footnote. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #f-head { position: absolute; left: 760px; top: 96px; width: 1100px; font-size: 84px; }
+        .f-lane { position: absolute; left: 760px; width: 1080px; height: 150px; }
+        .f-name { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 46px; color: #615a4b; }
+        .f-name .fbi { color: #756e60; }
+        .f-sub { font-weight: 700; font-size: 34px; color: #8c8466; }
+        .f-track { position: absolute; left: 0; top: 76px; width: 760px; height: 32px; border-radius: 16px; background: #cfc795; overflow: hidden; }
+        .f-bar { position: absolute; left: 0; top: 0; height: 32px; width: 760px; transform-origin: 0 50%; }
+        .f-fill { position: absolute; inset: 0; border-radius: 16px; background: linear-gradient(90deg, #ffcc22, #ff9900); }
+        .f-strand { position: absolute; left: 0; right: 0; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffcc22, #ff9900); }
+        .f-read { position: absolute; left: 790px; top: 56px; width: 290px; font-family: "M PLUS Rounded 1c", sans-serif; color: #615a4b; white-space: nowrap; }
+        .f-read b { font-weight: 800; font-size: 60px; }
+        .f-read span { font-weight: 700; font-size: 30px; color: #8c8466; }
+        #f-lane2 .f-read b { color: #17799f; }
+        #f-note { position: absolute; left: 760px; top: 900px; width: 1080px; }
+
+      </style>
+
+      <div id="root" data-composition-id="s06-faster" data-width="1920" data-height="1080">
+        <div id="s06-faster-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="f-head" class="t-chapter"><span class="mask"><span class="w">Four</span></span> <span class="mask"><span class="w">connections</span></span> <span class="blue"><span class="mask"><span class="w">at</span></span> <span class="mask"><span class="w">once.</span></span></span></div>
+
+          <div class="f-lane" id="f-lane0" style="top:360px">
+            <div class="f-name"><span class="fbi">FBI</span> <span class="f-sub">through the system HTTP service</span></div>
+            <div class="f-track"><div class="f-bar" id="f-bar0" data-p="0.19"><div class="f-fill"></div></div></div>
+            <div class="f-read" id="f-read0"><b>~110</b> <span>KiB/s</span></div>
+          </div>
+          <div class="f-lane" id="f-lane1" style="top:525px">
+            <div class="f-name"><span class="blue">3dsDL</span> <span class="f-sub">one connection</span></div>
+            <div class="f-track"><div class="f-bar" id="f-bar1" data-p="0.53"><div class="f-fill"></div></div></div>
+            <div class="f-read" id="f-read1"><b>~315</b> <span>KiB/s</span></div>
+          </div>
+          <div class="f-lane" id="f-lane2" style="top:690px">
+            <div class="f-name"><span class="blue">3dsDL</span> <span class="f-sub">four connections at once</span></div>
+            <div class="f-track"><div class="f-bar" id="f-bar2" data-p="0.93"><div class="f-strand" style="top:0px"></div><div class="f-strand" style="top:8px"></div><div class="f-strand" style="top:16px"></div><div class="f-strand" style="top:24px"></div></div></div>
+            <div class="f-read" id="f-read2"><b>500–600</b> <span>KiB/s</span></div>
+          </div>
+          <div id="f-note" class="t-small">Download speeds measured on a New 3DS: FBI 2.6.1 and a single libcurl connection from the figures in FBI pull request #4, 3dsDL on four connections. Not same-file runs; your speed depends on the server and your Wi-Fi.</div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#f-head .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.15);
+        tl.fromTo(".f-lane", { y: 30, opacity: 0, filter: "blur(8px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.8, ease: "expo.out", stagger: 0.1 }, 0.3);
+        tl.fromTo("#f-note", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0.8);
+        [0.19, 0.53, 0.93].forEach((p, i) => {
+          tl.fromTo("#f-bar" + i, { scaleX: 0 }, { scaleX: p, duration: 1.0 + p * 1.4, ease: "power2.out" }, 0.75);
+          tl.fromTo("#f-read" + i, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2.4)" }, 0.75 + 0.8 + p * 1.1);
+        });
+        tl.fromTo(".f-strand", { x: (i) => -30 * i }, { x: 0, duration: 2.2, ease: "power2.out" }, 0.75);
+        tl.to("#f-head, .f-lane, #f-note", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 3.66);
+        window.__timelines["s06-faster"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

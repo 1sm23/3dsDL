@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>3dsDL: Follow the ring</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/css/system.css" />
+    <style>
+      @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+      @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+      @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+      @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+      #ring { left: 0; top: 0; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #f2e9a3; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f2e9a3; }
+      #ground { z-index: 0; }
+      #g-glow1 { width: 900px; height: 900px; left: 200px; top: 80px; }
+      #g-glow2 { width: 760px; height: 760px; left: 1100px; top: 360px; }
+      .g-ghost { position: absolute; }
+      #rail { z-index: 20; }
+      #rail-list { position: absolute; left: 0; top: 0; width: 760px; height: 1080px; }
+      .rail-tile { opacity: 0.32; position: absolute; left: 100px; width: 540px; height: 210px; display: flex; align-items: center; gap: 22px;
+        padding: 0 30px; border-radius: 30px; transform-origin: 0 50%;
+        background: linear-gradient(180deg, #fefcf5 0%, #e0dccb 85%, #b6b192 100%);
+        border-bottom: 3px solid #8f8659; box-shadow: 0 16px 30px rgba(70, 60, 20, 0.16); }
+      #rail-t0 { opacity: 1; }
+      .rail-new { position: absolute; right: -14px; top: -14px; padding: 6px 16px; border-radius: 12px; background: #cc7c0b; color: #fff;
+        font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 26px; box-shadow: 0 0 0 4px #ffe2a8; }
+      .rail-ico { flex: none; width: 112px; height: 112px; border-radius: 28px; background: #fffdf0; display: flex;
+        align-items: center; justify-content: center; box-shadow: inset 0 0 0 2px #e6dfb4; }
+      .rail-title { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 48px; line-height: 1.05; color: #615a4b; white-space: nowrap; }
+      .rail-sub { margin-top: 8px; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 30px; line-height: 1.2; color: #756e60; }
+      #ring-layer { z-index: 30; }
+      #rail-o { z-index: 32; pointer-events: none; }
+      #rail-olist { position: absolute; left: 0; top: 0; width: 760px; height: 1080px; }
+      .rail-tile-o { position: absolute; left: 100px; width: 540px; height: 210px; transform-origin: 0 50%; opacity: 0.32; }
+      #g-dim { z-index: 40; background: #141208; }
+      #g-flash { z-index: 35; background: #fffdf0; }
+    </style>
+  </head>
+  <body>
+    <!-- "Follow the ring": the 3dsDL film. director/FILM-PLAN.md has the idea
+         and the shot list; tools/score/timeline.ts has the bars. The ground,
+         the chapter menu (rail) and the green ring live here, on the main
+         timeline, so they carry across the cuts between scenes. -->
+    <div id="root" data-composition-id="main" data-start="0" data-duration="78" data-width="1920" data-height="1080">
+      <div id="ground" class="clip ground" data-start="0" data-duration="78" data-track-index="0" data-layout-allow-overflow>
+        <div id="g-glow1" class="glow sky"></div>
+        <div id="g-glow2" class="glow mint"></div>
+        <div class="ghost g-ghost" style="left:1500px;top:-60px;width:520px;height:320px"></div>
+        <div class="ghost g-ghost" style="left:-120px;top:780px;width:620px;height:380px"></div>
+        <div class="ghost g-ghost" style="left:1700px;top:820px;width:420px;height:260px"></div>
+        <div class="ghost g-ghost" style="left:640px;top:-200px;width:480px;height:280px"></div>
+        <div id="g-dots" class="dots"></div>
+      </div>
+
+      <div id="s01-intro" data-composition-id="s01-intro" data-composition-src="compositions/frames/01-intro.html" data-start="0" data-duration="8" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s03-title" data-composition-id="s03-title" data-composition-src="compositions/frames/03-title.html" data-start="8" data-duration="4" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s04-home" data-composition-id="s04-home" data-composition-src="compositions/frames/04-home.html" data-start="12" data-duration="4" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s05-scan" data-composition-id="s05-scan" data-composition-src="compositions/frames/05-scan.html" data-start="16" data-duration="8" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s06-faster" data-composition-id="s06-faster" data-composition-src="compositions/frames/06-faster.html" data-start="24" data-duration="4" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s07-install" data-composition-id="s07-install" data-composition-src="compositions/frames/07-install.html" data-start="28" data-duration="4" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s08-qol" data-composition-id="s08-qol" data-composition-src="compositions/frames/08-qol.html" data-start="32" data-duration="4" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s09-files" data-composition-id="s09-files" data-composition-src="compositions/frames/09-files.html" data-start="36" data-duration="8" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s10-titles" data-composition-id="s10-titles" data-composition-src="compositions/frames/10-titles.html" data-start="44" data-duration="4" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s11-receive" data-composition-id="s11-receive" data-composition-src="compositions/frames/11-receive.html" data-start="48" data-duration="4" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s12-wifi" data-composition-id="s12-wifi" data-composition-src="compositions/frames/12-wifi.html" data-start="52" data-duration="10" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s13-more" data-composition-id="s13-more" data-composition-src="compositions/frames/13-more.html" data-start="62" data-duration="4" data-track-index="3" data-width="1920" data-height="1080"></div>
+      <div id="s14-versus" data-composition-id="s14-versus" data-composition-src="compositions/frames/14-versus.html" data-start="66" data-duration="4" data-track-index="2" data-width="1920" data-height="1080"></div>
+      <div id="s15-end" data-composition-id="s15-end" data-composition-src="compositions/frames/15-end.html" data-start="70" data-duration="8" data-track-index="3" data-width="1920" data-height="1080"></div>
+
+      <div id="rail" class="clip" data-start="15.2" data-duration="47.4" data-track-index="4" data-layout-allow-overflow>
+        <div id="rail-list">
+          <div class="rail-tile" id="rail-t0" style="top:435px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#1C93C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Scan</div><div class="rail-sub">a QR code, a link, or your phone</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t1" style="top:665px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#32A865" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Speed</div><div class="rail-sub">split across four connections</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t2" style="top:895px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#1C93C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Install</div><div class="rail-sub">CIAs, seeds included</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t3" style="top:1125px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#D2603A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 19.2s-7.2-4.3-7.2-9.6a3.9 3.9 0 0 1 7.2-2.1 3.9 3.9 0 0 1 7.2 2.1c0 5.3-7.2 9.6-7.2 9.6z"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Little things</div><div class="rail-sub">done right, everywhere</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t4" style="top:1355px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#E9890E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Files</div><div class="rail-sub">browse, preview, edit</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t5" style="top:1585px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#C9A227" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3.5h9l3 3V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M9 8h6v5H9z"/><path d="M9 16.5h6"/></svg></div>
+            <div class="rail-txt"><div class="rail-title" style="font-size:40px">Titles &amp; saves</div><div class="rail-sub">backups Checkpoint can read</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t6" style="top:1815px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#C05BA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg></div>
+            <div class="rail-txt"><div class="rail-title">Receive</div><div class="rail-sub">links from your phone</div></div>
+          </div>
+          <div class="rail-tile" id="rail-t7" style="top:2045px">
+            <div class="rail-ico"><svg width="78" height="78" viewBox="0 0 24 24" fill="none" stroke="#1E9E84" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.4 2.3 3.5 5 3.5 8s-1.1 5.7-3.5 8c-2.4-2.3-3.5-5-3.5-8s1.1-5.7 3.5-8z"/></svg></div>
+            <div class="rail-txt"><div class="rail-title" style="font-size:40px">Files over Wi-Fi</div><div class="rail-sub">SD card in a browser</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="rail-o" class="clip" data-start="15.2" data-duration="47.4" data-track-index="8" data-layout-allow-overflow>
+        <div id="rail-olist">
+          <div class="rail-tile-o" id="rail-o7" style="top:2045px"><div class="rail-new">New</div></div>
+        </div>
+      </div>
+
+      <div id="ring-layer" class="clip" data-start="6" data-duration="72" data-track-index="5" data-layout-allow-overflow>
+        <div id="ring" class="ring"></div>
+      </div>
+
+      <div id="g-flash" class="clip" data-start="7.7" data-duration="0.7" data-track-index="6"></div>
+
+      <div id="g-dim" class="clip" data-start="76.9" data-duration="1.1" data-track-index="6"></div>
+
+      <audio id="soundtrack" src="assets/music/film-mix.wav" data-start="0" data-duration="78" data-track-index="7" data-volume="1"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+        tl.fromTo("#g-glow1", { x: -120, y: 40 }, { x: 260, y: -60, duration: 78, ease: "sine.inOut" }, 0);
+        tl.fromTo("#g-glow2", { x: 160, y: -40 }, { x: -300, y: 80, duration: 78, ease: "sine.inOut" }, 0);
+        tl.fromTo(".g-ghost", { x: 0 }, { x: (i) => [-180, -260, -120, -220][i], duration: 78, ease: "none" }, 0);
+        tl.fromTo("#g-dots", { y: 0 }, { y: -52, duration: 78, ease: "none" }, 0);
+        tl.fromTo("#g-flash", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.in" }, 7.7);
+        tl.to("#g-flash", { opacity: 0, duration: 0.38, ease: "power2.out" }, 8.0);
+        tl.fromTo("#g-dim", { opacity: 0 }, { opacity: 0.9, duration: 1.0, ease: "power2.in" }, 77.0);
+                tl.set("#ring", { x: 822, y: 192, width: 276, height: 276, borderRadius: 66, borderWidth: 9, rotation: 0, skewX: 0, opacity: 0 }, 0);
+        tl.fromTo("#ring", { scale: 1.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.2)", immediateRender: false }, 8.05);
+        tl.to("#ring", { opacity: 0.7, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 8.6);
+        tl.to("#ring", { x: 1038, y: 580, width: 112, height: 78, borderRadius: 14, borderWidth: 4, rotation: 23, skewX: -33.7, opacity: 1, duration: 0.8, ease: "power3.inOut" }, 12.2);
+        tl.fromTo("#ring", { scale: 1.25 }, { scale: 1, duration: 0.3, ease: "back.out(2.5)" }, 14.3);
+        tl.to("#ring", { x: 86, y: 421, width: 568, height: 238, borderRadius: 40, borderWidth: 9, rotation: 0, skewX: 0, duration: 0.7, ease: "power3.inOut" }, 15.0);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 16.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 23.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 24.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 27.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 28.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 31.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 32.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 35.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 36.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 43.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 44.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 47.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 48.35);
+        tl.fromTo("#ring", { scaleY: 0.93, scaleX: 1.02 }, { scaleY: 1, scaleX: 1, duration: 0.3, ease: "back.out(2)" }, 51.98);
+        tl.fromTo("#ring", { scale: 1.05 }, { scale: 1, duration: 0.25, ease: "back.out(2)" }, 52.35);
+        tl.to("#ring", { x: -640, opacity: 0, duration: 0.45, ease: "power3.in" }, 62.0);
+        tl.set("#ring", { x: 1166, y: 216, width: 508, height: 508, borderRadius: 46 }, 69.6);
+        tl.fromTo("#ring", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.2)", immediateRender: false }, 70.5);
+        tl.to("#ring", { opacity: 0.6, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 71.4);
+        tl.to("#ring", { scale: 1.06, opacity: 0, duration: 0.38, ease: "power2.in" }, 75.0);
+                tl.fromTo("#rail, #rail-o", { x: -720 }, { x: 0, duration: 0.7, ease: "power3.out" }, 15.2);
+        tl.fromTo("#rail-t0", { opacity: 1, scale: 1 }, { opacity: 1, scale: 1, duration: 0.01 }, 15.2);
+        tl.fromTo("#rail-t0", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 16.35);
+        tl.fromTo("#rail-t0", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 23.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: 0 }, { y: -230, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 23.8);
+        tl.fromTo("#rail-t1", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 23.85);
+        tl.fromTo("#rail-t1", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 24.35);
+        tl.fromTo("#rail-t1", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 27.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -230 }, { y: -460, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 27.8);
+        tl.fromTo("#rail-t2", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 27.85);
+        tl.fromTo("#rail-t2", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 28.35);
+        tl.fromTo("#rail-t2", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 31.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -460 }, { y: -690, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 31.8);
+        tl.fromTo("#rail-t3", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 31.85);
+        tl.fromTo("#rail-t3", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 32.35);
+        tl.fromTo("#rail-t3", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 35.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -690 }, { y: -920, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 35.8);
+        tl.fromTo("#rail-t4", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 35.85);
+        tl.fromTo("#rail-t4", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 36.35);
+        tl.fromTo("#rail-t4", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 43.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -920 }, { y: -1150, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 43.8);
+        tl.fromTo("#rail-t5", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 43.85);
+        tl.fromTo("#rail-t5", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 44.35);
+        tl.fromTo("#rail-t5", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 47.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -1150 }, { y: -1380, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 47.8);
+        tl.fromTo("#rail-t6", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 47.85);
+        tl.fromTo("#rail-t6", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 48.35);
+        tl.fromTo("#rail-t6", { opacity: 1, scale: 1 }, { opacity: 0.32, scale: 0.9, duration: 0.3, ease: "power2.out", immediateRender: false }, 51.8);
+        tl.fromTo("#rail-list, #rail-olist", { y: -1380 }, { y: -1610, duration: 0.38, ease: "power3.inOut", immediateRender: false }, 51.8);
+        tl.fromTo("#rail-t7, #rail-o7", { opacity: 0.32, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out", immediateRender: false }, 51.85);
+        tl.fromTo("#rail-t7, #rail-o7", { scale: 0.96 }, { scale: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, 52.35);
+        tl.to("#rail, #rail-o", { x: -720, duration: 0.45, ease: "power3.in" }, 62.0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

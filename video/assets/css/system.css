@@ -1,0 +1,237 @@
+/* 3dsDL System Look for the film: the shared pieces every scene uses.
+   Tokens are frame.md's. Scenes link this file inside their <template>
+   and add only what is particular to them. */
+
+:root {
+  --canvas: #f2e9a3;
+  --canvas-top: #f7f1c8;
+  --panel: #dcd49a;
+  --recess: #d9d3a0;
+  --dots: #b0a66e;
+  --rim: #fffdf0;
+  --ink: #615a4b;
+  --ink-soft: #756e60;
+  --ink-muted: #8c8466;
+  --blue: #1c93c2;
+  --blue-ink: #17799f;
+  --focus: #3cdc78;
+  --focus-glow: #a0faa0;
+  --good: #3fa65a;
+  --good-halo: #b9f2c9;
+  --badge: #e69614;
+  --sky: #9fd8ec;
+  --mint: #b9f2c9;
+}
+
+/* Grounds ------------------------------------------------------------- */
+
+.ground {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--canvas-top) 0%, var(--canvas) 100%);
+}
+.ground .dots {
+  position: absolute;
+  inset: -60px;
+  background-image: radial-gradient(var(--dots) 1.6px, transparent 1.8px);
+  background-size: 26px 26px;
+  opacity: 0.22;
+}
+.ground .glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.5;
+}
+.glow.sky {
+  background: var(--sky);
+}
+.glow.mint {
+  background: var(--mint);
+}
+/* Out-of-focus cream panels drifting behind everything, for depth. */
+.ground .ghost {
+  position: absolute;
+  border-radius: 40px;
+  background: #fffbe0;
+  box-shadow: 0 30px 60px rgba(70, 60, 20, 0.12);
+  filter: blur(6px);
+  opacity: 0.55;
+}
+
+/* Screens ------------------------------------------------------------- */
+
+.screen-card {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 26px;
+  border: 8px solid var(--rim);
+  background: #f2ebb2;
+  box-shadow: 0 34px 70px rgba(70, 60, 20, 0.26), 0 6px 14px rgba(70, 60, 20, 0.12);
+}
+.screen-card > img,
+.screen-card > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Glass: a faint highlight across the screen. */
+.screen-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 42%);
+}
+
+/* Type ---------------------------------------------------------------- */
+
+.t-hero {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 800;
+  font-size: 168px;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.t-chapter {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 800;
+  font-size: 132px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.t-chapter .dot,
+.blue {
+  color: var(--blue-ink);
+}
+.t-line {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 700;
+  font-size: 50px;
+  line-height: 1.22;
+  color: var(--ink-soft);
+}
+.t-story {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 800;
+  font-size: 84px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.t-small {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1.35;
+  color: var(--ink-muted);
+}
+.t-code {
+  font-family: "M PLUS 1 Code", monospace;
+  font-weight: 500;
+}
+/* One word each, so words can soften into focus one by one. */
+.mask {
+  display: inline-block;
+}
+.mask > span {
+  display: inline-block;
+}
+
+/* Pieces of the System Look ------------------------------------------- */
+
+.pill {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 28px 12px 14px;
+  border-radius: 999px;
+  background: var(--blue-ink);
+  color: #fff;
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 800;
+  font-size: 32px;
+  box-shadow: 0 10px 24px rgba(23, 121, 159, 0.28);
+  white-space: nowrap;
+}
+.pill .num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--blue-ink);
+  font-size: 24px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 18px;
+  border-radius: 10px;
+  background: #609cb4;
+  color: #fff;
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  white-space: nowrap;
+}
+.tag.good {
+  background: var(--good);
+}
+.panel {
+  border-radius: 30px;
+  background: var(--panel);
+  box-shadow: 0 30px 60px rgba(70, 60, 20, 0.18);
+}
+.row {
+  display: flex;
+  align-items: center;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fefcf5 0%, #e0dccb 85%, #b6b192 100%);
+  border-bottom: 3px solid #8f8659;
+  box-shadow: 0 6px 12px rgba(70, 60, 20, 0.12);
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+.row.disabled {
+  background: none;
+  border: 3px dashed #c9bd80;
+  box-shadow: none;
+  color: #b3a874;
+}
+.doodle {
+  position: absolute;
+  font-family: "Gaegu", cursive;
+  font-weight: 700;
+  font-size: 50px;
+  line-height: 1;
+  color: var(--blue-ink);
+  white-space: nowrap;
+}
+.doodle svg {
+  display: block;
+  overflow: visible;
+}
+.doodle path {
+  fill: none;
+  stroke: var(--blue-ink);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The green selection ring, as the console draws it. */
+.ring {
+  position: absolute;
+  border: 8px solid var(--focus);
+  border-radius: 36px;
+  box-shadow: 0 0 30px var(--focus-glow), inset 0 0 14px rgba(160, 250, 160, 0.5);
+}

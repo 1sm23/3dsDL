@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- The real console, Home playing on its screens; the ring lands on Scan QR Code. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #h-copy { position: absolute; left: 110px; top: 340px; width: 680px; }
+        #h-copy .t-story { font-size: 66px; white-space: nowrap; }
+        #h-copy .t-line { margin-top: 28px; font-size: 40px; width: 560px; }
+        #h-device { position: absolute; left: 700px; top: 70px; width: 1100px; height: 955px; }
+        #h-photo { position: absolute; inset: 0; width: 1100px; height: 955px;
+          filter: drop-shadow(0 34px 40px rgba(60, 50, 20, 0.3)); }
+        .h-scr { position: absolute; left: 0; top: 0; overflow: hidden; transform-origin: 0 0; background: #000; }
+        .h-scr video { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .h-scr::after { content: ""; position: absolute; inset: 0;
+          background: linear-gradient(105deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 45%); }
+        #h-top { width: 400px; height: 240px;
+          transform: scale(0.811209) matrix3d(1.025661, 0.317498, 0, -0.000237, -0.41727, 1.468451, 0, 0.000048, 0, 0, 1, 0, 611.231497, 133.366913, 0, 1); }
+        #h-bottom { width: 320px; height: 240px;
+          transform: scale(0.811209) matrix3d(1.063699, 0.348492, 0, -0.000208, -1.145845, 0.47126, 0, -0.000304, 0, 0, 1, 0, 493.838504, 590.464957, 0, 1); }
+
+      </style>
+
+      <div id="root" data-composition-id="s04-home" data-width="1920" data-height="1080">
+        <div id="s04-home-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="h-copy">
+            <div class="t-story"><span class="mask"><span class="w">Feels</span></span> <span class="mask"><span class="w">like</span></span> <span class="mask"><span class="w">it</span></span> <span class="mask"><span class="w">came</span></span></div>
+            <div class="t-story"><span class="mask"><span class="w">with</span></span> <span class="mask"><span class="w">the</span></span> <span class="mask"><span class="w">console.</span></span></div>
+            <div class="t-line"><span class="mask"><span class="w">Designed</span></span> <span class="mask"><span class="w">like</span></span> <span class="mask"><span class="w">the</span></span> <span class="mask"><span class="w">3DS's</span></span> <span class="mask"><span class="w">own</span></span> <span class="mask"><span class="w">system</span></span> <span class="mask"><span class="w">apps.</span></span></div>
+          </div>
+          <div id="h-device">
+            <img id="h-photo" src="assets/device/new-3ds-angled.png" alt="" />
+            <div id="h-top" class="h-scr"><video id="h-top-v" src="assets/footage/home-top.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="0" data-track-index="1"></video></div>
+            <div id="h-bottom" class="h-scr"><video id="h-bottom-v" src="assets/footage/home-bottom.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="0" data-track-index="2"></video></div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#h-device", { x: 620, y: 70, rotation: 7, scale: 0.9, opacity: 0 },
+          { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1, duration: 0.95, ease: "back.out(1.2)" }, 0);
+        tl.fromTo("#h-copy .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.35);
+        tl.to("#h-copy .w", { opacity: 0, y: -14, filter: "blur(8px)", duration: 0.34, ease: "power2.in", stagger: 0.015 }, 2.95);
+        tl.to("#h-device", { x: 560, scale: 0.92, opacity: 0, duration: 0.6, ease: "power3.in" }, 3.1);
+        window.__timelines["s04-home"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

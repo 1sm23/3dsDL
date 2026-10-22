@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Receive: paste a link on the page, the 3DS downloads it. The part FBI users know. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #re-browser { position: absolute; left: 740px; top: 36px; width: 1136px; height: 710px;
+          filter: drop-shadow(0 34px 50px rgba(70, 60, 20, 0.28)); }
+        #re-browser video { position: absolute; inset: 0; width: 100%; height: 100%; }
+        #re-pill { position: absolute; left: 1180px; top: 330px; display: flex; align-items: center; gap: 12px;
+          padding: 12px 24px; border-radius: 999px; background: #fff; box-shadow: 0 14px 30px rgba(70, 60, 20, 0.25);
+          font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 32px; color: #615a4b; white-space: nowrap; }
+
+      </style>
+
+      <div id="root" data-composition-id="s11-receive" data-width="1920" data-height="1080">
+        <div id="s11-receive-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="re-browser"><video id="re-browser-v" src="assets/footage/browser-receive.webm" muted playsinline data-start="0" data-duration="4" data-media-start="4" data-track-index="1"></video></div>
+          <div id="re-top" class="screen-card " style="left:690px;top:700px;width:520px;height:312px"><video id="re-top-v" src="assets/footage/receive-top.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="4.0" data-track-index="1"></video></div>
+          <div id="re-bot" class="screen-card " style="left:1260px;top:720px;width:400px;height:300px"><video id="re-bot-v" src="assets/footage/receive-bottom.mp4" muted playsinline data-start="0" data-duration="4" data-media-start="4.0" data-track-index="1"></video></div>
+          <div id="re-pill"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1C93C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>Checkpoint.cia</span></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#re-browser", { y: 70, scale: 0.96, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.85, ease: "expo.out" }, 0.03);
+        tl.fromTo("#re-top, #re-bot", { y: 80, opacity: 0, filter: "blur(8px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.1 }, 0.12);
+        tl.to("#re-top, #re-bot, #re-browser", { y: "-=10", duration: 1.2, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.2 }, 1.1);
+        tl.fromTo("#re-pill", { x: 0, y: 0, scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "back.out(2)" }, 1.55);
+        tl.to("#re-pill", { x: 160, y: 470, duration: 0.45, ease: "power2.in" }, 1.7);
+        tl.to("#re-pill", { scale: 0.3, opacity: 0, duration: 0.15, ease: "power1.in" }, 2.05);
+        tl.to("#re-browser, #re-top, #re-bot", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 3.66);
+        window.__timelines["s11-receive"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

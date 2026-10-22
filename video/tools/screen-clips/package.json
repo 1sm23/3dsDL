@@ -1,0 +1,12 @@
+{
+  "name": "3dsdl-screen-clips",
+  "private": true,
+  "description": "Renders 3dsDL's animated screens as clips for the film (see render-clips.sh).",
+  "dependencies": {
+    "@remotion/cli": "4.0.534",
+    "qrcode": "1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "remotion": "4.0.534"
+  }
+}

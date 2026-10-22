@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- What carries on from FBI and what's new. Every row is from director/PRODUCT.md; no marks against FBI. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #v-title { position: absolute; left: 0; right: 0; top: 110px; text-align: center; }
+        #v-title .t-story { font-size: 76px; }
+        #v-note { position: absolute; left: 0; right: 0; top: 920px; text-align: center; font-size: 34px; }
+        #v-panel { position: absolute; left: 260px; top: 330px; width: 1400px; height: 560px; }
+        .v-row { position: absolute; left: 300px; width: 1320px; height: 100px; padding-left: 40px; font-size: 42px; }
+        .v-tag { position: absolute; left: 1400px; width: 180px; height: 48px; border-radius: 12px; display: flex; align-items: center;
+          justify-content: center; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 30px; color: #fff; }
+        .v-improved { background: #609cb4; }
+        .v-new { background: #cc7c0b; box-shadow: 0 0 0 5px #ffe2a8; }
+
+      </style>
+
+      <div id="root" data-composition-id="s14-versus" data-width="1920" data-height="1080">
+        <div id="s14-versus-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="v-title"><div class="t-story"><span class="mask"><span class="w">The</span></span> <span class="mask"><span class="w">basics</span></span> <span class="mask"><span class="w">you</span></span> <span class="mask"><span class="w">know,</span></span> <span class="blue"><span class="mask"><span class="w">and</span></span> <span class="mask"><span class="w">a</span></span> <span class="mask"><span class="w">lot</span></span> <span class="mask"><span class="w">that's</span></span> <span class="mask"><span class="w">new.</span></span></span></div></div>
+          <div id="v-panel" class="panel"></div>
+          <div class="row v-row" style="top:370px"><span>Install CIAs and scan QR codes</span></div>
+          <div class="v-tag v-improved" style="top:396px">Improved</div>
+          <div class="row v-row" style="top:490px"><span>Queue a whole page of QR codes</span></div>
+          <div class="v-tag v-new" style="top:516px">New</div>
+          <div class="row v-row" style="top:610px"><span>Resume a dropped download</span></div>
+          <div class="v-tag v-new" style="top:636px">New</div>
+          <div class="row v-row" style="top:730px"><span>Manage the SD card from your phone</span></div>
+          <div class="v-tag v-new" style="top:756px">New</div>
+          <div id="v-note" class="t-line">FBI's servefiles.py, sendurls.py and Boop still work.</div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#v-title .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.1);
+        tl.fromTo("#v-panel", { y: 60, scale: 0.97, opacity: 0, filter: "blur(8px)" }, { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out" }, 0.12);
+        tl.fromTo(".v-row", { y: 22, opacity: 0, filter: "blur(6px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.6, ease: "expo.out", stagger: 0.5 }, 0.75);
+        tl.fromTo(".v-tag", { scale: 0 }, { scale: 1, duration: 0.35, ease: "back.out(2.6)", stagger: 0.5 }, 0.95);
+        tl.fromTo("#v-note", { opacity: 0, y: 18, filter: "blur(6px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 2.6);
+        tl.to("#v-title, #v-panel, .v-row, .v-tag, #v-note", { yPercent: -6, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in" }, 3.66);
+        window.__timelines["s14-versus"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

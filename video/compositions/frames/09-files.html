@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Files, step by step: browse, peek inside a text file, edit it, view pictures. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        .st { position: absolute; width: 640px; height: 150px; }
+        .st-item { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; gap: 22px; }
+        .st-num { flex: none; width: 60px; height: 60px; margin-top: 4px; border-radius: 50%; background: #17799f; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 32px; }
+        .st-title { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 54px; line-height: 1.1; color: #615a4b; white-space: nowrap; }
+        .st-sub { margin-top: 6px; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 34px; line-height: 1.2; color: #756e60; white-space: nowrap; }
+        .st-dots { position: absolute; left: 82px; top: 128px; display: flex; gap: 10px; }
+        .st-dot { width: 12px; height: 12px; border-radius: 50%; background: #d0c78e; }
+        .chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px 22px; border-radius: 999px; background: #fff;
+          box-shadow: 0 14px 30px rgba(70, 60, 20, 0.25); font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 30px;
+          color: #615a4b; white-space: nowrap; }
+
+        .screen-card .seg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+      </style>
+
+      <div id="root" data-composition-id="s09-files" data-width="1920" data-height="1080">
+        <div id="s09-files-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="fi-top" class="screen-card" style="left:760px;top:96px;width:1000px;height:600px"><video id="fi-top-s0" class="seg" src="assets/footage/files-top.mp4" muted playsinline data-start="0.2" data-duration="1.7" data-media-start="0.0" data-track-index="1"></video><img class="clip seg" id="fi-top-s1" src="assets/footage/stills/files-textpreview-top.png" alt="" data-start="1.9" data-duration="1.4" data-track-index="2" /><video id="fi-top-s2" class="seg" src="assets/footage/files-top.mp4" muted playsinline data-start="3.3" data-duration="2.55" data-media-start="5.75" data-track-index="1"></video><video id="fi-top-s3" class="seg" src="assets/footage/files-top.mp4" muted playsinline data-start="5.85" data-duration="2.15" data-media-start="2.9" data-track-index="2"></video></div>
+          <div id="fi-bot" class="screen-card" style="left:1330px;top:650px;width:520px;height:390px"><video id="fi-bot-s0" class="seg" src="assets/footage/files-bottom.mp4" muted playsinline data-start="0.2" data-duration="1.7" data-media-start="0.0" data-track-index="1"></video><img class="clip seg" id="fi-bot-s1" src="assets/footage/stills/files-textpreview-bottom.png" alt="" data-start="1.9" data-duration="1.4" data-track-index="2" /><video id="fi-bot-s2" class="seg" src="assets/footage/files-bottom.mp4" muted playsinline data-start="3.3" data-duration="2.55" data-media-start="5.75" data-track-index="1"></video><video id="fi-bot-s3" class="seg" src="assets/footage/files-bottom.mp4" muted playsinline data-start="5.85" data-duration="2.15" data-media-start="2.9" data-track-index="2"></video></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(".screen-card", { y: 70, scale: 0.96, opacity: 0, filter: "blur(8px)" },
+          { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.1 }, 0.03);
+        tl.to(".screen-card", { y: "-=10", duration: 1.8, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.3 }, 1.0);
+        tl.to(".screen-card", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 7.66);
+        window.__timelines["s09-files"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

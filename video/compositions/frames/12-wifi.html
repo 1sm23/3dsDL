@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Files over Wi-Fi, explained: open 3ds.local, drop files in, send a CIA, browse and download. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        .st { position: absolute; width: 640px; height: 150px; }
+        .st-item { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; gap: 22px; }
+        .st-num { flex: none; width: 60px; height: 60px; margin-top: 4px; border-radius: 50%; background: #17799f; color: #fff;
+          display: flex; align-items: center; justify-content: center; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 32px; }
+        .st-title { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 54px; line-height: 1.1; color: #615a4b; white-space: nowrap; }
+        .st-sub { margin-top: 6px; font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 34px; line-height: 1.2; color: #756e60; white-space: nowrap; }
+        .st-dots { position: absolute; left: 82px; top: 128px; display: flex; gap: 10px; }
+        .st-dot { width: 12px; height: 12px; border-radius: 50%; background: #d0c78e; }
+        .chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px 22px; border-radius: 999px; background: #fff;
+          box-shadow: 0 14px 30px rgba(70, 60, 20, 0.25); font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 700; font-size: 30px;
+          color: #615a4b; white-space: nowrap; }
+
+        #wf-browser { position: absolute; left: 730px; top: 96px; width: 1100px; height: 688px;
+          filter: drop-shadow(0 34px 50px rgba(70, 60, 20, 0.28)); }
+        #wf-browser video { position: absolute; inset: 0; width: 100%; height: 100%; }
+        #wf-url { position: absolute; left: 890px; top: 300px; width: 640px; height: 100px; border-radius: 50px; background: #fff;
+          display: flex; align-items: center; gap: 22px; padding: 0 36px; box-shadow: 0 24px 50px rgba(70, 60, 20, 0.28), 0 0 0 3px #a8d8e8; }
+        #wf-url-t { font-family: "M PLUS Rounded 1c", sans-serif; font-weight: 800; font-size: 52px; color: #615a4b; }
+        #wf-caret { width: 4px; height: 54px; background: #17799f; border-radius: 2px; }
+        #wf-con .seg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+      </style>
+
+      <div id="root" data-composition-id="s12-wifi" data-width="1920" data-height="1080">
+        <div id="s12-wifi-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="wf-browser"><video id="wf-b" class="seg" src="assets/footage/browser-receive.webm" muted playsinline data-start="0" data-duration="10" data-media-start="9.2" data-playback-rate="1.06" data-track-index="1"></video></div>
+          <div id="wf-con" class="screen-card" style="left:1430px;top:700px;width:420px;height:315px"><video id="wf-c" class="seg" src="assets/footage/receive-bottom.mp4" muted playsinline data-start="0" data-duration="10" data-media-start="9.2" data-playback-rate="1.06" data-track-index="3"></video></div>
+          <div id="wf-url"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#1E9E84" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.4 2.3 3.5 5 3.5 8s-1.1 5.7-3.5 8c-2.4-2.3-3.5-5-3.5-8s1.1-5.7 3.5-8z"/></svg><span id="wf-url-t"><span class="wf-ch">3</span><span class="wf-ch">d</span><span class="wf-ch">s</span><span class="wf-ch">.</span><span class="wf-ch">l</span><span class="wf-ch">o</span><span class="wf-ch">c</span><span class="wf-ch">a</span><span class="wf-ch">l</span></span><span id="wf-caret"></span></div>
+          <div class="chip" id="wf-chip1"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E9890E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg><span>theme.zip</span></div>
+          <div class="chip" id="wf-chip2" style="background:#3fa65a;color:#fff"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/></svg><span>Install request</span></div>
+          <div class="chip" id="wf-chip3"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1C93C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>top_0001.bmp</span></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#wf-browser", { y: 70, scale: 0.96, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.85, ease: "expo.out" }, 0.03);
+        tl.fromTo("#wf-con", { y: 80, opacity: 0, filter: "blur(8px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.85, ease: "expo.out" }, 0.15);
+        tl.set(".chip", { left: 0, top: 0, opacity: 0 }, 0);
+        // A big address bar types 3ds.local, then shrinks into the browser's own.
+        tl.fromTo("#wf-url", { scale: 0.9, opacity: 0, y: 24, filter: "blur(8px)" }, { scale: 1, opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6, ease: "expo.out" }, 0.15);
+        tl.set(".wf-ch", { opacity: 0 }, 0);
+        gsap.utils.toArray(".wf-ch").forEach((el, i) => tl.set(el, { opacity: 1 }, 0.35 + i * 0.07));
+        tl.to("#wf-caret", { opacity: 0, duration: 0.01, yoyo: true, repeat: 5, repeatDelay: 0.2 }, 0.2);
+        tl.to("#wf-url", { x: -300, y: -230, scale: 0.35, opacity: 0, filter: "blur(4px)", duration: 0.5, ease: "power3.inOut" }, 1.25);
+        tl.fromTo("#wf-chip1", { x: 1180, y: 430, scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "back.out(2)" }, 1.7);
+        tl.to("#wf-chip1", { x: 1530, y: 800, duration: 0.5, ease: "power2.inOut" }, 1.8499999999999999);
+        tl.to("#wf-chip1", { scale: 0.3, opacity: 0, duration: 0.15, ease: "power1.in" }, 2.32);
+        tl.fromTo("#wf-chip2", { x: 1240, y: 470, scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "back.out(2)" }, 4.53);
+        tl.to("#wf-chip2", { x: 1510, y: 800, duration: 0.5, ease: "power2.inOut" }, 4.680000000000001);
+        tl.to("#wf-chip2", { scale: 0.3, opacity: 0, duration: 0.15, ease: "power1.in" }, 5.15);
+        tl.fromTo("#wf-chip3", { x: 1510, y: 810, scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "back.out(2)" }, 8.49);
+        tl.to("#wf-chip3", { x: 1250, y: 370, duration: 0.5, ease: "power2.inOut" }, 8.64);
+        tl.to("#wf-chip3", { scale: 0.3, opacity: 0, duration: 0.15, ease: "power1.in" }, 9.11);
+
+        tl.to("#wf-browser, #wf-con", { yPercent: -8, opacity: 0, filter: "blur(6px)", duration: 0.32, ease: "power2.in", stagger: 0.025 }, 9.66);
+        window.__timelines["s12-wifi"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

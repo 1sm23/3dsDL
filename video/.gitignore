@@ -1,0 +1,23 @@
+node_modules/
+tools/screen-clips/node_modules/
+tools/screen-clips/.tmp/
+tools/console-blender/.frames/
+tools/music/.venv/
+tools/music/.venv-beat/
+__pycache__/
+.hyperframes/
+.transcode-cache/
+snapshots/
+renders/
+.DS_Store
+
+# Licensed material: the paid 3D model and Nintendo's music (and the mix
+# made from it) stay on this machine.
+assets/models/geng4d-new3ds/
+assets/music/3ds-bgm/
+assets/music/bgm.wav
+assets/music/film-mix.wav
+
+# Written by npm run score, not used by the film (only sfx.wav is).
+assets/music/music.wav
+assets/music/soundtrack.wav

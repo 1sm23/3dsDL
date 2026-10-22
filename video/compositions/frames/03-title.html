@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- The drop: icon into the ring, wordmark, Home's six tiles fan out. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #t-icon { position: absolute; left: 840px; top: 210px; width: 240px; height: 240px; border-radius: 54px;
+          box-shadow: 0 30px 60px rgba(70, 60, 20, 0.24); }
+        #t-word { position: absolute; left: 0; right: 0; top: 480px; display: flex; justify-content: center; }
+        #t-word span { display: block; }
+        #t-tag { position: absolute; left: 0; right: 0; top: 690px; text-align: center; }
+        .t-tile { position: absolute; width: 140px; height: 140px; border-radius: 32px; display: flex;
+          align-items: center; justify-content: center;
+          background: linear-gradient(180deg, #fefcf5 0%, #e0dccb 85%, #b6b192 100%);
+          border-bottom: 3px solid #8f8659; box-shadow: 0 18px 30px rgba(70, 60, 20, 0.18); }
+
+      </style>
+
+      <div id="root" data-composition-id="s03-title" data-width="1920" data-height="1080">
+        <div id="s03-title-stage" class="clip" data-layout-allow-overflow>
+
+          <div class="t-tile" style="left:480px;top:170px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#1C93C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></div>
+          <div class="t-tile" style="left:320px;top:440px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#1E9E84" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.4 2.3 3.5 5 3.5 8s-1.1 5.7-3.5 8c-2.4-2.3-3.5-5-3.5-8s1.1-5.7 3.5-8z"/></svg></div>
+          <div class="t-tile" style="left:540px;top:800px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#C05BA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg></div>
+          <div class="t-tile" style="left:1300px;top:170px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#D2603A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4 4.5v3.5h3.5"/><path d="M12 8v4.5l3 2"/></svg></div>
+          <div class="t-tile" style="left:1460px;top:440px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#E9890E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg></div>
+          <div class="t-tile" style="left:1240px;top:800px"><svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#C9A227" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ><path d="M6 3.5h9l3 3V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M9 8h6v5H9z"/><path d="M9 16.5h6"/></svg></div>
+          <img id="t-icon" src="assets/brand/icon-1024.png" alt="" />
+          <div id="t-word" class="t-hero"><span>3</span><span>d</span><span>s</span><span class="blue">D</span><span class="blue">L</span></div>
+          <div id="t-tag" class="t-line"><span class="mask"><span class="w">Download</span></span> <span class="mask"><span class="w">anything,</span></span> <span class="mask"><span class="w">straight</span></span> <span class="mask"><span class="w">to</span></span> <span class="mask"><span class="w">your</span></span> <span class="mask"><span class="w">3DS.</span></span></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        tl.fromTo("#t-icon", { scale: 0, rotation: -14 }, { scale: 1, rotation: 0, duration: 0.75, ease: "back.out(2.4)" }, 0);
+        tl.fromTo(".t-tile", { x: (i) => [380, 540, 320, -340, -500, -280][i], y: (i) => [160, -110, -470, 160, -110, -470][i], scale: 0.2, opacity: 0 },
+          { x: 0, y: 0, scale: 1, opacity: 1, duration: 0.9, ease: "back.out(1.5)", stagger: 0.05 }, 0.1);
+        tl.to(".t-tile", { y: "-=14", duration: 1.4, ease: "sine.inOut", yoyo: true, repeat: 1, stagger: 0.12 }, 1.0);
+        tl.fromTo("#t-word span", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "back.out(2)", stagger: 0.07 }, 0.3);
+        tl.fromTo("#t-tag .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 1.0);
+        tl.to(".t-tile", { scale: 0.6, opacity: 0, duration: 0.4, ease: "power3.in", stagger: 0.03 }, 3.45);
+        tl.to("#t-word, #t-tag", { y: -30, opacity: 0, filter: "blur(8px)", duration: 0.36, ease: "power2.in" }, 3.55);
+        tl.to("#t-icon", { scale: 0.5, opacity: 0, duration: 0.35, ease: "power3.in" }, 3.6);
+        window.__timelines["s03-title"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

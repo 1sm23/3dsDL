@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Opening: the 3D console wakes, opens and boots; the camera pushes into its top screen. -->
+  </head>
+  <body>
+    <template>
+      <link rel="stylesheet" href="assets/css/system.css" />
+      <style>
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 500; src: url("assets/fonts/m-plus-rounded-1c-500-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 700; src: url("assets/fonts/m-plus-rounded-1c-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS Rounded 1c"; font-weight: 800; src: url("assets/fonts/m-plus-rounded-1c-800-latin.woff2") format("woff2"); }
+        @font-face { font-family: "Gaegu"; font-weight: 700; src: url("assets/fonts/gaegu-700-latin.woff2") format("woff2"); }
+        @font-face { font-family: "M PLUS 1 Code"; font-weight: 500; src: url("assets/fonts/m-plus-1-code-500-latin.woff2") format("woff2"); }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .clip {
+          position: absolute;
+          inset: 0;
+        }
+
+        #i-cwrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 1720px 600px; }
+        #i-console { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+        .i-line { position: absolute; left: 120px; top: 300px; width: 700px; }
+        .i-line .t-story { font-size: 70px; white-space: nowrap; }
+        #i-l2, #i-l3 { opacity: 0; }
+        #i-fbi { position: absolute; left: 120px; top: 500px; width: 300px; height: 100px; }
+        #i-fbi .row { position: absolute; inset: 0; justify-content: center; gap: 18px; font-size: 48px; font-weight: 800; }
+
+      </style>
+
+      <div id="root" data-composition-id="s01-intro" data-width="1920" data-height="1080">
+        <div id="s01-intro-stage" class="clip" data-layout-allow-overflow>
+
+          <div id="i-cwrap"><video id="i-console" src="assets/footage/console-open.webm" muted playsinline data-start="0" data-duration="8" data-media-start="0" data-track-index="1"></video></div>
+          <div id="i-l1" class="i-line" data-layout-allow-overlap><div class="t-story"><span class="mask"><span class="w">For</span></span> <span class="mask"><span class="w">years,</span></span> <span class="mask"><span class="w">FBI</span></span> <span class="mask"><span class="w">was</span></span></div><div class="t-story"><span class="mask"><span class="w">how</span></span> <span class="mask"><span class="w">homebrew</span></span> <span class="mask"><span class="w">got</span></span></div><div class="t-story"><span class="mask"><span class="w">onto</span></span> <span class="mask"><span class="w">your</span></span> <span class="mask"><span class="w">3DS.</span></span></div></div>
+          <div id="i-l2" class="i-line" data-layout-allow-overlap><div class="t-story"><span class="mask"><span class="w">Thank</span></span> <span class="mask"><span class="w">you,</span></span></div><div class="t-story blue"><span class="mask"><span class="w">Steveice10.</span></span></div></div>
+          <div id="i-l3" class="i-line" data-layout-allow-overlap><div class="t-story"><span class="mask"><span class="w">Here's</span></span> <span class="mask"><span class="w">what</span></span></div><div class="t-story blue"><span class="mask"><span class="w">comes</span></span> <span class="mask"><span class="w">next.</span></span></div></div>
+        </div>
+      </div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        // Keep the console clear of the words: smaller and further right while
+        // the first two lines are up, back to its rendered size before the push.
+        tl.fromTo("#i-cwrap", { x: 110, scale: 0.88 }, { x: 110, scale: 0.88, duration: 4.4, ease: "none" }, 0);
+        tl.to("#i-cwrap", { x: 0, scale: 1, duration: 1.2, ease: "power2.inOut" }, 4.4);
+        tl.fromTo("#i-l1 .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 0.45);
+        tl.to("#i-l1 .w", { opacity: 0, y: -14, filter: "blur(8px)", duration: 0.34, ease: "power2.in", stagger: 0.015 }, 2.45);
+        tl.set("#i-l1", { opacity: 0 }, 2.95);
+        tl.set("#i-l2", { opacity: 1 }, 2.7);
+        tl.fromTo("#i-l2 .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 2.75);
+        tl.to("#i-l2 .w", { opacity: 0, y: -14, filter: "blur(8px)", duration: 0.34, ease: "power2.in", stagger: 0.015 }, 4.05);
+        tl.set("#i-l2", { opacity: 0 }, 4.5);
+        tl.set("#i-l3", { opacity: 1 }, 4.3);
+        tl.fromTo("#i-l3 .w", { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.85, ease: "expo.out", stagger: 0.05 }, 4.35);
+        tl.to("#i-l3 .w", { opacity: 0, y: -14, filter: "blur(8px)", duration: 0.34, ease: "power2.in", stagger: 0.015 }, 5.75);
+        window.__timelines["s01-intro"] = tl;
+      </script>
+    </template>
+  </body>
+</html>
