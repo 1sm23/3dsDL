@@ -1680,10 +1680,14 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     fillShape({area.x, area.y + 2, area.w, area.h - 2}, 21, corners, body, 4);
 
     // Label, with the button that also does this as a white key cap.
+    // A single letter gets a 16 px circle: its ink is an even number of
+    // pixels each way, so it centres exactly.
+    const bool round = key.size() == 1;
+    const float capSize = round ? 16 : 15;
     const float keyWidth =
         key.empty() ? 0
-                    : std::max(15.0f, textWidth(key, 0.36f) +
-                                          (key.size() == 1 ? 7 : 11)) + 5;
+                    : std::max(capSize, textWidth(key, 0.36f) + (round ? 7 : 11)) +
+                          5;
     // Shrink a long label so it and its key cap stay on the flat part of
     // the tab, clear of the rounded corner.
     float labelScale = type::Tab;
@@ -1703,14 +1707,15 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     if (!key.empty()) {
         const float capWidth = keyWidth - 5;
         // Centred on the same line as the label beside it.
-        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, 15};
-        fillRound(cap, key.size() == 1 ? 7.5f : 4, color::rgb(0xFFFFFF));
+        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, capSize};
+        fillRound(cap, round ? capSize / 2 : 4, color::rgb(0xFFFFFF));
         // Centred on the ink, as side bearings differ by letter. Raised
         // half a pixel, and rounded to whole pixels so it stays sharp.
+        // Placed as in a 15 px cap; the 16 px circle adds its row below.
         drawText(key,
                  std::round(cap.x + (cap.w - textWidth(key, 0.36f)) / 2 +
                             inkOffset(key, 0.36f)),
-                 std::round(cap.y - 0.5f + (cap.h - lineHeight(0.36f)) / 2 + 1),
+                 std::round(cap.y - 0.5f + (15 - lineHeight(0.36f)) / 2 + 1),
                  0.36f, color::rgb(0x6C6C6C));
         x += keyWidth;
     }
