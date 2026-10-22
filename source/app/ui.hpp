@@ -318,7 +318,8 @@ struct ScreenSpec {
     std::string action;    // right tab, "" for none
     std::string actionKey; // key cap shown on the right tab, e.g. "START"
     u32 actionKeys = 0;    // keys that also press the right tab
-    bool closeBar = false; // one full-width START Close bar instead of tabs
+    bool closeBar = false; // one full-width START Close bar instead of tabs;
+                           // B does nothing there
     u32 extraKeys = 0;     // other keys that end the screen
     std::function<void()> drawTop;
     // Drawn on the bottom screen under the controls.

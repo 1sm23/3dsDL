@@ -2349,7 +2349,9 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
 
     while (keepRunning()) {
         const Input input = readInput();
-        if (input.down & KEY_B) {
+        // Behind a Close bar there is nothing to go back to, so B does not
+        // quit; only START does.
+        if ((input.down & KEY_B) && !spec.closeBar) {
             result.choice = ScreenBack;
             break;
         }
