@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cia.hpp"
+#include "fs_util.hpp"
 
 #include <array>
 #include <cstdint>
@@ -48,6 +49,15 @@ std::string displayName(uint64_t titleId, const Index &index);
 
 // Sorted by display name, ignoring case, then by Title ID.
 void sortByName(std::vector<const Title *> &list, const Index &index);
+// The title lists' orders: Name (A to Z) or Size (largest first), the way
+// files sort; reverse flips it. Ties go by name.
+void sortTitles(std::vector<const Title *> &list, const Index &index,
+                fs::SortOrder order, bool reverse);
+
+// What a title list shows: Software by where it is installed, Updates and
+// DLC by kind.
+enum class Show { All, SdCard, SystemMemory, Updates, Dlc };
+bool shows(Show show, const Title &title);
 
 // Most software keeps its extra data under its unique ID, bits 8 to 27 of
 // the Title ID.

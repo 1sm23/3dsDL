@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <string>
 
 // Copying, moving, deleting and measuring files and whole folders for Files.
@@ -30,10 +31,24 @@ struct Totals {
     uint64_t bytes = 0;
 };
 
+// Lets measure skip folders added up before and keep the ones it adds up.
+struct MeasureHooks {
+    // The totals for folder when already known, to use instead of reading it.
+    std::function<bool(const std::string &folder, Totals &totals)> known;
+    // Each folder read whole, with its totals and fs::fingerprint of its own
+    // entries.
+    std::function<void(const std::string &folder, const Totals &totals,
+                       uint64_t fingerprint)>
+        measured;
+};
+
 // Everything at path, which can be a file or a folder. Setting stop ends
-// the count early, with what was counted so far.
+// the count early, with what was counted so far. bytes, when given, grows by
+// each size as it is counted, for a running total.
 Totals measure(const std::string &path,
-               const std::atomic<bool> *stop = nullptr);
+               const std::atomic<bool> *stop = nullptr,
+               std::atomic<uint64_t> *bytes = nullptr,
+               const MeasureHooks *hooks = nullptr);
 
 enum class Status { Ok, Cancelled, Failed };
 

@@ -364,6 +364,32 @@ bool readEntries(const std::string &folder, bool hidden, bool times,
     return true;
 }
 
+void addToFingerprint(uint64_t &print, const Entry &entry)
+{
+    if (entry.name.empty() || entry.name[0] == '.') {
+        return;
+    }
+    uint64_t hash = 14695981039346656037ULL; // FNV-1a
+    for (const char byte : entry.name) {
+        hash = (hash ^ static_cast<unsigned char>(byte)) * 1099511628211ULL;
+    }
+    hash ^= entry.folder ? 0x9E3779B97F4A7C15ULL
+                         : static_cast<uint64_t>(entry.size) * 0xBF58476D1CE4E5B9ULL;
+    // splitmix64's finish, so summing the entries cannot cancel out.
+    hash = (hash ^ (hash >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    hash = (hash ^ (hash >> 27)) * 0x94D049BB133111EBULL;
+    print += hash ^ (hash >> 31);
+}
+
+uint64_t fingerprint(const std::vector<Entry> &entries)
+{
+    uint64_t print = 0;
+    for (const Entry &entry : entries) {
+        addToFingerprint(print, entry);
+    }
+    return print;
+}
+
 std::vector<Entry> listEntries(const std::string &folder, bool *ok,
                                bool hidden, bool times)
 {
@@ -381,20 +407,32 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok,
     return entries;
 }
 
-bool entryBefore(const Entry &a, const Entry &b, SortOrder order)
+bool entryBefore(const Entry &a, const Entry &b, SortOrder order,
+                 bool reverse)
 {
+    if (a.folder != b.folder) {
+        return a.folder;
+    }
+    // Sizes and dates not known yet, such as folders still being added up,
+    // come last either way round.
+    if (order == SortOrder::Size && (a.size < 0) != (b.size < 0)) {
+        return a.size >= 0;
+    }
+    if (order == SortOrder::Date && (a.modified > 0) != (b.modified > 0)) {
+        return a.modified > 0;
+    }
+    if (reverse) {
+        return entryBefore(b, a, order, false);
+    }
     const auto extensionOf = [](const std::string &name) {
         const size_t dot = name.find_last_of('.');
         return dot == std::string::npos || dot == 0
             ? std::string()
             : text::lower(name.substr(dot + 1));
     };
-    if (a.folder != b.folder) {
-        return a.folder;
-    }
     switch (order) {
     case SortOrder::Size:
-        if (!a.folder && a.size != b.size) {
+        if (a.size != b.size) {
             return a.size > b.size;
         }
         break;
@@ -420,10 +458,10 @@ bool entryBefore(const Entry &a, const Entry &b, SortOrder order)
 }
 
 void mergeEntries(std::vector<Entry> &sorted, std::vector<Entry> &&batch,
-                  SortOrder order)
+                  SortOrder order, bool reverse)
 {
-    const auto before = [order](const Entry &a, const Entry &b) {
-        return entryBefore(a, b, order);
+    const auto before = [order, reverse](const Entry &a, const Entry &b) {
+        return entryBefore(a, b, order, reverse);
     };
     std::stable_sort(batch.begin(), batch.end(), before);
     const size_t middle = sorted.size();
@@ -434,11 +472,11 @@ void mergeEntries(std::vector<Entry> &sorted, std::vector<Entry> &&batch,
                        before);
 }
 
-void sortEntries(std::vector<Entry> &entries, SortOrder order)
+void sortEntries(std::vector<Entry> &entries, SortOrder order, bool reverse)
 {
     std::stable_sort(entries.begin(), entries.end(),
-                     [order](const Entry &a, const Entry &b) {
-                         return entryBefore(a, b, order);
+                     [order, reverse](const Entry &a, const Entry &b) {
+                         return entryBefore(a, b, order, reverse);
                      });
 }
 

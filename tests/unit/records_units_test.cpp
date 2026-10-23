@@ -14,6 +14,10 @@ TEST("units: byte, rate and duration formatting")
 
     // At most four characters before the unit, whatever the size.
     const uint64_t GiB = 1024ULL * 1024 * 1024;
+    CHECK_EQ(units::grouped(0), std::string("0"));
+    CHECK_EQ(units::grouped(999), std::string("999"));
+    CHECK_EQ(units::grouped(1000), std::string("1,000"));
+    CHECK_EQ(units::grouped(3210180450ULL), std::string("3,210,180,450"));
     CHECK_EQ(units::shortBytes(500), std::string("500 B"));
     CHECK_EQ(units::shortBytes(1000), std::string("0.98 KiB"));
     CHECK_EQ(units::shortBytes(8 * GiB), std::string("8.00 GiB"));

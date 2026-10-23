@@ -37,6 +37,10 @@ struct Settings {
     // Files screen.
     bool showHiddenFiles = false;
     fs::SortOrder fileSort = fs::SortOrder::Name;
+    bool fileSortReverse = false;
+    // Software and Updates and DLC lists: Name or Size.
+    fs::SortOrder titleSort = fs::SortOrder::Name;
+    bool titleSortReverse = false;
     // UTC offset used when setting the clock from the internet.
     bool timeZoneSet = false;
     int timeZoneMinutes = 0;

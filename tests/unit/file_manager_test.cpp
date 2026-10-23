@@ -93,6 +93,11 @@ TEST("fileops: copy, move and delete files and folders")
     CHECK_EQ(totals.files, static_cast<uint64_t>(2));
     CHECK_EQ(totals.folders, static_cast<uint64_t>(1));
     CHECK_EQ(totals.bytes, static_cast<uint64_t>(300005));
+    // The running total adds up across calls.
+    std::atomic<uint64_t> running(0);
+    fileops::measure(root + "src", nullptr, &running);
+    fileops::measure(root + "src/a.txt", nullptr, &running);
+    CHECK_EQ(running.load(), static_cast<uint64_t>(300010));
 
     // Stopped before it starts, the count is empty.
     const std::atomic<bool> stopped(true);
@@ -241,12 +246,55 @@ TEST("fs: hidden entries and sort orders")
     CHECK_EQ(entries[2].name, std::string("b.txt"));
     CHECK_EQ(entries[3].name, std::string("a.zip"));
 
+    // Reversed, both groups turn around and folders still come first.
+    CHECK(fs::makeDirectories(temp.path() + "another/"));
+    entries = fs::listEntries(temp.path());
+    fs::sortEntries(entries, fs::SortOrder::Name, true);
+    CHECK_EQ(entries[0].name, std::string("folder"));
+    CHECK_EQ(entries[1].name, std::string("another"));
+    CHECK_EQ(entries[2].name, std::string("b.txt"));
+    CHECK_EQ(entries[3].name, std::string("a.zip"));
+    fs::sortEntries(entries, fs::SortOrder::Size, true);
+    CHECK_EQ(entries[2].name, std::string("b.txt")); // smallest first
+    // Folders sort by size once added up; until then they come last.
+    std::vector<fs::Entry> folders(3);
+    folders[0].name = "small";
+    folders[0].size = 10;
+    folders[1].name = "pending";
+    folders[2].name = "big";
+    folders[2].size = 900;
+    for (fs::Entry &folder : folders) {
+        folder.folder = true;
+    }
+    fs::sortEntries(folders, fs::SortOrder::Size);
+    CHECK_EQ(folders[0].name, std::string("big"));
+    CHECK_EQ(folders[1].name, std::string("small"));
+    CHECK_EQ(folders[2].name, std::string("pending"));
+    fs::sortEntries(folders, fs::SortOrder::Size, true);
+    CHECK_EQ(folders[0].name, std::string("small"));
+    CHECK_EQ(folders[2].name, std::string("pending"));
+    std::vector<fs::Entry> merged;
+    fs::mergeEntries(merged, fs::listEntries(temp.path()), fs::SortOrder::Name,
+                     true);
+    CHECK_EQ(merged.front().name, std::string("folder"));
+    CHECK_EQ(merged.back().name, std::string("a.zip"));
+
     Settings settings;
     settings.showHiddenFiles = true;
     settings.fileSort = fs::SortOrder::Date;
+    settings.fileSortReverse = true;
     const Settings parsed = parseSettings(serializeSettings(settings));
     CHECK(parsed.showHiddenFiles);
     CHECK(parsed.fileSort == fs::SortOrder::Date);
+    CHECK(parsed.fileSortReverse);
+    CHECK(!parseSettings("file_sort=name\n").fileSortReverse);
+    settings.titleSort = fs::SortOrder::Size;
+    settings.titleSortReverse = true;
+    const Settings titles = parseSettings(serializeSettings(settings));
+    CHECK(titles.titleSort == fs::SortOrder::Size);
+    CHECK(titles.titleSortReverse);
+    // Titles have no dates or types.
+    CHECK(parseSettings("title_sort=date\n").titleSort == fs::SortOrder::Name);
 }
 
 TEST("textdoc: keeps line endings, BOM and the final newline")

@@ -36,7 +36,7 @@ std::vector<std::string> listFolders(const std::string &folder);
 struct Entry {
     std::string name;
     bool folder = false;
-    int64_t size = -1;    // files only; -1 when it cannot be read
+    int64_t size = -1;    // -1 when unknown; folders only once added up
     int64_t modified = 0; // seconds since 1970, 0 when unknown
 };
 
@@ -53,19 +53,30 @@ bool readEntries(const std::string &folder, bool hidden, bool times,
                  const std::function<void(std::vector<Entry> &&)> &take,
                  const std::atomic<bool> *stop = nullptr);
 
+// An order-free fingerprint of a folder's own entries (names, kinds and file
+// sizes, not times), to tell whether it changed between two reads. Entries
+// starting with '.' are left out, so it does not depend on whether hidden
+// files were read.
+void addToFingerprint(uint64_t &print, const Entry &entry);
+uint64_t fingerprint(const std::vector<Entry> &entries);
+
 // Seconds since 1970 when path last changed, or 0 when unknown. On the SD
 // card stat() always says 0, so this asks the card's archive instead.
 int64_t modifiedTime(const std::string &path, int64_t statTime = 0);
 
 enum class SortOrder { Name, Size, Date, Type };
 // Folders always come first and are sorted by name, or newest first for
-// Date. Files follow in order: by name, largest first, newest first, or by
-// extension and then name.
-void sortEntries(std::vector<Entry> &entries, SortOrder order);
+// Date, or largest first for Size once their sizes are filled in. Files
+// follow in order: by name, largest first, newest first, or by extension
+// and then name. reverse turns both groups around (Z to A, smallest or
+// oldest first); folders still come first, and unknown sizes and dates last.
+void sortEntries(std::vector<Entry> &entries, SortOrder order,
+                 bool reverse = false);
 // Whether a comes before b in that order.
-bool entryBefore(const Entry &a, const Entry &b, SortOrder order);
+bool entryBefore(const Entry &a, const Entry &b, SortOrder order,
+                 bool reverse = false);
 // Adds batch to entries already sorted in order, keeping them sorted.
 void mergeEntries(std::vector<Entry> &sorted, std::vector<Entry> &&batch,
-                  SortOrder order);
+                  SortOrder order, bool reverse = false);
 
 } // namespace fs

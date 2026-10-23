@@ -105,6 +105,38 @@ void sortByName(std::vector<const Title *> &list, const Index &index)
     }
 }
 
+void sortTitles(std::vector<const Title *> &list, const Index &index,
+                fs::SortOrder order, bool reverse)
+{
+    sortByName(list, index);
+    if (order == fs::SortOrder::Size) {
+        std::stable_sort(list.begin(), list.end(),
+                         [](const Title *a, const Title *b) {
+                             return a->size > b->size;
+                         });
+    }
+    if (reverse) {
+        std::reverse(list.begin(), list.end());
+    }
+}
+
+bool shows(Show show, const Title &title)
+{
+    switch (show) {
+    case Show::SdCard:
+        return title.place == Place::SdCard;
+    case Show::SystemMemory:
+        return title.place == Place::SystemMemory;
+    case Show::Updates:
+        return category(title.id) == 0x000e;
+    case Show::Dlc:
+        return category(title.id) == 0x008c;
+    case Show::All:
+        break;
+    }
+    return true;
+}
+
 uint32_t uniqueId(uint64_t titleId)
 {
     return static_cast<uint32_t>(titleId >> 8) & 0xFFFFF;

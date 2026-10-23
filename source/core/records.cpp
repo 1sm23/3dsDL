@@ -196,12 +196,25 @@ Settings parseSettings(const std::string &contents)
         } else if (key == "show_hidden_files") {
             settings.showHiddenFiles =
                 parseBool(value, settings.showHiddenFiles);
+        } else if (key == "file_sort_reverse") {
+            settings.fileSortReverse =
+                parseBool(value, settings.fileSortReverse);
         } else if (key == "file_sort") {
             for (const fs::SortOrder order :
                  {fs::SortOrder::Name, fs::SortOrder::Size,
                   fs::SortOrder::Date, fs::SortOrder::Type}) {
                 if (text::lower(value) == sortName(order)) {
                     settings.fileSort = order;
+                }
+            }
+        } else if (key == "title_sort_reverse") {
+            settings.titleSortReverse =
+                parseBool(value, settings.titleSortReverse);
+        } else if (key == "title_sort") {
+            for (const fs::SortOrder order :
+                 {fs::SortOrder::Name, fs::SortOrder::Size}) {
+                if (text::lower(value) == sortName(order)) {
+                    settings.titleSort = order;
                 }
             }
         } else if (key == "time_zone_minutes") {
@@ -237,6 +250,11 @@ std::string serializeSettings(const Settings &settings)
     output += std::string("show_hidden_files=") +
               (settings.showHiddenFiles ? "1" : "0") + "\n";
     output += std::string("file_sort=") + sortName(settings.fileSort) + "\n";
+    output += std::string("file_sort_reverse=") +
+              (settings.fileSortReverse ? "1" : "0") + "\n";
+    output += std::string("title_sort=") + sortName(settings.titleSort) + "\n";
+    output += std::string("title_sort_reverse=") +
+              (settings.titleSortReverse ? "1" : "0") + "\n";
     if (settings.timeZoneSet) {
         output += "time_zone_minutes=" +
                   std::to_string(settings.timeZoneMinutes) + "\n";

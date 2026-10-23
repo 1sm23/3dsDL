@@ -25,6 +25,15 @@ std::string bytes(uint64_t count)
     return buffer;
 }
 
+std::string grouped(uint64_t count)
+{
+    std::string digits = std::to_string(count);
+    for (int at = static_cast<int>(digits.size()) - 3; at > 0; at -= 3) {
+        digits.insert(static_cast<size_t>(at), ",");
+    }
+    return digits;
+}
+
 std::string shortBytes(uint64_t count)
 {
     static const char *const suffixes[] = {"B", "KiB", "MiB", "GiB", "TiB"};

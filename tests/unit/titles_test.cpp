@@ -85,6 +85,40 @@ TEST("titles: sorts by name without case, then by ID")
     CHECK_EQ(list[3]->id, Demo);
 }
 
+TEST("titles: sorts by size, largest first, and reverses")
+{
+    std::vector<titles::Title> all = {title(Demo, "beta"), title(Game, "Alpha"),
+                                      title(DsiWare, "gamma")};
+    all[0].size = 300;
+    all[1].size = 100;
+    all[2].size = 300;
+    const titles::Index index = titles::indexOf(all);
+    std::vector<const titles::Title *> list = {&all[1], &all[2], &all[0]};
+    titles::sortTitles(list, index, fs::SortOrder::Size, false);
+    CHECK_EQ(list[0]->id, Demo); // ties go by name
+    CHECK_EQ(list[1]->id, DsiWare);
+    CHECK_EQ(list[2]->id, Game);
+    titles::sortTitles(list, index, fs::SortOrder::Size, true);
+    CHECK_EQ(list[0]->id, Game);
+    titles::sortTitles(list, index, fs::SortOrder::Name, true);
+    CHECK_EQ(list[0]->id, DsiWare);
+    CHECK_EQ(list[2]->id, Game);
+}
+
+TEST("titles: shows by place and by kind")
+{
+    titles::Title game = title(Game, "Alpha");
+    titles::Title nand = title(DsiWare, "beta");
+    nand.place = titles::Place::SystemMemory;
+    CHECK(titles::shows(titles::Show::All, nand));
+    CHECK(titles::shows(titles::Show::SdCard, game));
+    CHECK(!titles::shows(titles::Show::SdCard, nand));
+    CHECK(titles::shows(titles::Show::SystemMemory, nand));
+    CHECK(titles::shows(titles::Show::Updates, title(GameUpdate, "")));
+    CHECK(!titles::shows(titles::Show::Updates, title(GameDlc, "")));
+    CHECK(titles::shows(titles::Show::Dlc, title(GameDlc, "")));
+}
+
 TEST("titles: extra data belongs to the software with its unique ID")
 {
     const std::vector<titles::Title> all = {title(GameUpdate, ""),

@@ -11,6 +11,8 @@ std::string bytes(uint64_t count);
 // three significant digits, and the next unit up from 1000 ("8.00 GiB",
 // "99.5 GiB", "238 GiB", "0.98 GiB" rather than "1023.9 MiB").
 std::string shortBytes(uint64_t count);
+// "3,210,180,450"
+std::string grouped(uint64_t count);
 // "850 KiB/s"
 std::string rate(double bytesPerSecond);
 // "42s", "3m 05s", "1h 02m"

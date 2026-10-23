@@ -110,38 +110,81 @@ Result copyFile(const std::string &source, const std::string &destination,
     return result;
 }
 
-void measureInto(const std::string &path, Totals &totals,
-                 const std::atomic<bool> *stop)
+// From the folder listings alone, which carry each file's size: asking the
+// SD card about every entry one at a time took a minute for a folder of
+// songs on the console.
+void measureFolder(const std::string &folder, Totals &totals,
+                   const std::atomic<bool> *stop, std::atomic<uint64_t> *bytes,
+                   const MeasureHooks *hooks)
 {
-    if (stop != nullptr && stop->load()) {
-        return;
-    }
-    struct stat info {};
-    if (stat(path.c_str(), &info) != 0) {
-        return;
-    }
-    if (!S_ISDIR(info.st_mode)) {
-        ++totals.files;
-        totals.bytes += static_cast<uint64_t>(info.st_size);
-        return;
-    }
-    std::vector<std::string> names;
-    children(path, names);
-    for (const std::string &entry : names) {
-        const std::string child = join(path, entry);
-        if (isFolder(child)) {
-            ++totals.folders;
+    Totals known;
+    if (hooks != nullptr && hooks->known && hooks->known(folder, known)) {
+        totals.files += known.files;
+        totals.folders += known.folders;
+        totals.bytes += known.bytes;
+        if (bytes != nullptr) {
+            *bytes += known.bytes;
         }
-        measureInto(child, totals, stop);
+        return;
+    }
+    const Totals before = totals;
+    uint64_t print = 0;
+    std::vector<std::string> folders;
+    const bool listed = fs::readEntries(
+        folder, true, false,
+        [&](std::vector<fs::Entry> &&batch) {
+            uint64_t counted = 0;
+            for (const fs::Entry &entry : batch) {
+                fs::addToFingerprint(print, entry);
+                if (entry.folder) {
+                    ++totals.folders;
+                    folders.push_back(entry.name);
+                } else {
+                    ++totals.files;
+                    counted += entry.size > 0 ? entry.size : 0;
+                }
+            }
+            totals.bytes += counted;
+            if (bytes != nullptr) {
+                *bytes += counted;
+            }
+        },
+        stop);
+    for (const std::string &name : folders) {
+        if (stop != nullptr && stop->load()) {
+            return;
+        }
+        measureFolder(join(folder, name), totals, stop, bytes, hooks);
+    }
+    if (listed && hooks != nullptr && hooks->measured &&
+        (stop == nullptr || !stop->load())) {
+        Totals own;
+        own.files = totals.files - before.files;
+        own.folders = totals.folders - before.folders;
+        own.bytes = totals.bytes - before.bytes;
+        hooks->measured(folder, own, print);
     }
 }
 
 } // namespace
 
-Totals measure(const std::string &path, const std::atomic<bool> *stop)
+Totals measure(const std::string &path, const std::atomic<bool> *stop,
+               std::atomic<uint64_t> *bytes, const MeasureHooks *hooks)
 {
     Totals totals;
-    measureInto(path, totals, stop);
+    struct stat info {};
+    if (stat(path.c_str(), &info) != 0) {
+        return totals;
+    }
+    if (S_ISDIR(info.st_mode)) {
+        measureFolder(path, totals, stop, bytes, hooks);
+    } else {
+        totals.files = 1;
+        totals.bytes = static_cast<uint64_t>(info.st_size);
+        if (bytes != nullptr) {
+            *bytes += totals.bytes;
+        }
+    }
     return totals;
 }
 
