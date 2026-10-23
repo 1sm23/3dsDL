@@ -217,8 +217,11 @@ const C2D_Image *showPicture(const std::vector<uint16_t> &pixels,
 // Wi-Fi, connection, date, time and battery along the top of the top screen.
 void drawStatusBar();
 // Top screen background, status bar, icon and title, and the dotted line.
+// order is how the list on the bottom screen is sorted ("Largest First"),
+// set into the right end of the dotted line, over the panel's corner.
 void drawTopChrome(const std::string &title, Icon icon = Icon::None,
-                   u32 iconColor = color::Accent);
+                   u32 iconColor = color::Accent,
+                   const std::string &order = "");
 // The khaki information panel on the top screen (x 17..383, y 69..225 by
 // default).
 constexpr Rect TopPanel = {17, 69, 366, 156};

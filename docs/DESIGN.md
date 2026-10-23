@@ -110,7 +110,9 @@ first guess is cap 15 at scale 0.72.
   ("SD 8.00 GiB" in the soft ink, orange under 256 MiB) just right of the
   pill, date and time right-aligned to x 362, battery at x 371.
 - Title row, y 24 to 50: icon and title centred, in 3dsDL blue.
-- Dotted divider at y 57.
+- Dotted divider at y 57. Over a sorted list (Files, Software, Updates and
+  DLC) its right end gives way to the order, "Largest First", in small
+  soft ink.
 - Info panel at x 17 to 383, y 69 to 225. Content screens (text editor, hex
   view, pictures) use the whole area below the title row instead.
 

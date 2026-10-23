@@ -949,13 +949,12 @@ void App::browseFiles()
         spec.drawTop = [&](int index) {
             const std::string title =
                 atRoot ? "SD Card" : fileops::name(current);
-            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
+            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange,
+                              sortDescription(settings_.fileSort,
+                                              settings_.fileSortReverse));
             if (index < 0 || index >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
-                std::vector<ui::Fact> facts = {
-                    {"Path", current},
-                    {"Sorted", sortDescription(settings_.fileSort,
-                                               settings_.fileSortReverse)}};
+                std::vector<ui::Fact> facts = {{"Path", current}};
                 if (!complete) {
                     facts.push_back({"Reading",
                                      plural(entries.size(), "item") + " so far",

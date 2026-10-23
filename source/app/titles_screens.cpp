@@ -56,11 +56,13 @@ ui::Icon iconFor(uint64_t titleId)
     }
 }
 
-// The title's icon, name and publisher over its Title ID, version and size.
+// The title's icon, name and publisher over its Title ID, version and size;
+// order is how the list it is in is sorted, if it is in one.
 void drawTitleTop(const std::string &header, ui::Icon headerIcon,
-                  const titles::Title &title, const titles::Index &index)
+                  const titles::Title &title, const titles::Index &index,
+                  const std::string &order = "")
 {
-    ui::drawTopChrome(header, headerIcon, ui::color::IconBlue);
+    ui::drawTopChrome(header, headerIcon, ui::color::IconBlue, order);
     ui::drawPanel();
     const float left = ui::TopPanel.x + 18;
     const float top = ui::TopPanel.y + 12;
@@ -420,16 +422,18 @@ void App::titleList(bool software)
             return !library_.complete && !libraryLoader_.failed(ignored);
         };
         spec.drawTop = [&](int highlighted) {
+            const std::string order = screens::sortDescription(
+                settings_.titleSort, settings_.titleSortReverse);
             if (highlighted < 0 || highlighted >= static_cast<int>(shown.size())) {
                 ui::drawTopChrome(spec.title, ui::Icon::GameCard,
-                                  ui::color::IconBlue);
+                                  ui::color::IconBlue, order);
                 ui::drawPanel();
                 ui::drawEmblem(ui::Icon::GameCard, ui::color::IconBlue);
                 return;
             }
             drawTitleTop(spec.title, software ? ui::Icon::GameCard
                                               : ui::Icon::Download,
-                         *shown[highlighted], index);
+                         *shown[highlighted], index, order);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         const bool onRow =

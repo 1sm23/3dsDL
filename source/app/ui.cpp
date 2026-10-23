@@ -1705,7 +1705,8 @@ void drawStatusBar()
     }
 }
 
-void drawTopChrome(const std::string &title, Icon icon, u32 iconColor)
+void drawTopChrome(const std::string &title, Icon icon, u32 iconColor,
+                   const std::string &order)
 {
     drawTopBackground();
     drawStatusBar();
@@ -1720,7 +1721,14 @@ void drawTopChrome(const std::string &title, Icon icon, u32 iconColor)
     }
     drawMarquee(title, x, 37 - lineHeight(type::Title) / 2 + 1, type::Title,
                 color::Accent, maxW);
-    drawDots(57);
+    if (order.empty()) {
+        drawDots(57);
+        return;
+    }
+    const float right = TopPanel.x + TopPanel.w - 1;
+    drawText(order, right, 57 - lineHeight(type::Tiny) / 2 + 1, type::Tiny,
+             color::InkSoft, C2D_AlignRight);
+    drawDots(57, 18, right - textWidth(order, type::Tiny) - 8);
 }
 
 void drawPanel(const Rect &area)
