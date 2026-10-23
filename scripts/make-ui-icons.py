@@ -2,7 +2,7 @@
 """Renders 3dsDL's interface icons into one atlas for the console.
 
 The icons are the 24 px stroke drawings from the design canvas (see
-docs/DESIGN.md). Each is drawn white on transparent at 64, 32, 24 and 18 px
+docs/DESIGN.md), apart from the filled settings cog. Each is drawn white on transparent at 64, 32, 24 and 18 px
 by headless Chrome, and the app tints them when it draws them.
 
 Writes romfs/ui/icons.png and source/app/icon_atlas.hpp. Run it again after
@@ -27,7 +27,9 @@ ICONS = [
     ("Globe", '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.4 2.3 3.5 5 3.5 8s-1.1 5.7-3.5 8c-2.4-2.3-3.5-5-3.5-8s1.1-5.7 3.5-8z"/>'),
     ("History", '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4 4.5v3.5h3.5"/><path d="M12 8v4.5l3 2"/>'),
     ("Folder", '<path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/>'),
-    ("Gear", '<path d="M10 5.9L10.2 3.6h3.6L14 5.9l2.3 1.4 2.1-1.1 1.8 3.1-1.9 1.3v2.8l1.9 1.3-1.8 3.1-2.1-1.1-2.3 1.4-.2 2.3h-3.6L10 18.1l-2.3-1.4-2.1 1.1-1.8-3.1 1.9-1.3v-2.8L3.8 9.3l1.8-3.1 2.1 1.1z"/><circle cx="12" cy="12" r="2.6"/>'),
+    # The cog is filled: drawn in strokes, its eight teeth blur together at
+    # 18 px.
+    ("Gear", '<path fill="#fff" stroke="none" fill-rule="evenodd" d="M10.08 4.85L10.26 2.15A10 10 0 0 1 13.74 2.15L13.92 4.85A7.4 7.4 0 0 1 15.70 5.59L17.74 3.81A10 10 0 0 1 20.19 6.26L18.41 8.30A7.4 7.4 0 0 1 19.15 10.08L21.85 10.26A10 10 0 0 1 21.85 13.74L19.15 13.92A7.4 7.4 0 0 1 18.41 15.70L20.19 17.74A10 10 0 0 1 17.74 20.19L15.70 18.41A7.4 7.4 0 0 1 13.92 19.15L13.74 21.85A10 10 0 0 1 10.26 21.85L10.08 19.15A7.4 7.4 0 0 1 8.30 18.41L6.26 20.19A10 10 0 0 1 3.81 17.74L5.59 15.70A7.4 7.4 0 0 1 4.85 13.92L2.15 13.74A10 10 0 0 1 2.15 10.26L4.85 10.08A7.4 7.4 0 0 1 5.59 8.30L3.81 6.26A10 10 0 0 1 6.26 3.81L8.30 5.59A7.4 7.4 0 0 1 10.08 4.85ZM15.4 12A3.4 3.4 0 1 0 8.6 12A3.4 3.4 0 1 0 15.4 12Z"/>'),
     ("Download", '<path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'),
     ("Package", '<path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M12 12v8"/>'),
     ("Picture", '<rect x="4" y="5" width="16" height="14" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 4 4"/>'),
