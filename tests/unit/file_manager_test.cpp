@@ -7,10 +7,12 @@
 #include "image.hpp"
 #include "picture.hpp"
 #include "records.hpp"
+#include "sha256.hpp"
 #include "smdh.hpp"
 #include "text_doc.hpp"
 #include "title_meta.hpp"
 
+#include <atomic>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -91,6 +93,16 @@ TEST("fileops: copy, move and delete files and folders")
     CHECK_EQ(totals.files, static_cast<uint64_t>(2));
     CHECK_EQ(totals.folders, static_cast<uint64_t>(1));
     CHECK_EQ(totals.bytes, static_cast<uint64_t>(300005));
+
+    // Stopped before it starts, the count is empty.
+    const std::atomic<bool> stopped(true);
+    CHECK_EQ(fileops::measure(root + "src", &stopped).files,
+             static_cast<uint64_t>(0));
+    // The checksum counts what it reads, and gives up when stopped.
+    std::atomic<uint64_t> read(0);
+    CHECK(!sha256::ofFile(root + "src/inner/b.bin", nullptr, &read).empty());
+    CHECK_EQ(read.load(), static_cast<uint64_t>(300000));
+    CHECK_EQ(sha256::ofFile(root + "src/inner/b.bin", &stopped), std::string(""));
 
     Quiet observer;
     uint64_t done = 0;

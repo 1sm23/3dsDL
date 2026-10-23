@@ -120,20 +120,57 @@ const Title *ownerOfExtData(uint64_t extDataId, const std::vector<Title> &all)
     return nullptr;
 }
 
-std::vector<uint64_t> unusedTickets(const std::vector<uint64_t> &tickets,
-                                    const std::vector<Title> &installed)
+bool extDataInUse(uint64_t extDataId, const std::vector<Title> &all,
+                  const std::set<uint64_t> &onSdCard)
 {
-    std::set<uint64_t> present;
+    if (ownerOfExtData(extDataId, all) != nullptr) {
+        return true;
+    }
+    for (const uint64_t id : onSdCard) {
+        if (isSoftware(id) && uniqueId(id) == extDataId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<uint64_t> unusedTickets(const std::vector<uint64_t> &tickets,
+                                    const std::vector<Title> &installed,
+                                    const std::set<uint64_t> &onSdCard)
+{
+    std::set<uint64_t> present(onSdCard);
     for (const Title &title : installed) {
         present.insert(title.id);
     }
     std::vector<uint64_t> unused;
     for (const uint64_t ticket : tickets) {
-        if (isShown(ticket) && present.count(ticket) == 0) {
+        if (isShown(ticket) && category(ticket) != 0x8004 &&
+            present.count(ticket) == 0) {
             unused.push_back(ticket);
         }
     }
     return unused;
+}
+
+bool titleFromSdFolders(const std::string &high, const std::string &low,
+                        uint64_t &titleId)
+{
+    if (high.size() != 8 || low.size() != 8) {
+        return false;
+    }
+    uint64_t value = 0;
+    for (const char c : high + low) {
+        const int digit = c >= '0' && c <= '9'   ? c - '0'
+                          : c >= 'a' && c <= 'f' ? c - 'a' + 10
+                          : c >= 'A' && c <= 'F' ? c - 'A' + 10
+                                                 : -1;
+        if (digit < 0) {
+            return false;
+        }
+        value = value << 4 | static_cast<uint64_t>(digit);
+    }
+    titleId = value;
+    return true;
 }
 
 bool parseSeedDb(const std::string &data, std::vector<SeedEntry> &out,

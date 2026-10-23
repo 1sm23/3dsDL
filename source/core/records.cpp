@@ -181,6 +181,13 @@ Settings parseSettings(const std::string &contents)
                     settings.afterCiaDownload = action;
                 }
             }
+        } else if (key == "max_connections") {
+            char *end = nullptr;
+            const long count = std::strtol(value.c_str(), &end, 10);
+            if (!value.empty() && end != nullptr && *end == '\0' &&
+                count >= 1 && count <= MaxDownloadConnections) {
+                settings.maxConnections = static_cast<int>(count);
+            }
         } else if (key == "sounds") {
             settings.sounds = parseBool(value, settings.sounds);
         } else if (key == "check_for_updates") {
@@ -222,6 +229,8 @@ std::string serializeSettings(const Settings &settings)
               (settings.offerZipExtraction ? "1" : "0") + "\n";
     output += std::string("after_cia_download=") +
               ciaActionName(settings.afterCiaDownload) + "\n";
+    output += "max_connections=" + std::to_string(settings.maxConnections) +
+              "\n";
     output += std::string("sounds=") + (settings.sounds ? "1" : "0") + "\n";
     output += std::string("check_for_updates=") +
               (settings.checkForUpdates ? "1" : "0") + "\n";

@@ -110,8 +110,12 @@ Result copyFile(const std::string &source, const std::string &destination,
     return result;
 }
 
-void measureInto(const std::string &path, Totals &totals)
+void measureInto(const std::string &path, Totals &totals,
+                 const std::atomic<bool> *stop)
 {
+    if (stop != nullptr && stop->load()) {
+        return;
+    }
     struct stat info {};
     if (stat(path.c_str(), &info) != 0) {
         return;
@@ -128,16 +132,16 @@ void measureInto(const std::string &path, Totals &totals)
         if (isFolder(child)) {
             ++totals.folders;
         }
-        measureInto(child, totals);
+        measureInto(child, totals, stop);
     }
 }
 
 } // namespace
 
-Totals measure(const std::string &path)
+Totals measure(const std::string &path, const std::atomic<bool> *stop)
 {
     Totals totals;
-    measureInto(path, totals);
+    measureInto(path, totals, stop);
     return totals;
 }
 

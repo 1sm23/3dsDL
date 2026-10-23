@@ -11,6 +11,19 @@ TEST("units: byte, rate and duration formatting")
     CHECK_EQ(units::bytes(12 * 1024 * 1024 + 300 * 1024),
              std::string("12.3 MiB"));
     CHECK_EQ(units::bytes(4294967295ULL), std::string("4.00 GiB"));
+
+    // At most four characters before the unit, whatever the size.
+    const uint64_t GiB = 1024ULL * 1024 * 1024;
+    CHECK_EQ(units::shortBytes(500), std::string("500 B"));
+    CHECK_EQ(units::shortBytes(1000), std::string("0.98 KiB"));
+    CHECK_EQ(units::shortBytes(8 * GiB), std::string("8.00 GiB"));
+    CHECK_EQ(units::shortBytes(GiB * 9996 / 1000), std::string("10.0 GiB"));
+    CHECK_EQ(units::shortBytes(GiB * 9954 / 100), std::string("99.5 GiB"));
+    CHECK_EQ(units::shortBytes(GiB * 23847 / 100), std::string("238 GiB"));
+    CHECK_EQ(units::shortBytes(1023ULL * 1024 * 1024 + 1000 * 1024),
+             std::string("1.00 GiB"));
+    CHECK_EQ(units::shortBytes(GiB * 9996 / 10), std::string("0.98 TiB"));
+    CHECK_EQ(units::shortBytes(2048 * GiB), std::string("2.00 TiB"));
     CHECK_EQ(units::rate(2.5 * 1024 * 1024), std::string("2.50 MiB/s"));
     CHECK_EQ(units::rate(-5), std::string("0 B/s"));
     CHECK_EQ(units::duration(42), std::string("42s"));
@@ -70,12 +83,25 @@ TEST("records: settings round trip and defaults")
     CHECK(parseSettings("after_cia_download=sometimes\n").afterCiaDownload ==
           CiaAction::Ask);
 
+    for (int count = 1; count <= MaxDownloadConnections; ++count) {
+        settings.maxConnections = count;
+        CHECK_EQ(parseSettings(serializeSettings(settings)).maxConnections,
+                 count);
+    }
+    // Anything out of range or not a number keeps the default.
+    for (const char *bad : {"max_connections=0\n", "max_connections=5\n",
+                            "max_connections=two\n", "max_connections=\n",
+                            "max_connections=3x\n"}) {
+        CHECK_EQ(parseSettings(bad).maxConnections, MaxDownloadConnections);
+    }
+
     const Settings defaults = parseSettings("# nothing\nunknown=1\nbroken\n");
     CHECK_EQ(defaults.destination, std::string("sdmc:/"));
     CHECK_EQ(defaults.resumeDownloads, true);
     CHECK_EQ(defaults.offerZipExtraction, false);
     CHECK_EQ(defaults.checkForUpdates, true);
     CHECK_EQ(defaults.sounds, true);
+    CHECK_EQ(defaults.maxConnections, MaxDownloadConnections);
 
     CHECK_EQ(defaults.timeZoneSet, false);
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -27,12 +28,15 @@ void buildRequest(uint8_t packet[PacketSize], uint64_t nonce);
 bool parseResponse(const uint8_t *packet, size_t size, uint64_t nonce,
                    int64_t &unixMilliseconds, std::string &error);
 
+// Setting stop ends the wait for an answer early.
 Result query(const std::string &host, uint16_t port = 123,
-             int timeoutMilliseconds = 2500);
+             int timeoutMilliseconds = 2500,
+             const std::atomic<bool> *stop = nullptr);
 
 // Tries each host in turn and returns the first answer.
 Result queryAny(const std::vector<std::string> &hosts, uint16_t port = 123,
-                int timeoutMilliseconds = 2500);
+                int timeoutMilliseconds = 2500,
+                const std::atomic<bool> *stop = nullptr);
 
 // Public NTP services used by the app.
 const std::vector<std::string> &defaultServers();

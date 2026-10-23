@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -29,8 +30,10 @@ struct Totals {
     uint64_t bytes = 0;
 };
 
-// Everything at path, which can be a file or a folder.
-Totals measure(const std::string &path);
+// Everything at path, which can be a file or a folder. Setting stop ends
+// the count early, with what was counted so far.
+Totals measure(const std::string &path,
+               const std::atomic<bool> *stop = nullptr);
 
 enum class Status { Ok, Cancelled, Failed };
 

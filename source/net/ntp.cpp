@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 
@@ -132,7 +133,8 @@ bool parseResponse(const uint8_t *packet, size_t size, uint64_t nonce,
     return true;
 }
 
-Result query(const std::string &host, uint16_t port, int timeoutMilliseconds)
+Result query(const std::string &host, uint16_t port, int timeoutMilliseconds,
+             const std::atomic<bool> *stop)
 {
     Result result;
     result.server = host;
@@ -161,17 +163,22 @@ Result query(const std::string &host, uint16_t port, int timeoutMilliseconds)
         return result;
     }
 
-    for (int attempt = 0; attempt < MaxStrayPackets; ++attempt) {
+    for (int attempt = 0; attempt < MaxStrayPackets;) {
         const int64_t elapsed = monotonicMilliseconds() - started;
         const int remaining = static_cast<int>(timeoutMilliseconds - elapsed);
-        if (remaining <= 0) {
+        if (remaining <= 0 || (stop != nullptr && stop->load())) {
             break;
         }
+        // In short waits, so stop is noticed.
         pollfd waiting {socket.get(), POLLIN, 0};
-        const int ready = poll(&waiting, 1, remaining);
-        if (ready <= 0) {
+        const int ready = poll(&waiting, 1, std::min(remaining, 100));
+        if (ready < 0) {
             break;
         }
+        if (ready == 0) {
+            continue;
+        }
+        ++attempt;
 
         uint8_t reply[PacketSize * 2];
         const ssize_t received =
@@ -199,12 +206,15 @@ Result query(const std::string &host, uint16_t port, int timeoutMilliseconds)
 }
 
 Result queryAny(const std::vector<std::string> &hosts, uint16_t port,
-                int timeoutMilliseconds)
+                int timeoutMilliseconds, const std::atomic<bool> *stop)
 {
     Result last;
     last.error = "No time servers to ask.";
     for (const std::string &host : hosts) {
-        last = query(host, port, timeoutMilliseconds);
+        if (stop != nullptr && stop->load()) {
+            break;
+        }
+        last = query(host, port, timeoutMilliseconds, stop);
         if (last.ok) {
             break;
         }

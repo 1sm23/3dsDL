@@ -7,6 +7,10 @@ namespace units {
 
 // "512 B", "1.5 KiB", "12.3 MiB", "1.25 GiB"
 std::string bytes(uint64_t count);
+// The same in at most four characters before the unit, for tight spaces:
+// three significant digits, and the next unit up from 1000 ("8.00 GiB",
+// "99.5 GiB", "238 GiB", "0.98 GiB" rather than "1023.9 MiB").
+std::string shortBytes(uint64_t count);
 // "850 KiB/s"
 std::string rate(double bytesPerSecond);
 // "42s", "3m 05s", "1h 02m"
