@@ -168,7 +168,10 @@ App::App()
             }
         }
     }
-    ui::setFrameHook([this]() { pollUpdate(); });
+    ui::setFrameHook([this]() {
+        pollUpdate();
+        pollLibrary();
+    });
     if (settings_.checkForUpdates) {
         updater::startCheck();
     }

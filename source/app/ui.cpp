@@ -2532,36 +2532,46 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
     // bottom bar does, since a ring on a shape that runs off the screen
     // reads as a stray line.
     std::vector<Target> targets;
-    for (size_t index = 0; index < spec.controls.size(); ++index) {
-        if (spec.controls[index].enabled) {
-            targets.push_back({spec.controls[index].rect,
-                               static_cast<int>(index), false});
-        }
-    }
-    if (spec.closeBar) {
-        targets.push_back({tabRect(Tab::Full), ScreenBack, true});
-    } else {
-        if (!spec.back.empty()) {
-            targets.push_back({tabRect(Tab::Left), ScreenBack, true});
-        }
-        if (!spec.action.empty()) {
-            targets.push_back({tabRect(Tab::Right, spec.action, spec.actionKey),
-                               ScreenAction, true});
-        }
-    }
     std::vector<Target> controls;
-    for (const Target &target : targets) {
-        if (!target.tab) {
-            controls.push_back(target);
+    int controlCount = 0;
+    int current = -1;
+    // Built again when spec.update enables or disables a control; the ring
+    // stays on the same control when it still can.
+    const auto build = [&](int keep) {
+        targets.clear();
+        for (size_t index = 0; index < spec.controls.size(); ++index) {
+            if (spec.controls[index].enabled) {
+                targets.push_back({spec.controls[index].rect,
+                                   static_cast<int>(index), false});
+            }
         }
-    }
-    const int controlCount = static_cast<int>(controls.size());
-    int current = controlCount > 0 ? 0 : -1;
-    for (int index = 0; index < controlCount; ++index) {
-        if (controls[index].choice == focus) {
-            current = index;
+        if (spec.closeBar) {
+            targets.push_back({tabRect(Tab::Full), ScreenBack, true});
+        } else {
+            if (!spec.back.empty()) {
+                targets.push_back({tabRect(Tab::Left), ScreenBack, true});
+            }
+            if (!spec.action.empty()) {
+                targets.push_back(
+                    {tabRect(Tab::Right, spec.action, spec.actionKey),
+                     ScreenAction, true});
+            }
         }
-    }
+        controls.clear();
+        for (const Target &target : targets) {
+            if (!target.tab) {
+                controls.push_back(target);
+            }
+        }
+        controlCount = static_cast<int>(controls.size());
+        current = controlCount > 0 ? 0 : -1;
+        for (int index = 0; index < controlCount; ++index) {
+            if (controls[index].choice == keep) {
+                current = index;
+            }
+        }
+    };
+    build(focus);
     int pressed = -1;
     ScreenResult result;
 
@@ -2575,6 +2585,10 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
     };
 
     while (keepRunning()) {
+        if (spec.update && spec.update()) {
+            build(current >= 0 ? controls[current].choice : focus);
+            pressed = -1;
+        }
         const Input input = readInput();
         // Behind a Close bar there is nothing to go back to, so B does not
         // quit; only START does.
@@ -2924,12 +2938,20 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
     const Rect backTab = tabRect(Tab::Left);
     const Rect actionTab = tabRect(Tab::Right, spec.action, spec.actionKey);
     const Rect inner = {recess.x, recess.y + 4, recess.w, recess.h - 8};
-    const int count = static_cast<int>(spec.items.size());
-    const float content = count * Pitch + 2;
     const float viewport = inner.h;
-    const bool scrollable = content > viewport;
     const float rowLeft = recess.x + 7;
-    const float rowWidth = recess.w - 14 - (scrollable ? 12 : 0);
+    // Worked out again whenever spec.update changes the rows.
+    int count = 0;
+    float content = 0;
+    bool scrollable = false;
+    float rowWidth = 0;
+    const auto layout = [&]() {
+        count = static_cast<int>(spec.items.size());
+        content = count * Pitch + 2;
+        scrollable = content > viewport;
+        rowWidth = recess.w - 14 - (scrollable ? 12 : 0);
+    };
+    layout();
 
     cursor = count == 0 ? -1 : std::max(0, std::min(cursor, count - 1));
     Scroller scroller;
@@ -2939,6 +2961,7 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
                                                    content - viewport)));
     }
     int tabPressed = 0; // -1 back, 1 action
+    bool moved = false; // the person has moved the highlight
     const u32 actionKey = spec.actionKeys & (~spec.actionKeys + 1);
 
     const auto rowAt = [&](const touchPosition &point) {
@@ -2951,24 +2974,64 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
     };
 
     while (keepRunning()) {
+        // A list that fills in while it is open keeps the highlight on the
+        // same row, by key, at the same place on the screen, once there is
+        // a row to keep: one the person moved to or the list opened on.
+        // Until then it stays on the first row, at the top.
+        if (spec.update) {
+            const bool keep = cursor > 0 || moved;
+            const std::string key = keep && cursor >= 0 && cursor < count
+                                        ? spec.items[cursor].key
+                                        : "";
+            const float onScreen = cursor * Pitch - scroller.offset();
+            const int before = cursor;
+            if (spec.update()) {
+                layout();
+                int found = -1;
+                for (int index = 0; !key.empty() && index < count; ++index) {
+                    if (spec.items[index].key == key) {
+                        found = index;
+                        break;
+                    }
+                }
+                if (cursor != before && cursor >= 0 && cursor < count) {
+                    // The screen moved it, to a row it was waiting for.
+                    scroller.reveal(cursor * Pitch, Pitch, viewport);
+                } else if (found >= 0 && found != cursor) {
+                    cursor = found;
+                    if (!scroller.dragging()) {
+                        scroller.setOffset(
+                            std::max(0.0f, cursor * Pitch - onScreen));
+                    }
+                } else if (found < 0) {
+                    cursor = count == 0 ? -1
+                                        : std::max(0, std::min(cursor, count - 1));
+                    if (!keep && !scroller.dragging()) {
+                        scroller.setOffset(0);
+                    }
+                }
+            }
+        }
+        const bool loading = spec.loading && spec.loading();
         const Input input = readInput();
         if (count > 0) {
             const int pageRows = std::max(1, static_cast<int>(viewport / Pitch) - 1);
-            int moved = cursor;
+            int target = cursor;
             if (input.repeat & KEY_UP) {
-                moved = cursor > 0 ? cursor - 1 : count - 1;
+                target = cursor > 0 ? cursor - 1 : count - 1;
             }
             if (input.repeat & KEY_DOWN) {
-                moved = cursor + 1 < count ? cursor + 1 : 0;
+                target = cursor + 1 < count ? cursor + 1 : 0;
             }
             if (input.repeat & (KEY_LEFT | KEY_L)) {
-                moved = std::max(0, cursor - pageRows);
+                target = std::max(0, cursor - pageRows);
             }
             if (input.repeat & (KEY_RIGHT | KEY_R)) {
-                moved = std::min(count - 1, cursor + pageRows);
+                target = std::min(count - 1, cursor + pageRows);
             }
-            if (moved != cursor) {
-                cursor = moved;
+            if (target != cursor) {
+                cursor = target;
+                moved = true;
                 scroller.reveal(cursor * Pitch, Pitch, viewport);
                 sound::play(sound::Effect::Move);
             }
@@ -3010,6 +3073,7 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             if (row >= 0 && spec.tapToSelect && row != cursor) {
                 // The first tap only highlights; the next one opens.
                 cursor = row;
+                moved = true;
                 sound::play(sound::Effect::Move);
             } else if (row >= 0) {
                 cursor = row;
@@ -3039,7 +3103,9 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
                         296, C2D_AlignCenter);
         }
         drawRecess(recess);
-        if (count == 0) {
+        if (count == 0 && loading) {
+            drawSpinner(recess.x + recess.w / 2, recess.y + recess.h / 2, 14);
+        } else if (count == 0) {
             drawPanelText(spec.emptyText, recess, type::Small, color::InkSoft);
         }
 
@@ -3122,7 +3188,10 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
                     tabPressed > 0 && (input.held & KEY_TOUCH) &&
                         actionTab.contains(input.touch));
         }
-        if (!spec.hint.empty()) {
+        if (loading && count > 0 && spec.hint.empty()) {
+            // Between the tabs while more rows are still on their way.
+            drawSpinner(160, 224, 8);
+        } else if (!spec.hint.empty()) {
             // In the gap between the tabs, which a wide action tab narrows.
             const float gapLeft = backTab.x + backTab.w;
             const float gapRight = spec.action.empty() ? 320 - gapLeft : actionTab.x;

@@ -60,7 +60,7 @@ int workerPriority()
 // On a New 3DS the worker gets the third core, which nothing else uses, so
 // TLS and inflating never wait for drawing. Elsewhere, or when the system
 // refuses, it shares the app core with the main thread.
-Thread startWorker(ThreadFunc entry, void *argument)
+Thread startWorkerThread(ThreadFunc entry, void *argument)
 {
     bool isNew3ds = false;
     if (R_SUCCEEDED(APT_CheckNew3DS(&isNew3ds)) && isNew3ds) {
@@ -297,6 +297,11 @@ void runBusy(void *argument)
 
 } // namespace
 
+Thread startWorker(ThreadFunc entry, void *argument)
+{
+    return startWorkerThread(entry, argument);
+}
+
 void busy(const std::string &header, const std::string &title,
           const std::function<void()> &work)
 {
@@ -308,7 +313,7 @@ bool busy(const std::string &header, const std::string &title,
 {
     BusyJob job;
     job.work = &work;
-    Thread thread = startWorker(runBusy, &job);
+    Thread thread = startWorkerThread(runBusy, &job);
     if (thread == nullptr) {
         work(job.busy);
         return !job.busy.cancel.load();
@@ -369,7 +374,7 @@ net::Result download(const net::Request &request, bool keepAwake,
     job.request = &request;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorker(runDownload, &job);
+    Thread thread = startWorkerThread(runDownload, &job);
     if (thread == nullptr) {
         job.result.message = "Could not start the download thread.";
         return job.result;
@@ -442,7 +447,7 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
     job.existing = existing;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorker(runExtract, &job);
+    Thread thread = startWorkerThread(runExtract, &job);
     if (thread == nullptr) {
         job.result.message = "Could not start the extraction thread.";
         return job.result;
@@ -485,7 +490,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
     job.titleId = titleId;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorker(runInstall, &job);
+    Thread thread = startWorkerThread(runInstall, &job);
     if (thread == nullptr) {
         job.result.message = "Could not start the install thread.";
         return job.result;
@@ -540,7 +545,7 @@ fileops::Result fileOperation(
     job.total = total;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorker(runFileJob, &job);
+    Thread thread = startWorkerThread(runFileJob, &job);
     if (thread == nullptr) {
         job.result.status = fileops::Status::Failed;
         job.result.message = "Could not start the worker thread.";

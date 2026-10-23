@@ -5,6 +5,8 @@
 #include "installer.hpp"
 #include "zip.hpp"
 
+#include <3ds.h>
+
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -37,6 +39,11 @@ fileops::Result fileOperation(
     const std::string &folder, uint64_t total, bool countsFiles,
     const std::function<fileops::Result(fileops::Observer &)> &work,
     bool keepAwake);
+
+// Starts entry on a worker thread the way every job here runs: on the New
+// 3DS's third core when there is one, otherwise just below the main thread.
+// Returns nullptr when no thread could be made.
+Thread startWorker(ThreadFunc entry, void *argument);
 
 // Runs a short job that cannot be cancelled while showing a "please wait"
 // screen.

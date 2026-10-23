@@ -46,6 +46,9 @@ struct Snapshot {
     // False when the console's list of SD card software was not available,
     // as on a card that has never held any. Nothing is then called unused.
     bool sdListed = false;
+    // True once everything is read. Until then only titles are filled in,
+    // a few at a time, and nothing may be decided from the rest.
+    bool complete = false;
 };
 
 // Tickets no installed software needs, by this snapshot, for showing; none
@@ -56,13 +59,52 @@ std::vector<uint64_t> unusedTickets(const Snapshot &snapshot);
 // card's software was not listed.
 bool extDataInUse(const Snapshot &snapshot, uint64_t extDataId);
 
-// Reads everything. Slow (an icon per title), so run it on a worker. done
-// and total, if given, count the titles read. Setting stop ends it early,
-// returning false with an empty error and out unchanged.
-bool load(Snapshot &out, std::string &error,
-          const std::atomic<bool> *stop = nullptr,
-          std::atomic<uint64_t> *done = nullptr,
-          std::atomic<uint64_t> *total = nullptr);
+// Reads a Snapshot on a worker thread and hands it over a piece at a time:
+// each title as soon as its name and icon are read, then tickets, extra
+// data and unfinished installs at the end, which completes it. Screens show
+// titles while the rest loads.
+class Loader {
+public:
+    Loader();
+    ~Loader();
+    Loader(const Loader &) = delete;
+    Loader &operator=(const Loader &) = delete;
+
+    // Reads everything again from the start, stopping a read under way.
+    void start();
+    // Stops reading and waits for the worker; what was read stays.
+    void stop();
+    // Moves what has arrived into snapshot, which must start out empty
+    // after each start(); returns true when anything changed. Titles are
+    // only ever added, into room reserved up front, so pointers to them
+    // stay valid while it fills.
+    bool take(Snapshot &snapshot);
+    bool running() const { return running_; }
+    // Title IDs looked at so far, of all there are.
+    uint64_t done() const { return done_; }
+    uint64_t total() const { return total_; }
+    // True, with why, when a part could not be read; the snapshot then
+    // never completes.
+    bool failed(std::string &error) const;
+
+private:
+    static void run(void *argument);
+    void work();
+
+    Thread thread_ = nullptr;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> running_ {false};
+    std::atomic<uint64_t> done_ {0};
+    std::atomic<uint64_t> total_ {0};
+    mutable LightLock lock_;
+    // Guarded by lock_.
+    std::vector<titles::Title> arrived_;
+    size_t room_ = 0;
+    Snapshot rest_;
+    bool restReady_ = false;
+    bool failed_ = false;
+    std::string error_;
+};
 
 FS_MediaType mediaOf(const titles::Title &title);
 // The installed title 3dsDL runs as, or 0 for the .3dsx.

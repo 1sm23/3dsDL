@@ -4,6 +4,7 @@
 #include "installer.hpp"
 #include "fs_util.hpp"
 #include "smdh.hpp"
+#include "tasks.hpp"
 #include "text.hpp"
 #include "title_meta.hpp"
 #include "updater.hpp"
@@ -12,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <memory>
 #include <set>
 
@@ -57,20 +59,6 @@ FS_ExtSaveDataInfo extDataInfo(uint64_t id)
     info.saveId = id;
     return info;
 }
-
-// Counts the titles each list holds, for a progress bar over all of them.
-struct Counter {
-    const std::atomic<bool> *stop = nullptr;
-    std::atomic<uint64_t> *done = nullptr;
-
-    bool stopped() const { return stop != nullptr && stop->load(); }
-    void add(uint64_t count) const
-    {
-        if (done != nullptr) {
-            done->fetch_add(count);
-        }
-    }
-};
 
 #ifdef THREEDSDL_FAULTS
 // Test builds only: each line of sdmc:/3ds/3dsDL/faults.txt makes one of
@@ -136,12 +124,6 @@ bool sdDatabaseAvailable()
         return false;
     }
     return available;
-}
-
-u32 titleCount(FS_MediaType media)
-{
-    u32 count = 0;
-    return R_SUCCEEDED(AM_GetTitleCount(media, &count)) ? count : 0;
 }
 
 // Every title ID on media. Fails rather than returning fewer when AM
@@ -294,32 +276,27 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
     return true;
 }
 
-bool loadTitles(FS_MediaType media, Snapshot &out, const Counter &counter,
-                std::string &error)
+// Reads each title in ids, name and icon included, and hands it to emit as
+// soon as it is read. done counts every ID looked at; stop ends it early.
+void readTitles(FS_MediaType media, const std::vector<u64> &ids,
+                const std::atomic<bool> &stop, std::atomic<uint64_t> &done,
+                const std::function<void(titles::Title &&)> &emit)
 {
-    std::vector<u64> ids;
-    if (!titleIds(media, ids, error)) {
-        return false;
-    }
     std::vector<u64> shown;
     for (const u64 id : ids) {
         if (titles::isShown(id)) {
             shown.push_back(id);
         }
     }
-    counter.add(ids.size() - shown.size());
+    done.fetch_add(ids.size() - shown.size());
     if (shown.empty()) {
-        return true;
+        return;
     }
     std::vector<AM_TitleInfo> infos(shown.size());
     const bool haveInfo = R_SUCCEEDED(AM_GetTitleInfo(
         media, static_cast<u32>(shown.size()), shown.data(), infos.data()));
 
-    for (size_t index = 0; index < shown.size(); ++index) {
-        if (counter.stopped()) {
-            return true; // load sees the stop and keeps nothing
-        }
-        counter.add(1);
+    for (size_t index = 0; index < shown.size() && !stop.load(); ++index) {
         titles::Title title;
         title.id = shown[index];
         title.place = media == MEDIATYPE_NAND ? titles::Place::SystemMemory
@@ -343,9 +320,12 @@ bool loadTitles(FS_MediaType media, Snapshot &out, const Counter &counter,
                 title.icon = std::move(info.icon);
             }
         }
-        out.titles.push_back(std::move(title));
+        if (fault("slow-titles")) {
+            svcSleepThread(400 * 1000 * 1000); // to watch a list fill in
+        }
+        emit(std::move(title));
+        done.fetch_add(1);
     }
-    return true;
 }
 
 bool loadTickets(Snapshot &out, std::string &error)
@@ -412,46 +392,149 @@ void loadPending(FS_MediaType media, Snapshot &out)
 
 } // namespace
 
-bool load(Snapshot &out, std::string &error, const std::atomic<bool> *stop,
-          std::atomic<uint64_t> *done, std::atomic<uint64_t> *total)
+Loader::Loader()
 {
-    if (!installer::available()) {
-        error = installer::unavailableReason();
-        return false;
+    LightLock_Init(&lock_);
+}
+
+Loader::~Loader()
+{
+    stop();
+}
+
+void Loader::start()
+{
+    stop();
+    LightLock_Lock(&lock_);
+    arrived_.clear();
+    room_ = 0;
+    rest_ = Snapshot();
+    restReady_ = false;
+    failed_ = false;
+    error_.clear();
+    LightLock_Unlock(&lock_);
+    stop_ = false;
+    done_ = 0;
+    total_ = 0;
+    running_ = true;
+    thread_ = tasks::startWorker(run, this);
+    if (thread_ == nullptr) {
+        run(this); // no thread to be had: read it all now
     }
-    const Counter counter {stop, done};
-    if (total != nullptr) {
-        total->store(titleCount(MEDIATYPE_SD) + titleCount(MEDIATYPE_NAND) +
-                     titleCount(MEDIATYPE_GAME_CARD));
+}
+
+void Loader::stop()
+{
+    stop_ = true;
+    if (thread_ != nullptr) {
+        threadJoin(thread_, U64_MAX);
+        threadFree(thread_);
+        thread_ = nullptr;
+    }
+    running_ = false;
+}
+
+bool Loader::take(Snapshot &snapshot)
+{
+    bool changed = false;
+    LightLock_Lock(&lock_);
+    // Room for every title up front, so adding them never moves the ones
+    // screens are pointing at.
+    if (room_ > snapshot.titles.capacity() && snapshot.titles.empty()) {
+        snapshot.titles.reserve(room_);
+    }
+    if (!arrived_.empty()) {
+        for (titles::Title &title : arrived_) {
+            snapshot.titles.push_back(std::move(title));
+        }
+        arrived_.clear();
+        changed = true;
+    }
+    if (restReady_ && !snapshot.complete) {
+        snapshot.tickets = std::move(rest_.tickets);
+        snapshot.extData = std::move(rest_.extData);
+        snapshot.pending = std::move(rest_.pending);
+        snapshot.onSdCard = std::move(rest_.onSdCard);
+        snapshot.sdListed = rest_.sdListed;
+        snapshot.complete = true;
+        changed = true;
+    }
+    LightLock_Unlock(&lock_);
+    return changed;
+}
+
+bool Loader::failed(std::string &error) const
+{
+    LightLock_Lock(&lock_);
+    const bool result = failed_;
+    error = error_;
+    LightLock_Unlock(&lock_);
+    return result;
+}
+
+void Loader::run(void *argument)
+{
+    Loader &loader = *static_cast<Loader *>(argument);
+    loader.work();
+    loader.running_ = false;
+}
+
+void Loader::work()
+{
+    const auto fail = [&](const std::string &error) {
+        LightLock_Lock(&lock_);
+        failed_ = true;
+        error_ = error;
+        LightLock_Unlock(&lock_);
+    };
+    if (!installer::available()) {
+        fail(installer::unavailableReason());
+        return;
     }
     // Anything that cannot be read fails the whole load: screens decide
     // what is unused from this, and a partial list would mislead them.
-    Snapshot read;
-    if (sdDatabaseAvailable()) {
-        if (!loadTitles(MEDIATYPE_SD, read, counter, error)) {
-            return false;
-        }
-        read.sdListed = true;
-    }
-    if (!loadTitles(MEDIATYPE_NAND, read, counter, error)) {
-        return false;
+    std::string error;
+    Snapshot rest;
+    rest.sdListed = sdDatabaseAvailable();
+    std::vector<u64> sd;
+    std::vector<u64> nand;
+    std::vector<u64> card;
+    if ((rest.sdListed && !titleIds(MEDIATYPE_SD, sd, error)) ||
+        !titleIds(MEDIATYPE_NAND, nand, error)) {
+        fail(error);
+        return;
     }
     // A 3DS game card in the slot, for its save data. With no card in the
     // slot there is nothing to read, which is not a failure.
     std::string noCard;
-    loadTitles(MEDIATYPE_GAME_CARD, read, counter, noCard);
-    if (counter.stopped()) {
-        error.clear();
-        return false;
+    titleIds(MEDIATYPE_GAME_CARD, card, noCard);
+    total_ = sd.size() + nand.size() + card.size();
+    LightLock_Lock(&lock_);
+    room_ = total_;
+    LightLock_Unlock(&lock_);
+
+    const auto emit = [&](titles::Title &&title) {
+        LightLock_Lock(&lock_);
+        arrived_.push_back(std::move(title));
+        LightLock_Unlock(&lock_);
+    };
+    readTitles(MEDIATYPE_SD, sd, stop_, done_, emit);
+    readTitles(MEDIATYPE_NAND, nand, stop_, done_, emit);
+    readTitles(MEDIATYPE_GAME_CARD, card, stop_, done_, emit);
+    if (stop_) {
+        return;
     }
-    if (!loadTickets(read, error) || !titlesOnSdCard(read.onSdCard, error)) {
-        return false;
+    if (!loadTickets(rest, error) || !titlesOnSdCard(rest.onSdCard, error)) {
+        fail(error);
+        return;
     }
-    loadExtData(read);
-    loadPending(MEDIATYPE_SD, read);
-    loadPending(MEDIATYPE_NAND, read);
-    out = std::move(read);
-    return true;
+    loadExtData(rest);
+    loadPending(MEDIATYPE_SD, rest);
+    loadPending(MEDIATYPE_NAND, rest);
+    LightLock_Lock(&lock_);
+    rest_ = std::move(rest);
+    restReady_ = true;
+    LightLock_Unlock(&lock_);
 }
 
 FS_MediaType mediaOf(const titles::Title &title)
@@ -505,7 +588,7 @@ bool deleteTitle(const titles::Title &title, bool withTicket, std::string &error
 
 std::vector<uint64_t> unusedTickets(const Snapshot &snapshot)
 {
-    if (!snapshot.sdListed) {
+    if (!snapshot.complete || !snapshot.sdListed) {
         return {};
     }
     return titles::unusedTickets(snapshot.tickets, snapshot.titles,
@@ -514,7 +597,7 @@ std::vector<uint64_t> unusedTickets(const Snapshot &snapshot)
 
 bool extDataInUse(const Snapshot &snapshot, uint64_t extDataId)
 {
-    return !snapshot.sdListed ||
+    return !snapshot.complete || !snapshot.sdListed ||
            titles::extDataInUse(extDataId, snapshot.titles, snapshot.onSdCard);
 }
 

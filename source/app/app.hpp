@@ -75,12 +75,14 @@ private:
     void ciaOptions(const std::string &path);
     // Options for the marked entries, or the highlighted one. Returns true
     // when the folder's contents may have changed.
+    // entries is the folder as read so far, complete once all of it is;
+    // options that need every entry wait for that.
     bool entryOptions(const std::string &folder,
                       const std::vector<std::string> &paths,
                       std::vector<std::string> &marked,
-                      const std::vector<std::string> &all);
+                      const std::vector<fs::Entry> &entries, bool complete);
     bool folderOptions(const std::string &folder,
-                       const std::vector<std::string> &entries,
+                       const std::vector<fs::Entry> &entries, bool complete,
                        std::vector<std::string> &marked);
     void textEditor(const std::string &path);
     void hexViewer(const std::string &path);
@@ -112,11 +114,15 @@ private:
 
     // Installed software and its data, in titles_screens.cpp.
     void titlesScreen();
-    // Reads what is installed into library_; false (after saying why) when
-    // the AM service is unavailable.
-    // Reads the installed titles again; cancellable lets B stop it, which
-    // keeps what was read before.
-    bool reloadLibrary(bool cancellable = false);
+    // What is installed is read in the background into library_ (see
+    // library::Loader); startLibrary reads it again from scratch, and
+    // pollLibrary, run every frame, takes what has arrived.
+    void startLibrary();
+    void pollLibrary();
+    // Reads again and waits for all of it with a progress bar, for screens
+    // that need the whole picture; false, after saying why, when it could
+    // not be read.
+    bool reloadLibrary();
     void titleList(bool software);
     void titleOptions(titles::Title title);
     void extraDataScreen();
@@ -174,6 +180,9 @@ private:
     std::vector<std::string> clipboard_;
     bool clipboardCut_ = false;
     library::Snapshot library_;
+    library::Loader libraryLoader_;
+    // Goes up each time library_ changes, so screens know to look again.
+    uint32_t libraryGeneration_ = 0;
     std::vector<QueuedLink> queue_;
     uint64_t nextQueueId_ = 1;
     bool updateAvailable_ = false;

@@ -13,7 +13,9 @@
 #include "units.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <ctime>
+#include <set>
 
 // Save data and extra data: backups in Checkpoint's folders, restoring
 // them, and looking inside.
@@ -60,58 +62,168 @@ bool taken(const std::string &path)
 
 } // namespace
 
+namespace {
+
+// Looks for save data on a worker thread, one title at a time, so the Save
+// Data list fills in while it looks. Each title is looked at once.
+class SaveSearch {
+public:
+    struct Found {
+        titles::Title title;
+        size_t backups = 0;
+    };
+
+    SaveSearch()
+    {
+        LightLock_Init(&lock_);
+        thread_ = tasks::startWorker(run, this);
+    }
+    ~SaveSearch()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+        }
+    }
+    SaveSearch(const SaveSearch &) = delete;
+    SaveSearch &operator=(const SaveSearch &) = delete;
+
+    void add(const titles::Title &title)
+    {
+        if (thread_ == nullptr) {
+            look(title); // no thread to be had: look now
+            return;
+        }
+        ++waiting_;
+        LightLock_Lock(&lock_);
+        queue_.push_back(title);
+        LightLock_Unlock(&lock_);
+    }
+    // Moves what was found into out; true when anything was.
+    bool take(std::vector<Found> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !found_.empty();
+        for (Found &found : found_) {
+            out.push_back(std::move(found));
+        }
+        found_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    bool busy() const { return waiting_ > 0; }
+
+private:
+    static void run(void *argument)
+    {
+        SaveSearch &search = *static_cast<SaveSearch *>(argument);
+        while (!search.stop_) {
+            LightLock_Lock(&search.lock_);
+            const bool any = !search.queue_.empty();
+            titles::Title title;
+            if (any) {
+                title = std::move(search.queue_.front());
+                search.queue_.erase(search.queue_.begin());
+            }
+            LightLock_Unlock(&search.lock_);
+            if (!any) {
+                svcSleepThread(20 * 1000 * 1000);
+                continue;
+            }
+            search.look(title);
+            --search.waiting_;
+        }
+    }
+
+    // A title has save data when its save archive opens.
+    void look(const titles::Title &title)
+    {
+        const savedata::Target target =
+            savedata::saveOf(title, library::mediaOf(title));
+        if (!savedata::exists(target)) {
+            return;
+        }
+        Found found {title, savedata::backups(target).size()};
+        LightLock_Lock(&lock_);
+        found_.push_back(std::move(found));
+        LightLock_Unlock(&lock_);
+    }
+
+    Thread thread_ = nullptr;
+    std::atomic<bool> stop_ {false};
+    std::atomic<int> waiting_ {0};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<titles::Title> queue_;
+    std::vector<Found> found_;
+};
+
+} // namespace
+
 void App::saveTitlesScreen()
 {
-    // Which software has a save: its archive opens. Checked once.
-    std::vector<titles::Title> withSaves;
-    const bool looked = tasks::busy(
-        "Save Data", "Looking for save data...",
-        [&](tasks::Busy &busy) {
-            busy.total = library_.titles.size();
-            for (const titles::Title &title : library_.titles) {
-                if (busy.cancel) {
-                    return;
-                }
-                busy.done.fetch_add(1);
-                if (!titles::isSoftware(title.id) ||
-                    !savedata::unsupportedReason(title).empty()) {
-                    continue;
-                }
-                if (savedata::exists(
-                        savedata::saveOf(title, library::mediaOf(title)))) {
-                    withSaves.push_back(title);
-                }
-            }
-        },
-        true);
-    if (!looked) {
-        return;
-    }
-    const titles::Index index = titles::indexOf(library_.titles);
-    std::stable_sort(withSaves.begin(), withSaves.end(),
-                     [&](const titles::Title &a, const titles::Title &b) {
-                         return text::lower(titles::displayName(a, index)) <
-                                text::lower(titles::displayName(b, index));
-                     });
+    // Titles are handed to the search as the library reads them, so the
+    // list fills in while both are still going.
+    SaveSearch search;
+    std::set<uint64_t> queued;
+    std::vector<SaveSearch::Found> withSaves;
+    titles::Index index;
+    uint32_t seen = libraryGeneration_ - 1;
 
     int cursor = 0;
     while (ui::keepRunning() && !quit_) {
         ui::ListSpec spec;
         spec.title = "Save Data";
         spec.emptyText = "No save data.";
-        for (const titles::Title &title : withSaves) {
-            ui::ListItem item;
-            item.label = titles::displayName(title, index);
-            item.icon = title.place == titles::Place::GameCard
-                            ? ui::Icon::GameCard
-                            : ui::Icon::Chip;
-            item.iconColor = ui::color::IconTeal;
-            const size_t count =
-                savedata::backups(savedata::saveOf(title, library::mediaOf(title)))
-                    .size();
-            item.detail = count == 0 ? "" : plural(count, "backup");
-            spec.items.push_back(item);
-        }
+        bool rebuild = true; // once more on each return to the list
+        spec.update = [&]() {
+            if (seen != libraryGeneration_) {
+                seen = libraryGeneration_;
+                index = titles::indexOf(library_.titles);
+                for (const titles::Title &title : library_.titles) {
+                    if (titles::isSoftware(title.id) &&
+                        savedata::unsupportedReason(title).empty() &&
+                        queued.insert(title.id).second) {
+                        search.add(title);
+                    }
+                }
+                rebuild = true;
+            }
+            if (search.take(withSaves)) {
+                rebuild = true;
+            }
+            if (!rebuild) {
+                return false;
+            }
+            rebuild = false;
+            std::stable_sort(withSaves.begin(), withSaves.end(),
+                             [&](const SaveSearch::Found &a,
+                                 const SaveSearch::Found &b) {
+                                 return text::lower(titles::displayName(a.title, index)) <
+                                        text::lower(titles::displayName(b.title, index));
+                             });
+            spec.items.clear();
+            for (const SaveSearch::Found &found : withSaves) {
+                ui::ListItem item;
+                item.key = cia::titleIdText(found.title.id);
+                item.label = titles::displayName(found.title, index);
+                item.icon = found.title.place == titles::Place::GameCard
+                                ? ui::Icon::GameCard
+                                : ui::Icon::Chip;
+                item.iconColor = ui::color::IconTeal;
+                item.detail =
+                    found.backups == 0 ? "" : plural(found.backups, "backup");
+                spec.items.push_back(item);
+            }
+            return true;
+        };
+        spec.update();
+        spec.loading = [&]() {
+            std::string ignored;
+            return (!library_.complete && !libraryLoader_.failed(ignored)) ||
+                   search.busy();
+        };
         spec.drawTop = [&](int highlighted) {
             ui::drawTopChrome("Save Data", ui::Icon::Chip, ui::color::IconTeal);
             ui::drawPanel();
@@ -119,7 +231,7 @@ void App::saveTitlesScreen()
                 ui::drawEmblem(ui::Icon::Chip, ui::color::IconTeal);
                 return;
             }
-            const titles::Title &title = withSaves[highlighted];
+            const titles::Title &title = withSaves[highlighted].title;
             const float left = ui::TopPanel.x + 18;
             const float top = ui::TopPanel.y + 12;
             ui::drawTitleIcon(title.icon, left, top, ui::Icon::Chip);
@@ -137,8 +249,12 @@ void App::saveTitlesScreen()
             result.index >= static_cast<int>(withSaves.size())) {
             return;
         }
-        const titles::Title &title = withSaves[result.index];
-        saveDataScreen(savedata::saveOf(title, library::mediaOf(title)), title.icon);
+        SaveSearch::Found &found = withSaves[result.index];
+        const savedata::Target target =
+            savedata::saveOf(found.title, library::mediaOf(found.title));
+        saveDataScreen(target, found.title.icon);
+        // Backing up or deleting there changes the count shown here.
+        found.backups = savedata::backups(target).size();
     }
 }
 

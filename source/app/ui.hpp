@@ -344,6 +344,10 @@ struct ScreenSpec {
     std::function<void()> drawTop;
     // Drawn on the bottom screen under the controls.
     std::function<void()> drawBottom;
+    // Called every frame before anything else; returns true when it changed
+    // the controls (enabled, labels, badges), for screens whose data is
+    // still loading.
+    std::function<bool()> update;
 };
 
 constexpr int ScreenBack = -1;
@@ -389,6 +393,9 @@ struct ListItem {
     u32 iconColor = color::IconGrey;
     std::string badge; // replaces detail with a coloured badge
     u32 badgeColor = color::Badge;
+    // Names the row, so the highlight follows it when update reorders the
+    // rows; "" for lists that never change while open.
+    std::string key;
 };
 
 struct ListSpec {
@@ -412,6 +419,11 @@ struct ListSpec {
     bool tapToSelect = false;
     // Draws the top screen for the highlighted item (index -1 when empty).
     std::function<void(int)> drawTop;
+    // For lists that fill in while open: called every frame before drawing,
+    // it may change items and returns true when it did.
+    std::function<bool()> update;
+    // While true, a spinner shows that more rows are on their way.
+    std::function<bool()> loading;
 };
 
 struct ListResult {
