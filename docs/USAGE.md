@@ -67,13 +67,13 @@ Everything also works by touch, and lists scroll with a flick.
 
 | Setting | Default | |
 | --- | --- | --- |
-| Resume interrupted downloads | On | Keeps partial downloads to continue later |
-| Max connections | 4 | The most connections one download is split across, 1 to 4; lower it for servers that refuse several |
-| Stay awake while downloading | On | Pauses Sleep Mode so closing the lid doesn't stop Wi-Fi |
-| Offer to extract ZIP files | Off | Asks to extract a ZIP after it downloads |
-| After a CIA downloads | Ask | Ask, install, install and delete, or keep |
-| Check for updates | On | Looks for a new 3dsDL when it opens |
-| Sounds | On | Needs `sdmc:/3ds/dspfirm.cdc` |
+| Downloads → Resume Downloads | On | Keeps partial downloads to continue later |
+| Downloads → Max Connections | 4 | The most connections one download is split across, 1 to 4; lower it for servers that refuse several |
+| Downloads → Stay Awake | On | Pauses Sleep Mode so closing the lid doesn't stop Wi-Fi |
+| Downloads → Ask to Extract ZIPs | Off | Asks to extract a ZIP after it downloads |
+| Downloads → After a CIA Downloads | Ask Each Time | Ask, install, install and delete, or keep |
+| Updates → Check at Startup | On | Looks for a new 3dsDL when it opens |
+| Other Settings → Sounds | On | Needs `sdmc:/3ds/dspfirm.cdc` |
 
 **Console Clock** compares the console's time with internet time and sets it for your time zone. HTTPS fails when the date is wrong. Setting the clock needs the CIA build; Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>SELECT</kbd>, Miscellaneous options) can also set it.
 

@@ -126,7 +126,7 @@
       })
       .then(function (release) {
         document.querySelectorAll("[data-release-tag]").forEach(function (element) {
-          element.textContent = "New! " + release.tag_name;
+          element.textContent = release.tag_name;
           element.hidden = false;
         });
         (release.assets || []).forEach(function (asset) {
@@ -227,7 +227,7 @@
   // Same rule 3dsDL applies: http(s), a host, and no spaces or control
   // characters.
   function checkLink(value) {
-    if (!value) return { ok: false, message: "The code appears as you type." };
+    if (!value) return { ok: false, message: "" };
     if (!/^https?:\/\//i.test(value)) {
       return { ok: false, message: "3dsDL only downloads links that start with http:// or https://." };
     }
@@ -375,8 +375,14 @@
       track("send_link_shared", { host: hostOf(current) });
     });
 
-    var shared = new URLSearchParams(location.search).get("url");
+    var params = new URLSearchParams(location.search);
+    var shared = params.get("url");
     if (shared) {
+      // Out of the address bar before analytics starts, so the pageview
+      // carries this page's address and not the link.
+      params.delete("url");
+      var rest = params.toString();
+      history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + location.hash);
       input.value = shared;
       source = "shared_link";
       render();
@@ -976,34 +982,14 @@
 
 // The buddy card on the right edge: the sibling app, peeking in. Hover
 // opens it on a pointer; a tap on its tab opens and closes it on touch.
-// It gives one handwritten "psst!" after the page has settled and wiggles
-// its icon every so often.
 (function () {
   "use strict";
   var buddy = document.getElementById("buddy");
   if (!buddy) return;
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var tab = buddy.querySelector(".buddy-tab");
   tab.addEventListener("click", function (event) {
     event.preventDefault();
     if (buddy.classList.toggle("is-open")) window.track("buddy_opened", { app: "3dsFM" });
-    buddy.classList.remove("is-psst");
   });
-  buddy.addEventListener("pointerenter", function () { buddy.classList.remove("is-psst"); });
   if (location.search.indexOf("buddy=open") !== -1) buddy.classList.add("is-open");
-
-  if (reduceMotion) return;
-  // A nudge and a "psst!" once the reader has had a moment, then a wiggle
-  // every so often while the card is tucked away.
-  setTimeout(function () {
-    if (buddy.matches(":hover") || buddy.classList.contains("is-open")) return;
-    buddy.classList.add("is-nudge", "is-psst");
-    setTimeout(function () { buddy.classList.remove("is-nudge"); }, 900);
-    setTimeout(function () { buddy.classList.remove("is-psst"); }, 4200);
-  }, 2600);
-  setInterval(function () {
-    if (buddy.matches(":hover") || buddy.classList.contains("is-open")) return;
-    buddy.classList.add("is-wiggle");
-    setTimeout(function () { buddy.classList.remove("is-wiggle"); }, 800);
-  }, 11000);
 })();

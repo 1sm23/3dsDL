@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Regenerates the install QR codes on the website. They point at GitHub's
-# "latest release" download URLs, so they only change if the repository or
-# the asset names change.
+# Regenerates the install QR code on the website. It points at GitHub's
+# "latest release" download URL, so it only changes if the repository or
+# the asset name changes.
 
 set -Eeuo pipefail
 
@@ -16,7 +16,4 @@ cc -O2 -I"${ROOT}/source/qrcodegen" "${ROOT}/scripts/qr-svg.c" \
 
 "${TOOL}" "${LATEST}/3dsDL.cia" "${ROOT}/site/qr/install-cia.svg" \
     "QR code that installs the latest 3dsDL CIA with FBI"
-"${TOOL}" "${LATEST}/3dsDL.3dsx" "${ROOT}/site/qr/download-3dsx.svg" \
-    "QR code that downloads the latest 3dsDL.3dsx"
-
-echo "Wrote site/qr/install-cia.svg and site/qr/download-3dsx.svg"
+echo "Wrote site/qr/install-cia.svg"

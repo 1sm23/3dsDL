@@ -662,55 +662,6 @@ symbol .fill {
   background: linear-gradient(105deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0) 45%);
 }
 
-/* Screen pixels: --x/--y/--w/--h are 3DS pixels and --s is the scale
-   ui.cpp draws text at. 24 px is the system font's cell height at scale 1. */
-.screen .t,
-.screen .r {
-  position: absolute;
-  left: calc(var(--x) * 1px);
-  top: calc(var(--y) * 1px);
-}
-
-.screen .t {
-  font-size: calc(var(--s) * 24px);
-  line-height: 1.25;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.screen .r {
-  width: calc(var(--w) * 1px);
-  height: calc(var(--h) * 1px);
-}
-
-.r-fill {
-  background: var(--app-primary);
-}
-
-.screen .r-fill {
-  width: calc(var(--w) * 1px * var(--p, 0.7));
-}
-
-.t-end {
-  transform: translateX(-100%);
-}
-
-.t-mid {
-  transform: translateX(-50%);
-}
-
-.t-muted {
-  color: var(--app-muted);
-}
-
-.t-green {
-  color: var(--app-green);
-}
-
-.t-warn {
-  color: var(--app-yellow);
-}
-
 /* Power-on: the screens light up, the 3dsDL logo pops in, and the boot
    screen fades away to the app. Only with the script (the screens need it
    anyway) and only when motion is welcome. */
@@ -937,49 +888,23 @@ html:not(.js) .tray {
 }
 
 /* ---------------------------------------------------------------- Sections
-   Each section is a rounded panel on the backdrop, labelled by a tab in its
-   face button's colour. */
+   Each section is a rounded panel on the backdrop. */
 
 .panel {
   position: relative;
   margin-top: 46px;
-  padding: 54px var(--pad) 46px;
+  padding: 46px var(--pad);
   background: var(--panel);
   border: 1px solid var(--rim);
   border-radius: 30px;
   box-shadow: inset 0 2px 0 #fff, 0 5px 0 var(--rim-lo), 0 20px 40px rgba(36, 56, 78, 0.1);
 }
 
-.tone-x { --tone: var(--x); --tone-ink: var(--x-ink); }
-.tone-y { --tone: var(--y); --tone-ink: var(--y-ink); }
-.tone-b { --tone: var(--b); --tone-ink: var(--b-ink); }
-.tone-a { --tone: var(--a); --tone-ink: var(--a-ink); }
 
 .section-head {
   max-width: 40rem;
   margin: 0 auto 30px;
   text-align: center;
-}
-
-.eyebrow {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 5px 18px;
-  border-radius: 999px;
-  border: 2px solid var(--tone);
-  background: #fff;
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--tone) 45%, #fff);
-  font: 400 15px/1.2 var(--dot);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--tone-ink);
-  transform: translate(-50%, -50%);
 }
 
 .section-head h2 {
@@ -995,7 +920,8 @@ html:not(.js) .tray {
   .panel {
     --pad: 16px;
     margin-top: 40px;
-    padding-top: 46px;
+    padding-top: 36px;
+    padding-bottom: 36px;
     border-radius: 24px;
   }
 }
@@ -1077,72 +1003,6 @@ html:not(.js) .tray {
   background: linear-gradient(90deg, var(--app-bg), var(--app-bg-2));
 }
 
-.m-line {
-  display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.m-small {
-  font-size: 0.85em;
-  white-space: normal;
-}
-
-.m-muted { color: var(--app-muted); }
-.m-green { color: var(--app-green); }
-.m-warn { color: var(--app-yellow); }
-.m-cyan { color: var(--app-primary); }
-
-/* A small "new" badge next to a feature's name. */
-.tag-new {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--app-primary);
-  color: #08131f;
-  font-size: 0.6em;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
-.m-bar {
-  display: block;
-  height: 0.92em;
-  background: var(--app-raised);
-}
-
-.m-bar i {
-  display: block;
-  height: 100%;
-  background: var(--app-primary);
-}
-
-.m-buttons {
-  display: flex;
-  gap: 0.38em;
-  margin-top: 0.28em;
-}
-
-.m-buttons b {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  height: 2.05em;
-  font-size: 0.78em;
-  font-weight: 700;
-  background: var(--app-raised);
-  box-shadow: 0.12em 0.17em 0 rgba(0, 0, 0, 0.35);
-}
-
-.m-buttons b.on {
-  color: var(--app-bg);
-  background: var(--app-primary);
-}
-
 /* A feature shown by the real app: its top and bottom screens side by
    side at the same height, as captured at native size. */
 .feature-demo.shot-pair,
@@ -1175,26 +1035,6 @@ html:not(.js) .tray {
 
 .shot-pair img:last-child {
   flex: 320 1 0;
-}
-
-.feature-demo.m-list {
-  justify-content: flex-start;
-  gap: 0.22em;
-  padding: 0.75em 0.95em;
-}
-
-.m-row {
-  display: block;
-  padding: 0.26em 0.45em;
-  font-size: 0.9em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.m-row.on {
-  background: var(--app-raised);
-  box-shadow: inset 0.19em 0 0 var(--app-primary);
 }
 
 /* The console look. The two screens sit in dark glass bezels. */
@@ -1259,12 +1099,7 @@ html:not(.js) .tray {
   background: var(--app-primary);
 }
 
-.home-app-state {
-  font-size: 14px;
-  color: var(--app-muted);
-}
-
-/* All six share one grid cell, so the screen is as tall as the tallest and
+/* They all share one grid cell, so the screen is as tall as the tallest and
    never jumps; only the selected one is shown. */
 .js .home-screen {
   grid-template-rows: auto minmax(0, 1fr);
@@ -1294,10 +1129,6 @@ html:not(.js) .tray {
   padding: 1em 1.3em 0.7em;
   font-size: clamp(12px, 3.4cqi, 22px);
   background: none;
-}
-
-.js .home .feature-demo.m-list {
-  padding: 0.8em 1.1em 0.5em;
 }
 
 /* The banner label along the bottom of the top screen. */
@@ -1436,9 +1267,6 @@ html:not(.js) .tray {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .js .home .feature.is-on .m-bar i {
-    animation: bar-grow 1.4s var(--ease-out) both;
-  }
 }
 
 @keyframes bar-grow {
@@ -1468,14 +1296,6 @@ html:not(.js) .tray {
     padding: 8px;
     border-radius: 20px;
   }
-}
-
-.also {
-  max-width: 44em;
-  margin: 26px auto 0;
-  text-align: center;
-  font-size: 0.86rem;
-  color: var(--dim);
 }
 
 /* ----------------------------------------------- Send a link: PictoChat
@@ -1512,12 +1332,6 @@ html:not(.js) .tray {
   color: #fff;
   background: var(--y);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 0 #1d7a3a;
-}
-
-.chat-who {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--dim);
 }
 
 .chat-log {
@@ -1907,20 +1721,12 @@ html:not(.js) .tray {
   font-size: 0.98rem;
 }
 
-.pick-sub {
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
-
 @media (max-width: 480px) {
   .pick {
     padding: 8px 8px 9px;
   }
   .pick-title {
     font-size: 0.9rem;
-  }
-  .pick-sub {
-    font-size: 0.72rem;
   }
 }
 
@@ -1975,7 +1781,8 @@ html:not(.js) .install-panel {
   display: none;
 }
 
-/* Top screen: QR code on the left, what to scan it with on the right. */
+/* Top screen: the QR code and the file it installs, or the file and the
+   folder it goes in. */
 .qr-view {
   display: flex;
   align-items: center;
@@ -2006,39 +1813,36 @@ html:not(.js) .install-panel {
   min-width: 0;
 }
 
-.qr-kicker {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--app-muted);
-}
-
 .qr-app {
-  font-size: 36px;
+  font-size: 30px;
   line-height: 1;
   font-weight: 800;
   color: var(--app-primary);
 }
 
-.qr-path {
-  font-size: 15px;
-  line-height: 1.35;
-  color: var(--app-text);
+.qr-size {
+  font-size: 16px;
+  color: var(--app-muted);
 }
 
-.qr-file {
-  justify-self: start;
-  margin-top: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font: 500 12px var(--mono);
+.path-view {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+}
+
+.path {
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font: 500 20px var(--mono);
   color: var(--app-text);
   background: var(--app-raised);
-  box-shadow: inset 3px 0 0 var(--app-primary);
+  box-shadow: inset 4px 0 0 var(--app-primary);
 }
 
-/* Touch screen: title, file, steps and two buttons. */
+/* Touch screen: the steps and two buttons. */
 .info-view {
   display: flex;
   flex-direction: column;
@@ -2046,43 +1850,10 @@ html:not(.js) .install-panel {
   padding: 13px 15px 14px;
 }
 
-.info-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.info-head h3 {
-  font-size: 18px;
-  color: var(--app-text);
-}
-
-.chip {
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--app-bg);
-  background: var(--app-green);
-}
-
-.info-meta {
-  margin: 0;
-  font-size: 12px;
-  color: var(--app-muted);
-}
-
-.size-inline:not(:empty)::before {
-  content: " · ";
-}
-
 .info-steps {
   display: grid;
-  gap: 6px;
-  margin: 2px 0 0;
+  gap: 8px;
+  margin: auto 0;
   padding: 0;
   list-style: none;
   counter-reset: step;
@@ -2121,7 +1892,6 @@ html:not(.js) .install-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: auto;
 }
 
 /* Buttons in 3dsDL's own style: flat, with a hard drop shadow. */
@@ -2241,36 +2011,6 @@ html:not(.js) .install-panel {
 .nojs-downloads img {
   display: block;
   margin-top: 6px;
-}
-
-.notice {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  max-width: 760px;
-  margin: 26px auto 0;
-  padding: 14px 18px;
-  border-radius: 18px;
-  border: 2px solid #f0d27a;
-  background: #fff8dc;
-  box-shadow: 0 3px 0 #f3e3ac;
-  font-size: 0.9rem;
-}
-
-.notice-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: #5a3d00;
-  background: linear-gradient(#ffe08a, var(--b));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 0 #c99415;
-}
-
-.notice p {
-  margin: 0;
 }
 
 /* --------------------------------------------- Footer: the back of the box */
@@ -2473,8 +2213,7 @@ dialog::backdrop {
 }
 
 /* ---- The buddy card: the other app, peeking in from the right edge like
-   a game card left in the slot. Hover or tap slides it out; the icon bobs
-   and now and then gives a wiggle; a handwritten "psst!" shows up once. ---- */
+   a game card left in the slot. Hover or tap slides it out. ---- */
 .buddy {
   position: fixed;
   right: 0;
@@ -2488,10 +2227,6 @@ dialog::backdrop {
 .buddy:hover,
 .buddy:focus-within {
   transform: translateX(0);
-}
-.buddy.is-hidden {
-  transform: translateX(110%);
-  pointer-events: none;
 }
 .buddy-card {
   display: flex;
@@ -2555,11 +2290,6 @@ dialog::backdrop {
   width: 168px;
   min-width: 0;
 }
-.buddy-kicker {
-  font: 400 12px/1.2 var(--dot);
-  letter-spacing: 0.08em;
-  color: var(--dim);
-}
 .buddy-title {
   font: 800 18px/1.1 var(--font);
   color: var(--ink);
@@ -2567,73 +2297,6 @@ dialog::backdrop {
 .buddy-sub {
   font: 500 12.5px/1.35 var(--font);
   color: var(--mute);
-}
-.buddy-go {
-  justify-self: start;
-  margin-top: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 30px;
-  padding: 0 10px 0 13px;
-  border-radius: 3px;
-  font: 700 13px var(--font);
-  color: #fff;
-  background: var(--buddy-tone);
-  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.4), 2px 3px 0 rgba(0, 0, 0, 0.25);
-  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out);
-}
-.buddy-go .icon {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.buddy-card:active .buddy-go {
-  transform: translate(2px, 3px);
-  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.4), 0 0 0 rgba(0, 0, 0, 0.25);
-}
-.buddy-psst {
-  position: absolute;
-  left: 2px;
-  top: -36px;
-  padding: 2px 8px;
-  border-radius: 10px 10px 2px 10px;
-  background: var(--b);
-  color: var(--b-ink);
-  font: 700 18px/1.2 var(--hand);
-  transform: rotate(-6deg) scale(0);
-  transform-origin: 100% 100%;
-  transition: transform 420ms var(--spring);
-  pointer-events: none;
-}
-.buddy.is-psst .buddy-psst {
-  transform: rotate(-6deg) scale(1);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .buddy-icon {
-    animation: buddy-bob 3.6s ease-in-out infinite;
-  }
-  .buddy.is-wiggle .buddy-icon {
-    animation: buddy-wiggle 700ms var(--ease-out) 1;
-  }
-  .buddy.is-nudge {
-    transform: translateX(calc(100% - 56px));
-  }
-}
-@keyframes buddy-bob {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -3px; }
-}
-@keyframes buddy-wiggle {
-  0% { rotate: 0deg; }
-  20% { rotate: -9deg; }
-  45% { rotate: 7deg; }
-  70% { rotate: -4deg; }
-  100% { rotate: 0deg; }
 }
 @media (max-width: 640px) {
   .buddy {
