@@ -36,6 +36,7 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::sortDescription;
 using screens::versionRow;
 
 // The background behind pictures, as RGB565: the app's dark blue.
@@ -56,21 +57,6 @@ std::string folderTitle(const std::string &folder)
 {
     return naming::parentFolder(folder) == folder ? "SD Card"
                                                   : fileops::name(folder);
-}
-
-const char *sortLabel(fs::SortOrder order)
-{
-    switch (order) {
-    case fs::SortOrder::Size:
-        return "Size";
-    case fs::SortOrder::Date:
-        return "Date";
-    case fs::SortOrder::Type:
-        return "Type";
-    case fs::SortOrder::Name:
-        break;
-    }
-    return "Name";
 }
 
 std::string sizeText(int64_t size)
@@ -241,13 +227,14 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                   const Details &details)
 {
     const Kind kind = kindOf(entry);
-    const int64_t time = entry.modified > 0 ? entry.modified : details.modified;
+    const int64_t time = details.modified > 0 ? details.modified : entry.modified;
     const std::string modified = time > 0 ? units::dateTime(time) : "";
 
     if (kind == Kind::Folder) {
         drawEntryPanel({}, kind, entry.name, path + "/",
                        {{"Type", "Folder"},
                         {"Contains", plural(details.items, "item")},
+                        {"Size", sizeText(entry.size)}, // once added up
                         {"Changed", modified}});
         return;
     }
@@ -433,9 +420,243 @@ private:
     std::vector<std::vector<fs::Entry>> batches_;
 };
 
+// Adds up the folders inside a folder, one after another on a worker thread,
+// so folders can sort by size. Totals already in the index are used as they
+// are, and every folder it reads whole comes back to go in the index.
+class FolderSizer {
+public:
+    struct Sized {
+        std::string path;
+        fileops::Totals totals;
+        uint64_t fingerprint = 0;
+    };
+
+    FolderSizer() { LightLock_Init(&lock_); }
+    ~FolderSizer() { stop(); }
+    FolderSizer(const FolderSizer &) = delete;
+    FolderSizer &operator=(const FolderSizer &) = delete;
+
+    void start(const std::string &folder, std::vector<std::string> names,
+               std::map<std::string, fileops::Totals> known)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        sized_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        names_ = std::move(names);
+        known_ = std::move(known);
+        stop_ = false;
+        finished_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            finished_ = true; // sizes stay unknown rather than hold up Files
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    // Moves the folders added up so far into out.
+    bool take(std::vector<Sized> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !sized_.empty();
+        for (Sized &sized : sized_) {
+            out.push_back(std::move(sized));
+        }
+        sized_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    bool finished() const { return finished_; }
+
+private:
+    static void run(void *argument)
+    {
+        FolderSizer &sizer = *static_cast<FolderSizer *>(argument);
+        fileops::MeasureHooks hooks;
+        hooks.known = [&](const std::string &path, fileops::Totals &totals) {
+            const auto found = sizer.known_.find(fileindex::keyOf(path));
+            if (found == sizer.known_.end()) {
+                return false;
+            }
+            totals = found->second;
+            return true;
+        };
+        hooks.measured = [&](const std::string &path,
+                             const fileops::Totals &totals, uint64_t print) {
+            LightLock_Lock(&sizer.lock_);
+            sizer.sized_.push_back({path, totals, print});
+            LightLock_Unlock(&sizer.lock_);
+        };
+        for (const std::string &name : sizer.names_) {
+            if (sizer.stop_) {
+                break;
+            }
+            fileops::measure(sizer.folder_ + name, &sizer.stop_, nullptr, &hooks);
+        }
+        sizer.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    std::vector<std::string> names_;
+    std::map<std::string, fileops::Totals> known_;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {true};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<Sized> sized_;
+};
+
+// Asks the SD card when each of a folder's entries last changed, one at a
+// time on a worker thread (the card searches the folder for each), for the
+// entries the index has no date for, so folders can sort by date.
+class DateReader {
+public:
+    struct Dated {
+        std::string name;
+        int64_t size = -1; // as listed, so the date is kept for that size
+        int64_t modified = 0;
+    };
+
+    DateReader() { LightLock_Init(&lock_); }
+    ~DateReader() { stop(); }
+    DateReader(const DateReader &) = delete;
+    DateReader &operator=(const DateReader &) = delete;
+
+    void start(const std::string &folder, std::vector<Dated> wanted)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        dated_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        wanted_ = std::move(wanted);
+        stop_ = false;
+        finished_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            finished_ = true; // dates stay unknown rather than hold up Files
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    bool take(std::vector<Dated> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !dated_.empty();
+        for (Dated &dated : dated_) {
+            out.push_back(std::move(dated));
+        }
+        dated_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    bool finished() const { return finished_; }
+
+private:
+    static void run(void *argument)
+    {
+        DateReader &reader = *static_cast<DateReader *>(argument);
+        for (Dated &wanted : reader.wanted_) {
+            if (reader.stop_) {
+                break;
+            }
+            wanted.modified = fs::modifiedTime(reader.folder_ + wanted.name);
+            LightLock_Lock(&reader.lock_);
+            reader.dated_.push_back(wanted);
+            LightLock_Unlock(&reader.lock_);
+        }
+        reader.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    std::vector<Dated> wanted_;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {true};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<Dated> dated_;
+};
+
+constexpr const char *IndexFile = "sdmc:/3ds/3dsDL/index.bin";
+
 } // namespace
 
+void App::startIndexLoad()
+{
+    indexCard_ = platform::sdCardId();
+    loadingIndex_.reset(new fileindex::Index());
+    indexLoaded_ = false;
+    indexLoader_ = tasks::startWorker(
+        [](void *argument) {
+            App &app = *static_cast<App *>(argument);
+            std::string data;
+            if (fs::readFile(IndexFile, data)) {
+                app.loadingIndex_->load(data, app.indexCard_);
+            }
+            app.indexLoaded_ = true;
+        },
+        this);
+    if (indexLoader_ == nullptr) {
+        loadingIndex_.reset(); // starts empty instead
+    }
+}
+
+void App::pollIndex()
+{
+    if (indexLoader_ == nullptr || !indexLoaded_) {
+        return;
+    }
+    threadJoin(indexLoader_, U64_MAX);
+    threadFree(indexLoader_);
+    indexLoader_ = nullptr;
+    // Anything read this run wins over the last run's answer.
+    fileIndex_.adopt(std::move(*loadingIndex_));
+    loadingIndex_.reset();
+}
+
+void App::saveIndex()
+{
+    if (indexLoader_ != nullptr) {
+        while (!indexLoaded_) { // still loading: take it in first
+            svcSleepThread(10 * 1000 * 1000);
+        }
+        pollIndex();
+    }
+    if (!fileIndex_.dirty()) {
+        return;
+    }
+    checkSdIndex(); // so only this write counts as explained
+    if (fs::makeDirectories(storage::DataFolder)) {
+        fs::writeFile(IndexFile, fileIndex_.save(indexCard_));
+    }
+    sdChanged(IndexFile);
+    fileIndex_.markSaved();
+}
+
 void App::filesScreen()
+{
+    browseFiles();
+    saveIndex();
+}
+
+void App::browseFiles()
 {
     if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
         filesFolder_ = fs::directoryExists(settings_.destination)
@@ -459,6 +680,56 @@ void App::filesScreen()
     bool replacing = false; // show entries until incoming is whole
     bool complete = false;
     bool reload = true;
+    // Folders are added up for sorting by size; their totals go in
+    // fileIndex_, which keeps them while nothing under them changes.
+    FolderSizer sizer;
+    bool sizing = false; // sizer was started for this listing
+    // Folder sizes from the index, including those loaded from the last run
+    // until they are added up again; -1 for those not added up.
+    const auto fillSizes = [&](std::vector<fs::Entry> &list) {
+        for (fs::Entry &entry : list) {
+            fileops::Totals totals;
+            if (entry.folder) {
+                entry.size = fileIndex_.total(current + entry.name, totals)
+                                 ? static_cast<int64_t>(totals.bytes)
+                                 : -1;
+            }
+        }
+    };
+    DateReader dates;
+    bool dating = false; // dates was started for this listing
+    // Dates the index has for entries of the size they have now.
+    const auto fillDates = [&](std::vector<fs::Entry> &list) {
+        for (fs::Entry &entry : list) {
+            int64_t modified = 0;
+            if (fileIndex_.date(current + entry.name, entry.folder ? -1 : entry.size,
+                                modified)) {
+                entry.modified = modified;
+            }
+        }
+    };
+    const auto keepDates = [&]() {
+        std::vector<DateReader::Dated> dated;
+        if (!dates.take(dated)) {
+            return false;
+        }
+        for (const DateReader::Dated &entry : dated) {
+            fileIndex_.storeDate(current + entry.name, entry.size, entry.modified);
+        }
+        return true;
+    };
+    // Puts what the sizer added up in the index; true when there was any.
+    const auto keepSizes = [&]() {
+        std::vector<FolderSizer::Sized> sized;
+        if (!sizer.take(sized)) {
+            return false;
+        }
+        for (const FolderSizer::Sized &folder : sized) {
+            fileIndex_.storeTotal(folder.path, folder.totals, folder.fingerprint);
+        }
+        return true;
+    };
+    checkSdIndex();
 
     // quit_ is set when a .3dsx is started, which happens as 3dsDL closes.
     while (ui::keepRunning() && !quit_) {
@@ -469,18 +740,33 @@ void App::filesScreen()
                 cursor = 0;
                 marked.clear();
             }
+            checkSdIndex();
             replacing = readFolder == current && !entries.empty();
             if (!replacing) {
                 entries.clear();
+                // A folder read before shows at once, while it is read again.
+                const std::vector<fs::Entry> *known =
+                    fileIndex_.listing(current, settings_.showHiddenFiles);
+                if (known != nullptr && !known->empty()) {
+                    entries = *known;
+                    replacing = true;
+                }
             }
+            fillSizes(entries);
+            fillDates(entries);
+            fs::sortEntries(entries, settings_.fileSort, settings_.fileSortReverse);
             waiting.clear();
             incoming.clear();
             readFolder = current;
             complete = false;
-            // Times cost the SD card a search of the folder for each entry,
-            // so they are only read to sort by them.
-            reader.start(current, settings_.showHiddenFiles,
-                         settings_.fileSort == fs::SortOrder::Date);
+            sizer.stop();
+            sizing = false;
+            dates.stop();
+            dating = false;
+            // Dates come from the index, or from the date reader once the
+            // folder is read: asked for during the read, each costs the
+            // card a search of the folder.
+            reader.start(current, settings_.showHiddenFiles, false);
         }
         const bool atRoot = naming::parentFolder(current) == current;
 
@@ -499,10 +785,14 @@ void App::filesScreen()
         spec.emptyText = "This folder is empty.";
         spec.back = atRoot ? "Close" : "Back";
         spec.action = "Options";
-        spec.actionKey = "X";
-        spec.actionKeys = KEY_X;
-        spec.longPressKey = KEY_X;
-        spec.extraKeys = KEY_Y | KEY_SELECT | KEY_START;
+        spec.actionKey = "Y";
+        spec.actionKeys = KEY_Y;
+        spec.longPressKey = KEY_Y;
+        spec.extraKeys = KEY_SELECT | KEY_START;
+        spec.headingAction = "Sort";
+        // X sorts, as on the Software lists.
+        spec.headingActionKey = "X";
+        spec.headingActionKeys = KEY_X;
         spec.hint = !marked.empty() ? std::to_string(marked.size()) + " marked"
                   : !clipboard_.empty()
                       ? std::to_string(clipboard_.size()) +
@@ -516,7 +806,7 @@ void App::filesScreen()
                 const KindLook look = lookOf(kindOf(entry));
                 item.key = entry.name;
                 item.label = entry.name;
-                item.detail = entry.folder ? "" : sizeText(entry.size);
+                item.detail = sizeText(entry.size); // folders once added up
                 item.icon = look.icon;
                 item.iconColor = look.color;
                 item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
@@ -532,6 +822,8 @@ void App::filesScreen()
         // Batches are shown at most every 150 ms while reading, so building
         // the rows for thousands of entries does not slow the reading down.
         uint64_t shownAt = 0;
+        const bool bySize = settings_.fileSort == fs::SortOrder::Size;
+        const bool byDate = settings_.fileSort == fs::SortOrder::Date;
         spec.update = [&]() {
             reader.take(waiting);
             const bool finishing = !complete && reader.finished();
@@ -540,14 +832,71 @@ void App::filesScreen()
             }
             const uint64_t now = osGetTime();
             const bool due = finishing || (!waiting.empty() && now - shownAt >= 150);
+            // Once the listing is whole, its folders are added up to sort
+            // by size; folders added up before keep their sizes.
+            if (bySize && complete && !sizing) {
+                sizing = true;
+                // A total loaded from the last run shows meanwhile, but is
+                // added up again.
+                std::vector<std::string> unsized;
+                for (const fs::Entry &entry : entries) {
+                    fileops::Totals totals;
+                    bool verified = false;
+                    if (entry.folder &&
+                        (!fileIndex_.total(current + entry.name, totals, &verified) ||
+                         !verified)) {
+                        unsized.push_back(entry.name);
+                    }
+                }
+                if (!unsized.empty()) {
+                    sizer.start(current, std::move(unsized),
+                                fileIndex_.verifiedTotals());
+                }
+            }
+            if (byDate && complete && !dating) {
+                dating = true;
+                std::vector<DateReader::Dated> undated;
+                for (const fs::Entry &entry : entries) {
+                    if (entry.modified <= 0) {
+                        undated.push_back(
+                            {entry.name, entry.folder ? -1 : entry.size, 0});
+                    }
+                }
+                if (!undated.empty()) {
+                    dates.start(current, std::move(undated));
+                }
+            }
+            const bool gotDates = dating && !replacing &&
+                                  (now - shownAt >= 150 || dates.finished()) &&
+                                  keepDates();
+            if (gotDates) {
+                shownAt = now;
+                fillDates(entries);
+                fs::sortEntries(entries, settings_.fileSort,
+                                settings_.fileSortReverse);
+                buildItems();
+            }
+            const bool sized = sizing && !replacing &&
+                               (now - shownAt >= 150 || sizer.finished()) &&
+                               keepSizes();
+            if (sized) {
+                shownAt = now;
+                fillSizes(entries);
+                fs::sortEntries(entries, settings_.fileSort,
+                                settings_.fileSortReverse);
+                buildItems();
+            }
             if (!due && landOn.empty()) {
-                return false;
+                return sized || gotDates;
             }
             if (due) {
                 shownAt = now;
                 std::vector<fs::Entry> &into = replacing ? incoming : entries;
                 for (std::vector<fs::Entry> &batch : waiting) {
-                    fs::mergeEntries(into, std::move(batch), settings_.fileSort);
+                    fillSizes(batch);
+                    fillDates(batch);
+                    fs::mergeEntries(into, std::move(batch), settings_.fileSort,
+                                     settings_.fileSortReverse);
                 }
                 waiting.clear();
                 if (finishing) {
@@ -556,6 +905,15 @@ void App::filesScreen()
                         entries.swap(incoming);
                         incoming.clear();
                         replacing = false;
+                    }
+                    if (reader.readable()) {
+                        // Its total no longer counts if its own entries
+                        // are not the ones it was added up from.
+                        if (fileIndex_.verify(current, entries)) {
+                            fillSizes(entries);
+                        }
+                        fileIndex_.storeListing(current, settings_.showHiddenFiles,
+                                                entries);
                     }
                     if (!reader.readable()) {
                         spec.emptyText = "The SD card could not be read.";
@@ -580,10 +938,13 @@ void App::filesScreen()
                     landOn.clear(); // gone meanwhile
                 }
             }
-            return due || moved;
+            return due || moved || sized || gotDates;
         };
         buildItems();
-        spec.loading = [&]() { return !complete; };
+        spec.loading = [&]() {
+            return !complete || (bySize && sizing && !sizer.finished()) ||
+                   (byDate && dating && !dates.finished());
+        };
 
         spec.drawTop = [&](int index) {
             const std::string title =
@@ -591,7 +952,10 @@ void App::filesScreen()
             ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
             if (index < 0 || index >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
-                std::vector<ui::Fact> facts = {{"Path", current}};
+                std::vector<ui::Fact> facts = {
+                    {"Path", current},
+                    {"Sorted", sortDescription(settings_.fileSort,
+                                               settings_.fileSortReverse)}};
                 if (!complete) {
                     facts.push_back({"Reading",
                                      plural(entries.size(), "item") + " so far",
@@ -610,18 +974,35 @@ void App::filesScreen()
             if (found == details.end()) {
                 found = details.emplace(path, loadDetails(path, kindOf(entry)))
                             .first;
+                // The date the card gives now replaces one the index kept.
+                const int64_t modified = found->second.modified;
+                if (modified > 0 && entry.modified != modified) {
+                    entries[index].modified = modified;
+                    fileIndex_.storeDate(path, entry.folder ? -1 : entry.size,
+                                         modified);
+                }
             }
             drawEntryTop(path, entry, found->second);
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
+        // Whatever comes next has the SD card to itself; the sizes still
+        // missing are added up again on the way back. What changed on the
+        // card before this point is caught now, before the next action.
+        sizer.stop();
+        keepSizes();
+        sizing = false;
+        dates.stop();
+        keepDates();
+        dating = false;
+        checkSdIndex();
         const int position = result.index;
         const bool onEntry =
             position >= 0 && position < static_cast<int>(entries.size());
         const std::string highlighted =
             onEntry ? current + entries[position].name : "";
 
-        if (result.key == 0 || result.key == KEY_START) {
+        if (result.key == 0) {
             return;
         }
         if (result.key == KEY_B) {
@@ -635,7 +1016,7 @@ void App::filesScreen()
             reload = true;
             continue;
         }
-        if (result.key == KEY_Y) {
+        if (result.key == KEY_SELECT) {
             // Marking only redraws the rows; the folder is not read again.
             if (onEntry) {
                 const auto at =
@@ -650,20 +1031,69 @@ void App::filesScreen()
             }
             continue;
         }
-        if (result.key == KEY_SELECT || (result.key == KEY_X && !onEntry &&
-                                         marked.empty())) {
-            if (folderOptions(current, entries, complete, marked)) {
-                details.clear();
-                reload = true;
+        // A new order is sorted in memory, keeping the highlighted entry;
+        // dates and folder sizes it needs are found after. Anything else the
+        // options did may have changed the folder.
+        const fs::SortOrder sortedBy = settings_.fileSort;
+        const bool reversed = settings_.fileSortReverse;
+        const auto afterOptions = [&](bool changed) {
+            if (settings_.fileSort == sortedBy &&
+                settings_.fileSortReverse == reversed) {
+                if (changed) {
+                    details.clear();
+                    reload = true;
+                }
+                return;
             }
+            const std::string keep = onEntry ? entries[position].name : "";
+            fs::sortEntries(entries, settings_.fileSort,
+                            settings_.fileSortReverse);
+            fs::sortEntries(incoming, settings_.fileSort,
+                            settings_.fileSortReverse);
+            for (size_t index = 0; index < entries.size(); ++index) {
+                if (entries[index].name == keep) {
+                    cursor = static_cast<int>(index);
+                }
+            }
+        };
+        // What an action changed, for the index to forget: this folder,
+        // what it acted on, and where anything moved here came from.
+        const std::vector<std::string> clipboardBefore = clipboard_;
+        const bool cutBefore = clipboardCut_;
+        const auto noteChanges = [&](bool changed,
+                                     const std::vector<std::string> &targets) {
+            if (!changed) {
+                return;
+            }
+            for (const std::string &path : targets) {
+                sdChanged(path);
+            }
+            if (cutBefore && clipboard_ != clipboardBefore) {
+                for (const std::string &path : clipboardBefore) {
+                    sdChanged(path);
+                }
+            }
+            sdChanged(current);
+        };
+        if (result.key == KEY_X) {
+            afterOptions(sortScreen(current));
             continue;
         }
-        if (result.key == KEY_X) {
+        if (result.key == KEY_START || (result.key == KEY_Y && !onEntry &&
+                                         marked.empty())) {
+            const bool changed = folderOptions(current, entries, complete, marked);
+            noteChanges(changed, {});
+            afterOptions(changed);
+            continue;
+        }
+        if (result.key == KEY_Y) {
             const std::vector<std::string> targets =
                 marked.empty() ? std::vector<std::string>{highlighted} : marked;
-            if (entryOptions(current, targets, marked, entries, complete)) {
-                details.clear();
-                reload = true;
+            const bool changed =
+                entryOptions(current, targets, marked, entries, complete);
+            noteChanges(changed, targets);
+            afterOptions(changed);
+            if (changed) {
                 if (!marked.empty() &&
                     std::none_of(marked.begin(), marked.end(),
                                  [](const std::string &path) {
@@ -685,14 +1115,21 @@ void App::filesScreen()
             reload = true;
             continue;
         }
-        openFile(highlighted);
+        // A viewer may save the file or extract next to it.
+        const int64_t freeBefore = platform::sdFreeBytes();
+        openFile(highlighted, complete ? &entries : nullptr);
+        if (platform::sdFreeBytes() != freeBefore ||
+            fs::fileSize(highlighted) != entry.size) {
+            sdChanged(highlighted);
+        }
         details.erase(highlighted);
         landOn = entry.name;
         reload = true;
     }
 }
 
-void App::openFile(const std::string &path)
+void App::openFile(const std::string &path,
+                   const std::vector<fs::Entry> *folderEntries)
 {
     const Kind kind = filetype::fromName(basename(path));
     switch (kind) {
@@ -709,10 +1146,17 @@ void App::openFile(const std::string &path)
         const std::string folder = folderOf(path);
         std::vector<std::string> pictures;
         size_t index = 0;
-        std::vector<fs::Entry> entries =
-            fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
-                            settings_.fileSort == fs::SortOrder::Date);
-        fs::sortEntries(entries, settings_.fileSort);
+        // Files' own list when it has the whole folder, so a folder of
+        // thousands is not read again just to step through its pictures.
+        std::vector<fs::Entry> entries;
+        if (folderEntries != nullptr) {
+            entries = *folderEntries;
+        } else {
+            entries = fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
+                                      settings_.fileSort == fs::SortOrder::Date);
+            fs::sortEntries(entries, settings_.fileSort,
+                            settings_.fileSortReverse);
+        }
         for (const fs::Entry &entry : entries) {
             if (!entry.folder && kindOf(entry) == Kind::Image) {
                 if (folder + entry.name == path) {
@@ -1093,13 +1537,14 @@ bool App::folderOptions(const std::string &folder,
         actions.push_back(action);
     };
 
+    // Sort first, so SELECT and A reach it from any folder.
+    add("Sort...", Action::Sort);
     if (!clipboard_.empty()) {
         add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste);
         add("Forget Clipboard", Action::ClearClipboard);
     }
     add("New Folder", Action::NewFolder);
     add("New File", Action::NewFile);
-    add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort);
     add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
         Action::Hidden);
     // These act on every entry, so they wait until the folder is read.
@@ -1121,7 +1566,9 @@ bool App::folderOptions(const std::string &folder,
     add("Properties", Action::Properties);
 
     const std::string name = folderTitle(folder);
-    std::vector<ui::Fact> facts = {{"Path", folder}};
+    std::vector<ui::Fact> facts = {
+        {"Path", folder},
+        {"Sorted", sortDescription(settings_.fileSort, settings_.fileSortReverse)}};
     facts.push_back(complete ? ui::Fact {"Contains", plural(entries.size(), "item")}
                              : ui::Fact {"Reading", plural(entries.size(), "item") +
                                                         " so far",
@@ -1153,19 +1600,8 @@ bool App::folderOptions(const std::string &folder,
         return createFolder(folder);
     case Action::NewFile:
         return createFile(folder);
-    case Action::Sort: {
-        const int picked = ui::chooseOption(
-            "Sort Files",
-            {"Name", "Size, Largest First", "Date, Newest First", "Type"},
-            static_cast<int>(settings_.fileSort), ui::Icon::Folder,
-            ui::color::IconOrange);
-        if (picked < 0) {
-            return false;
-        }
-        settings_.fileSort = static_cast<fs::SortOrder>(picked);
-        persistSettings();
-        return true;
-    }
+    case Action::Sort:
+        return sortScreen(folder);
     case Action::Hidden:
         settings_.showHiddenFiles = !settings_.showHiddenFiles;
         persistSettings();
@@ -1209,6 +1645,70 @@ bool App::folderOptions(const std::string &folder,
     }
     }
     return false;
+}
+
+bool App::sortScreen(const std::string &folder)
+{
+    const fs::SortOrder startOrder = settings_.fileSort;
+    const bool startReverse = settings_.fileSortReverse;
+    // In the order people reach for them; SortOrder's values differ.
+    static const struct {
+        fs::SortOrder order;
+        const char *label;
+    } Orders[] = {{fs::SortOrder::Name, "Name"},
+                  {fs::SortOrder::Date, "Date"},
+                  {fs::SortOrder::Size, "Size"},
+                  {fs::SortOrder::Type, "Type"}};
+    int focus = 0;
+    for (int index = 0; index < 4; ++index) {
+        if (Orders[index].order == settings_.fileSort) {
+            focus = index;
+        }
+    }
+    // Picks apply at once and the screen stays, so order and direction can
+    // both be set; Back leaves.
+    while (ui::keepRunning() && !quit_) {
+        ui::ScreenSpec spec;
+        spec.back = "Back";
+        for (int index = 0; index < 4; ++index) {
+            ui::Control control;
+            control.rect = {index % 2 == 0 ? 26.0f : 164.0f,
+                            index < 2 ? 29.0f : 81.0f, 130, 40};
+            control.label = Orders[index].label;
+            control.style = Orders[index].order == settings_.fileSort
+                                ? ui::Style::Chosen
+                                : ui::Style::Normal;
+            spec.controls.push_back(control);
+        }
+        ui::Control reverse;
+        reverse.rect = {26, 139, 268, 40};
+        reverse.label = "Reverse Order";
+        reverse.style = settings_.fileSortReverse ? ui::Style::Chosen
+                                                  : ui::Style::Normal;
+        spec.controls.push_back(reverse);
+        spec.drawTop = [&]() {
+            ui::drawTopChrome("Sort", ui::Icon::Folder, ui::color::IconOrange);
+            ui::drawPanel();
+            std::vector<ui::Fact> facts = {
+                {"Order", sortDescription(settings_.fileSort,
+                                          settings_.fileSortReverse)}};
+            if (!folder.empty()) {
+                facts.push_back({"Folder", folder});
+            }
+            ui::drawFacts(facts);
+        };
+        const ui::ScreenResult result = ui::runScreen(spec, focus);
+        if (result.choice >= 0 && result.choice < 4) {
+            settings_.fileSort = Orders[result.choice].order;
+        } else if (result.choice == 4) {
+            settings_.fileSortReverse = !settings_.fileSortReverse;
+        } else {
+            break;
+        }
+        persistSettings();
+    }
+    return settings_.fileSort != startOrder ||
+           settings_.fileSortReverse != startReverse;
 }
 
 // --- File operations -------------------------------------------------------------
@@ -1568,58 +2068,80 @@ bool App::createFile(const std::string &folder)
 
 void App::showProperties(const std::vector<std::string> &paths)
 {
-    ui::Dialog dialog;
-    dialog.header = "properties";
-    if (paths.size() == 1 && !fileops::isFolder(paths.front())) {
-        const std::string &path = paths.front();
-        const int64_t size = fs::fileSize(path);
-        const int64_t modified = fileops::modifiedTime(path);
-        dialog.title = fileops::name(path);
-        dialog.body.push_back(
-            {filetype::label(filetype::fromName(basename(path))),
-             ui::color::Muted, 0.46f, 1});
-        dialog.body.push_back(
-            {"Size: " + sizeText(size) + " (" + std::to_string(size) +
-                 " bytes)",
-             ui::color::Text, 0.46f, 1});
-        if (modified > 0) {
-            dialog.body.push_back({"Modified: " + units::dateTime(modified),
-                                   ui::color::Text, 0.46f, 1});
-        }
-        dialog.body.push_back({path, ui::color::Muted, 0.42f, 3});
-        ui::choose(dialog);
+    const bool single = paths.size() == 1;
+    const bool folder = single && fileops::isFolder(paths.front());
+    fileops::Totals totals;
+    // Read fresh, as asked; what it adds up goes in the index afterwards.
+    std::vector<std::pair<std::string, std::pair<fileops::Totals, uint64_t>>> found;
+    fileops::MeasureHooks hooks;
+    hooks.measured = [&](const std::string &path, const fileops::Totals &part,
+                         uint64_t print) {
+        found.push_back({path, {part, print}});
+    };
+    if (single && !folder) {
+        totals = fileops::measure(paths.front());
+    } else if (!tasks::busy("properties", "Adding up sizes...",
+                            [&](tasks::Busy &busy) {
+                                busy.bytes = true;
+                                for (const std::string &path : paths) {
+                                    const fileops::Totals part = fileops::measure(
+                                        path, &busy.cancel, &busy.done, &hooks);
+                                    totals.files += part.files;
+                                    totals.folders += part.folders;
+                                    totals.bytes += part.bytes;
+                                }
+                            },
+                            true)) {
         return;
+    }
+    for (const auto &folderFound : found) {
+        fileIndex_.storeTotal(folderFound.first, folderFound.second.first,
+                              folderFound.second.second);
     }
 
-    fileops::Totals totals;
-    if (!tasks::busy("properties", "Adding up sizes...",
-                     [&](tasks::Busy &busy) {
-                         for (const std::string &path : paths) {
-                             const fileops::Totals part =
-                                 fileops::measure(path, &busy.cancel);
-                             totals.files += part.files;
-                             totals.folders += part.folders;
-                             totals.bytes += part.bytes;
-                         }
-                     },
-                     true)) {
-        return;
+    std::string path = paths.front();
+    while (path.size() > 6 && path.back() == '/') {
+        path.pop_back();
     }
-    dialog.title = paths.size() == 1 ? fileops::name(paths.front()) + "/"
-                                     : plural(paths.size(), "item");
-    dialog.body.push_back({"Contains: " + contentsText(totals),
-                           ui::color::Text, 0.48f, 2});
-    dialog.body.push_back({"Size: " + units::bytes(totals.bytes) + " (" +
-                               std::to_string(totals.bytes) + " bytes)",
-                           ui::color::Text, 0.46f, 1});
-    if (paths.size() == 1) {
-        const int64_t modified = fileops::modifiedTime(paths.front());
-        if (modified > 0) {
-            dialog.body.push_back({"Modified: " + units::dateTime(modified),
-                                   ui::color::Text, 0.46f, 1});
+    const std::string parent = naming::parentFolder(path + "/");
+    const int64_t modified = single ? fileops::modifiedTime(path) : 0;
+    std::vector<std::pair<std::string, std::string>> tags;
+    if (folder || !single) {
+        tags.push_back({"Contains", contentsText(totals)});
+    } else {
+        tags.push_back({"Type", filetype::label(filetype::fromName(basename(path)))});
+    }
+    tags.push_back({"Size", units::bytes(totals.bytes)});
+    if (totals.bytes >= 1024) {
+        tags.push_back({"Bytes", units::grouped(totals.bytes)});
+    }
+    if (modified > 0) {
+        tags.push_back({"Changed", units::dateTime(modified)});
+    }
+
+    ui::Dialog dialog;
+    dialog.title = units::bytes(totals.bytes);
+    dialog.buttons = {"OK"};
+    dialog.drawTop = [&]() {
+        if (single) {
+            ui::drawTopChrome(folderTitle(parent), ui::Icon::Folder,
+                              ui::color::IconOrange);
+            fs::Entry entry;
+            entry.name = fileops::name(path);
+            entry.folder = folder;
+            drawEntryPanel({}, kindOf(entry), entry.name,
+                           folder ? path + "/" : path, tags);
+            return;
         }
-        dialog.body.push_back({paths.front(), ui::color::Muted, 0.42f, 3});
-    }
+        ui::drawTopChrome(plural(paths.size(), "Marked Item"), ui::Icon::Check,
+                          ui::color::Tag);
+        std::vector<ui::Fact> facts;
+        for (const auto &tag : tags) {
+            facts.push_back({tag.first, tag.second});
+        }
+        ui::drawPanel();
+        ui::drawFacts(facts);
+    };
     ui::choose(dialog);
 }
 

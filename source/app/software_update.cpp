@@ -101,6 +101,8 @@ void drawUpdateTop(const updater::Status &status)
 
 App::~App()
 {
+    saveIndex();
+    aptUnhook(&aptCookie_);
     ui::setFrameHook(nullptr);
     updater::shutdown();
 }

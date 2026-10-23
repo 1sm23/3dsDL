@@ -24,6 +24,7 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - Tabs never take the D-pad ring; every tab shows its key (B on the left; set `actionKey`/`actionKeys` for the right tab).
 - Slow work goes through `tasks::busy`. Pass `cancellable` when stopping is safe (reads, network) and fill `Busy::done`/`total` when there is a count.
 - Never call `C2D_DrawImageAt` in screens (use `ui::drawImage`) and never query AM every frame.
+- Files keeps folder listings, folder totals and file dates in `fileIndex_` (`source/core/file_index`), saved to `sdmc:/3ds/3dsDL/index.bin` between runs. What loads is a first answer only: totals come back unverified and are added up again, listings are read again, and a date counts only while its file keeps its size. Bump `Version` in `file_index.cpp` when the saved form changes. Code in 3dsDL that writes, moves or removes something on the SD card calls `App::sdChanged(path)` afterwards. Writers outside Files are caught by `checkSdIndex` (free space moved), but a rename or same-size write is only caught by `sdChanged`.
 
 ## Hardware pitfalls
 

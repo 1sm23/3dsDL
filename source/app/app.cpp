@@ -168,10 +168,21 @@ App::App()
             }
         }
     }
+    startIndexLoad();
     ui::setFrameHook([this]() {
         pollUpdate();
         pollLibrary();
+        pollIndex();
     });
+    // Back from the HOME Menu or sleep, other software may have written to
+    // the SD card.
+    aptHook(&aptCookie_,
+            [](APT_HookType hook, void *argument) {
+                if (hook == APTHOOK_ONRESTORE || hook == APTHOOK_ONWAKEUP) {
+                    static_cast<App *>(argument)->sdMayHaveChanged_ = true;
+                }
+            },
+            this);
     if (settings_.checkForUpdates) {
         updater::startCheck();
     }
@@ -221,6 +232,9 @@ void App::run()
             break;
         case Action::Receive:
             receiveScreen();
+            // A computer may have renamed or moved anything, which free
+            // space does not show.
+            fileIndex_.forgetTotals();
             break;
         case Action::Folder:
             changeDefaultFolder();
@@ -965,6 +979,9 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         }
         break;
     }
+    // Installed, or partly written and cleaned up, on the SD card's own
+    // folder for software.
+    sdChanged("sdmc:/Nintendo 3DS/");
 
     if (result.outcome == installer::Outcome::Cancelled) {
         if (ui::keepRunning()) {
@@ -1007,6 +1024,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     if (deleteAfter) {
         where = fs::removeFile(path) ? "The CIA file was deleted."
                                      : "The CIA file could not be deleted.";
+        sdChanged(path);
     }
     notes.push_back({where, ui::color::Muted, 0.42f, 2});
     if (!address.empty()) {
@@ -1494,9 +1512,30 @@ void App::record(HistoryEntry entry)
 
 // --- Settings ----------------------------------------------------------------
 
+void App::sdChanged(const std::string &path)
+{
+    fileIndex_.changed(path);
+    sdFreeSeen_ = platform::sdFreeBytes();
+}
+
+void App::checkSdIndex()
+{
+    // Free space that moved with nothing in 3dsDL saying where, such as a
+    // download, Receive or another app, makes every total doubtful.
+    const int64_t free = platform::sdFreeBytes();
+    if (sdMayHaveChanged_.exchange(false) ||
+        (sdFreeSeen_ >= 0 && free != sdFreeSeen_)) {
+        fileIndex_.forgetTotals();
+    }
+    sdFreeSeen_ = free;
+}
+
 void App::persistSettings()
 {
-    if (!storage::saveSettings(settings_)) {
+    checkSdIndex(); // so only this write counts as explained
+    const bool saved = storage::saveSettings(settings_);
+    sdChanged(storage::DataFolder);
+    if (!saved) {
         ui::message("Settings not saved",
                     "The change works for now, but could not be written to "
                     "the SD card.",
@@ -1511,7 +1550,6 @@ void App::settingsScreen()
         std::string label;
         std::string value;
     };
-    static const char *const Sorts[] = {"Name", "Size", "Date", "Type"};
     const auto settingsList = [&](const std::string &title, ui::Icon icon,
                                   u32 iconColor,
                                   const std::function<std::vector<Row>()> &rows,
@@ -1612,7 +1650,9 @@ void App::settingsScreen()
             "Other Settings", ui::Icon::Gear, ui::color::IconGrey,
             [&]() {
                 return std::vector<Row>{
-                    {"Sort Files", Sorts[static_cast<int>(settings_.fileSort)]},
+                    {"Sort Files", screens::sortDescription(
+                                       settings_.fileSort,
+                                       settings_.fileSortReverse)},
                     {"Show Hidden Files", onOff(settings_.showHiddenFiles)},
                     {"Sounds", sound::available() ? onOff(settings_.sounds)
                                                   : "Unavailable"},
@@ -1621,16 +1661,7 @@ void App::settingsScreen()
             },
             [&](int index) {
                 if (index == 0) {
-                    const int picked = ui::chooseOption(
-                        "Sort Files",
-                        {"Name", "Size, Largest First", "Date, Newest First",
-                         "Type"},
-                        static_cast<int>(settings_.fileSort), ui::Icon::Folder,
-                        ui::color::IconOrange);
-                    if (picked >= 0) {
-                        settings_.fileSort = static_cast<fs::SortOrder>(picked);
-                        persistSettings();
-                    }
+                    sortScreen("");
                 } else if (index == 1) {
                     onOffChoice("Show Hidden Files", settings_.showHiddenFiles);
                 } else if (index == 2) {
@@ -1719,7 +1750,8 @@ void App::settingsScreen()
                 }
             } else if (shown == 5) {
                 facts = {{"Sort Files",
-                          Sorts[static_cast<int>(settings_.fileSort)]},
+                          screens::sortDescription(settings_.fileSort,
+                                                   settings_.fileSortReverse)},
                          {"Hidden Files", onOff(settings_.showHiddenFiles)},
                          {"Sounds", sound::available() ? onOff(settings_.sounds)
                                                        : "Unavailable"},

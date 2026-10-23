@@ -37,7 +37,7 @@ curl -T game.cia -H 'X-Requested-With: 3dsDL' 'http://192.168.1.20/api/file?path
 
 Files browses the SD card. Tap a row to select it and tap again (or press <kbd>A</kbd>) to open it. Pictures fill the top screen, text and config files open in a line editor, ZIPs show their contents, CIAs and tickets install, and anything else opens as hex.
 
-<kbd>X</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>Y</kbd> marks several entries, and <kbd>SELECT</kbd> has the folder options (paste, new folder or file, sorting, hidden files).
+<kbd>Y</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>SELECT</kbd> marks several entries, and <kbd>START</kbd> has the folder options (paste, new folder or file, hidden files). <kbd>X</kbd> (or Sort at the right of the folder's path) sorts by name, date, size or type, in either direction. Folders always come before files, and sorting by size adds up each folder in the background. Properties adds up a folder or the marked items.
 
 ## Titles
 
@@ -57,7 +57,7 @@ System titles never appear, so they can't be deleted from here.
 | Everywhere | <kbd>A</kbd> / <kbd>B</kbd> | Choose / back |
 | Home | <kbd>START</kbd> | Exit |
 | Lists | <kbd>L</kbd> / <kbd>R</kbd> | Page up / down |
-| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> | Options / mark / folder options |
+| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> / <kbd>START</kbd> | Sort / options / mark / folder options |
 | Text editor | <kbd>A</kbd> / <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>START</kbd> | Edit line / new line / delete line / save |
 | Pictures | <kbd>L</kbd> / <kbd>R</kbd> | Previous / next picture |
 
