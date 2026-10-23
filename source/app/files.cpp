@@ -22,6 +22,7 @@
 #include "zip.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <functional>
@@ -351,6 +352,89 @@ std::vector<std::string> splitLines(const std::string &value)
 
 // --- Browsing -------------------------------------------------------------------
 
+namespace {
+
+// Reads a folder on a worker thread and hands its entries over a batch at a
+// time, so a folder of thousands shows while it is read.
+class FolderReader {
+public:
+    FolderReader() { LightLock_Init(&lock_); }
+    ~FolderReader() { stop(); }
+    FolderReader(const FolderReader &) = delete;
+    FolderReader &operator=(const FolderReader &) = delete;
+
+    // Reads folder from the start, stopping a read under way.
+    void start(const std::string &folder, bool hidden, bool times)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        batches_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        hidden_ = hidden;
+        times_ = times;
+        stop_ = false;
+        finished_ = false;
+        readable_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            run(this); // no thread to be had: read it all now
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    // Moves the batches read so far into out (unsorted, each as read).
+    bool take(std::vector<std::vector<fs::Entry>> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !batches_.empty();
+        for (std::vector<fs::Entry> &batch : batches_) {
+            out.push_back(std::move(batch));
+        }
+        batches_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    // Once true, take has nothing more to give after one last call.
+    bool finished() const { return finished_; }
+    bool readable() const { return readable_; }
+
+private:
+    static void run(void *argument)
+    {
+        FolderReader &reader = *static_cast<FolderReader *>(argument);
+        reader.readable_ = fs::readEntries(
+            reader.folder_, reader.hidden_, reader.times_,
+            [&](std::vector<fs::Entry> &&batch) {
+                LightLock_Lock(&reader.lock_);
+                reader.batches_.push_back(std::move(batch));
+                LightLock_Unlock(&reader.lock_);
+            },
+            &reader.stop_);
+        reader.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    bool hidden_ = false;
+    bool times_ = false;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {false};
+    std::atomic<bool> readable_ {false};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<std::vector<fs::Entry>> batches_;
+};
+
+} // namespace
+
 void App::filesScreen()
 {
     if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
@@ -360,28 +444,45 @@ void App::filesScreen()
     }
     std::string &current = filesFolder_;
     int cursor = 0;
-    std::string landOn; // name to put the cursor on after reloading
+    std::string landOn; // name to put the cursor on once it has been read
     std::vector<std::string> marked;
     std::map<std::string, Details> details;
 
+    // A folder is read in the background and shows as it arrives, sorted.
+    // It is read again only when it may have changed, not after every key:
+    // a folder of thousands takes a while on the SD card.
+    FolderReader reader;
+    std::vector<fs::Entry> entries; // sorted, as far as it has been read
+    std::vector<std::vector<fs::Entry>> waiting; // read, not yet shown
+    std::vector<fs::Entry> incoming; // the same folder read again
+    std::string readFolder;          // the folder entries belong to
+    bool replacing = false; // show entries until incoming is whole
+    bool complete = false;
+    bool reload = true;
+
     // quit_ is set when a .3dsx is started, which happens as 3dsDL closes.
     while (ui::keepRunning() && !quit_) {
-        bool readable = false;
-        // Times cost the SD card a search of the folder for each entry, so
-        // they are only read to sort by them; the details read their own.
-        std::vector<fs::Entry> entries =
-            fs::listEntries(current, &readable, settings_.showHiddenFiles,
-                            settings_.fileSort == fs::SortOrder::Date);
-        if (!readable && current != "sdmc:/") {
-            current = "sdmc:/";
-            cursor = 0;
-            marked.clear();
-            continue;
+        if (reload) {
+            reload = false;
+            if (current != "sdmc:/" && !fs::directoryExists(current)) {
+                current = "sdmc:/";
+                cursor = 0;
+                marked.clear();
+            }
+            replacing = readFolder == current && !entries.empty();
+            if (!replacing) {
+                entries.clear();
+            }
+            waiting.clear();
+            incoming.clear();
+            readFolder = current;
+            complete = false;
+            // Times cost the SD card a search of the folder for each entry,
+            // so they are only read to sort by them.
+            reader.start(current, settings_.showHiddenFiles,
+                         settings_.fileSort == fs::SortOrder::Date);
         }
-        fs::sortEntries(entries, settings_.fileSort);
         const bool atRoot = naming::parentFolder(current) == current;
-        // The Back tab and B go up a folder, so there is no ".." row.
-        const int first = 0;
 
         // Marks for entries that are gone are dropped.
         marked.erase(std::remove_if(marked.begin(), marked.end(),
@@ -391,21 +492,11 @@ void App::filesScreen()
                      marked.end());
         const std::set<std::string> markedSet(marked.begin(), marked.end());
 
-        if (!landOn.empty()) {
-            for (size_t index = 0; index < entries.size(); ++index) {
-                if (entries[index].name == landOn) {
-                    cursor = static_cast<int>(index) + first;
-                }
-            }
-            landOn.clear();
-        }
-
         ui::ListSpec spec;
         spec.title = current;
         spec.heading = current;
         spec.tapToSelect = true;
-        spec.emptyText = readable ? "This folder is empty."
-                                  : "The SD card could not be read.";
+        spec.emptyText = "This folder is empty.";
         spec.back = atRoot ? "Close" : "Back";
         spec.action = "Options";
         spec.actionKey = "X";
@@ -417,32 +508,95 @@ void App::filesScreen()
                       ? std::to_string(clipboard_.size()) +
                             (clipboardCut_ ? " to move" : " to paste")
                       : "";
-        for (const fs::Entry &entry : entries) {
-            ui::ListItem item;
-            const KindLook look = lookOf(kindOf(entry));
-            item.label = entry.name;
-            item.detail = entry.folder ? "" : sizeText(entry.size);
-            item.icon = look.icon;
-            item.iconColor = look.color;
-            item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
-                                                   : ui::color::InkButton;
-            item.marked = markedSet.count(current + entry.name) > 0;
-            if (item.marked) {
-                item.badge = "Marked";
-                item.badgeColor = ui::color::Tag;
+        const auto buildItems = [&]() {
+            spec.items.clear();
+            spec.items.reserve(entries.size());
+            for (const fs::Entry &entry : entries) {
+                ui::ListItem item;
+                const KindLook look = lookOf(kindOf(entry));
+                item.key = entry.name;
+                item.label = entry.name;
+                item.detail = entry.folder ? "" : sizeText(entry.size);
+                item.icon = look.icon;
+                item.iconColor = look.color;
+                item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
+                                                       : ui::color::InkButton;
+                item.marked = markedSet.count(current + entry.name) > 0;
+                if (item.marked) {
+                    item.badge = "Marked";
+                    item.badgeColor = ui::color::Tag;
+                }
+                spec.items.push_back(item);
             }
-            spec.items.push_back(item);
-        }
+        };
+        // Batches are shown at most every 150 ms while reading, so building
+        // the rows for thousands of entries does not slow the reading down.
+        uint64_t shownAt = 0;
+        spec.update = [&]() {
+            reader.take(waiting);
+            const bool finishing = !complete && reader.finished();
+            if (finishing) {
+                reader.take(waiting); // anything that came in at the end
+            }
+            const uint64_t now = osGetTime();
+            const bool due = finishing || (!waiting.empty() && now - shownAt >= 150);
+            if (!due && landOn.empty()) {
+                return false;
+            }
+            if (due) {
+                shownAt = now;
+                std::vector<fs::Entry> &into = replacing ? incoming : entries;
+                for (std::vector<fs::Entry> &batch : waiting) {
+                    fs::mergeEntries(into, std::move(batch), settings_.fileSort);
+                }
+                waiting.clear();
+                if (finishing) {
+                    complete = true;
+                    if (replacing) {
+                        entries.swap(incoming);
+                        incoming.clear();
+                        replacing = false;
+                    }
+                    if (!reader.readable()) {
+                        spec.emptyText = "The SD card could not be read.";
+                    }
+                }
+                if (replacing) {
+                    return false; // the old rows stay until the new are whole
+                }
+                buildItems();
+            }
+            bool moved = false;
+            if (!landOn.empty()) {
+                for (size_t index = 0; index < entries.size(); ++index) {
+                    if (entries[index].name == landOn) {
+                        cursor = static_cast<int>(index);
+                        landOn.clear();
+                        moved = true;
+                        break;
+                    }
+                }
+                if (complete) {
+                    landOn.clear(); // gone meanwhile
+                }
+            }
+            return due || moved;
+        };
+        buildItems();
+        spec.loading = [&]() { return !complete; };
 
         spec.drawTop = [&](int index) {
             const std::string title =
                 atRoot ? "SD Card" : fileops::name(current);
             ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
-            const int position = index - first;
-            if (position < 0 ||
-                position >= static_cast<int>(entries.size())) {
+            if (index < 0 || index >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
                 std::vector<ui::Fact> facts = {{"Path", current}};
+                if (!complete) {
+                    facts.push_back({"Reading",
+                                     plural(entries.size(), "item") + " so far",
+                                     ui::color::Badge});
+                }
                 if (!clipboard_.empty()) {
                     facts.push_back(
                         clipboardFact(clipboard_.size(), clipboardCut_));
@@ -450,7 +604,7 @@ void App::filesScreen()
                 ui::drawFacts(facts);
                 return;
             }
-            const fs::Entry &entry = entries[position];
+            const fs::Entry &entry = entries[index];
             const std::string path = current + entry.name;
             auto found = details.find(path);
             if (found == details.end()) {
@@ -461,7 +615,7 @@ void App::filesScreen()
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
-        const int position = result.index - first;
+        const int position = result.index;
         const bool onEntry =
             position >= 0 && position < static_cast<int>(entries.size());
         const std::string highlighted =
@@ -478,9 +632,11 @@ void App::filesScreen()
             current = naming::parentFolder(current);
             cursor = 0;
             marked.clear();
+            reload = true;
             continue;
         }
         if (result.key == KEY_Y) {
+            // Marking only redraws the rows; the folder is not read again.
             if (onEntry) {
                 const auto at =
                     std::find(marked.begin(), marked.end(), highlighted);
@@ -490,30 +646,24 @@ void App::filesScreen()
                     marked.erase(at);
                 }
                 cursor = std::min(cursor + 1,
-                                  static_cast<int>(spec.items.size()) - 1);
+                                  static_cast<int>(entries.size()) - 1);
             }
             continue;
         }
         if (result.key == KEY_SELECT || (result.key == KEY_X && !onEntry &&
                                          marked.empty())) {
-            std::vector<std::string> all;
-            for (const fs::Entry &entry : entries) {
-                all.push_back(current + entry.name);
-            }
-            if (folderOptions(current, all, marked)) {
+            if (folderOptions(current, entries, complete, marked)) {
                 details.clear();
+                reload = true;
             }
             continue;
         }
         if (result.key == KEY_X) {
-            std::vector<std::string> all;
-            for (const fs::Entry &entry : entries) {
-                all.push_back(current + entry.name);
-            }
             const std::vector<std::string> targets =
                 marked.empty() ? std::vector<std::string>{highlighted} : marked;
-            if (entryOptions(current, targets, marked, all)) {
+            if (entryOptions(current, targets, marked, entries, complete)) {
                 details.clear();
+                reload = true;
                 if (!marked.empty() &&
                     std::none_of(marked.begin(), marked.end(),
                                  [](const std::string &path) {
@@ -527,16 +677,18 @@ void App::filesScreen()
         if (result.key != KEY_A || !onEntry) {
             continue;
         }
-        const fs::Entry &entry = entries[position];
+        const fs::Entry entry = entries[position];
         if (entry.folder) {
             current += entry.name + "/";
             cursor = 0;
             marked.clear();
+            reload = true;
             continue;
         }
         openFile(highlighted);
         details.erase(highlighted);
         landOn = entry.name;
+        reload = true;
     }
 }
 
@@ -707,10 +859,10 @@ void App::showChecksum(const std::string &path)
 bool App::entryOptions(const std::string &folder,
                        const std::vector<std::string> &paths,
                        std::vector<std::string> &marked,
-                       const std::vector<std::string> &all)
+                       const std::vector<fs::Entry> &entries, bool complete)
 {
     if (paths.empty() || paths.front().empty()) {
-        return folderOptions(folder, all, marked);
+        return folderOptions(folder, entries, complete, marked);
     }
     enum class Action {
         Open,
@@ -912,13 +1064,13 @@ bool App::entryOptions(const std::string &folder,
         marked.clear();
         return false;
     case Action::Folder:
-        return folderOptions(folder, all, marked);
+        return folderOptions(folder, entries, complete, marked);
     }
     return false;
 }
 
 bool App::folderOptions(const std::string &folder,
-                        const std::vector<std::string> &entries,
+                        const std::vector<fs::Entry> &entries, bool complete,
                         std::vector<std::string> &marked)
 {
     enum class Action {
@@ -935,8 +1087,9 @@ bool App::folderOptions(const std::string &folder,
     };
     std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    const auto add = [&](const std::string &label, Action action) {
-        items.push_back({label, false, true});
+    const auto add = [&](const std::string &label, Action action,
+                         bool enabled = true) {
+        items.push_back({label, false, enabled});
         actions.push_back(action);
     };
 
@@ -949,27 +1102,30 @@ bool App::folderOptions(const std::string &folder,
     add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort);
     add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
         Action::Hidden);
+    // These act on every entry, so they wait until the folder is read.
     if (!entries.empty()) {
-        add("Mark All", Action::MarkAll);
+        add("Mark All", Action::MarkAll, complete);
     }
     if (!marked.empty()) {
         add("Clear Marks", Action::ClearMarks);
     }
     size_t cias = 0;
-    for (const std::string &entry : entries) {
-        if (!fileops::isFolder(entry) &&
-            filetype::fromName(basename(entry)) == Kind::Cia) {
+    for (const fs::Entry &entry : entries) {
+        if (!entry.folder && filetype::fromName(entry.name) == Kind::Cia) {
             ++cias;
         }
     }
     if (cias > 0) {
-        add("Install All CIAs", Action::InstallAll);
+        add("Install All CIAs", Action::InstallAll, complete);
     }
     add("Properties", Action::Properties);
 
     const std::string name = folderTitle(folder);
-    std::vector<ui::Fact> facts = {
-        {"Path", folder}, {"Contains", plural(entries.size(), "item")}};
+    std::vector<ui::Fact> facts = {{"Path", folder}};
+    facts.push_back(complete ? ui::Fact {"Contains", plural(entries.size(), "item")}
+                             : ui::Fact {"Reading", plural(entries.size(), "item") +
+                                                        " so far",
+                                         ui::color::Badge});
     if (cias > 0) {
         facts.push_back({"CIAs", std::to_string(cias)});
     }
@@ -1015,17 +1171,19 @@ bool App::folderOptions(const std::string &folder,
         persistSettings();
         return true;
     case Action::MarkAll:
-        marked = entries;
+        marked.clear();
+        for (const fs::Entry &entry : entries) {
+            marked.push_back(folder + entry.name);
+        }
         return false;
     case Action::ClearMarks:
         marked.clear();
         return false;
     case Action::InstallAll: {
         std::vector<std::string> paths;
-        for (const std::string &entry : entries) {
-            if (!fileops::isFolder(entry) &&
-                filetype::fromName(basename(entry)) == Kind::Cia) {
-                paths.push_back(entry);
+        for (const fs::Entry &entry : entries) {
+            if (!entry.folder && filetype::fromName(entry.name) == Kind::Cia) {
+                paths.push_back(folder + entry.name);
             }
         }
         ui::Dialog dialog;

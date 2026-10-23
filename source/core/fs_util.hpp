@@ -1,6 +1,8 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -44,6 +46,12 @@ struct Entry {
 // costs the SD card a search of the folder for every entry.
 std::vector<Entry> listEntries(const std::string &folder, bool *ok = nullptr,
                                bool hidden = false, bool times = true);
+// The same, a batch at a time as the entries come off the card (in the
+// card's order, not sorted), so a big folder can be shown while it is read.
+// stop ends it early. Returns false when folder cannot be opened.
+bool readEntries(const std::string &folder, bool hidden, bool times,
+                 const std::function<void(std::vector<Entry> &&)> &take,
+                 const std::atomic<bool> *stop = nullptr);
 
 // Seconds since 1970 when path last changed, or 0 when unknown. On the SD
 // card stat() always says 0, so this asks the card's archive instead.
@@ -54,5 +62,10 @@ enum class SortOrder { Name, Size, Date, Type };
 // Date. Files follow in order: by name, largest first, newest first, or by
 // extension and then name.
 void sortEntries(std::vector<Entry> &entries, SortOrder order);
+// Whether a comes before b in that order.
+bool entryBefore(const Entry &a, const Entry &b, SortOrder order);
+// Adds batch to entries already sorted in order, keeping them sorted.
+void mergeEntries(std::vector<Entry> &sorted, std::vector<Entry> &&batch,
+                  SortOrder order);
 
 } // namespace fs

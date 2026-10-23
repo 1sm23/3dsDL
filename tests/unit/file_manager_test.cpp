@@ -150,6 +150,56 @@ TEST("fileops: a cancelled copy removes the unfinished file")
     CHECK(!fileops::exists(temp.path() + "copy.bin"));
 }
 
+TEST("fs: big folders are read in batches and merge into order")
+{
+    TempDir temp;
+    const std::string root = temp.path() + "big/";
+    CHECK(fs::makeDirectories(root + "zfolder/"));
+    CHECK(fs::makeDirectories(root + "Afolder/"));
+    for (int index = 0; index < 150; ++index) {
+        const std::string name = "file" + std::to_string(149 - index) +
+                                 (index % 3 == 0 ? ".txt" : ".bin");
+        CHECK(writeText(root + name, std::string(index % 7, 'x')));
+    }
+
+    size_t batches = 0;
+    std::vector<fs::Entry> merged;
+    CHECK(fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+        ++batches;
+        fs::mergeEntries(merged, std::move(batch), fs::SortOrder::Name);
+    }));
+    CHECK(batches >= 2);
+    CHECK_EQ(merged.size(), static_cast<size_t>(152));
+    // Merging batch by batch gives the order a full sort gives.
+    for (const fs::SortOrder order : {fs::SortOrder::Name, fs::SortOrder::Size,
+                                      fs::SortOrder::Type}) {
+        std::vector<fs::Entry> whole = fs::listEntries(root, nullptr, false, false);
+        fs::sortEntries(whole, order);
+        std::vector<fs::Entry> pieces;
+        fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+            fs::mergeEntries(pieces, std::move(batch), order);
+        });
+        CHECK_EQ(pieces.size(), whole.size());
+        bool same = pieces.size() == whole.size();
+        for (size_t index = 0; same && index < whole.size(); ++index) {
+            same = pieces[index].name == whole[index].name;
+        }
+        CHECK(same);
+    }
+    CHECK(merged.front().folder && merged.front().name == "Afolder");
+
+    // Stopped after the first batch, it reads no further.
+    std::atomic<bool> stop(false);
+    size_t seen = 0;
+    fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+        seen += batch.size();
+        stop = true;
+    }, &stop);
+    CHECK(seen > 0 && seen < 152);
+    CHECK(!fs::readEntries(root + "missing/", false, false,
+                           [](std::vector<fs::Entry> &&) {}));
+}
+
 TEST("fileops: names and paths")
 {
     std::string error;

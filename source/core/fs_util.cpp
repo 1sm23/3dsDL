@@ -3,9 +3,11 @@
 #include "text.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <cstdio>
 #include <dirent.h>
+#include <functional>
 #include <sys/stat.h>
 
 #ifdef __3DS__
@@ -213,7 +215,8 @@ private:
 };
 
 bool listSdEntries(const std::string &folder, bool hidden, bool times,
-                   std::vector<Entry> &entries)
+                   const std::function<void(std::vector<Entry> &&)> &take,
+                   const std::atomic<bool> *stop)
 {
     const SdPath sdPath(folder);
     const FS_Path path = sdPath.get();
@@ -234,7 +237,8 @@ bool listSdEntries(const std::string &folder, bool hidden, bool times,
         base += '/';
     }
     std::vector<FS_DirectoryEntry> batch(32);
-    while (true) {
+    while (stop == nullptr || !stop->load()) {
+        std::vector<Entry> entries;
         u32 read = 0;
         if (R_FAILED(FSDIR_Read(directory, &read,
                                 static_cast<u32>(batch.size()), batch.data())) ||
@@ -265,6 +269,9 @@ bool listSdEntries(const std::string &folder, bool hidden, bool times,
                 entry.modified = modifiedTime(base + name);
             }
             entries.push_back(entry);
+        }
+        if (!entries.empty()) {
+            take(std::move(entries));
         }
     }
     FSDIR_Close(directory);
@@ -301,26 +308,18 @@ bool removeFolderTree(const std::string &folder)
 #endif
 }
 
-std::vector<Entry> listEntries(const std::string &folder, bool *ok,
-                               bool hidden, bool times)
+bool readEntries(const std::string &folder, bool hidden, bool times,
+                 const std::function<void(std::vector<Entry> &&)> &take,
+                 const std::atomic<bool> *stop)
 {
-    std::vector<Entry> entries;
 #ifdef __3DS__
     if (folder.compare(0, 6, "sdmc:/") == 0) {
-        const bool listed = listSdEntries(folder, hidden, times, entries);
-        if (ok != nullptr) {
-            *ok = listed;
-        }
-        sortEntries(entries, SortOrder::Name);
-        return entries;
+        return listSdEntries(folder, hidden, times, take, stop);
     }
 #endif
     DIR *directory = opendir(folder.c_str());
-    if (ok != nullptr) {
-        *ok = directory != nullptr;
-    }
     if (directory == nullptr) {
-        return entries;
+        return false;
     }
 
     std::string base = folder;
@@ -328,7 +327,13 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok,
         base += '/';
     }
 
-    while (dirent *item = readdir(directory)) {
+    constexpr size_t BatchSize = 64;
+    std::vector<Entry> entries;
+    while (stop == nullptr || !stop->load()) {
+        dirent *item = readdir(directory);
+        if (item == nullptr) {
+            break;
+        }
         Entry entry;
         entry.name = item->d_name;
         if (entry.name.empty() || entry.name == "." || entry.name == ".." ||
@@ -347,14 +352,36 @@ std::vector<Entry> listEntries(const std::string &folder, bool *ok,
             }
         }
         entries.push_back(entry);
+        if (entries.size() == BatchSize) {
+            take(std::move(entries));
+            entries.clear();
+        }
     }
     closedir(directory);
+    if (!entries.empty()) {
+        take(std::move(entries));
+    }
+    return true;
+}
 
+std::vector<Entry> listEntries(const std::string &folder, bool *ok,
+                               bool hidden, bool times)
+{
+    std::vector<Entry> entries;
+    const bool listed = readEntries(
+        folder, hidden, times, [&](std::vector<Entry> &&batch) {
+            for (Entry &entry : batch) {
+                entries.push_back(std::move(entry));
+            }
+        });
+    if (ok != nullptr) {
+        *ok = listed;
+    }
     sortEntries(entries, SortOrder::Name);
     return entries;
 }
 
-void sortEntries(std::vector<Entry> &entries, SortOrder order)
+bool entryBefore(const Entry &a, const Entry &b, SortOrder order)
 {
     const auto extensionOf = [](const std::string &name) {
         const size_t dot = name.find_last_of('.');
@@ -362,37 +389,57 @@ void sortEntries(std::vector<Entry> &entries, SortOrder order)
             ? std::string()
             : text::lower(name.substr(dot + 1));
     };
-    std::stable_sort(
-        entries.begin(), entries.end(), [&](const Entry &a, const Entry &b) {
-            if (a.folder != b.folder) {
-                return a.folder;
-            }
-            const std::string nameA = text::lower(a.name);
-            const std::string nameB = text::lower(b.name);
-            switch (order) {
-            case SortOrder::Size:
-                if (!a.folder && a.size != b.size) {
-                    return a.size > b.size;
-                }
-                break;
-            case SortOrder::Date:
-                if (a.modified != b.modified) {
-                    return a.modified > b.modified;
-                }
-                break;
-            case SortOrder::Type: {
-                const std::string typeA = extensionOf(a.name);
-                const std::string typeB = extensionOf(b.name);
-                if (!a.folder && typeA != typeB) {
-                    return typeA < typeB;
-                }
-                break;
-            }
-            case SortOrder::Name:
-                break;
-            }
-            return nameA != nameB ? nameA < nameB : a.name < b.name;
-        });
+    if (a.folder != b.folder) {
+        return a.folder;
+    }
+    switch (order) {
+    case SortOrder::Size:
+        if (!a.folder && a.size != b.size) {
+            return a.size > b.size;
+        }
+        break;
+    case SortOrder::Date:
+        if (a.modified != b.modified) {
+            return a.modified > b.modified;
+        }
+        break;
+    case SortOrder::Type: {
+        const std::string typeA = extensionOf(a.name);
+        const std::string typeB = extensionOf(b.name);
+        if (!a.folder && typeA != typeB) {
+            return typeA < typeB;
+        }
+        break;
+    }
+    case SortOrder::Name:
+        break;
+    }
+    const std::string nameA = text::lower(a.name);
+    const std::string nameB = text::lower(b.name);
+    return nameA != nameB ? nameA < nameB : a.name < b.name;
+}
+
+void mergeEntries(std::vector<Entry> &sorted, std::vector<Entry> &&batch,
+                  SortOrder order)
+{
+    const auto before = [order](const Entry &a, const Entry &b) {
+        return entryBefore(a, b, order);
+    };
+    std::stable_sort(batch.begin(), batch.end(), before);
+    const size_t middle = sorted.size();
+    for (Entry &entry : batch) {
+        sorted.push_back(std::move(entry));
+    }
+    std::inplace_merge(sorted.begin(), sorted.begin() + middle, sorted.end(),
+                       before);
+}
+
+void sortEntries(std::vector<Entry> &entries, SortOrder order)
+{
+    std::stable_sort(entries.begin(), entries.end(),
+                     [order](const Entry &a, const Entry &b) {
+                         return entryBefore(a, b, order);
+                     });
 }
 
 } // namespace fs
