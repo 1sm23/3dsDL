@@ -770,13 +770,26 @@ void App::browseFiles()
         }
         const bool atRoot = naming::parentFolder(current) == current;
 
-        // Marks for entries that are gone are dropped.
-        marked.erase(std::remove_if(marked.begin(), marked.end(),
-                                    [](const std::string &path) {
-                                        return !fileops::exists(path);
-                                    }),
-                     marked.end());
-        const std::set<std::string> markedSet(marked.begin(), marked.end());
+        // Marks for entries that are gone are dropped once the folder is
+        // read whole, by its listing: asking the card about each mark
+        // searches the folder every time, which froze Files for a minute
+        // after Mark All in a folder of hundreds.
+        std::set<std::string> markedSet;
+        const auto dropGoneMarks = [&]() {
+            if (complete && !marked.empty()) {
+                std::set<std::string> listed;
+                for (const fs::Entry &entry : entries) {
+                    listed.insert(current + entry.name);
+                }
+                marked.erase(std::remove_if(marked.begin(), marked.end(),
+                                            [&](const std::string &path) {
+                                                return listed.count(path) == 0;
+                                            }),
+                             marked.end());
+            }
+            markedSet = std::set<std::string>(marked.begin(), marked.end());
+        };
+        dropGoneMarks();
 
         ui::ListSpec spec;
         spec.title = current;
@@ -793,11 +806,14 @@ void App::browseFiles()
         // X sorts, as on the Software lists.
         spec.headingActionKey = "X";
         spec.headingActionKeys = KEY_X;
-        spec.hint = !marked.empty() ? std::to_string(marked.size()) + " marked"
-                  : !clipboard_.empty()
-                      ? std::to_string(clipboard_.size()) +
-                            (clipboardCut_ ? " to move" : " to paste")
-                      : "";
+        const auto hint = [&]() {
+            return !marked.empty() ? std::to_string(marked.size()) + " marked"
+                 : !clipboard_.empty()
+                     ? std::to_string(clipboard_.size()) +
+                           (clipboardCut_ ? " to move" : " to paste")
+                     : "";
+        };
+        spec.hint = hint();
         const auto buildItems = [&]() {
             spec.items.clear();
             spec.items.reserve(entries.size());
@@ -906,6 +922,8 @@ void App::browseFiles()
                         incoming.clear();
                         replacing = false;
                     }
+                    dropGoneMarks();
+                    spec.hint = hint();
                     if (reader.readable()) {
                         // Its total no longer counts if its own entries
                         // are not the ones it was added up from.
@@ -1092,15 +1110,6 @@ void App::browseFiles()
                 entryOptions(current, targets, marked, entries, complete);
             noteChanges(changed, targets);
             afterOptions(changed);
-            if (changed) {
-                if (!marked.empty() &&
-                    std::none_of(marked.begin(), marked.end(),
-                                 [](const std::string &path) {
-                                     return fileops::exists(path);
-                                 })) {
-                    marked.clear();
-                }
-            }
             continue;
         }
         if (result.key != KEY_A || !onEntry) {
@@ -1267,7 +1276,7 @@ void App::showChecksum(const std::string &path)
             continue;
         }
         std::string listing;
-        if (fs::fileSize(folder + entry.name) > 1024 * 1024 ||
+        if (entry.size > 1024 * 1024 ||
             !fs::readFile(folder + entry.name, listing)) {
             continue;
         }
@@ -1336,14 +1345,17 @@ bool App::entryOptions(const std::string &folder,
         actions.push_back(action);
     };
 
+    // What the targets are, from the folder's listing: asking the card
+    // about each of hundreds of marked entries took minutes.
+    fileops::Lookup lookup;
     const bool single = paths.size() == 1;
     const std::string &path = paths.front();
-    const bool isFolder = single && fileops::isFolder(path);
+    const bool isFolder = single && lookup.isFolder(path);
     const Kind kind = isFolder ? Kind::Folder
                              : filetype::fromName(basename(path));
     std::vector<std::string> cias;
     for (const std::string &entry : paths) {
-        if (!fileops::isFolder(entry) &&
+        if (!lookup.isFolder(entry) &&
             filetype::fromName(basename(entry)) == Kind::Cia) {
             cias.push_back(entry);
         }
@@ -1407,19 +1419,18 @@ bool App::entryOptions(const std::string &folder,
     if (single) {
         entry.name = fileops::name(path);
         entry.folder = isFolder;
-        entry.size = isFolder ? -1 : fs::fileSize(path);
+        entry.size = lookup.size(path);
         details = loadDetails(path, kind);
     } else {
         size_t files = 0;
         size_t folders = 0;
         uint64_t bytes = 0;
         for (const std::string &item : paths) {
-            if (fileops::isFolder(item)) {
+            if (lookup.isFolder(item)) {
                 ++folders;
             } else {
                 ++files;
-                bytes += static_cast<uint64_t>(
-                    std::max<int64_t>(0, fs::fileSize(item)));
+                bytes += static_cast<uint64_t>(std::max<int64_t>(0, lookup.size(item)));
             }
         }
         if (files > 0) {
@@ -1799,12 +1810,13 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
     fileops::Totals totals;
     if (!tasks::busy("delete", "Counting what will be deleted...",
                      [&](tasks::Busy &busy) {
+                         fileops::Lookup lookup;
                          for (const std::string &path : paths) {
-                             const fileops::Totals part =
-                                 fileops::measure(path, &busy.cancel);
+                             const fileops::Totals part = fileops::measure(
+                                 path, &busy.cancel, nullptr, nullptr, &lookup);
                              totals.files += part.files;
                              totals.folders += part.folders +
-                                               (fileops::isFolder(path) ? 1 : 0);
+                                               (lookup.isFolder(path) ? 1 : 0);
                              totals.bytes += part.bytes;
                          }
                      },
@@ -1842,9 +1854,10 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
         settings_.keepAwake);
 
     // Copied entries that no longer exist cannot be pasted.
+    fileops::Lookup lookup;
     clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
-                                    [](const std::string &path) {
-                                        return !fileops::exists(path);
+                                    [&](const std::string &path) {
+                                        return !lookup.exists(path);
                                     }),
                      clipboard_.end());
     if (result.status == fileops::Status::Failed) {
@@ -1869,27 +1882,32 @@ bool App::pasteInto(const std::string &folder)
     };
     std::vector<Step> steps;
     std::vector<std::string> problems;
+    // From the folders' listings, with each destination claimed as it is
+    // chosen, so two items never pick the same free name.
+    fileops::Lookup lookup;
+    const naming::ExistsFunction exists = [&](const std::string &path) {
+        return lookup.exists(path);
+    };
 
     for (const std::string &source : clipboard_) {
-        if (!fileops::exists(source)) {
+        if (!lookup.exists(source)) {
             problems.push_back(fileops::name(source) + " no longer exists.");
             continue;
         }
         const std::string name = fileops::name(source);
         Step step {source, folder + name, false};
-        if (fileops::isFolder(source) &&
-            fileops::isInside(step.destination, source)) {
+        const bool folderSource = lookup.isFolder(source);
+        if (folderSource && fileops::isInside(step.destination, source)) {
             problems.push_back(name + " cannot go inside itself.");
             continue;
         }
         if (clipboardCut_ && step.destination == source) {
             continue; // already here
         }
-        if (fileops::exists(step.destination)) {
+        if (lookup.exists(step.destination)) {
             if (step.destination == source) {
                 // Copying into its own folder makes "name (1)".
-                step.destination =
-                    naming::unusedPath(folder, name, fileops::exists);
+                step.destination = naming::unusedPath(folder, name, exists);
             } else {
                 ui::Dialog dialog;
                 dialog.header = "paste";
@@ -1900,8 +1918,7 @@ bool App::pasteInto(const std::string &folder)
                 dialog.cancelButton = 2;
                 const int answer = ui::choose(dialog);
                 if (answer == 0) {
-                    step.destination =
-                        naming::unusedPath(folder, name, fileops::exists);
+                    step.destination = naming::unusedPath(folder, name, exists);
                 } else if (answer == 1) {
                     step.replace = true;
                 } else {
@@ -1913,6 +1930,7 @@ bool App::pasteInto(const std::string &folder)
             problems.push_back("No free name was found for " + name + ".");
             continue;
         }
+        lookup.claim(step.destination, folderSource);
         steps.push_back(step);
     }
 
@@ -1922,7 +1940,8 @@ bool App::pasteInto(const std::string &folder)
                          [&](tasks::Busy &busy) {
                              for (const Step &step : steps) {
                                  bytes += fileops::measure(step.source,
-                                                           &busy.cancel)
+                                                           &busy.cancel, nullptr,
+                                                           nullptr, &lookup)
                                               .bytes;
                              }
                          },
@@ -1991,9 +2010,10 @@ bool App::pasteInto(const std::string &folder)
     // Moved items are no longer where the clipboard points; anything that
     // did not move stays ready to try again.
     if (clipboardCut_) {
+        fileops::Lookup moved;
         clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
-                                        [](const std::string &path) {
-                                            return !fileops::exists(path);
+                                        [&](const std::string &path) {
+                                            return !moved.exists(path);
                                         }),
                          clipboard_.end());
     }
@@ -2082,9 +2102,11 @@ void App::showProperties(const std::vector<std::string> &paths)
     } else if (!tasks::busy("properties", "Adding up sizes...",
                             [&](tasks::Busy &busy) {
                                 busy.bytes = true;
+                                fileops::Lookup lookup;
                                 for (const std::string &path : paths) {
                                     const fileops::Totals part = fileops::measure(
-                                        path, &busy.cancel, &busy.done, &hooks);
+                                        path, &busy.cancel, &busy.done, &hooks,
+                                        &lookup);
                                     totals.files += part.files;
                                     totals.folders += part.folders;
                                     totals.bytes += part.bytes;

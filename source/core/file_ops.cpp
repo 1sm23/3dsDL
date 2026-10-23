@@ -3,10 +3,12 @@
 #include "fs_util.hpp"
 #include "text.hpp"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <dirent.h>
+#include <map>
 #include <memory>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -169,18 +171,31 @@ void measureFolder(const std::string &folder, Totals &totals,
 } // namespace
 
 Totals measure(const std::string &path, const std::atomic<bool> *stop,
-               std::atomic<uint64_t> *bytes, const MeasureHooks *hooks)
+               std::atomic<uint64_t> *bytes, const MeasureHooks *hooks,
+               Lookup *lookup)
 {
     Totals totals;
-    struct stat info {};
-    if (stat(path.c_str(), &info) != 0) {
-        return totals;
+    bool folder = false;
+    int64_t size = 0;
+    if (lookup != nullptr) {
+        if (!lookup->exists(path)) {
+            return totals;
+        }
+        folder = lookup->isFolder(path);
+        size = std::max<int64_t>(0, lookup->size(path));
+    } else {
+        struct stat info {};
+        if (stat(path.c_str(), &info) != 0) {
+            return totals;
+        }
+        folder = S_ISDIR(info.st_mode);
+        size = static_cast<int64_t>(info.st_size);
     }
-    if (S_ISDIR(info.st_mode)) {
+    if (folder) {
         measureFolder(path, totals, stop, bytes, hooks);
     } else {
         totals.files = 1;
-        totals.bytes = static_cast<uint64_t>(info.st_size);
+        totals.bytes = static_cast<uint64_t>(size);
         if (bytes != nullptr) {
             *bytes += totals.bytes;
         }
@@ -301,6 +316,57 @@ bool exists(const std::string &path)
 {
     struct stat info {};
     return stat(path.c_str(), &info) == 0;
+}
+
+std::map<std::string, Lookup::Known> &Lookup::listing(const std::string &folder)
+{
+    const auto found = folders_.find(folder);
+    if (found != folders_.end()) {
+        return found->second;
+    }
+    std::map<std::string, Known> &names = folders_[folder];
+    for (const fs::Entry &entry : fs::listEntries(folder, nullptr, true, false)) {
+        names[text::lower(entry.name)] = {entry.folder,
+                                          entry.folder ? -1 : entry.size};
+    }
+    return names;
+}
+
+const Lookup::Known *Lookup::find(const std::string &path)
+{
+    const size_t slash = path.find_last_of('/');
+    if (slash == std::string::npos || slash + 1 == path.size()) {
+        return nullptr;
+    }
+    const std::map<std::string, Known> &names = listing(path.substr(0, slash + 1));
+    const auto found = names.find(text::lower(path.substr(slash + 1)));
+    return found == names.end() ? nullptr : &found->second;
+}
+
+bool Lookup::exists(const std::string &path)
+{
+    return find(path) != nullptr;
+}
+
+bool Lookup::isFolder(const std::string &path)
+{
+    const Known *known = find(path);
+    return known != nullptr && known->folder;
+}
+
+int64_t Lookup::size(const std::string &path)
+{
+    const Known *known = find(path);
+    return known != nullptr ? known->size : -1;
+}
+
+void Lookup::claim(const std::string &path, bool folder)
+{
+    const size_t slash = path.find_last_of('/');
+    if (slash != std::string::npos && slash + 1 < path.size()) {
+        listing(path.substr(0, slash + 1))[text::lower(path.substr(slash + 1))] =
+            {folder, -1};
+    }
 }
 
 bool isInside(const std::string &path, const std::string &folder)

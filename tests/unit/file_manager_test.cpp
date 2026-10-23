@@ -205,6 +205,51 @@ TEST("fs: big folders are read in batches and merge into order")
                            [](std::vector<fs::Entry> &&) {}));
 }
 
+TEST("fileops: a lookup answers from each folder's listing")
+{
+    TempDir temp;
+    const std::string root = temp.path();
+    fs::makeDirectories(root + "Music/Album/");
+    CHECK(writeText(root + "Music/Song.mp3", "12345"));
+    CHECK(writeText(root + "Music/.hidden", "x"));
+
+    fileops::Lookup lookup;
+    CHECK(lookup.exists(root + "Music/Song.mp3"));
+    CHECK(lookup.exists(root + "Music/song.MP3")); // FAT ignores case
+    CHECK(lookup.exists(root + "Music/.hidden"));
+    CHECK(!lookup.isFolder(root + "Music/Song.mp3"));
+    CHECK_EQ(lookup.size(root + "Music/Song.mp3"), int64_t(5));
+    CHECK(lookup.isFolder(root + "Music/Album"));
+    CHECK_EQ(lookup.size(root + "Music/Album"), int64_t(-1));
+    CHECK(!lookup.exists(root + "Music/Other.mp3"));
+    CHECK(!lookup.exists(root + "Missing/Song.mp3"));
+    CHECK(!lookup.exists(root + "Music/"));
+
+    // Read once: what changes on the card afterwards is not seen, but what
+    // is claimed is.
+    CHECK(writeText(root + "Music/New.mp3", "1"));
+    CHECK(!lookup.exists(root + "Music/New.mp3"));
+    lookup.claim(root + "Music/Song (1).mp3", false);
+    CHECK(lookup.exists(root + "Music/song (1).mp3"));
+    lookup.claim(root + "Missing/Folder", true);
+    CHECK(lookup.isFolder(root + "Missing/Folder"));
+
+    // measure asks the lookup what each path is, and reads folders as ever.
+    CHECK(writeText(root + "Music/Album/Track.mp3", "123"));
+    fileops::Lookup fresh;
+    const fileops::Totals song =
+        fileops::measure(root + "Music/Song.mp3", nullptr, nullptr, nullptr, &fresh);
+    CHECK_EQ(song.files, uint64_t(1));
+    CHECK_EQ(song.bytes, uint64_t(5));
+    const fileops::Totals album =
+        fileops::measure(root + "Music/Album", nullptr, nullptr, nullptr, &fresh);
+    CHECK_EQ(album.files, uint64_t(1));
+    CHECK_EQ(album.bytes, uint64_t(3));
+    CHECK_EQ(fileops::measure(root + "Music/Gone.mp3", nullptr, nullptr, nullptr,
+                              &fresh).files,
+             uint64_t(0));
+}
+
 TEST("fileops: names and paths")
 {
     std::string error;
