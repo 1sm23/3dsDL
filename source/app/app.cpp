@@ -289,6 +289,8 @@ App::Action App::home()
         // The free space is in the status bar, on every screen.
         ui::drawMarquee(settings_.destination, 200, 175, ui::type::Small,
                         ui::color::InkSoft, 340, C2D_AlignCenter);
+        ui::drawText("v" APP_VERSION, panel.x + panel.w - 10, panel.y + panel.h - 19,
+                     ui::type::Tiny, ui::color::InkSoft, C2D_AlignRight);
     };
 
     const ui::ScreenResult result = ui::runScreen(spec, homeSelection_);

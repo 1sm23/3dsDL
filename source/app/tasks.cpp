@@ -358,6 +358,11 @@ bool busy(const std::string &header, const std::string &title,
                               ? units::bytes(done) + " of " + units::bytes(total)
                               : std::to_string(done) + " of " +
                                     std::to_string(total);
+        } else if (job.busy.done.load() > 0) {
+            // A running count, when the end is not known.
+            const uint64_t done = job.busy.done.load();
+            view.amount = job.busy.bytes.load() ? units::bytes(done)
+                                                : std::to_string(done);
         }
         ui::drawBusy(view);
         gspWaitForVBlank();

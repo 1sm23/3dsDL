@@ -305,6 +305,8 @@ struct Dialog {
     int cancelButton = -1; // returned for B; -1 means B returns -1
     // A 48x48 picture shown on the top screen, such as a title's icon.
     const C2D_Image *icon = nullptr;
+    // Draws the whole top screen instead of header, body and icon.
+    std::function<void()> drawTop;
 };
 
 // Shows dialog over the current screens until a button is chosen. Returns
@@ -404,6 +406,12 @@ struct ListSpec {
     // A small line above the list on the bottom screen, for what the top
     // screen does not already say, such as the folder being browsed.
     std::string heading;
+    // An action at the right end of the heading, as a key cap and a word
+    // like the tabs but plain, such as Files' Sort. Its keys or a tap on it
+    // close the list, reporting its key.
+    std::string headingAction;
+    std::string headingActionKey; // its key cap
+    u32 headingActionKeys = 0;
     std::vector<ListItem> items;
     std::string emptyText;
     std::string back = "Back";
@@ -445,6 +453,13 @@ public:
                 float viewport);
     float offset() const { return offset_; }
     void setOffset(float value) { offset_ = target_ = value; velocity_ = 0; }
+    // Moves the content by, as when rows are added above the view, without
+    // stopping a flick or a drag.
+    void shift(float by)
+    {
+        offset_ += by;
+        target_ += by;
+    }
     // Eases towards keeping [top, top + height) visible.
     void reveal(float top, float height, float viewport);
     bool dragging() const { return dragging_; }

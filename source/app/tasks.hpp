@@ -56,7 +56,7 @@ struct Busy {
     // notice soon and return early.
     std::atomic<bool> cancel {false};
     // done of total items, or bytes when bytes is set; a bar shows once
-    // total is above zero.
+    // total is above zero, and done alone shows as a running count.
     std::atomic<uint64_t> done {0};
     std::atomic<uint64_t> total {0};
     std::atomic<bool> bytes {false};

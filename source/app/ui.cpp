@@ -1908,6 +1908,43 @@ Rect tabRect(Tab tab, const std::string &label, const std::string &key)
     return area;
 }
 
+namespace {
+
+// Draws key's cap at x on line (glyph or a cap of capColor with the letter
+// in letterColor) and returns the x after it.
+float drawKeyCap(const std::string &key, float x, const Rect &line,
+                 u32 capColor, u32 letterColor)
+{
+    const std::string glyph = buttonGlyph(key);
+    const bool round = key.size() == 1;
+    const float capSize = round ? 16 : 15;
+    const float keyWidth = keyCapWidth(key);
+    if (!glyph.empty()) {
+        drawText(glyph, x,
+                 std::round(line.y + (line.h - lineHeight(GlyphScale)) / 2 + 1),
+                 GlyphScale, capColor);
+        return x + keyWidth;
+    }
+    if (key.empty()) {
+        return x;
+    }
+    const float capWidth = keyWidth - 5;
+    // Centred on the same line as the label beside it.
+    const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, capSize};
+    fillRound(cap, round ? capSize / 2 : 4, capColor);
+    // Centred on the ink, as side bearings differ by letter. Raised half a
+    // pixel, and rounded to whole pixels so it stays sharp. Placed as in a
+    // 15 px cap; the 16 px circle adds its row below.
+    drawText(key,
+             std::round(cap.x + (cap.w - textWidth(key, KeyScale)) / 2 +
+                        inkOffset(key, KeyScale)),
+             std::round(cap.y - 0.5f + (15 - lineHeight(KeyScale)) / 2 + 1),
+             KeyScale, letterColor);
+    return x + keyWidth;
+}
+
+} // namespace
+
 void drawTab(Tab tab, const std::string &label, const std::string &key,
              bool pressed)
 {
@@ -1931,9 +1968,6 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     fillShape({area.x, area.y + 2, area.w, area.h - 2}, 21, corners, body, 4);
 
     // Label, with the button that also does this as a white key cap.
-    const std::string glyph = buttonGlyph(key);
-    const bool round = key.size() == 1;
-    const float capSize = round ? 16 : 15;
     const float keyWidth = keyCapWidth(key);
     // Shrink a long label so it and its key cap stay on the flat part of
     // the tab, clear of the rounded corner; past that it is squeezed, so
@@ -1954,26 +1988,7 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     // Whole pixels, so the key cap and its letter line up exactly.
     float x = std::round(centre - (labelWidth + keyWidth) / 2);
     const Rect line = {x, area.y + 3.5f, labelWidth + keyWidth, area.h - 3};
-    if (!glyph.empty()) {
-        drawText(glyph, x,
-                 std::round(line.y + (line.h - lineHeight(GlyphScale)) / 2 + 1),
-                 GlyphScale, color::rgb(0xFFFFFF));
-        x += keyWidth;
-    } else if (!key.empty()) {
-        const float capWidth = keyWidth - 5;
-        // Centred on the same line as the label beside it.
-        const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, capSize};
-        fillRound(cap, round ? capSize / 2 : 4, color::rgb(0xFFFFFF));
-        // Centred on the ink, as side bearings differ by letter. Raised
-        // half a pixel, and rounded to whole pixels so it stays sharp.
-        // Placed as in a 15 px cap; the 16 px circle adds its row below.
-        drawText(key,
-                 std::round(cap.x + (cap.w - textWidth(key, KeyScale)) / 2 +
-                            inkOffset(key, KeyScale)),
-                 std::round(cap.y - 0.5f + (15 - lineHeight(KeyScale)) / 2 + 1),
-                 KeyScale, color::rgb(0x6C6C6C));
-        x += keyWidth;
-    }
+    x = drawKeyCap(key, x, line, color::rgb(0xFFFFFF), color::rgb(0x6C6C6C));
     drawSqueezed(label, x, line.y + (line.h - lineHeight(labelScale)) / 2 + 1,
                  labelScale, squeeze, color::rgb(0xFFFFFF), 0);
 }
@@ -2226,6 +2241,10 @@ u32 paragraphColor(u32 requested)
 
 void drawDialogTop(const Dialog &dialog)
 {
+    if (dialog.drawTop) {
+        dialog.drawTop();
+        return;
+    }
     if (dialog.body.empty() && dialog.icon == nullptr) {
         drawBackdrop(false);
         return;
@@ -2938,6 +2957,16 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
     const Rect backTab = tabRect(Tab::Left);
     const Rect actionTab = tabRect(Tab::Right, spec.action, spec.actionKey);
     const Rect inner = {recess.x, recess.y + 4, recess.w, recess.h - 8};
+    const bool headingAction = headed && !spec.headingAction.empty();
+    const u32 headingKey =
+        spec.headingActionKeys & (~spec.headingActionKeys + 1);
+    const float headingWidth = keyCapWidth(spec.headingActionKey) +
+                               textWidth(spec.headingAction, type::Small);
+    const Rect headingRect = {recess.x + recess.w - 2 - headingWidth, 0,
+                              headingWidth, listTop - 2};
+    // Wider and taller than its ink, to be easy to hit.
+    const Rect headingHit = {headingRect.x - 8, 0, headingRect.w + 14,
+                             listTop + 2};
     const float viewport = inner.h;
     const float rowLeft = recess.x + 7;
     // Worked out again whenever spec.update changes the rows.
@@ -2960,8 +2989,8 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
         scroller.setOffset(std::max(0.0f, std::min(top - viewport / 2 + Pitch / 2,
                                                    content - viewport)));
     }
-    int tabPressed = 0; // -1 back, 1 action
-    bool moved = false; // the person has moved the highlight
+    int tabPressed = 0; // -1 back, 1 action, 2 the heading's button
+    bool touched = false; // the person has moved the highlight or the rows
     const u32 actionKey = spec.actionKeys & (~spec.actionKeys + 1);
 
     const auto rowAt = [&](const touchPosition &point) {
@@ -2973,40 +3002,59 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
         return row;
     };
 
+    // The scrollbar's thumb, and the column it runs in, which takes a drag
+    // straight to any part of a long list.
+    const float trackX = recess.x + recess.w - 12;
+    const Rect barColumn = {trackX - 6, inner.y, BottomWidth - trackX + 6, inner.h};
+    const auto thumb = [&]() {
+        const float height = std::max(18.0f, (inner.h - 8) * viewport / content);
+        const float travel = inner.h - 8 - height;
+        const float position =
+            std::max(0.0f, std::min(1.0f, scroller.offset() / (content - viewport)));
+        return Rect{trackX, inner.y + 4 + travel * position, 10, height};
+    };
+    float grab = -1; // where the thumb is held, from its top; -1 when not held
+
     while (keepRunning()) {
-        // A list that fills in while it is open keeps the highlight on the
-        // same row, by key, at the same place on the screen, once there is
-        // a row to keep: one the person moved to or the list opened on.
-        // Until then it stays on the first row, at the top.
+        // A list that fills in while it is open keeps what is on screen in
+        // place: the row at the top of the view stays there, however many
+        // rows arrive above it, and the highlight stays on its row. Only a
+        // list nobody has touched stays at its first row as rows arrive.
         if (spec.update) {
-            const bool keep = cursor > 0 || moved;
-            const std::string key = keep && cursor >= 0 && cursor < count
-                                        ? spec.items[cursor].key
-                                        : "";
-            const float onScreen = cursor * Pitch - scroller.offset();
+            const auto keyAt = [&](int row) {
+                return row >= 0 && row < count ? spec.items[row].key : "";
+            };
+            const bool untouched = !touched && cursor <= 0 && scroller.offset() <= 0;
+            const int topRow = std::max(
+                0, std::min(count - 1, static_cast<int>(scroller.offset() / Pitch)));
+            const std::string topKey = untouched ? "" : keyAt(topRow);
+            const float within = scroller.offset() - topRow * Pitch;
+            const std::string cursorKey = untouched ? "" : keyAt(cursor);
             const int before = cursor;
             if (spec.update()) {
                 layout();
-                int found = -1;
-                for (int index = 0; !key.empty() && index < count; ++index) {
-                    if (spec.items[index].key == key) {
-                        found = index;
-                        break;
+                const auto rowOf = [&](const std::string &key) {
+                    for (int index = 0; !key.empty() && index < count; ++index) {
+                        if (spec.items[index].key == key) {
+                            return index;
+                        }
                     }
+                    return -1;
+                };
+                const int top = rowOf(topKey);
+                if (top >= 0) {
+                    scroller.shift(top * Pitch + within - scroller.offset());
                 }
+                const int found = rowOf(cursorKey);
                 if (cursor != before && cursor >= 0 && cursor < count) {
                     // The screen moved it, to a row it was waiting for.
                     scroller.reveal(cursor * Pitch, Pitch, viewport);
-                } else if (found >= 0 && found != cursor) {
+                } else if (found >= 0) {
                     cursor = found;
-                    if (!scroller.dragging()) {
-                        scroller.setOffset(
-                            std::max(0.0f, cursor * Pitch - onScreen));
-                    }
-                } else if (found < 0) {
+                } else {
                     cursor = count == 0 ? -1
                                         : std::max(0, std::min(cursor, count - 1));
-                    if (!keep && !scroller.dragging()) {
+                    if (untouched && !scroller.dragging()) {
                         scroller.setOffset(0);
                     }
                 }
@@ -3031,7 +3079,7 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             }
             if (target != cursor) {
                 cursor = target;
-                moved = true;
+                touched = true;
                 scroller.reveal(cursor * Pitch, Pitch, viewport);
                 sound::play(sound::Effect::Move);
             }
@@ -3045,6 +3093,9 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
         if (input.down & spec.actionKeys) {
             return {input.down & spec.actionKeys, cursor};
         }
+        if (headingAction && (input.down & spec.headingActionKeys)) {
+            return {input.down & spec.headingActionKeys, cursor};
+        }
         if (input.down & spec.extraKeys) {
             return {input.down & spec.extraKeys, cursor};
         }
@@ -3054,31 +3105,60 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             tabPressed = !spec.back.empty() && backTab.contains(input.touch) ? -1
                          : !spec.action.empty() && actionTab.contains(input.touch)
                              ? 1
-                             : 0;
+                         : headingAction && headingHit.contains(input.touch) ? 2
+                                                                             : 0;
         }
         if ((input.up & KEY_TOUCH) && tabPressed != 0) {
-            const Rect area = tabPressed < 0 ? backTab : actionTab;
+            const Rect area = tabPressed < 0    ? backTab
+                              : tabPressed == 1 ? actionTab
+                                                : headingHit;
             const int which = tabPressed;
             tabPressed = 0;
             if (area.contains(input.touch)) {
                 if (which < 0) {
                     return {KEY_B, cursor};
                 }
-                return {actionKey, cursor};
+                return {which == 2 ? headingKey : actionKey, cursor};
             }
         }
 
-        if (scroller.update(input, inner, content, viewport)) {
+        if ((input.down & KEY_TOUCH) && scrollable &&
+            barColumn.contains(input.touch)) {
+            // Held where it was touched, or by its middle when the touch
+            // lands on the track.
+            const Rect bar = thumb();
+            grab = input.touch.py >= bar.y && input.touch.py < bar.y + bar.h
+                       ? input.touch.py - bar.y
+                       : bar.h / 2;
+        }
+        if (grab >= 0 && (input.held & KEY_TOUCH) && scrollable) {
+            const Rect bar = thumb();
+            const float travel = inner.h - 8 - bar.h;
+            const float position =
+                travel > 0 ? (input.touch.py - grab - inner.y - 4) / travel : 0;
+            scroller.setOffset(std::max(0.0f, std::min(1.0f, position)) *
+                               (content - viewport));
+            touched = true;
+        } else {
+            grab = -1;
+        }
+
+        const Rect rows =
+            scrollable ? Rect{inner.x, inner.y, barColumn.x - inner.x, inner.h} : inner;
+        if (scroller.update(input, rows, content, viewport)) {
             const int row = rowAt(scroller.tapPoint);
             if (row >= 0 && spec.tapToSelect && row != cursor) {
                 // The first tap only highlights; the next one opens.
                 cursor = row;
-                moved = true;
+                touched = true;
                 sound::play(sound::Effect::Move);
             } else if (row >= 0) {
                 cursor = row;
                 return {KEY_A, cursor};
             }
+        }
+        if (scroller.moved()) {
+            touched = true; // dragged or flicked
         }
         if (scroller.longPressed() && spec.longPressKey != 0) {
             const int row = rowAt(scroller.pressPoint);
@@ -3098,7 +3178,17 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             drawTopChrome(spec.title);
         }
         beginBottom();
-        if (headed) {
+        if (headingAction) {
+            drawMarquee(spec.heading, recess.x + 2, 2, type::Small,
+                        color::rgb(0x63593F), headingRect.x - recess.x - 12);
+            const bool down = tabPressed == 2 && (input.held & KEY_TOUCH) &&
+                              headingHit.contains(input.touch);
+            const u32 ink = down ? color::InkStrong : color::rgb(0x63593F);
+            const Rect line = {headingRect.x, 1, headingRect.w, listTop - 3};
+            const float x = drawKeyCap(spec.headingActionKey, headingRect.x, line,
+                                       ink, color::rgb(0xF4EFD6));
+            drawText(spec.headingAction, x, 2, type::Small, ink);
+        } else if (headed) {
             drawMarquee(spec.heading, 160, 2, type::Small, color::rgb(0x63593F),
                         296, C2D_AlignCenter);
         }
@@ -3166,16 +3256,12 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
         unclip();
 
         if (scrollable) {
-            const float trackX = recess.x + recess.w - 12;
             rect(trackX + 4, inner.y + 4, 2, inner.h - 8, color::rgb(0xA79D70));
-            const float thumb = std::max(18.0f, (inner.h - 8) * viewport / content);
-            const float travel = inner.h - 8 - thumb;
-            const float position =
-                std::max(0.0f, std::min(1.0f, scroller.offset() / (content - viewport)));
-            const Rect bar = {trackX, inner.y + 4 + travel * position, 10, thumb};
+            const Rect bar = thumb();
             fillRound({bar.x - 1, bar.y - 1, bar.w + 2, bar.h + 2}, 5,
                       color::rgb(0x9A916A));
-            fillRound(bar, 4, color::rgb(0xFBF9F0));
+            fillRound(bar, 4,
+                      grab >= 0 ? color::rgb(0xDDD8C4) : color::rgb(0xFBF9F0));
         }
 
         if (!spec.back.empty()) {
@@ -3330,8 +3416,12 @@ void drawBusy(const BusyView &view)
     const Rect box = view.cancellable ? CancellableBusyBox : BusyBox;
     drawDialogBox(box);
     const float contentHeight = box.h - (view.cancellable ? StripHeight : 0);
-    // With a count, the spinner row moves up to make room for a bar.
-    const float rowY = view.progress ? box.y + 30 : box.y + contentHeight / 2;
+    // With a count, the spinner row moves up to make room for a bar, or
+    // for the count alone.
+    const bool counting = !view.progress && !view.amount.empty();
+    const float rowY = view.progress ? box.y + 30
+                       : counting    ? box.y + contentHeight / 2 - 12
+                                     : box.y + contentHeight / 2;
     const float width = 30 + 12 + textWidth("Please wait...", type::Body);
     drawSpinner(box.x + (box.w - width) / 2 + 15, rowY, 15);
     drawCentered("Please wait...",
@@ -3340,6 +3430,9 @@ void drawBusy(const BusyView &view)
     if (view.progress) {
         drawProgressBar({box.x + 30, box.y + 54, box.w - 60, 12}, view.fraction);
         drawFitted(view.amount, box.x + box.w / 2, box.y + 72, type::Tiny,
+                   color::InkSoft, box.w - 60, C2D_AlignCenter);
+    } else if (counting) {
+        drawFitted(view.amount, box.x + box.w / 2, rowY + 18, type::Small,
                    color::InkSoft, box.w - 60, C2D_AlignCenter);
     }
     if (view.cancellable) {

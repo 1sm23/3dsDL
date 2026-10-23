@@ -126,7 +126,12 @@ first guess is cap 15 at scale 0.72.
 A recessed panel holds rows 27 px tall on a 31 px pitch: white pills with a
 17 px icon, the name and a right-aligned size or badge. Six rows fit; L/R and
 the counter page through the rest. Marked rows turn light blue with a Marked
-badge.
+badge. The scrollbar's column takes a drag: the thumb follows the stylus, and
+a touch on the track brings the thumb's middle there. A list that fills in
+while open keeps the row at the top of the view in place as rows arrive above
+it; only a list nobody has touched stays at its first row. A list can put an
+action at the right end of its heading for what changes the whole list, as a
+key cap and a word in the heading's ink (Files' X Sort, matching the Software lists' X Sort tab), never a pill.
 
 ### Dialogs
 
@@ -139,7 +144,7 @@ strip for a red button and a 30 px dark Cancel strip.
 
 | Board | Top screen | Bottom screen |
 | --- | --- | --- |
-| Home | app icon, name and download folder | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
+| Home | app icon, name, download folder and version | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
 | Scan QR code | camera with corner brackets, status strip at the bottom | title, Type a URL Instead, Back |
 | Confirm download | file, host, URL, Save to and HTTPS tags | Download, Add to Queue, Change Folder, Cancel |
 | Downloading | file, progress, amounts, speed, connections tag | saving to, Cancel |
