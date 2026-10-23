@@ -1678,14 +1678,17 @@ void drawStatusBar()
     // The SD card's free space, on every screen. It sits by the connection
     // pill, softer than the clock, so the two never read as one line.
     if (status.sdFree >= 0) {
-        const float left = pill.x + pill.w + 8;
+        // A touch smaller than the clock and centred on its line: on the
+        // console's font "SD 76.8 GiB" at the clock's size is wider than
+        // the gap. shortBytes keeps it to that width on any card.
+        constexpr float Scale = 0.37f;
+        const float left = pill.x + pill.w + 6;
         const float clockLeft = 364 - textWidth(clock, 0.4f);
-        // shortBytes keeps it to "SD 99.5 GiB" wide on any card.
         drawFitted("SD " +
                        units::shortBytes(static_cast<uint64_t>(status.sdFree)),
-                   left, 1, 0.4f,
+                   left, 1 + (lineHeight(0.4f) - lineHeight(Scale)) / 2, Scale,
                    status.sdFree < LowSdSpace ? color::Caution : color::InkSoft,
-                   clockLeft - 16 - left);
+                   clockLeft - 8 - left);
     }
 
     // Battery, four cells.
