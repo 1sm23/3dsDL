@@ -34,6 +34,11 @@ expect 0.9.0-beta.14 "2 16 14 prerelease"  # 2318
 expect 1.0.0 "16 0 15 release"             # 16399
 expect 3.63.15 "63 63 15 release"          # 65535, the most a CIA holds
 expect 0.8.1-x-y.1.2 "2 1 2 prerelease"
+expect 0.8.2n "2 3 0 release"             # 2096, above upstream's 2095
+expect 0.8.3n "2 4 0 release"             # 2112
+expect 0.8.3-beta.1n "2 3 2 prerelease"   # 2098
+expect 0.8.15n "2 16 0 release"           # 2304, patch carry
+expect 0.63.15n "16 0 0 release"          # 16384, minor carry
 refuse 0.8
 refuse v0.8.1
 refuse 0.8.1-
@@ -47,10 +52,13 @@ refuse 0.8.1-beta
 refuse 0.8.1-beta.0
 refuse 0.8.1-beta.15
 refuse 0.8.1-beta.1a
+refuse 0.8.2nn
+refuse 0.8.2N
+refuse 3.63.15n
 
 # Each build must install over the one before it: the numbers only go up.
 previous=128 # what 0.8.0 shipped as
-for version in 0.8.1-beta.1 0.8.1-beta.2 0.8.1-rc.3 0.8.1 0.8.2-beta.1 0.8.2 0.9.0-beta.1 0.9.0 1.0.0-rc.1 1.0.0; do
+for version in 0.8.1-beta.1 0.8.1-beta.2 0.8.1-rc.3 0.8.1 0.8.2-beta.1 0.8.2 0.8.2n 0.8.3-beta.1n 0.8.3n 0.8.15n 0.9.0-beta.1 0.9.0 0.9.0n 1.0.0-rc.1 1.0.0 1.0.0n; do
     read -r a b c _ <<< "$(cia_version "${version}")"
     number=$(( (a << 10) | (b << 4) | c ))
     if (( number <= previous )); then

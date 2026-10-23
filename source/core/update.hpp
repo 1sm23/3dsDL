@@ -44,6 +44,8 @@ bool parseRelease(const std::string &json, Release &out, std::string &error);
 // ("0.8.0-rc.1" is older than "0.8.0", "0.8.0-beta.10" newer than
 // "0.8.0-beta.2"). Returns -1, 0 or 1. Text that is not a version compares
 // as 0.0.0.
+// This fork's trailing n sorts after the matching upstream version:
+// 0.8.2 < 0.8.2n < 0.8.3.
 int compareVersions(const std::string &a, const std::string &b);
 bool isNewer(const std::string &candidate, const std::string &current);
 

@@ -224,16 +224,33 @@ TEST("cia: title ID helpers")
     CHECK_EQ(cia::buildNumber("0.8.1-rc.3"), 2067);
     CHECK_EQ(cia::buildNumber("0.8.1"), 2079);
     CHECK_EQ(cia::buildNumber("1.0.0"), 16399);
+    CHECK_EQ(cia::buildNumber("0.8.2n"), 2096);
+    CHECK_EQ(cia::buildNumber("0.8.3n"), 2112);
+    CHECK_EQ(cia::buildNumber("0.8.3-beta.1n"), 2098);
+    CHECK_EQ(cia::buildNumber("0.8.15n"), 2304);
+    CHECK_EQ(cia::buildNumber("0.63.15n"), 16384);
+    CHECK(cia::buildNumber("0.8.2n") > cia::buildNumber("0.8.2"));
+    CHECK(cia::buildNumber("0.8.3n") > cia::buildNumber("0.8.2n"));
     CHECK_EQ(cia::buildNumber("0.8.1-beta"), -1);
     CHECK_EQ(cia::buildNumber("0.8.1-beta.15"), -1);
     CHECK_EQ(cia::buildNumber("0.8.1-beta.1a"), -1);
     CHECK_EQ(cia::buildNumber("0.7.16"), -1);
     CHECK_EQ(cia::buildNumber("nonsense"), -1);
+    CHECK_EQ(cia::buildNumber("0.8.2nn"), -1);
+    CHECK_EQ(cia::buildNumber("3.63.15n"), -1);
     CHECK_EQ(cia::versionText(cia::OwnTitleId, 2066, "0.8.1-beta.2"),
              std::string("0.8.1-beta.2 (v2066)"));
     CHECK_EQ(cia::versionText(cia::OwnTitleId, 2066, "0.8.1-beta.3"),
              std::string("0.8.1-pre.2 (v2066)"));
     CHECK_EQ(cia::versionText(cia::OwnTitleId, 2079), std::string("0.8.1 (v2079)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2096, "0.8.2n"),
+             std::string("0.8.2n (v2096)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2096),
+             std::string("0.8.2n (v2096)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 2304),
+             std::string("0.8.15n (v2304)"));
+    CHECK_EQ(cia::versionText(cia::OwnTitleId, 16384),
+             std::string("0.63.15n (v16384)"));
     // 0.8.0 and older used major.minor.micro, and other titles always do.
     CHECK_EQ(cia::versionText(cia::OwnTitleId, 128), std::string("0.8.0 (v128)"));
     CHECK_EQ(cia::versionText(0x0004000000055D00ull, 2066), std::string("2.1.2 (v2066)"));

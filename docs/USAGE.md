@@ -129,10 +129,14 @@ reports that no release has been published. Installing a build with this
 update source is required once to migrate from a build that checks upstream.
 
 Create release tags from `feat/i18n` (or a branch containing its changes);
-`main` tracks upstream and does not include the localization. Set `VERSION`
-to a version newer than the installed build, push its matching tag, then
-publish the stable release draft made by CI. For example, a build on `0.8.2`
-needs a release such as `0.8.3`; adding `+i18n` does not make a version newer.
+`main` tracks upstream and does not include the localization. This fork
+appends `n` to the upstream version: `0.8.2` becomes `0.8.2n`, with tag
+`v0.8.2n`. Set `VERSION`, push its matching tag, then publish the stable
+release draft made by CI as the latest release. The updater orders versions
+as `0.8.2 < 0.8.2n < 0.8.3 < 0.8.3n`. Its CIA build number is one higher
+than the matching upstream build (`0.8.2n` is 2096, `0.8.2` is 2095), so
+the console can install it over that build. The first `n` release needs a
+manual install when migrating from an older build without suffix support.
 Keep the CI-generated `3dsDL.cia`, `3dsDL.3dsx` and `3dsDL.sha256` assets in
 the release so both installation formats can update and verify the download.
 
