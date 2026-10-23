@@ -23,15 +23,21 @@ where it starts.
 Colours are given as the 3DS will show them (pycgfx passes them to the GPU
 unchanged), not as linear values.
 
-Usage: python3 model.py logo.png banner.glb [--static SECONDS]
+Every build projects each visible part through the camera for frames
+across the loop and refuses to write the model if anything leaves the safe
+area the HOME Menu shows without clipping (see check_bounds).
+
+Usage: python3 model.py logo.png banner.glb [--static SECONDS] [--check]
 
 --static writes the scene as it is at that moment, with no animation.
+--check only reports the projected bounds and writes nothing.
 """
 
 import json
 import math
 import struct
 import sys
+import zlib
 
 LOOP = 4.0  # seconds
 
@@ -328,7 +334,7 @@ def arrow_track():
 
 def card_tracks():
     """Sways from side to side, and squashes happily when the arrow lands."""
-    rotation = sampled(lambda t: euler_quat(math.radians(-7), math.radians(18) * wave(t), math.radians(3) * wave(t, phase=1.2)))
+    rotation = sampled(lambda t: euler_quat(math.radians(-7), math.radians(12) * wave(t), math.radians(3) * wave(t, phase=1.2)))
     scale = [
         (0.0, (1, 1, 1)), (0.7, (1, 1, 1)), (0.8, (1.08, 0.9, 1.08)), (0.95, (0.95, 1.07, 0.95)),
         (1.1, (1.03, 0.98, 1.03)), (1.25, (1, 1, 1)), (LOOP, (1, 1, 1)),
@@ -359,7 +365,7 @@ def logo_tracks():
     """Bobs gently. It never turns: build-cgfx.py makes it a billboard, so
     the 3DS keeps it facing the viewer (a flat plane seen from behind would
     vanish)."""
-    translation = sampled(lambda t: (8.6, 1.0 + 0.35 * wave(t, phase=math.pi / 2), 2.4))
+    translation = sampled(lambda t: (8.2, 1.0 + 0.35 * wave(t, phase=math.pi / 2), 2.4))
     return translation, None, None
 
 
@@ -397,6 +403,9 @@ class Gltf:
         self.blob = bytearray()
         self.channels = []
         self.samplers = []
+        # Kept for check_bounds: each mesh's vertices and each node's tracks.
+        self.mesh_points = []
+        self.tracks = {}
 
     def view(self, data, target=None):
         while len(self.blob) % 4:
@@ -453,6 +462,7 @@ class Gltf:
             attributes["TEXCOORD_0"] = self.accessor(mesh.uvs, "VEC2", target=34962)
         assert len(mesh.positions) < 65536
         indices = self.accessor(mesh.indices, "SCALAR", component=5123, target=34963)
+        self.mesh_points.append(list(mesh.positions))
         self.doc["meshes"].append({"name": name, "primitives": [{"attributes": attributes, "indices": indices, "material": material}]})
         return len(self.doc["meshes"]) - 1
 
@@ -476,6 +486,7 @@ class Gltf:
         for path, keys, kind in (("translation", translation, "VEC3"), ("rotation", rotation, "VEC4"), ("scale", scale, "VEC3")):
             if not keys:
                 continue
+            self.tracks.setdefault(node, {})[path] = keys
             if self.static is not None:
                 self.doc["nodes"][node][path] = list(sample(keys, self.static))
                 continue
@@ -498,7 +509,153 @@ class Gltf:
             out.write(struct.pack("<I4s", len(self.blob), b"BIN\0") + self.blob)
 
 
-def build(logo_png, out_path, static=None):
+# ------------------------------------------------------------ Bounds check
+
+# The HOME Menu shows the banner through the camera described at the top,
+# with its status bar over the top of the screen. Everything that can be
+# seen must stay inside this box, measured on the plane z = 0 (the screen
+# itself spans x -20..20 and y -11..13 there).
+SAFE_LEFT, SAFE_RIGHT = -18.5, 18.5
+SAFE_BOTTOM, SAFE_TOP = -9.5, 11.0
+CAMERA_Y, CAMERA_Z = 1.0, 44.786
+# Parts allowed past the top edge: the arrow drops in from above the screen.
+ENTERS_FROM_ABOVE = {"Arrow"}
+
+
+def png_alpha_extent(png, cutoff=128):
+    """The opaque part of an 8-bit RGBA PNG as (u0, v0, u1, v1), fractions
+    of its width and height with v = 0 at the top, as glTF maps it."""
+    assert png[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
+    at, idat = 8, b""
+    while at < len(png):
+        length, kind = struct.unpack(">I4s", png[at:at + 8])
+        data = png[at + 8:at + 8 + length]
+        if kind == b"IHDR":
+            width, height, depth, colour, _, _, interlace = struct.unpack(">IIBBBBB", data)
+            assert depth == 8 and colour == 6 and interlace == 0, "logo must be 8-bit RGBA, not interlaced"
+        elif kind == b"IDAT":
+            idat += data
+        at += 12 + length
+    raw = zlib.decompress(idat)
+    stride = width * 4
+    rows, previous, pos = [], bytearray(stride), 0
+    for _ in range(height):
+        kind, line = raw[pos], bytearray(raw[pos + 1:pos + 1 + stride])
+        pos += 1 + stride
+        for i in range(stride):
+            a = line[i - 4] if i >= 4 else 0
+            b = previous[i]
+            c = previous[i - 4] if i >= 4 else 0
+            if kind == 1:
+                line[i] = (line[i] + a) & 255
+            elif kind == 2:
+                line[i] = (line[i] + b) & 255
+            elif kind == 3:
+                line[i] = (line[i] + (a + b) // 2) & 255
+            elif kind == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append(line)
+        previous = line
+    xs = [x for row in rows for x in range(width) if row[x * 4 + 3] >= cutoff]
+    ys = [y for y, row in enumerate(rows) if any(row[x * 4 + 3] >= cutoff for x in range(width))]
+    return min(xs) / width, min(ys) / height, (max(xs) + 1) / width, (max(ys) + 1) / height
+
+
+def quat_matrix(q):
+    x, y, z, w = q
+    return (
+        (1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)),
+        (2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)),
+        (2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)),
+    )
+
+
+def apply(transform, point):
+    m, t = transform
+    return tuple(sum(m[r][c] * point[c] for c in range(3)) + t[r] for r in range(3))
+
+
+def compose(parent, child):
+    pm, pt = parent
+    cm, ct = child
+    m = tuple(tuple(sum(pm[r][k] * cm[k][c] for k in range(3)) for c in range(3)) for r in range(3))
+    return m, apply(parent, ct)
+
+
+def project(point):
+    """Where point lands on the plane z = 0, as seen from the camera."""
+    x, y, z = point
+    k = CAMERA_Z / (CAMERA_Z - z)
+    return x * k, CAMERA_Y + (y - CAMERA_Y) * k
+
+
+def check_bounds(g, logo_extent, step=0.05):
+    """Fails unless every visible vertex stays inside the safe box in every
+    frame sampled over the loop. Returns the worst case on each side."""
+    nodes = g.doc["nodes"]
+    parents = {}
+    for index, node in enumerate(nodes):
+        for child in node.get("children", []):
+            parents[child] = index
+    points = {}
+    for index, node in enumerate(nodes):
+        if "mesh" not in node:
+            continue
+        if node["name"] == "Logo":
+            # A cut-out: only the opaque part of the texture shows.
+            xs = [p[0] for p in g.mesh_points[node["mesh"]]]
+            ys = [p[1] for p in g.mesh_points[node["mesh"]]]
+            u0, v0, u1, v1 = logo_extent
+            left, right, top, bottom = min(xs), max(xs), max(ys), min(ys)
+            w, h = right - left, top - bottom
+            points[index] = [(left + u * w, top - v * h, 0.0) for u in (u0, u1) for v in (v0, v1)]
+        else:
+            points[index] = g.mesh_points[node["mesh"]]
+
+    def local(index, t):
+        node, tracks = nodes[index], g.tracks.get(index, {})
+        translation = sample(tracks["translation"], t) if "translation" in tracks else node.get("translation", (0, 0, 0))
+        rotation = sample(tracks["rotation"], t) if "rotation" in tracks else node.get("rotation", (0, 0, 0, 1))
+        scale = sample(tracks["scale"], t) if "scale" in tracks else node.get("scale", (1, 1, 1))
+        m = quat_matrix(rotation)
+        m = tuple(tuple(m[r][c] * scale[c] for c in range(3)) for r in range(3))
+        return m, tuple(translation)
+
+    def world(index, t):
+        transform = local(index, t)
+        while index in parents:
+            index = parents[index]
+            transform = compose(local(index, t), transform)
+        return transform
+
+    worst = {"left": (0.0, None), "right": (0.0, None), "bottom": (0.0, None), "top": (0.0, None)}
+    problems = []
+    for k in range(int(round(LOOP / step)) + 1):
+        t = k * step
+        for index, vertices in points.items():
+            name = nodes[index]["name"]
+            transform = world(index, t)
+            xs, ys = zip(*(project(apply(transform, p)) for p in vertices))
+            sides = {"left": min(xs), "right": max(xs), "bottom": min(ys)}
+            if name not in ENTERS_FROM_ABOVE:
+                sides["top"] = max(ys)
+            for side, value in sides.items():
+                if worst[side][1] is None or (value < worst[side][0] if side in ("left", "bottom") else value > worst[side][0]):
+                    worst[side] = (value, "%s at %.2f s" % (name, t))
+            for side, value, limit in (("left", sides["left"], SAFE_LEFT), ("right", sides["right"], SAFE_RIGHT),
+                                       ("bottom", sides["bottom"], SAFE_BOTTOM), ("top", sides.get("top", -99), SAFE_TOP)):
+                outside = value < limit if side in ("left", "bottom") else value > limit
+                if outside:
+                    problems.append("%s at %.2f s reaches %s %.2f (safe limit %.1f)" % (name, t, side, value, limit))
+    for side in ("left", "right", "bottom", "top"):
+        value, where = worst[side]
+        print("  %-6s %6.2f  %s" % (side, value, where))
+    return problems
+
+
+def build(logo_png, out_path, static=None, check_only=False):
     g = Gltf(static)
     cyan = g.material("Card", (0.05, 0.66, 0.9), 0.3)
     label = g.material("Label", (0.93, 0.98, 1.0), 0.5)
@@ -510,7 +667,7 @@ def build(logo_png, out_path, static=None):
 
     root = g.node("Banner")
 
-    rig = g.node("CardRig", parent=root, translation=(-9.4, -1.6, -1.0), scale=(1.3, 1.3, 1.3))
+    rig = g.node("CardRig", parent=root, translation=(-8.6, -1.4, -1.0), scale=(1.1, 1.1, 1.1))
     card = g.node("Card", parent=rig)
     g.node("CardBody", g.mesh("CardBody", extrude(sd_card(), 1.6, 0.42), cyan), parent=card)
     g.node("CardLabel", g.mesh("CardLabel", card_label(), label), parent=card)
@@ -523,21 +680,27 @@ def build(logo_png, out_path, static=None):
 
     sparkle = g.mesh("Sparkle", extrude(star(1.0, 0.46), 0.5, 0.1), gold)
     for k, (start, end, size, delay, spin) in enumerate([
-        ((-2.6, 5.6, 1.2), (-7.0, 9.6, 1.6), 1.5, 0.0, 140),
-        ((2.4, 5.0, 1.2), (7.0, 8.0, 1.6), 1.2, 0.06, -160),
-        ((0.0, 6.0, 1.4), (0.6, 10.8, 1.8), 0.95, 0.12, 120),
+        ((-2.6, 5.6, 1.2), (-6.2, 8.4, 1.6), 1.5, 0.0, 140),
+        ((2.4, 5.0, 1.2), (6.2, 7.4, 1.6), 1.2, 0.06, -160),
+        ((0.0, 6.0, 1.4), (0.5, 9.4, 1.8), 0.95, 0.12, 120),
     ]):
         node = g.node("Sparkle%d" % (k + 1), sparkle, parent=card)
         g.animate(node, *sparkle_tracks(start, end, size, delay, spin))
 
-    wordmark = g.node("Logo", g.mesh("Logo", plane(23.0, 11.5), logo), parent=root)
+    wordmark = g.node("Logo", g.mesh("Logo", plane(21.0, 10.5), logo), parent=root)
     g.animate(wordmark, *logo_tracks())
 
-    for k, (position, size, phase) in enumerate([((-0.6, 9.0, 1.0), 1.15, 0.0), ((18.0, -4.6, 2.0), 0.9, 2.1)]):
+    for k, (position, size, phase) in enumerate([((-0.6, 9.0, 1.0), 1.15, 0.0), ((16.6, -4.8, 2.0), 0.9, 2.1)]):
         node = g.node("Twinkle%d" % (k + 1), sparkle, parent=root)
         g.animate(node, *twinkle_tracks(position, size, phase))
 
-    g.write(out_path)
+    print("Projected bounds on z = 0 (safe box x %.1f..%.1f, y %.1f..%.1f):" % (SAFE_LEFT, SAFE_RIGHT, SAFE_BOTTOM, SAFE_TOP))
+    problems = check_bounds(g, png_alpha_extent(logo_png))
+    if problems:
+        print("\n".join(problems[:12]) + ("\n... and %d more" % (len(problems) - 12) if len(problems) > 12 else ""))
+        sys.exit("the banner leaves the HOME Menu's safe area; nothing written")
+    if not check_only:
+        g.write(out_path)
 
 
 if __name__ == "__main__":
@@ -547,7 +710,10 @@ if __name__ == "__main__":
         i = args.index("--static")
         static = float(args[i + 1])
         del args[i:i + 2]
+    check_only = "--check" in args
+    if check_only:
+        args.remove("--check")
     if len(args) != 2:
         sys.exit(__doc__)
     with open(args[0], "rb") as source:
-        build(source.read(), args[1], static)
+        build(source.read(), args[1], static, check_only)

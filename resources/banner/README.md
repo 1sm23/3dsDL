@@ -85,6 +85,13 @@ HOME Menu on a real console even when an emulator shows the banner fine.
 - **Short stereo sound.** Banner sound must be two channels and at most 3
   seconds. The jingle is 1.6 seconds of 44.1 kHz stereo, the format the
   working flat banner uses.
+- **Inside the safe area.** Everything that can be seen stays at least
+  1.5 units from the left, right and bottom edges and below y 11, where the
+  HOME Menu's status bar starts, in every frame. `model.py` checks this on
+  each build (the arrow alone may come in from above) and writes nothing if
+  a part leaves it; `--check` prints the bounds without writing. The card
+  used to be scaled 1.3 with an 18° sway, so it and its sparkles clipped at
+  the edges as it turned.
 - **Small power-of-two textures**, at most 256 pixels on a side.
 - **The camera is fixed:** at (0, 1, 44.786), looking down -z with a 30°
   vertical field of view. The plane z = 0 shows x from -20 to 20 and y from
