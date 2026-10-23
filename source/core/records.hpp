@@ -17,6 +17,8 @@ enum class CiaAction { Ask, Install, InstallAndDelete, Keep };
 
 struct Settings {
     std::string destination = "sdmc:/";
+    // UI language code. English is the default for existing installations.
+    std::string language = "en";
     bool resumeDownloads = true;
     bool keepAwake = true;
     bool offerZipExtraction = false;

@@ -51,10 +51,12 @@ TEST("records: settings round trip and defaults")
     settings.offerZipExtraction = true;
     settings.checkForUpdates = false;
     settings.sounds = false;
+    settings.language = "zh";
     const Settings parsed = parseSettings(serializeSettings(settings));
     CHECK_EQ(parsed.checkForUpdates, false);
     CHECK_EQ(parsed.sounds, false);
     CHECK_EQ(parsed.destination, std::string("sdmc:/cias/"));
+    CHECK_EQ(parsed.language, std::string("zh"));
     CHECK_EQ(parsed.resumeDownloads, false);
     CHECK_EQ(parsed.keepAwake, false);
     CHECK_EQ(parsed.offerZipExtraction, true);
@@ -76,6 +78,8 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(defaults.offerZipExtraction, false);
     CHECK_EQ(defaults.checkForUpdates, true);
     CHECK_EQ(defaults.sounds, true);
+    CHECK_EQ(defaults.language, std::string("en"));
+    CHECK_EQ(parseSettings("language=fr\n").language, std::string("en"));
 
     CHECK_EQ(defaults.timeZoneSet, false);
 
@@ -94,6 +98,17 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(spelled.resumeDownloads, false);
     CHECK_EQ(parseLegacyDestination("sdmc:/old/\nignored"),
              std::string("sdmc:/old/"));
+}
+
+TEST("records: language setting defaults and round trips")
+{
+    Settings settings;
+    CHECK_EQ(settings.language, std::string("en"));
+    settings.language = "zh";
+    CHECK_EQ(parseSettings(serializeSettings(settings)).language,
+             std::string("zh"));
+    CHECK_EQ(parseSettings("language=unsupported\n").language,
+             std::string("en"));
 }
 
 TEST("records: history round trip, ordering and limit")

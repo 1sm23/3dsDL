@@ -73,6 +73,10 @@ Everything also works by touch, and lists scroll with a flick.
 | After a CIA downloads | Ask | Ask, install, install and delete, or keep |
 | Check for updates | On | Looks for a new 3dsDL when it opens |
 | Sounds | On | Needs `sdmc:/3ds/dspfirm.cdc` |
+| Language | English | Change the interface language in **Settings → Other Settings** |
+
+The language catalog is bundled in the app. English is used when a translation
+is missing, so updating the catalog never makes an older installation unusable.
 
 **Console Clock** compares the console's time with internet time and sets it for your time zone. HTTPS fails when the date is wrong. Setting the clock needs the CIA build; Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>SELECT</kbd>, Miscellaneous options) can also set it.
 

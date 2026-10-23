@@ -5,6 +5,7 @@
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "i18n.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "platform.hpp"
@@ -58,22 +59,37 @@ constexpr Preset Presets[] = {
 
 std::string onOff(bool value)
 {
-    return value ? "On" : "Off";
+    return i18n::t(value ? "common.on" : "common.off");
 }
 
-const char *ciaActionLabel(CiaAction action)
+std::string ciaActionLabel(CiaAction action)
 {
     switch (action) {
     case CiaAction::Install:
-        return "Install";
+        return i18n::t("settings.cia.install");
     case CiaAction::InstallAndDelete:
-        return "Install, Delete";
+        return i18n::t("settings.cia.install_delete");
     case CiaAction::Keep:
-        return "Keep File";
+        return i18n::t("settings.cia.keep");
     case CiaAction::Ask:
         break;
     }
-    return "Ask";
+    return i18n::t("settings.cia.ask");
+}
+
+std::string sortLabel(fs::SortOrder order)
+{
+    switch (order) {
+    case fs::SortOrder::Size:
+        return i18n::t("settings.sort.size");
+    case fs::SortOrder::Date:
+        return i18n::t("settings.sort.date");
+    case fs::SortOrder::Type:
+        return i18n::t("settings.sort.type");
+    case fs::SortOrder::Name:
+        break;
+    }
+    return i18n::t("settings.sort.name");
 }
 
 std::string entryName(const HistoryEntry &entry)
@@ -158,6 +174,7 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
 App::App()
     : settings_(storage::loadSettings()), history_(storage::loadHistory())
 {
+    i18n::setLanguage(settings_.language);
     sound::setEnabled(settings_.sounds);
     // Interrupted downloads from before names were kept: their resume file
     // knows the name the server gave.
@@ -1588,7 +1605,8 @@ void App::settingsScreen()
         std::string value;
         std::string help;
     };
-    const auto settingsList = [&](const std::string &title, ui::Icon icon,
+    const auto settingsList = [&](const std::function<std::string()> &title,
+                                  ui::Icon icon,
                                   u32 iconColor,
                                   const std::function<std::vector<Row>()> &rows,
                                   const std::function<void(int)> &change) {
@@ -1596,7 +1614,7 @@ void App::settingsScreen()
         while (ui::keepRunning()) {
             const std::vector<Row> current = rows();
             ui::ListSpec spec;
-            spec.title = title;
+            spec.title = title();
             for (const Row &row : current) {
                 ui::ListItem item;
                 item.label = row.label;
@@ -1605,7 +1623,7 @@ void App::settingsScreen()
                 spec.items.push_back(item);
             }
             spec.drawTop = [&](int index) {
-                ui::drawTopChrome(title, icon, iconColor);
+                ui::drawTopChrome(title(), icon, iconColor);
                 ui::drawPanel();
                 if (index >= 0) {
                     ui::drawPanelText(current[index].help, ui::TopPanel);
@@ -1620,7 +1638,8 @@ void App::settingsScreen()
     };
     const auto onOffChoice = [&](const std::string &title,
                                  const std::string &help, bool &value) {
-        const int picked = ui::chooseOption(title, help, {"On", "Off"},
+        const int picked = ui::chooseOption(
+            title, help, {i18n::t("common.on"), i18n::t("common.off")},
                                             value ? 0 : 1, ui::Icon::Download,
                                             ui::color::IconGreen);
         if (picked >= 0 && (picked == 0) != value) {
@@ -1629,48 +1648,46 @@ void App::settingsScreen()
         }
     };
 
-    static const char *const ResumeHelp =
-        "When a download is interrupted, keep what arrived and continue from "
-        "there next time. 3dsDL only resumes when the server confirms the "
-        "file has not changed.";
-    static const char *const AwakeHelp =
-        "Pause Sleep Mode while a download or install runs. Closing the "
-        "system would otherwise turn Wi-Fi off and stop the transfer.";
-    static const char *const ZipHelp =
-        "After a ZIP file finishes downloading, ask whether to extract it. "
-        "Nothing is ever extracted without asking.";
-    static const char *const CiaHelp =
-        "Choose what 3dsDL does when a CIA finishes downloading. Ask Each "
-        "Time shows the icon and version before anything is installed.";
-
     const auto downloads = [&]() {
         settingsList(
-            "Downloads", ui::Icon::Download, ui::color::IconGreen,
+            []() { return i18n::t("settings.downloads.title"); },
+            ui::Icon::Download, ui::color::IconGreen,
             [&]() {
                 return std::vector<Row>{
-                    {"Resume Interrupted Downloads",
-                     onOff(settings_.resumeDownloads), ResumeHelp},
-                    {"Stay Awake While Downloading", onOff(settings_.keepAwake),
-                     AwakeHelp},
-                    {"Offer to Extract ZIP Files",
-                     onOff(settings_.offerZipExtraction), ZipHelp},
-                    {"After a CIA Downloads",
-                     ciaActionLabel(settings_.afterCiaDownload), CiaHelp}};
+                    {i18n::t("settings.downloads.resume"),
+                     onOff(settings_.resumeDownloads),
+                     i18n::t("settings.downloads.resume.help")},
+                    {i18n::t("settings.downloads.awake"),
+                     onOff(settings_.keepAwake),
+                     i18n::t("settings.downloads.awake.help")},
+                    {i18n::t("settings.downloads.zip"),
+                     onOff(settings_.offerZipExtraction),
+                     i18n::t("settings.downloads.zip.help")},
+                    {i18n::t("settings.downloads.cia"),
+                     ciaActionLabel(settings_.afterCiaDownload),
+                     i18n::t("settings.downloads.cia.help")}};
             },
             [&](int index) {
                 if (index == 0) {
-                    onOffChoice("Resume Downloads", ResumeHelp,
+                    onOffChoice(i18n::t("settings.downloads.resume.short"),
+                                i18n::t("settings.downloads.resume.help"),
                                 settings_.resumeDownloads);
                 } else if (index == 1) {
-                    onOffChoice("Stay Awake", AwakeHelp, settings_.keepAwake);
+                    onOffChoice(i18n::t("settings.downloads.awake.short"),
+                                i18n::t("settings.downloads.awake.help"),
+                                settings_.keepAwake);
                 } else if (index == 2) {
-                    onOffChoice("Extract ZIP Files", ZipHelp,
+                    onOffChoice(i18n::t("settings.downloads.zip.short"),
+                                i18n::t("settings.downloads.zip.help"),
                                 settings_.offerZipExtraction);
                 } else if (index == 3) {
                     const int picked = ui::chooseOption(
-                        "After a CIA Downloads", CiaHelp,
-                        {"Ask Each Time", "Install", "Install and Delete File",
-                         "Only Keep the File"},
+                        i18n::t("settings.downloads.cia"),
+                        i18n::t("settings.downloads.cia.help"),
+                        {i18n::t("settings.downloads.cia.ask_each"),
+                         i18n::t("settings.cia.install"),
+                         i18n::t("settings.downloads.cia.install_delete"),
+                         i18n::t("settings.downloads.cia.keep")},
                         static_cast<int>(settings_.afterCiaDownload),
                         ui::Icon::Package, ui::color::IconBlue);
                     if (picked >= 0) {
@@ -1683,85 +1700,100 @@ void App::settingsScreen()
     };
     const auto filesAndHistory = [&]() {
         settingsList(
-            "Other Settings", ui::Icon::Wrench, ui::color::IconGrey,
+            []() { return i18n::t("settings.other.title"); }, ui::Icon::Wrench,
+            ui::color::IconGrey,
             [&]() {
-                static const char *const Sorts[] = {"Name", "Size", "Date",
-                                                    "Type"};
                 return std::vector<Row>{
-                    {"Sort Files", Sorts[static_cast<int>(settings_.fileSort)],
-                     "How Files orders what is in a folder. Folders always "
-                     "come first."},
-                    {"Show Hidden Files", onOff(settings_.showHiddenFiles),
-                     "Show files and folders whose names start with a dot."},
-                    {"Sounds",
+                    {i18n::t("settings.language.title"),
+                     i18n::languageName(settings_.language),
+                     i18n::t("settings.language.help")},
+                    {i18n::t("settings.sort.title"),
+                     sortLabel(settings_.fileSort),
+                     i18n::t("settings.sort.help")},
+                    {i18n::t("settings.hidden.title"),
+                     onOff(settings_.showHiddenFiles),
+                     i18n::t("settings.hidden.help")},
+                    {i18n::t("settings.sounds.title"),
                      sound::available() ? onOff(settings_.sounds)
-                                        : "Unavailable",
+                                        : i18n::t("common.unavailable"),
                      sound::available()
-                         ? "Soft sounds when moving, choosing and going back, "
-                           "as in the system menus."
-                         : "Sounds need the DSP firmware dump, "
-                           "sdmc:/3ds/dspfirm.cdc. Make it with DSP1, then "
-                           "start 3dsDL again."},
-                    {"Clear Download History",
+                         ? i18n::t("settings.sounds.help")
+                         : i18n::t("settings.sounds.unavailable_help")},
+                    {i18n::t("settings.history.title"),
                      std::to_string(history_.size()),
-                     "Removes the list of past downloads and any partial "
-                     "downloads kept for resuming. Downloaded files stay."}};
+                     i18n::t("settings.history.help")}};
             },
             [&](int index) {
                 if (index == 0) {
+                    const std::vector<i18n::Language> &languages =
+                        i18n::languages();
+                    std::vector<std::string> options;
+                    int current = 0;
+                    for (size_t i = 0; i < languages.size(); ++i) {
+                        options.push_back(languages[i].name);
+                        if (settings_.language == languages[i].code) {
+                            current = static_cast<int>(i);
+                        }
+                    }
                     const int picked = ui::chooseOption(
-                        "Sort Files",
-                        "Folders always come first, sorted by name.",
-                        {"Name", "Size, Largest First", "Date, Newest First",
-                         "Type"},
+                        i18n::t("settings.language.title"),
+                        i18n::t("settings.language.help"), options, current,
+                        ui::Icon::Globe, ui::color::IconBlue);
+                    if (picked >= 0 &&
+                        settings_.language != languages[picked].code) {
+                        settings_.language = languages[picked].code;
+                        i18n::setLanguage(settings_.language);
+                        persistSettings();
+                    }
+                } else if (index == 1) {
+                    const int picked = ui::chooseOption(
+                        i18n::t("settings.sort.title"),
+                        i18n::t("settings.sort.help"),
+                        {i18n::t("settings.sort.name"),
+                         i18n::t("settings.sort.size"),
+                         i18n::t("settings.sort.date"),
+                         i18n::t("settings.sort.type")},
                         static_cast<int>(settings_.fileSort), ui::Icon::Folder,
                         ui::color::IconOrange);
                     if (picked >= 0) {
                         settings_.fileSort = static_cast<fs::SortOrder>(picked);
                         persistSettings();
                     }
-                } else if (index == 1) {
-                    onOffChoice("Show Hidden Files",
-                                "Show files and folders whose names start "
-                                "with a dot.",
-                                settings_.showHiddenFiles);
                 } else if (index == 2) {
+                    onOffChoice(i18n::t("settings.hidden.title"),
+                                i18n::t("settings.hidden.help"),
+                                settings_.showHiddenFiles);
+                } else if (index == 3) {
                     if (!sound::available()) {
-                        ui::message("Sounds Unavailable",
-                                    "Sounds need the DSP firmware dump, "
-                                    "sdmc:/3ds/dspfirm.cdc. Make it with the "
-                                    "DSP1 homebrew, then start 3dsDL again.");
+                        ui::message(i18n::t("settings.sounds.title"),
+                                    i18n::t("settings.sounds.unavailable_help"));
                     } else {
-                        onOffChoice("Sounds",
-                                    "Soft sounds when moving, choosing and "
-                                    "going back.",
+                        onOffChoice(i18n::t("settings.sounds.title"),
+                                    i18n::t("settings.sounds.help"),
                                     settings_.sounds);
                         sound::setEnabled(settings_.sounds);
                     }
-                } else if (history_.empty()) {
-                    ui::message("History Is Empty", "There is nothing to clear.");
+                } else if (index == 4 && history_.empty()) {
+                    ui::message(i18n::t("settings.history.empty_title"),
+                                i18n::t("settings.history.empty"));
                 } else {
                     confirmClearHistory();
                 }
             });
     };
 
-    static const char *const TileHelp[] = {
-        "Version, credits and where 3dsDL keeps its files.",
-        "Check for a newer 3dsDL and install it.",
-        "Resuming, Sleep Mode, ZIP files and what happens after a CIA "
-        "downloads.",
-        "The folder new downloads are saved to.",
-        "Compare the console's clock with the time online and set it. Secure "
-        "downloads fail when the date is wrong.",
-        "How Files sorts and shows files, sounds, and the download history.",
+    static const char *const TileHelpKeys[] = {
+        "settings.about.help", "settings.updates.help",
+        "settings.downloads.help", "settings.folder.help",
+        "settings.clock.help", "settings.other.help",
     };
     int focus = 2;
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
-        spec.back = "Back";
-        spec.action = "Report Issue";
-        const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
+        spec.back = i18n::t("common.back");
+        spec.action = i18n::t("settings.report_issue");
+        const auto add = [&](ui::Rect rect, const std::string &label,
+                             ui::Icon icon,
                              u32 iconColor, bool tile) {
             ui::Control control;
             control.rect = rect;
@@ -1772,20 +1804,26 @@ void App::settingsScreen()
             control.scale = ui::type::Small + 0.06f;
             spec.controls.push_back(control);
         };
-        add({16, 6, 140, 26}, "About", ui::Icon::AppMark, ui::color::Accent,
-            false);
-        add({164, 6, 140, 26}, "Updates", ui::Icon::Download,
+        add({16, 6, 140, 26}, i18n::t("settings.about.title"),
+            ui::Icon::AppMark, ui::color::Accent, false);
+        add({164, 6, 140, 26}, i18n::t("settings.updates.title"),
+            ui::Icon::Download,
             ui::color::IconGreen, false);
-        add({16, 42, 140, 78}, "Downloads", ui::Icon::Download,
+        add({16, 42, 140, 78}, i18n::t("settings.downloads.title"),
+            ui::Icon::Download,
             ui::color::IconGreen, true);
-        add({164, 42, 140, 78}, "Download Folder", ui::Icon::Folder,
+        add({164, 42, 140, 78}, i18n::t("settings.folder.title"),
+            ui::Icon::Folder,
             ui::color::IconOrange, true);
-        add({16, 127, 140, 76}, "Console Clock", ui::Icon::Clock,
+        add({16, 127, 140, 76}, i18n::t("settings.clock.title"),
+            ui::Icon::Clock,
             ui::color::IconBlue, true);
-        add({164, 127, 140, 76}, "Other Settings", ui::Icon::Wrench,
+        add({164, 127, 140, 76}, i18n::t("settings.other.title"),
+            ui::Icon::Wrench,
             ui::color::IconGrey, true);
         spec.drawTop = [&]() {
-            ui::drawTopChrome("Settings", ui::Icon::Wrench, ui::color::IconGrey);
+            ui::drawTopChrome(i18n::t("settings.title"), ui::Icon::Wrench,
+                              ui::color::IconGrey);
             ui::drawPanel();
             spec.controls[1].badge = updateAvailable_ ? "New" : "";
             const float left = ui::TopPanel.x + 18;
@@ -1798,7 +1836,8 @@ void App::settingsScreen()
                 return;
             }
             const int shown = focus >= 0 && focus < 6 ? focus : 2;
-            float y = ui::drawWrapped(TileHelp[shown], left, ui::TopPanel.y + 12,
+            const std::string help = i18n::t(TileHelpKeys[shown]);
+            float y = ui::drawWrapped(help, left, ui::TopPanel.y + 12,
                                       ui::type::Small, ui::color::Ink,
                                       ui::TopPanel.w - 36, 3) +
                       10;
