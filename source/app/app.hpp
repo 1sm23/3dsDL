@@ -37,7 +37,6 @@ private:
     };
 
     Action home();
-    void refreshStatus(bool force);
 
     enum class Start { Cancelled, Done, Queued };
     // Asks to confirm, then downloads, or adds the link to the queue.
@@ -115,7 +114,9 @@ private:
     void titlesScreen();
     // Reads what is installed into library_; false (after saying why) when
     // the AM service is unavailable.
-    bool reloadLibrary();
+    // Reads the installed titles again; cancellable lets B stop it, which
+    // keeps what was read before.
+    bool reloadLibrary(bool cancellable = false);
     void titleList(bool software);
     void titleOptions(titles::Title title);
     void extraDataScreen();
@@ -172,9 +173,6 @@ private:
     // Copied or cut entries waiting to be pasted.
     std::vector<std::string> clipboard_;
     bool clipboardCut_ = false;
-    int64_t freeBytes_ = -1;
-    platform::Wifi wifi_ = platform::Wifi::Unknown;
-    u64 lastRefresh_ = 0;
     library::Snapshot library_;
     std::vector<QueuedLink> queue_;
     uint64_t nextQueueId_ = 1;

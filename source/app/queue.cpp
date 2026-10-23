@@ -305,7 +305,7 @@ void App::runQueue(const std::vector<uint64_t> *ids)
         request.userAgent = http::UserAgent;
         request.allowResume = settings_.resumeDownloads;
         request.socketBufferSize = http::SocketBufferSize;
-        request.connections = http::DownloadConnections;
+        request.connections = settings_.maxConnections;
         request.freeSpace = [](const std::string &) {
             return platform::sdFreeBytes();
         };
@@ -370,10 +370,6 @@ void App::runQueue(const std::vector<uint64_t> *ids)
             dialog.header = "Queue";
             dialog.title = "Install the CIAs from this queue?";
             dialog.tone = ui::Tone::Info;
-            dialog.body.push_back({basename(placed.path) +
-                                       " is the first. The answer is used "
-                                       "for every CIA in this queue.",
-                                   ui::color::Text, 0.5f, 3});
             dialog.buttons = {"Install", "Install, Delete", "Keep Files"};
             dialog.cancelButton = 2;
             const int choice = ui::choose(dialog);
@@ -429,9 +425,7 @@ void App::queueScreen()
     while (ui::keepRunning() && !quit_) {
         ui::ListSpec spec;
         spec.title = "Queue";
-        spec.emptyText = "Nothing is waiting. Choose Add to Queue after "
-                         "scanning or entering a link, or send links with "
-                         "Receive.";
+        spec.emptyText = "Nothing is waiting.";
         for (const QueuedLink &item : queue_) {
             ui::ListItem row;
             row.label = nameOf(item.url);
@@ -457,36 +451,35 @@ void App::queueScreen()
             ui::drawTopChrome("Queue", ui::Icon::Download, ui::color::IconGreen);
             ui::drawPanel();
             if (highlighted < 0 || highlighted >= static_cast<int>(queue_.size())) {
-                ui::drawPanelText(spec.emptyText, ui::TopPanel, ui::type::Small);
+                ui::drawEmblem(ui::Icon::Download, ui::color::IconGreen);
                 return;
             }
             const QueuedLink &item = queue_[highlighted];
-            const float left = ui::TopPanel.x + 18;
-            ui::drawIcon(ui::Icon::Download, left, ui::TopPanel.y + 14, 30,
-                         ui::color::IconGreen);
-            ui::drawMarquee(nameOf(item.url), left + 40, ui::TopPanel.y + 10,
-                            0.62f, ui::color::InkStrong, 300);
-            ui::drawText("from " + url::host(item.url), left + 40,
-                         ui::TopPanel.y + 36, ui::type::Small,
-                         ui::color::InkSoft);
-            float y = ui::drawWrapped(item.url, left, ui::TopPanel.y + 58,
-                                      ui::type::Tiny, ui::color::InkSoft,
-                                      ui::TopPanel.w - 36, 2) +
-                      4;
-            y = ui::drawTagRow(left, y, 74, "Save to", item.folder);
+            std::vector<ui::Fact> facts = {{"URL", item.url},
+                                           {"Save to", item.folder}};
             if (!item.message.empty()) {
-                ui::drawTagRow(left, y, 74,
-                               item.state == QueuedLink::State::Failed ? "Failed"
-                                                                       : "Note",
-                               item.message,
-                               item.state == QueuedLink::State::Failed
-                                   ? ui::color::Bad
-                                   : ui::color::Neutral);
+                const bool failed = item.state == QueuedLink::State::Failed;
+                facts.push_back({failed ? "Failed" : "Note", item.message,
+                                 failed ? ui::color::Bad : ui::color::Neutral});
             } else {
-                ui::drawTagRow(left, y, 74, "Position",
-                               std::to_string(highlighted + 1) + " of " +
-                                   std::to_string(queue_.size()));
+                facts.push_back({"Position", std::to_string(highlighted + 1) +
+                                                 " of " +
+                                                 std::to_string(queue_.size())});
             }
+            // The name beside its icon, then the three fact rows (20 px,
+            // 26 apart), centred in the panel as one block.
+            constexpr float Header = 30 + 14;
+            constexpr float Rows = 3 * 26 - 6;
+            const float top =
+                ui::TopPanel.y + (ui::TopPanel.h - Header - Rows) / 2;
+            const float left = ui::TopPanel.x + 18;
+            ui::drawIcon(ui::Icon::Download, left, top, 30,
+                         ui::color::IconGreen);
+            ui::drawMarquee(nameOf(item.url), left + 40,
+                            top + (30 - ui::lineHeight(0.62f)) / 2, 0.62f,
+                            ui::color::InkStrong, 300);
+            ui::drawFacts(facts, {ui::TopPanel.x, top + Header,
+                                  ui::TopPanel.w, Rows});
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X && !queue_.empty()) {
@@ -683,10 +676,8 @@ void App::receiveScreen()
         if (installed > 0 || !failed.empty() || paths.size() > 1) {
             ui::message(failed.empty() ? "Installed" : "Some were not installed",
                         summary,
-                        failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
-                        failed.empty() && installed > 0
-                            ? "Find it on the HOME Menu."
-                            : "");
+                        failed.empty() ? ui::Tone::Success
+                                       : ui::Tone::Warning);
         }
     };
 
@@ -700,16 +691,9 @@ void App::receiveScreen()
         if (job.takeAsking(asker)) {
             ui::Dialog dialog;
             dialog.header = "Receive";
-            dialog.title = "Let " + asker + " use the SD card?";
+            dialog.title = "Let " + asker +
+                           " add, change and delete files on the SD card?";
             dialog.tone = ui::Tone::Warning;
-            dialog.body.push_back({"A device at " + asker +
-                                       " wants to open the SD card's files "
-                                       "from the 3dsDL page.",
-                                   ui::color::Text, 0.5f, 3});
-            dialog.body.push_back({"It could add, change and delete any file "
-                                   "while Receive is open. Only allow your "
-                                   "own phone or computer.",
-                                   ui::color::Muted, 0.44f, 3});
             dialog.buttons = {"Allow", "Don't Allow"};
             dialog.cancelButton = 1;
             job.setState("asking", "Asking whether " + asker +
@@ -862,34 +846,29 @@ void App::receiveScreen()
         code.draw(qrX, qrY, px);
         const float left = qrX + qrSide + 2 * px + 12;
         const float width = ui::TopPanel.x + ui::TopPanel.w - 12 - left;
-        // The addresses themselves are large on the touch screen.
-        // Four lines at most, to leave room for the FBI address below.
-        ui::drawWrapped("Scan this with a phone on the same Wi-Fi to send "
-                        "links and files.",
-                        left, ui::TopPanel.y + 12, ui::type::Small,
-                        ui::color::Ink, width, 4);
-        // The address on a line of its own, so it shows whole instead of
-        // scrolling past in a long sentence.
-        const float bottom = ui::TopPanel.y + ui::TopPanel.h - 10;
-        if (job.receiver.fbiPort() != 0) {
-            // Small enough that "192.168.185.97:5000" fits the column.
-            constexpr float AddressScale = 0.48f;
-            const float addressY = bottom - ui::lineHeight(AddressScale);
-            ui::drawMarquee("FBI's tools (servefiles.py, Boop):", left,
-                            addressY - ui::lineHeight(ui::type::Tiny),
-                            ui::type::Tiny, ui::color::InkSoft, width);
-            ui::drawMarquee(address + ":" +
-                                std::to_string(job.receiver.fbiPort()),
-                            left, addressY, AddressScale, ui::color::Ink,
-                            width);
-        } else {
-            ui::drawMarquee("FBI's tools cannot connect: port 5000 is busy.",
-                            left, bottom - ui::lineHeight(ui::type::Tiny),
-                            ui::type::Tiny, ui::color::InkSoft, width);
-        }
+        // The page's addresses are large on the touch screen, so the column
+        // beside the code holds the one FBI's tools use, centred in it.
+        const std::string tools = "Boop and servefiles.py";
+        // Small enough that "192.168.185.97:5000" fits the column.
+        constexpr float AddressScale = 0.48f;
+        const float middle = left + width / 2;
+        const float toolsY =
+            ui::TopPanel.y +
+            (ui::TopPanel.h - 20 - 8 - ui::lineHeight(AddressScale)) / 2;
+        ui::drawTag(middle - (ui::textWidth(tools, 0.4f) + 16) / 2, toolsY,
+                    tools);
+        const bool fbi = job.receiver.fbiPort() != 0;
+        ui::drawMarquee(fbi ? address + ":" +
+                                  std::to_string(job.receiver.fbiPort())
+                            : "Port " + std::to_string(remote::FbiPort) +
+                                  " is busy",
+                        middle, toolsY + 28, AddressScale,
+                        fbi ? ui::color::Ink : ui::color::InkSoft, width,
+                        C2D_AlignCenter);
 
         ui::beginBottom();
-        const ui::Rect panel = {13, 12, 294, 136};
+        // Centred above Back.
+        const ui::Rect panel = {13, 36, 294, 136};
         ui::drawPanel(panel);
         if (busy) {
             ui::drawText(transfer.upload ? "Receiving" : "Sending", 160,
@@ -916,27 +895,28 @@ void App::receiveScreen()
                          160, panel.y + 110, ui::type::Tiny, ui::color::InkSoft,
                          C2D_AlignCenter);
         } else {
-            ui::drawSpinner(160, panel.y + 24, 12);
-            ui::drawText("Waiting at", 160, panel.y + 42, ui::type::Body,
+            // Centred with or without the last line. The 3ds.local line
+            // keeps its place while mdns settles, so nothing jumps.
+            const float height =
+                last.empty() ? 80 + ui::lineHeight(ui::type::Small)
+                             : 102 + ui::lineHeight(ui::type::Tiny);
+            const float y = panel.y + (panel.h - height) / 2;
+            ui::drawSpinner(160, y + 12, 12);
+            ui::drawText("Waiting at", 160, y + 30, ui::type::Body,
                          ui::color::Ink, C2D_AlignCenter);
-            ui::drawMarquee(page, 160, panel.y + 68, ui::type::Body,
+            ui::drawMarquee(page, 160, y + 56, ui::type::Body,
                             ui::color::Accent, 280, C2D_AlignCenter);
             if (!namedPage.empty()) {
-                ui::drawMarquee("or " + namedPage, 160, panel.y + 92,
+                ui::drawMarquee("or " + namedPage, 160, y + 80,
                                 ui::type::Small, ui::color::InkSoft, 280,
                                 C2D_AlignCenter);
             }
-            ui::drawMarquee(last.empty()
-                                ? "Keep this screen open while sending."
-                                : "Last: " + last,
-                            160, panel.y + 114, ui::type::Tiny,
-                            ui::color::InkSoft, 280, C2D_AlignCenter);
+            if (!last.empty()) {
+                ui::drawMarquee("Last: " + last, 160, y + 102, ui::type::Tiny,
+                                ui::color::InkSoft, 280, C2D_AlignCenter);
+            }
         }
-        ui::drawWrapped("Links download into " + settings_.destination +
-                            ". Files go where you put them on the page.",
-                        160, 160, ui::type::Tiny, ui::color::InkSoft, 270, 2,
-                        C2D_AlignCenter);
-        ui::drawTab(ui::Tab::Left, "Back", "", false,
+        ui::drawTab(ui::Tab::Left, "Back", "B",
                     backPressed && (input.held & KEY_TOUCH));
         ui::endFrame();
     }
@@ -1032,7 +1012,11 @@ void App::installDirectly(const std::string &address)
     std::string seedNote;
     if (info.seed == cia::Seed::Needed) {
         tasks::busy("Installing", "Getting the seed " + name + " needs...",
-                    [&]() { installer::installSeed(info.titleId, seedNote); });
+                    [&](tasks::Busy &busy) {
+                        installer::installSeed(info.titleId, seedNote,
+                                               &busy.cancel);
+                    },
+                    true);
     }
     const uint64_t launchId = cia::baseTitle(info.titleId);
     const cia::Kind kind = cia::kind(launchId);
@@ -1041,15 +1025,13 @@ void App::installDirectly(const std::string &address)
                             kind == cia::Kind::Demo);
     ui::Dialog dialog;
     dialog.header = "Installation Complete";
-    dialog.title = name + " has been installed." +
-                   (canLaunch ? " You can find it on the HOME Menu." : "");
+    dialog.title = name + " has been installed.";
     dialog.tone = ui::Tone::Success;
     dialog.icon = info.hasSmdh ? ui::showIcon(info.smdh.icon) : nullptr;
     dialog.body.push_back({name, ui::color::Text, 0.5f, 1});
     dialog.body.push_back({std::string(cia::kindName(cia::kind(info.titleId))) +
                                ", " + screens::titleVersion(info.titleId, info.version) + ", " +
-                               units::bytes(installed.bytes) +
-                               ", installed directly without saving the file.",
+                               units::bytes(installed.bytes),
                            ui::color::Muted, 0.46f, 3});
     if (!seedNote.empty()) {
         dialog.body.push_back({seedNote, ui::color::Muted, 0.44f, 2});

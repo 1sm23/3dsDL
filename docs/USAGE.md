@@ -68,6 +68,7 @@ Everything also works by touch, and lists scroll with a flick.
 | Setting | Default | |
 | --- | --- | --- |
 | Resume interrupted downloads | On | Keeps partial downloads to continue later |
+| Max connections | 4 | The most connections one download is split across, 1 to 4; lower it for servers that refuse several |
 | Stay awake while downloading | On | Pauses Sleep Mode so closing the lid doesn't stop Wi-Fi |
 | Offer to extract ZIP files | Off | Asks to extract a ZIP after it downloads |
 | After a CIA downloads | Ask | Ask, install, install and delete, or keep |
@@ -78,7 +79,7 @@ Everything also works by touch, and lists scroll with a flick.
 
 ## Reporting a problem
 
-**Settings → Report Issue** (or **About → Report an Issue**) shows a QR code for each place to get help. Scan it with a phone:
+**Settings → Report Issue** (or **About → Report Issue**) shows a QR code for each place to get help. Scan it with a phone:
 
 - **Report a Bug** opens the [bug report form](https://github.com/ankushKun/3dsDL/issues/new?template=bug.yml) with your 3dsDL version, CIA or 3DSX, console model and system version already filled in.
 - **Discord Server** is an [invite](https://discord.gg/axrWTjyAWG) to the developer's server, for questions, ideas and chatting with other users.

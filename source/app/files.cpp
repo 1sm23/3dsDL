@@ -50,6 +50,13 @@ Kind kindOf(const fs::Entry &entry)
     return entry.folder ? Kind::Folder : filetype::fromName(entry.name);
 }
 
+// The top screen's title for a folder, as Files shows it.
+std::string folderTitle(const std::string &folder)
+{
+    return naming::parentFolder(folder) == folder ? "SD Card"
+                                                  : fileops::name(folder);
+}
+
 const char *sortLabel(fs::SortOrder order)
 {
     switch (order) {
@@ -78,7 +85,9 @@ bool confirm(const std::string &header, const std::string &title,
     dialog.header = header;
     dialog.title = title;
     dialog.tone = dangerous ? ui::Tone::Warning : ui::Tone::Info;
-    dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
+    if (!body.empty()) {
+        dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
+    }
     dialog.buttons = {yes, "Cancel"};
     dialog.dangerous = dangerous ? 0 : -1;
     dialog.initial = dangerous ? 1 : 0;
@@ -86,13 +95,23 @@ bool confirm(const std::string &header, const std::string &title,
     return ui::choose(dialog) == 0;
 }
 
-std::string totalsText(const fileops::Totals &totals)
+std::string contentsText(const fileops::Totals &totals)
 {
     std::string text = plural(totals.files, "file");
     if (totals.folders > 0) {
         text += " in " + plural(totals.folders, "folder");
     }
-    return text + ", " + units::bytes(totals.bytes);
+    return text;
+}
+
+std::string totalsText(const fileops::Totals &totals)
+{
+    return contentsText(totals) + ", " + units::bytes(totals.bytes);
+}
+
+ui::Fact clipboardFact(size_t count, bool cut)
+{
+    return {"Clipboard", plural(count, "item") + (cut ? ", cut" : ", copied")};
 }
 
 // What the top screen shows about an entry, worked out once because it
@@ -383,9 +402,10 @@ void App::filesScreen()
 
         ui::ListSpec spec;
         spec.title = current;
-        spec.emptyText = readable
-            ? "This folder is empty. Options makes a new file or folder here."
-            : "The SD card could not be read.";
+        spec.heading = current;
+        spec.tapToSelect = true;
+        spec.emptyText = readable ? "This folder is empty."
+                                  : "The SD card could not be read.";
         spec.back = atRoot ? "Close" : "Back";
         spec.action = "Options";
         spec.actionKey = "X";
@@ -422,15 +442,12 @@ void App::filesScreen()
             if (position < 0 ||
                 position >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
-                std::string summary = plural(entries.size(), "item") +
-                                      ", sorted by " +
-                                      text::lower(sortLabel(settings_.fileSort)) +
-                                      ".";
+                std::vector<ui::Fact> facts = {{"Path", current}};
                 if (!clipboard_.empty()) {
-                    summary += " " + plural(clipboard_.size(), "item") +
-                               " ready to paste from Options.";
+                    facts.push_back(
+                        clipboardFact(clipboard_.size(), clipboardCut_));
                 }
-                ui::drawPanelText(summary, ui::TopPanel);
+                ui::drawFacts(facts);
                 return;
             }
             const fs::Entry &entry = entries[position];
@@ -606,14 +623,16 @@ void App::ciaOptions(const std::string &path)
     add({26, 90, 268, 38}, "Install and Delete File", ui::type::Body + 0.06f, 0);
     add({26, 140, 268, 26}, "Delete File", ui::type::Small + 0.06f,
         ui::color::Bad);
-    const std::string state = installer::available()
-                                  ? screens::installState(info)
-                                  : "Installing is not available.";
     spec.drawTop = [&]() { screens::drawCiaTop(info, "CIA Installer"); };
-    spec.drawBottom = [&]() {
-        ui::drawMarquee(state, 160, 12, ui::type::Body, ui::color::Ink, 300,
-                        C2D_AlignCenter);
-    };
+    // The top screen shows whether it is installed; only say why the
+    // install buttons are off.
+    if (!installer::available()) {
+        spec.drawBottom = []() {
+            ui::drawMarquee("Installing is not available.", 160, 12,
+                            ui::type::Body, ui::color::Ink, 300,
+                            C2D_AlignCenter);
+        };
+    }
     int focus = installer::available() ? 0 : 2;
     const ui::ScreenResult result = ui::runScreen(spec, focus);
     if (result.choice == 0 || result.choice == 1) {
@@ -628,8 +647,16 @@ void App::ciaOptions(const std::string &path)
 void App::showChecksum(const std::string &path)
 {
     std::string hash;
-    tasks::busy("SHA-256", "Reading " + basename(path) + "...",
-                [&]() { hash = sha256::ofFile(path); });
+    if (!tasks::busy("SHA-256", "Reading " + basename(path) + "...",
+                     [&](tasks::Busy &busy) {
+                         busy.bytes = true;
+                         busy.total = static_cast<uint64_t>(
+                             std::max<int64_t>(0, fs::fileSize(path)));
+                         hash = sha256::ofFile(path, &busy.cancel, &busy.done);
+                     },
+                     true)) {
+        return;
+    }
     if (hash.empty()) {
         ui::message("No Checksum", "The file could not be read.",
                     ui::Tone::Error, path);
@@ -666,7 +693,6 @@ void App::showChecksum(const std::string &path)
     dialog.tone = verdict.empty() ? ui::Tone::Info
                   : matches       ? ui::Tone::Success
                                   : ui::Tone::Error;
-    dialog.body.push_back({name, ui::color::Text, 0.5f, 2});
     dialog.body.push_back({hash.substr(0, 32) + "\n" + hash.substr(32),
                            ui::color::Text, 0.46f, 2});
     if (!verdict.empty()) {
@@ -709,12 +735,10 @@ bool App::entryOptions(const std::string &folder,
     };
     std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    std::vector<std::string> notes;
     const auto add = [&](const std::string &label, Action action,
-                         const std::string &note, bool danger = false) {
+                         bool danger = false) {
         items.push_back({label, danger, true});
         actions.push_back(action);
-        notes.push_back(note);
     };
 
     const bool single = paths.size() == 1;
@@ -741,69 +765,87 @@ bool App::entryOptions(const std::string &folder,
         single && std::find(marked.begin(), marked.end(), path) != marked.end();
 
     if (single && kind == Kind::Cia) {
-        add("Install", Action::Install, "Installs the software and keeps the CIA file.");
-        add("Install and Delete", Action::InstallDelete,
-            "Installs the software, then removes the CIA file from the SD card.");
+        add("Install", Action::Install);
+        add("Install and Delete", Action::InstallDelete);
     } else if (single && kind == Kind::Ticket) {
-        add("Install Ticket", Action::InstallTicket,
-            "Adds this ticket to the console, replacing one it already has "
-            "for the same title, as FBI does.");
+        add("Install Ticket", Action::InstallTicket);
     } else if (single && kind == Kind::Text) {
-        add("Edit", Action::Edit, "Opens the file in the line editor.");
+        add("Edit", Action::Edit);
     } else if (single) {
-        add("Open", Action::Open, isFolder ? "Opens the folder."
-                                           : "Opens the file in the viewer that suits it.");
+        add("Open", Action::Open);
         if (kind == Kind::Zip) {
-            add("Extract", Action::Extract, "Extracts the archive here or into a new folder.");
+            add("Extract", Action::Extract);
         }
     }
     if ((!single || isFolder) && !cias.empty()) {
-        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll,
-            "Installs each CIA one after another.");
-        add("Install and Delete", Action::InstallDeleteAll,
-            "Installs each CIA, then removes the files that installed.");
+        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll);
+        add("Install and Delete", Action::InstallDeleteAll);
     }
     if (single && !isFolder && kind != Kind::Text && kind != Kind::Cia) {
-        add("Open as Text", Action::ViewText, "Shows the file as text, even if it is not meant to be.");
+        add("Open as Text", Action::ViewText);
     }
     if (single && !isFolder) {
-        add("Open as Hex", Action::ViewHex, "Shows the file byte by byte.");
+        add("Open as Hex", Action::ViewHex);
     }
     if (single) {
-        add("Rename", Action::Rename, "Gives it a new name.");
+        add("Rename", Action::Rename);
     }
-    add("Copy", Action::Copy, "Copies " + std::string(single ? "it" : "them") +
-                                  ". Open another folder and choose Paste.");
-    add("Cut", Action::Cut, "Moves " + std::string(single ? "it" : "them") +
-                                ". Open another folder and choose Paste.");
-    add("Delete", Action::Delete, "Deletes " + std::string(single ? "it" : "them") +
-                                      " for good, after asking.", true);
-    add("Properties", Action::Properties, "Size, date and where it is.");
+    add("Copy", Action::Copy);
+    add("Cut", Action::Cut);
+    add("Delete", Action::Delete, true);
+    add("Properties", Action::Properties);
     if (single && !isFolder) {
-        add("SHA-256", Action::Checksum,
-            "Works out the file's SHA-256 checksum and compares it with any "
-            ".sha256 list in the same folder.");
+        add("SHA-256", Action::Checksum);
     }
     if (single) {
-        add(isMarked ? "Unmark" : "Mark", Action::Mark,
-            "Marked items are copied, moved, installed or deleted together.");
+        add(isMarked ? "Unmark" : "Mark", Action::Mark);
     } else {
-        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
+        add("Clear Marks", Action::ClearMarks);
     }
-    add("This Folder...", Action::Folder,
-        "Paste, new folder, new file, sorting and hidden files.");
+    add("This Folder...", Action::Folder);
 
-    const std::string title = single ? basename(path)
+    // The top screen shows what the options act on: the entry as Files
+    // shows it, or what the marked items add up to without walking folders.
+    fs::Entry entry;
+    Details details;
+    std::vector<ui::Fact> facts;
+    if (single) {
+        entry.name = fileops::name(path);
+        entry.folder = isFolder;
+        entry.size = isFolder ? -1 : fs::fileSize(path);
+        details = loadDetails(path, kind);
+    } else {
+        size_t files = 0;
+        size_t folders = 0;
+        uint64_t bytes = 0;
+        for (const std::string &item : paths) {
+            if (fileops::isFolder(item)) {
+                ++folders;
+            } else {
+                ++files;
+                bytes += static_cast<uint64_t>(
+                    std::max<int64_t>(0, fs::fileSize(item)));
+            }
+        }
+        if (files > 0) {
+            facts.push_back({"Files", std::to_string(files) + ", " +
+                                          units::bytes(bytes)});
+        }
+        if (folders > 0) {
+            facts.push_back({"Folders", std::to_string(folders)});
+        }
+    }
+    const std::string title = single ? folderTitle(folder)
                                      : plural(paths.size(), "Marked Item");
-    const KindLook look = lookOf(kind);
-    const int choice = ui::menu(items, [&](int focus) {
-        ui::drawTopChrome(title, single ? look.icon : ui::Icon::Check,
-                          single ? look.color : ui::color::Tag);
+    const int choice = ui::menu(items, [&](int) {
+        if (single) {
+            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
+            drawEntryTop(path, entry, details);
+            return;
+        }
+        ui::drawTopChrome(title, ui::Icon::Check, ui::color::Tag);
         ui::drawPanel();
-        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
-                              ? notes[focus]
-                              : "",
-                          ui::TopPanel);
+        ui::drawFacts(facts);
     });
     if (choice < 0) {
         return false;
@@ -847,9 +889,9 @@ bool App::entryOptions(const std::string &folder,
         clipboard_ = paths;
         clipboardCut_ = actions[choice] == Action::Cut;
         ui::message(clipboardCut_ ? "Ready to Move" : "Ready to Copy",
-                    "Open the folder to put " +
-                        std::string(single ? "it" : "them") +
-                        " in, then choose Paste in Options.");
+                    std::string("Open a folder and choose ") +
+                        (clipboardCut_ ? "Move Here" : "Paste Here") +
+                        " in Options.");
         return true;
     case Action::Delete:
         return deleteEntries(paths);
@@ -893,35 +935,25 @@ bool App::folderOptions(const std::string &folder,
     };
     std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    std::vector<std::string> notes;
-    const auto add = [&](const std::string &label, Action action,
-                         const std::string &note) {
+    const auto add = [&](const std::string &label, Action action) {
         items.push_back({label, false, true});
         actions.push_back(action);
-        notes.push_back(note);
     };
 
     if (!clipboard_.empty()) {
-        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste,
-            std::string(clipboardCut_ ? "Moves " : "Copies ") +
-                plural(clipboard_.size(), "item") + " into this folder.");
-        add("Forget Clipboard", Action::ClearClipboard,
-            "Forgets what was copied or cut. Nothing is deleted.");
+        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste);
+        add("Forget Clipboard", Action::ClearClipboard);
     }
-    add("New Folder", Action::NewFolder, "Makes an empty folder here.");
-    add("New File", Action::NewFile,
-        "Makes an empty file here and opens it in the editor, for configs "
-        "and notes.");
-    add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort,
-        "Sorts by name, size, date or type. Folders always come first.");
+    add("New Folder", Action::NewFolder);
+    add("New File", Action::NewFile);
+    add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort);
     add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
-        Action::Hidden, "Shows or hides files and folders whose names start "
-                        "with a dot.");
+        Action::Hidden);
     if (!entries.empty()) {
-        add("Mark All", Action::MarkAll, "Marks everything in this folder.");
+        add("Mark All", Action::MarkAll);
     }
     if (!marked.empty()) {
-        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
+        add("Clear Marks", Action::ClearMarks);
     }
     size_t cias = 0;
     for (const std::string &entry : entries) {
@@ -931,21 +963,26 @@ bool App::folderOptions(const std::string &folder,
         }
     }
     if (cias > 0) {
-        add("Install All CIAs", Action::InstallAll,
-            "Installs " + plural(cias, "CIA") + " in this folder, one after "
-            "another.");
+        add("Install All CIAs", Action::InstallAll);
     }
-    add("Properties", Action::Properties, "How much this folder holds.");
+    add("Properties", Action::Properties);
 
-    const std::string name =
-        naming::parentFolder(folder) == folder ? "SD Card" : fileops::name(folder);
-    const int choice = ui::menu(items, [&](int focus) {
+    const std::string name = folderTitle(folder);
+    std::vector<ui::Fact> facts = {
+        {"Path", folder}, {"Contains", plural(entries.size(), "item")}};
+    if (cias > 0) {
+        facts.push_back({"CIAs", std::to_string(cias)});
+    }
+    if (!marked.empty()) {
+        facts.push_back({"Marked", plural(marked.size(), "item")});
+    }
+    if (!clipboard_.empty()) {
+        facts.push_back(clipboardFact(clipboard_.size(), clipboardCut_));
+    }
+    const int choice = ui::menu(items, [&](int) {
         ui::drawTopChrome(name, ui::Icon::Folder, ui::color::IconOrange);
         ui::drawPanel();
-        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
-                              ? notes[focus]
-                              : folder,
-                          ui::TopPanel);
+        ui::drawFacts(facts);
     });
     if (choice < 0) {
         return false;
@@ -962,7 +999,7 @@ bool App::folderOptions(const std::string &folder,
         return createFile(folder);
     case Action::Sort: {
         const int picked = ui::chooseOption(
-            "Sort Files", "Folders always come first, sorted by name.",
+            "Sort Files",
             {"Name", "Size, Largest First", "Date, Newest First", "Type"},
             static_cast<int>(settings_.fileSort), ui::Icon::Folder,
             ui::color::IconOrange);
@@ -1033,6 +1070,7 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     }
 
     size_t installed = 0;
+    size_t kept = 0; // the same version was there and stayed
     std::vector<std::string> failed;
     for (const std::string &path : paths) {
         if (!ui::keepRunning()) {
@@ -1040,9 +1078,10 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
         }
         cia::Info info;
         std::string error;
+        bool already = false;
         if (cia::readInfo(path, info, error) &&
-            installCia(path, info, deleteAfter, "", true)) {
-            ++installed;
+            installCia(path, info, deleteAfter, "", true, &already)) {
+            ++(already ? kept : installed);
         } else {
             failed.push_back(basename(path));
         }
@@ -1053,7 +1092,11 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     }
     ui::message(failed.empty() ? "All installed" : "Some were not installed",
                 "Installed " + std::to_string(installed) + " of " +
-                    plural(paths.size(), "CIA") + ".",
+                    plural(paths.size(), "CIA") + "." +
+                    (kept > 0 ? " " + std::to_string(kept) +
+                                    (kept == 1 ? " was" : " were") +
+                                    " already installed."
+                              : ""),
                 failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
                 failed.empty() ? "" : "Not installed: " + list);
 }
@@ -1097,21 +1140,27 @@ bool App::renameEntry(const std::string &path)
 bool App::deleteEntries(const std::vector<std::string> &paths)
 {
     fileops::Totals totals;
-    tasks::busy("delete", "Counting what will be deleted...", [&]() {
-        for (const std::string &path : paths) {
-            const fileops::Totals part = fileops::measure(path);
-            totals.files += part.files;
-            totals.folders += part.folders + (fileops::isFolder(path) ? 1 : 0);
-            totals.bytes += part.bytes;
-        }
-    });
+    if (!tasks::busy("delete", "Counting what will be deleted...",
+                     [&](tasks::Busy &busy) {
+                         for (const std::string &path : paths) {
+                             const fileops::Totals part =
+                                 fileops::measure(path, &busy.cancel);
+                             totals.files += part.files;
+                             totals.folders += part.folders +
+                                               (fileops::isFolder(path) ? 1 : 0);
+                             totals.bytes += part.bytes;
+                         }
+                     },
+                     true)) {
+        return false;
+    }
     const bool single = paths.size() == 1;
     const std::string what = single ? fileops::name(paths.front())
                                     : plural(paths.size(), "item");
-    std::string body = "This cannot be undone.";
-    if (totals.folders > 0 || !single) {
-        body = "That is " + totalsText(totals) + ". " + body;
-    }
+    // How much goes. Delete already says it is for good.
+    const std::string body = totals.folders > 0 || !single
+                                 ? totalsText(totals)
+                                 : units::bytes(totals.bytes);
     if (!confirm("delete", "Delete " + what + "?", body, "Delete", true)) {
         return false;
     }
@@ -1189,10 +1238,6 @@ bool App::pasteInto(const std::string &folder)
                 dialog.header = "paste";
                 dialog.title = name + " is already here.";
                 dialog.tone = ui::Tone::Warning;
-                dialog.body.push_back({"Keep Both adds a number to the new "
-                                       "one's name. Replace deletes the one "
-                                       "already in " + folder + " first.",
-                                       ui::color::Text, 0.46f, 4});
                 dialog.buttons = {"Keep Both", "Replace", "Skip"};
                 dialog.dangerous = 1;
                 dialog.cancelButton = 2;
@@ -1216,11 +1261,17 @@ bool App::pasteInto(const std::string &folder)
 
     uint64_t bytes = 0;
     if (!clipboardCut_ && !steps.empty()) {
-        tasks::busy("paste", "Measuring what will be copied...", [&]() {
-            for (const Step &step : steps) {
-                bytes += fileops::measure(step.source).bytes;
-            }
-        });
+        if (!tasks::busy("paste", "Measuring what will be copied...",
+                         [&](tasks::Busy &busy) {
+                             for (const Step &step : steps) {
+                                 bytes += fileops::measure(step.source,
+                                                           &busy.cancel)
+                                              .bytes;
+                             }
+                         },
+                         true)) {
+            return false;
+        }
         const int64_t free = platform::sdFreeBytes();
         if (free >= 0 && static_cast<uint64_t>(free) < bytes) {
             ui::message("Not enough space",
@@ -1334,8 +1385,7 @@ bool App::createFile(const std::string &folder)
 {
     std::string typed;
     if (!platform::keyboard(platform::KeyboardKind::Name,
-                            "New file name, for example config.ini",
-                            "new.txt", typed)) {
+                            "New file name", "new.txt", typed)) {
         return false;
     }
     const std::string name = text::trim(typed);
@@ -1384,21 +1434,26 @@ void App::showProperties(const std::vector<std::string> &paths)
     }
 
     fileops::Totals totals;
-    tasks::busy("properties", "Adding up sizes...", [&]() {
-        for (const std::string &path : paths) {
-            const fileops::Totals part = fileops::measure(path);
-            totals.files += part.files;
-            totals.folders += part.folders;
-            totals.bytes += part.bytes;
-        }
-    });
+    if (!tasks::busy("properties", "Adding up sizes...",
+                     [&](tasks::Busy &busy) {
+                         for (const std::string &path : paths) {
+                             const fileops::Totals part =
+                                 fileops::measure(path, &busy.cancel);
+                             totals.files += part.files;
+                             totals.folders += part.folders;
+                             totals.bytes += part.bytes;
+                         }
+                     },
+                     true)) {
+        return;
+    }
     dialog.title = paths.size() == 1 ? fileops::name(paths.front()) + "/"
                                      : plural(paths.size(), "item");
-    dialog.body.push_back({"Holds " + totalsText(totals) + ".",
+    dialog.body.push_back({"Contains: " + contentsText(totals),
                            ui::color::Text, 0.48f, 2});
-    dialog.body.push_back({"That is " + std::to_string(totals.bytes) +
-                               " bytes.",
-                           ui::color::Muted, 0.44f, 1});
+    dialog.body.push_back({"Size: " + units::bytes(totals.bytes) + " (" +
+                               std::to_string(totals.bytes) + " bytes)",
+                           ui::color::Text, 0.46f, 1});
     if (paths.size() == 1) {
         const int64_t modified = fileops::modifiedTime(paths.front());
         if (modified > 0) {
@@ -1516,24 +1571,28 @@ bool startHomebrew(const std::string &path, std::string &error)
 
 void App::titleDetails(const std::string &path, Kind kind)
 {
-    titlemeta::Meta meta;
-    std::string error;
-    const bool readable = titlemeta::read(path, kind, meta, error);
-    const KindLook look = lookOf(kind);
+    // The same top screen as the file has in Files.
+    fs::Entry entry;
+    entry.name = basename(path);
+    entry.size = fs::fileSize(path);
+    const Details details = loadDetails(path, kind);
+    const std::string folder = folderTitle(folderOf(path));
 
     ui::ScreenSpec spec;
     spec.back = "Back";
-    const bool ticket = kind == Kind::Ticket && readable;
+    const bool ticket = kind == Kind::Ticket && details.metaReadable;
     const bool homebrew = kind == Kind::Homebrew;
+    // One or two buttons, centred in the space above the tabs.
+    const bool pair = ticket || homebrew;
     ui::Control hex;
-    hex.rect = {46, ticket || homebrew ? 150.0f : 110.0f, 228, 34};
+    hex.rect = {46, pair ? 109.0f : 87.0f, 228, 34};
     hex.label = "Open as Hex";
     hex.icon = ui::Icon::Hex;
     hex.scale = ui::type::Body + 0.06f;
     spec.controls.push_back(hex);
     if (ticket) {
         ui::Control install = hex;
-        install.rect = {46, 106, 228, 34};
+        install.rect = {46, 65, 228, 34};
         install.label = "Install Ticket";
         install.icon = ui::Icon::Lock;
         install.iconColor = ui::color::IconGreen;
@@ -1541,42 +1600,17 @@ void App::titleDetails(const std::string &path, Kind kind)
     }
     if (homebrew) {
         ui::Control start = hex;
-        start.rect = {46, 106, 228, 34};
+        start.rect = {46, 65, 228, 34};
         start.label = "Start";
         start.icon = ui::Icon::App;
         start.iconColor = ui::color::IconGreen;
         spec.controls.push_back(start);
     }
     spec.drawTop = [&]() {
-        ui::drawTopChrome(filetype::label(kind), look.icon, look.color);
-        if (!readable) {
-            ui::drawPanel();
-            ui::drawPanelText(error, ui::TopPanel, ui::type::Body,
-                              ui::color::Caution);
-            return;
-        }
-        drawEntryPanel(meta.icon, kind,
-                       meta.name.empty() ? basename(path) : meta.name,
-                       meta.publisher.empty() ? basename(path) : meta.publisher,
-                       {{"Title ID", meta.hasTitleId
-                                         ? cia::titleIdText(meta.titleId)
-                                         : ""},
-                        {"Code", meta.productCode},
-                        {"Size", sizeText(fs::fileSize(path))},
-                        {"Note", meta.note}});
+        ui::drawTopChrome(folder, ui::Icon::Folder, ui::color::IconOrange);
+        drawEntryTop(path, entry, details);
     };
-    spec.drawBottom = [&]() {
-        const ui::Rect panel = {13, 16, 294, 76};
-        ui::drawPanel(panel);
-        ui::drawPanelText(kind == Kind::Homebrew
-                              ? "Start closes 3dsDL and opens it."
-                          : kind == Kind::Ticket
-                              ? "A ticket lets the console use a title's "
-                                "content."
-                              : basename(path),
-                          panel, ui::type::Small + 0.04f);
-    };
-    int focus = ticket || homebrew ? 1 : 0;
+    int focus = pair ? 1 : 0;
     const int choice = ui::runScreen(spec, focus).choice;
     if (choice == 0) {
         hexViewer(path);
@@ -1691,8 +1725,8 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
         return;
     }
     Pad pad;
-    const int previous = pad.add({16, 116, 140, 40}, pictures.size() > 1);
-    const int next = pad.add({164, 116, 140, 40}, pictures.size() > 1);
+    const int previous = pad.add({16, 137, 140, 40}, pictures.size() > 1);
+    const int next = pad.add({164, 137, 140, 40}, pictures.size() > 1);
     const int back = pad.add(ui::tabRect(ui::Tab::Left));
 
     while (ui::keepRunning()) {
@@ -1761,11 +1795,11 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             const std::string name = basename(path);
             const float width =
                 26 + std::min(260.0f, ui::textWidth(name, 0.68f));
-            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 9, 20,
+            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 30, 20,
                          ui::color::IconPink);
-            ui::drawMarquee(name, 160 - width / 2 + 26, 9, 0.68f,
+            ui::drawMarquee(name, 160 - width / 2 + 26, 30, 0.68f,
                             ui::color::Ink, 260);
-            const ui::Rect panel = {13, 44, 294, 54};
+            const ui::Rect panel = {13, 65, 294, 54};
             ui::drawPanel(panel);
             std::string facts = sizeText(fs::fileSize(path));
             if (shown.sourceWidth > 0) {
@@ -1776,8 +1810,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             ui::drawText(facts, 160, panel.y + 7, ui::type::Small,
                          ui::color::Ink, C2D_AlignCenter);
             ui::drawText("Picture " + std::to_string(index + 1) + " of " +
-                             std::to_string(pictures.size()) +
-                             " in this folder",
+                             std::to_string(pictures.size()),
                          160, panel.y + 28, ui::type::Small,
                          ui::color::InkSoft, C2D_AlignCenter);
             ui::drawButton(pad.rects[previous], "Previous",
@@ -1790,13 +1823,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
                                                : ui::Style::Disabled,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, next));
-            if (pictures.size() > 1) {
-                ui::drawText("Swipe, or press L and R, for the others.", 160,
-                             170, ui::type::Tiny, ui::color::InkSoft,
-                             C2D_AlignCenter);
-            }
-            ui::drawTab(ui::Tab::Left, "Back", "", false,
-                        pad.isDown(input, back));
+            ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
             ui::endFrame();
         }
     }
@@ -1841,26 +1868,18 @@ void App::zipViewer(const std::string &path)
             ui::drawTopChrome(basename(path), ui::Icon::Zip,
                               ui::color::IconGold);
             ui::drawPanel();
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::TopPanel.y + 16;
-            y = ui::drawTagRow(left, y, 92, "Holds",
-                               plural(archive.fileCount, "file"));
-            y = ui::drawTagRow(left, y, 92, "Extracted",
-                               units::bytes(archive.totalSize));
+            std::vector<ui::Fact> facts = {
+                {"Holds", plural(archive.fileCount, "file")},
+                {"Extracted", units::bytes(archive.totalSize)}};
             if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
                 const zip::Entry &entry = archive.entries[index];
-                y = ui::drawTagRow(left, y, 92, "Selected", entry.name);
+                facts.push_back({"Selected", entry.name});
                 if (entry.path.empty()) {
-                    ui::drawTagRow(left, y, 92, "Skipped",
-                                   "Its path would leave the folder.",
-                                   ui::color::Bad);
+                    facts.push_back({"Skipped", "Path leaves the folder",
+                                     ui::color::Bad});
                 }
             }
-            ui::drawWrapped("Paths that would leave the folder are "
-                            "skipped.",
-                            left, ui::TopPanel.y + ui::TopPanel.h - 48,
-                            ui::type::Small, ui::color::InkSoft,
-                            ui::TopPanel.w - 36, 2);
+            ui::drawFacts(facts);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
@@ -1889,10 +1908,10 @@ void App::hexViewer(const std::string &path)
     }
 
     Pad pad;
-    const int pageUp = pad.add({16, 72, 140, 32});
-    const int pageDown = pad.add({164, 72, 140, 32});
-    const int start = pad.add({16, 114, 140, 32});
-    const int end = pad.add({164, 114, 140, 32});
+    const int pageUp = pad.add({16, 87, 140, 32});
+    const int pageDown = pad.add({164, 87, 140, 32});
+    const int start = pad.add({16, 129, 140, 32});
+    const int end = pad.add({164, 129, 140, 32});
     const int back = pad.add(ui::tabRect(ui::Tab::Left));
     const uint64_t lastTop =
         size > Page ? ((size - Page + Columns - 1) / Columns) * Columns : 0;
@@ -1984,16 +2003,13 @@ void App::hexViewer(const std::string &path)
         }
 
         ui::beginBottom();
-        const ui::Rect panel = {13, 10, 294, 50};
+        const ui::Rect panel = {13, 47, 294, 28};
         ui::drawPanel(panel);
         char where[96];
         std::snprintf(where, sizeof(where), "Offset 0x%llX of %s",
                       static_cast<unsigned long long>(top),
                       units::bytes(size).c_str());
         ui::drawText(where, 160, panel.y + 6, ui::type::Small, ui::color::Ink,
-                     C2D_AlignCenter);
-        ui::drawText("Drag or flick to scroll, L and R for a page.", 160,
-                     panel.y + 27, ui::type::Tiny, ui::color::InkSoft,
                      C2D_AlignCenter);
         ui::drawButton(pad.rects[pageUp], "Page Up", ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
@@ -2007,7 +2023,7 @@ void App::hexViewer(const std::string &path)
         ui::drawButton(pad.rects[end], "Go to End", ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, end));
-        ui::drawTab(ui::Tab::Left, "Back", "", false, pad.isDown(input, back));
+        ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
         ui::endFrame();
     }
     std::fclose(file);
@@ -2024,9 +2040,6 @@ void App::textEditor(const std::string &path)
         ui::Dialog dialog;
         dialog.header = basename(path);
         dialog.title = "This is not a text file.";
-        dialog.body.push_back({"It holds binary data. The hex view shows it "
-                               "byte by byte.",
-                               ui::color::Text, 0.48f, 3});
         dialog.buttons = {"Close", "Open as Hex"};
         dialog.initial = 1;
         dialog.cancelButton = 0;
@@ -2048,11 +2061,9 @@ void App::textEditor(const std::string &path)
     std::string readOnlyReason;
     if (document.truncated) {
         readOnlyReason = "Only the first " +
-                         units::bytes(textdoc::MaxEditableBytes) +
-                         " is shown, so it cannot be edited here.";
+                         units::bytes(textdoc::MaxEditableBytes) + " is shown.";
     } else if (readOnly) {
-        readOnlyReason = "It is not UTF-8 text, so editing could change "
-                         "characters you cannot see.";
+        readOnlyReason = "Not UTF-8 text.";
     }
 
     constexpr float LinePitch = 16;
@@ -2064,10 +2075,13 @@ void App::textEditor(const std::string &path)
     bool saved = false; // shows "saved" until the next change
     ui::Scroller scroller;
 
+    // The bottom screen's controls, centred above the tabs, with room for
+    // the read-only reason under them.
+    const float top = readOnly ? 32 : 45;
     Pad pad;
-    const int edit = pad.add({13, 92, 94, 34}, !readOnly);
-    const int insert = pad.add({113, 92, 94, 34}, !readOnly);
-    const int remove = pad.add({213, 92, 94, 34}, !readOnly);
+    const int edit = pad.add({13, top + 84, 94, 34}, !readOnly);
+    const int insert = pad.add({113, top + 84, 94, 34}, !readOnly);
+    const int remove = pad.add({213, top + 84, 94, 34}, !readOnly);
     const int close = pad.add(ui::tabRect(ui::Tab::Left));
     const int save = pad.add(ui::tabRect(ui::Tab::Right), !readOnly);
 
@@ -2264,7 +2278,7 @@ void App::textEditor(const std::string &path)
                       0, ui::color::TopB);
 
         ui::beginBottom();
-        const ui::Rect recess = {13, 8, 294, 72};
+        const ui::Rect recess = {13, top, 294, 72};
         ui::drawRecess(recess);
         ui::drawText("Line " + std::to_string(cursor + 1) + " of " +
                          std::to_string(count),
@@ -2286,15 +2300,13 @@ void App::textEditor(const std::string &path)
         if (!readOnly) {
             ui::drawFocus(pad.rects[edit], 9);
         }
-        ui::drawText(readOnly ? readOnlyReason
-                              : "A Edit   X New line   Y Delete",
-                     160, 140, ui::type::Tiny, ui::color::InkSoft,
-                     C2D_AlignCenter);
-        ui::drawText("Drag or flick here to scroll the page.", 160, 160,
-                     ui::type::Tiny, ui::color::Counter, C2D_AlignCenter);
-        ui::drawTab(ui::Tab::Left, "Close", "", false, pad.isDown(input, close));
+        if (readOnly) {
+            ui::drawText(readOnlyReason, 160, top + 132, ui::type::Tiny,
+                         ui::color::InkSoft, C2D_AlignCenter);
+        }
+        ui::drawTab(ui::Tab::Left, "Close", "B", pad.isDown(input, close));
         if (!readOnly) {
-            ui::drawTab(ui::Tab::Right, "Save", "START", false,
+            ui::drawTab(ui::Tab::Right, "Save", "START",
                         pad.isDown(input, save));
         }
         ui::endFrame();

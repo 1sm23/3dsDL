@@ -128,19 +128,4 @@ std::string versionRow(uint64_t titleId, uint16_t version, bool isInstalled,
     return shortText(version) + ", installed " + shortText(installed);
 }
 
-std::string installState(const cia::Info &info)
-{
-    uint16_t installed = 0;
-    if (!installer::installedVersion(info.titleId, installed)) {
-        return "Not installed yet.";
-    }
-    if (installed < info.version) {
-        return "An update for the installed version.";
-    }
-    if (installed > info.version) {
-        return "Older than the installed version.";
-    }
-    return "This version is already installed.";
-}
-
 } // namespace screens

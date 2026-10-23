@@ -36,10 +36,8 @@ using screens::drawLabelledPanel;
 using screens::plural;
 
 using http::CaBundle;
-using http::DownloadConnections;
 using http::SocketBufferSize;
 using http::UserAgent;
-constexpr u64 StatusRefreshMs = 2000;
 constexpr size_t MaxRecentFolders = 4;
 
 struct Preset {
@@ -124,18 +122,16 @@ bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
                 [&]() { saved = savedata::backup(target, backup, progress); });
     if (saved.ok) {
         note = "The save was backed up first, as " + backup +
-               " in Titles, Save Data, should it be needed.";
+               " in Titles, Save Data.";
         return true;
     }
     ui::Dialog dialog;
     dialog.header = "install";
-    dialog.title = "The save of " + name + " could not be backed up.";
+    dialog.title = "The save of " + name + " could not be backed up. "
+                   "Replacing may lose it.";
     dialog.tone = ui::Tone::Warning;
     dialog.icon = ui::showIcon(info.smdh.icon);
     dialog.body.push_back({saved.message, ui::color::Text, 0.48f, 3});
-    dialog.body.push_back({"Removing the installed copy may take the save "
-                           "with it.",
-                           ui::color::Warning, 0.46f, 2});
     dialog.buttons = {"Continue Anyway", "Cancel"};
     dialog.dangerous = 0;
     dialog.initial = 1;
@@ -239,20 +235,8 @@ void App::run()
 
 // --- Home ------------------------------------------------------------------
 
-void App::refreshStatus(bool force)
-{
-    const u64 now = osGetTime();
-    if (!force && now - lastRefresh_ < StatusRefreshMs) {
-        return;
-    }
-    lastRefresh_ = now;
-    freeBytes_ = platform::sdFreeBytes();
-    wifi_ = platform::wifiStatus();
-}
-
 App::Action App::home()
 {
-    refreshStatus(true);
     ui::ScreenSpec spec;
     spec.closeBar = true;
     const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
@@ -290,27 +274,18 @@ App::Action App::home()
     spec.drawTop = [&]() {
         // The answer to the update check can arrive while this is open.
         spec.controls[0].badge = updateAvailable_ ? "New" : "";
-        refreshStatus(false);
         ui::drawTopBackground();
         ui::drawStatusBar();
         ui::drawDots(41);
-        const ui::Rect panel = {17, 53, 366, 134};
+        // Ends where other screens' panels do.
+        const ui::Rect panel = {17, 53, 366, 172};
         ui::drawPanel(panel);
-        ui::drawIcon(ui::Icon::AppMark, 171, 60, 58, ui::color::Accent);
-        ui::drawText("3dsDL", 200, 116, ui::type::Hero, ui::color::Ink,
+        ui::drawIcon(ui::Icon::AppMark, 171, 79, 58, ui::color::Accent);
+        ui::drawText("3dsDL", 200, 135, ui::type::Hero, ui::color::Ink,
                      C2D_AlignCenter);
-        const std::string where =
-            "Saves to " + settings_.destination +
-            (freeBytes_ >= 0 ? "   " +
-                                   units::bytes(static_cast<uint64_t>(
-                                       freeBytes_)) +
-                                   " free"
-                             : "");
-        ui::drawMarquee(where, 200, 156, ui::type::Small, ui::color::InkSoft,
-                        340, C2D_AlignCenter);
-        ui::drawDots(196);
-        ui::drawText("Ver. " APP_VERSION, 387, 210, 0.66f,
-                     ui::color::rgb(0x63593F), C2D_AlignRight);
+        // The free space is in the status bar, on every screen.
+        ui::drawMarquee(settings_.destination, 200, 175, ui::type::Small,
+                        ui::color::InkSoft, 340, C2D_AlignCenter);
     };
 
     const ui::ScreenResult result = ui::runScreen(spec, homeSelection_);
@@ -371,9 +346,6 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         dialog.header = "Download";
         dialog.title = "The system is not connected to the internet.";
         dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({"Turn wireless communication on, or check the "
-                               "connection in System Settings.",
-                               ui::color::Text, 0.5f, 3});
         dialog.buttons = {"Try Anyway", "Cancel"};
         dialog.initial = 1;
         dialog.cancelButton = 1;
@@ -390,7 +362,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         request.userAgent = UserAgent;
         request.allowResume = settings_.resumeDownloads;
         request.socketBufferSize = SocketBufferSize;
-        request.connections = DownloadConnections;
+        request.connections = settings_.maxConnections;
         request.freeSpace = [](const std::string &) {
             return platform::sdFreeBytes();
         };
@@ -437,8 +409,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         dialog.body.push_back({result.message, ui::color::Text, 0.5f, 4});
         if (result.resumable) {
             dialog.body.push_back({units::bytes(result.bytes) +
-                                       " arrived before it stopped. Retrying "
-                                       "continues from there.",
+                                       " arrived and is kept for Retry.",
                                    ui::color::Success, 0.46f, 2});
         }
         if (result.certificateProblem) {
@@ -457,10 +428,6 @@ App::Start App::startDownload(const std::string &address, std::string folder)
                                          : result.filename;
         if (result.noSpace && installer::available() &&
             text::endsWithNoCase(fileName, ".cia")) {
-            dialog.body.push_back({"Install Directly puts it straight into the "
-                                   "install service without saving the file. "
-                                   "It starts over if the connection drops.",
-                                   ui::color::Muted, 0.44f, 3});
             dialog.buttons = {"Install Directly", "Close"};
             dialog.cancelButton = 1;
             if (ui::choose(dialog) == 0) {
@@ -502,7 +469,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
 App::Confirm App::confirmDownload(const std::string &address,
                                   std::string &folder)
 {
-    int focus = ui::ScreenAction;
+    int focus = 0;
     while (ui::keepRunning()) {
         const uint64_t partial = settings_.resumeDownloads
             ? net::partialSize(folder, address)
@@ -510,22 +477,28 @@ App::Confirm App::confirmDownload(const std::string &address,
         const std::string name = naming::chooseFilename("", address);
         const bool secure = url::isHttps(address);
 
+        // Download is the big button the ring starts on, so A downloads;
+        // the folder is on the top screen.
         ui::ScreenSpec spec;
         spec.back = "Cancel";
-        spec.action = "Download";
-        ui::Control change;
-        change.rect = {46, 124, 228, 34};
-        change.label = "Change Folder";
-        change.icon = ui::Icon::Folder;
-        change.iconColor = ui::color::IconOrange;
-        change.scale = ui::type::Body + 0.06f;
-        spec.controls.push_back(change);
-        ui::Control queue = change;
-        queue.rect = {46, 166, 228, 34};
+        // Plain and large, like Install on the install prompt.
+        ui::Control download;
+        download.rect = {26, 38, 268, 40};
+        download.label = "Download";
+        spec.controls.push_back(download);
+        ui::Control queue;
+        queue.rect = {46, 90, 228, 34};
         queue.label = "Add to Queue";
         queue.icon = ui::Icon::Download;
         queue.iconColor = ui::color::IconGreen;
+        queue.scale = ui::type::Body + 0.06f;
         spec.controls.push_back(queue);
+        ui::Control change = queue;
+        change.rect = {46, 136, 228, 34};
+        change.label = "Change Folder";
+        change.icon = ui::Icon::Folder;
+        change.iconColor = ui::color::IconOrange;
+        spec.controls.push_back(change);
         spec.drawTop = [&]() {
             ui::drawTopChrome("Download", ui::Icon::Download,
                               ui::color::IconGreen);
@@ -550,34 +523,22 @@ App::Confirm App::confirmDownload(const std::string &address,
                                units::bytes(partial) + " is already here",
                                ui::color::Good);
             } else if (secure) {
-                ui::drawTagRow(left, y, 74, "HTTPS",
-                               "The certificate is checked.",
+                ui::drawTagRow(left, y, 74, "HTTPS", "Encrypted",
                                ui::color::Good);
             } else {
-                ui::drawTagRow(left, y, 74, "HTTP",
-                               "Not encrypted on the way.",
+                ui::drawTagRow(left, y, 74, "HTTP", "Not encrypted",
                                ui::color::rgb(0xD2603A));
             }
         };
-        spec.drawBottom = [&]() {
-            ui::drawText("Download this file?", 160, 14, ui::type::Body,
-                         ui::color::Ink, C2D_AlignCenter);
-            const ui::Rect box = {13, 46, 294, 70};
-            ui::drawRecess(box);
-            ui::drawText("Saves to", box.x + 12, box.y + 8, ui::type::Small,
-                         ui::color::InkSoft);
-            ui::drawMarquee(folder, box.x + 12, box.y + 32, ui::type::Body,
-                            ui::color::InkStrong, 270);
-        };
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);
-        if (result.choice == ui::ScreenAction) {
+        if (result.choice == 0) {
             return Confirm::Download;
         }
         if (result.choice == 1) {
             return Confirm::Queue;
         }
-        if (result.choice != 0) {
+        if (result.choice != 2) {
             return Confirm::Cancel;
         }
         std::string chosen = folder;
@@ -600,8 +561,7 @@ void App::finishDownload(const std::string &address, const std::string &folder,
 
         ui::Dialog dialog;
         dialog.header = "Download";
-        dialog.title = "A file with this name already exists. What would "
-                       "you like to do?";
+        dialog.title = "A file with this name already exists.";
         dialog.tone = ui::Tone::Warning;
         dialog.body.push_back({result.filename + " is already in " + folder +
                                    ".",
@@ -609,8 +569,6 @@ void App::finishDownload(const std::string &address, const std::string &folder,
         dialog.body.push_back({"Keep Both saves the new file as " + suggestion +
                                    ".",
                                ui::color::Muted, 0.46f, 3});
-        dialog.body.push_back({"Replace swaps the old file for the new one.",
-                               ui::color::Muted, 0.46f, 2});
         dialog.buttons = {"Keep Both", "Replace", "Cancel"};
         dialog.dangerous = 1;
         dialog.cancelButton = 2;
@@ -696,10 +654,9 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
     dialog.title = title;
     dialog.tone = ui::Tone::Success;
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
-    dialog.body.push_back({"It holds " + plural(archive.fileCount, "file") +
-                               " (" + units::bytes(archive.totalSize) +
-                               "). Here extracts into " + folder +
-                               ", New Folder into " + ownFolder + ".",
+    dialog.body.push_back({plural(archive.fileCount, "file") + ", " +
+                               units::bytes(archive.totalSize) + "\nHere: " +
+                               folder + "\nNew Folder: " + ownFolder,
                            ui::color::Text, 0.46f, 5});
     dialog.buttons = {"Here", "New Folder", "Not Now"};
     dialog.cancelButton = 2;
@@ -810,19 +767,20 @@ void App::offerInstall(const std::string &path, const std::string &address,
 
     CiaAction action = settings_.afterCiaDownload;
     if (action == CiaAction::Keep) {
-        ui::message("Download complete", summary, ui::Tone::Success,
-                    "Install it from Files on the home screen.");
+        ui::message("Download complete", summary, ui::Tone::Success);
         return;
     }
     if (action == CiaAction::Ask) {
         ui::ScreenSpec spec;
         spec.back = "Keep File";
         ui::Control install;
-        install.rect = {26, 46, 268, 38};
+        // The top screen already says what this is and whether it is
+        // installed, so the buttons stand alone, centred.
+        install.rect = {26, 59, 268, 38};
         install.label = "Install";
         spec.controls.push_back(install);
         ui::Control both = install;
-        both.rect = {26, 97, 268, 38};
+        both.rect = {26, 110, 268, 38};
         both.label = "Install and Delete File";
         both.scale = ui::type::Body + 0.06f;
         spec.controls.push_back(both);
@@ -830,20 +788,10 @@ void App::offerInstall(const std::string &path, const std::string &address,
             screens::drawCiaTop(info, "Download Complete", ui::Icon::Download,
                                 ui::color::IconGreen);
         };
-        spec.drawBottom = [&]() {
-            ui::drawText("Install this software?", 160, 13, ui::type::Body,
-                         ui::color::Ink, C2D_AlignCenter);
-            ui::drawWrapped(screens::installState(info) +
-                                " To always do the same, see Settings, "
-                                "Downloads.",
-                            160, 148, ui::type::Tiny, ui::color::InkSoft, 270,
-                            3, C2D_AlignCenter);
-        };
         int focus = 0;
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         if (result.choice != 0 && result.choice != 1) {
-            ui::message("File Kept", summary, ui::Tone::Success,
-                        "Install it later from Files or History.");
+            ui::message("File Kept", summary, ui::Tone::Success);
             return;
         }
         action = result.choice == 0 ? CiaAction::Install
@@ -867,9 +815,8 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     }
     if (cia::isSystemTitle(info.titleId)) {
         ui::message("Not installed",
-                    "This is a system title. A broken system title can stop "
-                    "the console from starting, so 3dsDL does not install "
-                    "them.",
+                    "3dsDL does not install system titles. A broken one can "
+                    "stop the console from starting.",
                     ui::Tone::Error, cia::titleIdText(info.titleId));
         return false;
     }
@@ -879,12 +826,9 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     if (cia::isNew3dsOnly(info.titleId) && !isNew3ds) {
         ui::Dialog dialog;
         dialog.header = "install";
-        dialog.title = name + " is made for New Nintendo 3DS systems.";
+        dialog.title = name + " only starts on New Nintendo 3DS systems.";
         dialog.tone = ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
-        dialog.body.push_back({"It will install, but will not start on this "
-                               "console.",
-                               ui::color::Text, 0.5f, 2});
         dialog.buttons = {"Install Anyway", "Cancel"};
         dialog.initial = 1;
         dialog.cancelButton = 1;
@@ -912,9 +856,6 @@ bool App::installCia(const std::string &path, const cia::Info &info,
                                    "\nThis file: " +
                                    screens::titleVersion(info.titleId, info.version),
                                ui::color::Text, 0.48f, 2});
-        dialog.body.push_back({"3dsDL backs up its save, removes the "
-                               "installed copy and installs this one.",
-                               ui::color::Muted, 0.46f, 3});
         if (sameVersion) {
             dialog.buttons = {"Reinstall", "Keep Installed"};
             dialog.initial = 0;
@@ -938,8 +879,8 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         if (isRunning) {
             ui::message("Already Installed",
                         name + " " + screens::titleVersion(info.titleId, installed) +
-                            " is already installed. It is the software "
-                            "running now, so it cannot be installed again.",
+                            " is running now, so it cannot be installed "
+                            "again.",
                         ui::Tone::Info);
         } else {
             reinstall = confirmReplace("This version of " + name +
@@ -1040,10 +981,11 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         std::string seedMessage;
         bool added = false;
         tasks::busy("installing", "Getting the seed " + name + " needs...",
-                    [&]() {
-                        added = installer::installSeed(info.titleId,
-                                                       seedMessage);
-                    });
+                    [&](tasks::Busy &busy) {
+                        added = installer::installSeed(
+                            info.titleId, seedMessage, &busy.cancel);
+                    },
+                    true);
         // An encrypted CIA may not need a seed at all, so a missing one is
         // only worth mentioning when the game is known to need it.
         if (added || info.seed == cia::Seed::Needed) {
@@ -1082,10 +1024,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
 
     ui::Dialog dialog;
     dialog.header = "Installation Complete";
-    const bool onHome = kind == cia::Kind::Application ||
-                        kind == cia::Kind::Demo;
-    dialog.title = name + " has been installed." +
-                   (onHome ? " You can find it on the HOME Menu." : "");
+    dialog.title = name + " has been installed.";
     dialog.tone = ui::Tone::Success;
     dialog.icon = ui::showIcon(info.smdh.icon);
     dialog.body.push_back({name, ui::color::Text, 0.5f, 1});
@@ -1190,23 +1129,11 @@ bool App::chooseFolder(std::string &folder)
             ui::drawTopChrome("Download Folder", ui::Icon::Folder,
                               ui::color::IconOrange);
             ui::drawPanel();
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::TopPanel.y + 20;
-            y = ui::drawTagRow(left, y, 82, "Now", folder);
-            std::string note;
-            if (index == 0) {
-                note = "Pick any folder on the SD card, or make a new one.";
-            } else if (index == 1) {
-                note = "Type a path that starts with sdmc:/.";
-            } else if (index >= 2) {
-                y = ui::drawTagRow(left, y, 82, "Selected", paths[index],
-                                   ui::color::Good);
-                note = fs::directoryExists(paths[index])
-                           ? "New downloads will be saved here."
-                           : "It will be created when you choose it.";
+            std::vector<ui::Fact> facts = {{"Now", folder}};
+            if (index >= 2) {
+                facts.push_back({"Selected", paths[index], ui::color::Good});
             }
-            ui::drawWrapped(note, 200, y + 10, ui::type::Small,
-                            ui::color::InkSoft, 320, 2, C2D_AlignCenter);
+            ui::drawFacts(facts);
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
@@ -1252,7 +1179,9 @@ bool App::browseFolders(std::string &folder)
         const bool atRoot = naming::parentFolder(current) == current;
 
         ui::ListSpec spec;
-        spec.title = current;
+        spec.title = "Choose a Folder";
+        spec.heading = current;
+        spec.tapToSelect = true;
         spec.back = atRoot ? "Cancel" : "Back";
         spec.action = "Use This";
         spec.actionKey = "Y";
@@ -1275,17 +1204,11 @@ bool App::browseFolders(std::string &folder)
             ui::drawTopChrome("Choose a Folder", ui::Icon::Folder,
                               ui::color::IconOrange);
             ui::drawPanel();
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::TopPanel.y + 20;
-            y = ui::drawTagRow(left, y, 82, "Browsing", current);
+            std::vector<ui::Fact> facts = {{"Browsing", current}};
             if (index >= 1) {
-                y = ui::drawTagRow(left, y, 82, "Open",
-                                   current + names[index - 1] + "/");
+                facts.push_back({"Open", current + names[index - 1] + "/"});
             }
-            ui::drawWrapped("Open folders with A or a tap. Use This saves "
-                            "downloads in the folder being browsed.",
-                            200, y + 10, ui::type::Small, ui::color::InkSoft,
-                            320, 3, C2D_AlignCenter);
+            ui::drawFacts(facts);
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
@@ -1374,11 +1297,9 @@ bool App::confirmClearHistory()
 {
     ui::Dialog dialog;
     dialog.header = "history";
-    dialog.title = "Clear the download history?";
+    dialog.title = "Clear the download history and delete partial "
+                   "downloads?";
     dialog.tone = ui::Tone::Warning;
-    dialog.body.push_back({"Downloaded files stay on the SD card. Partial "
-                           "downloads kept for resuming are deleted.",
-                           ui::color::Text, 0.48f, 3});
     dialog.buttons = {"Clear", "Cancel"};
     dialog.dangerous = 0;
     dialog.initial = 1;
@@ -1454,7 +1375,7 @@ void App::historyScreen()
             entry.resumable ? net::partialSize(entry.folder, entry.url) : 0;
         if (partial > 0 && y < ui::TopPanel.y + ui::TopPanel.h - 24) {
             ui::drawTagRow(left, y, 86, "Can resume",
-                           units::bytes(partial) + " is kept in " + entry.folder,
+                           units::bytes(partial) + " in " + entry.folder,
                            ui::color::Good);
         }
     };
@@ -1462,8 +1383,7 @@ void App::historyScreen()
     while (ui::keepRunning()) {
         ui::ListSpec spec;
         spec.title = "Recent Downloads";
-        spec.emptyText = "Nothing here yet. Finished, failed and stopped "
-                         "downloads are listed here.";
+        spec.emptyText = "No downloads yet.";
         if (!history_.empty()) {
             spec.action = "Clear";
             spec.actionKey = "X";
@@ -1481,8 +1401,7 @@ void App::historyScreen()
             ui::drawTopChrome("History", ui::Icon::History, ui::color::IconRed);
             if (index < 0) {
                 ui::drawPanel();
-                ui::drawPanelText("Your downloads will appear here.",
-                                  ui::TopPanel);
+                ui::drawFacts({{"Saves to", settings_.destination}});
                 return;
             }
             drawEntry(history_[index]);
@@ -1586,8 +1505,8 @@ void App::settingsScreen()
     struct Row {
         std::string label;
         std::string value;
-        std::string help;
     };
+    static const char *const Sorts[] = {"Name", "Size", "Date", "Type"};
     const auto settingsList = [&](const std::string &title, ui::Icon icon,
                                   u32 iconColor,
                                   const std::function<std::vector<Row>()> &rows,
@@ -1604,12 +1523,12 @@ void App::settingsScreen()
                 item.badgeColor = ui::color::Tag;
                 spec.items.push_back(item);
             }
-            spec.drawTop = [&](int index) {
+            // The rows already show every value, so the top screen only
+            // says which section this is.
+            spec.drawTop = [&](int) {
                 ui::drawTopChrome(title, icon, iconColor);
                 ui::drawPanel();
-                if (index >= 0) {
-                    ui::drawPanelText(current[index].help, ui::TopPanel);
-                }
+                ui::drawEmblem(icon, iconColor);
             };
             const ui::ListResult result = ui::runList(spec, cursor);
             if (result.key != KEY_A) {
@@ -1618,9 +1537,8 @@ void App::settingsScreen()
             change(result.index);
         }
     };
-    const auto onOffChoice = [&](const std::string &title,
-                                 const std::string &help, bool &value) {
-        const int picked = ui::chooseOption(title, help, {"On", "Off"},
+    const auto onOffChoice = [&](const std::string &title, bool &value) {
+        const int picked = ui::chooseOption(title, {"On", "Off"},
                                             value ? 0 : 1, ui::Icon::Download,
                                             ui::color::IconGreen);
         if (picked >= 0 && (picked == 0) != value) {
@@ -1629,46 +1547,49 @@ void App::settingsScreen()
         }
     };
 
-    static const char *const ResumeHelp =
-        "When a download is interrupted, keep what arrived and continue from "
-        "there next time. 3dsDL only resumes when the server confirms the "
-        "file has not changed.";
-    static const char *const AwakeHelp =
-        "Pause Sleep Mode while a download or install runs. Closing the "
-        "system would otherwise turn Wi-Fi off and stop the transfer.";
-    static const char *const ZipHelp =
-        "After a ZIP file finishes downloading, ask whether to extract it. "
-        "Nothing is ever extracted without asking.";
-    static const char *const CiaHelp =
-        "Choose what 3dsDL does when a CIA finishes downloading. Ask Each "
-        "Time shows the icon and version before anything is installed.";
-
     const auto downloads = [&]() {
         settingsList(
             "Downloads", ui::Icon::Download, ui::color::IconGreen,
             [&]() {
                 return std::vector<Row>{
-                    {"Resume Interrupted Downloads",
-                     onOff(settings_.resumeDownloads), ResumeHelp},
-                    {"Stay Awake While Downloading", onOff(settings_.keepAwake),
-                     AwakeHelp},
-                    {"Offer to Extract ZIP Files",
-                     onOff(settings_.offerZipExtraction), ZipHelp},
+                    // Short, so the value badge leaves them room.
+                    {"Resume Downloads", onOff(settings_.resumeDownloads)},
+                    {"Max Connections",
+                     std::to_string(settings_.maxConnections)},
+                    {"Stay Awake", onOff(settings_.keepAwake)},
+                    // It only ever asks, so the name says so.
+                    {"Ask to Extract ZIPs",
+                     onOff(settings_.offerZipExtraction)},
                     {"After a CIA Downloads",
-                     ciaActionLabel(settings_.afterCiaDownload), CiaHelp}};
+                     ciaActionLabel(settings_.afterCiaDownload)}};
             },
             [&](int index) {
                 if (index == 0) {
-                    onOffChoice("Resume Downloads", ResumeHelp,
-                                settings_.resumeDownloads);
+                    onOffChoice("Resume Downloads", settings_.resumeDownloads);
                 } else if (index == 1) {
-                    onOffChoice("Stay Awake", AwakeHelp, settings_.keepAwake);
-                } else if (index == 2) {
-                    onOffChoice("Extract ZIP Files", ZipHelp,
-                                settings_.offerZipExtraction);
-                } else if (index == 3) {
+                    // The engine uses fewer when a file is small or the
+                    // server refuses more; this is only the most it opens.
+                    std::vector<std::string> counts;
+                    for (int count = 1; count <= MaxDownloadConnections;
+                         ++count) {
+                        counts.push_back(std::to_string(count));
+                    }
                     const int picked = ui::chooseOption(
-                        "After a CIA Downloads", CiaHelp,
+                        "Max Connections", counts,
+                        settings_.maxConnections - 1, ui::Icon::Download,
+                        ui::color::IconGreen);
+                    if (picked >= 0 && picked + 1 != settings_.maxConnections) {
+                        settings_.maxConnections = picked + 1;
+                        persistSettings();
+                    }
+                } else if (index == 2) {
+                    onOffChoice("Stay Awake", settings_.keepAwake);
+                } else if (index == 3) {
+                    onOffChoice("Ask to Extract ZIPs",
+                                settings_.offerZipExtraction);
+                } else if (index == 4) {
+                    const int picked = ui::chooseOption(
+                        "After a CIA Downloads",
                         {"Ask Each Time", "Install", "Install and Delete File",
                          "Only Keep the File"},
                         static_cast<int>(settings_.afterCiaDownload),
@@ -1685,33 +1606,18 @@ void App::settingsScreen()
         settingsList(
             "Other Settings", ui::Icon::Gear, ui::color::IconGrey,
             [&]() {
-                static const char *const Sorts[] = {"Name", "Size", "Date",
-                                                    "Type"};
                 return std::vector<Row>{
-                    {"Sort Files", Sorts[static_cast<int>(settings_.fileSort)],
-                     "How Files orders what is in a folder. Folders always "
-                     "come first."},
-                    {"Show Hidden Files", onOff(settings_.showHiddenFiles),
-                     "Show files and folders whose names start with a dot."},
-                    {"Sounds",
-                     sound::available() ? onOff(settings_.sounds)
-                                        : "Unavailable",
-                     sound::available()
-                         ? "Soft sounds when moving, choosing and going back, "
-                           "as in the system menus."
-                         : "Sounds need the DSP firmware dump, "
-                           "sdmc:/3ds/dspfirm.cdc. Make it with DSP1, then "
-                           "start 3dsDL again."},
+                    {"Sort Files", Sorts[static_cast<int>(settings_.fileSort)]},
+                    {"Show Hidden Files", onOff(settings_.showHiddenFiles)},
+                    {"Sounds", sound::available() ? onOff(settings_.sounds)
+                                                  : "Unavailable"},
                     {"Clear Download History",
-                     std::to_string(history_.size()),
-                     "Removes the list of past downloads and any partial "
-                     "downloads kept for resuming. Downloaded files stay."}};
+                     std::to_string(history_.size())}};
             },
             [&](int index) {
                 if (index == 0) {
                     const int picked = ui::chooseOption(
                         "Sort Files",
-                        "Folders always come first, sorted by name.",
                         {"Name", "Size, Largest First", "Date, Newest First",
                          "Type"},
                         static_cast<int>(settings_.fileSort), ui::Icon::Folder,
@@ -1721,10 +1627,7 @@ void App::settingsScreen()
                         persistSettings();
                     }
                 } else if (index == 1) {
-                    onOffChoice("Show Hidden Files",
-                                "Show files and folders whose names start "
-                                "with a dot.",
-                                settings_.showHiddenFiles);
+                    onOffChoice("Show Hidden Files", settings_.showHiddenFiles);
                 } else if (index == 2) {
                     if (!sound::available()) {
                         ui::message("Sounds Unavailable",
@@ -1732,10 +1635,7 @@ void App::settingsScreen()
                                     "sdmc:/3ds/dspfirm.cdc. Make it with the "
                                     "DSP1 homebrew, then start 3dsDL again.");
                     } else {
-                        onOffChoice("Sounds",
-                                    "Soft sounds when moving, choosing and "
-                                    "going back.",
-                                    settings_.sounds);
+                        onOffChoice("Sounds", settings_.sounds);
                         sound::setEnabled(settings_.sounds);
                     }
                 } else if (history_.empty()) {
@@ -1746,21 +1646,13 @@ void App::settingsScreen()
             });
     };
 
-    static const char *const TileHelp[] = {
-        "Version, credits and where 3dsDL keeps its files.",
-        "Check for a newer 3dsDL and install it.",
-        "Resuming, Sleep Mode, ZIP files and what happens after a CIA "
-        "downloads.",
-        "The folder new downloads are saved to.",
-        "Compare the console's clock with the time online and set it. Secure "
-        "downloads fail when the date is wrong.",
-        "How Files sorts and shows files, sounds, and the download history.",
-    };
     int focus = 2;
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
         spec.back = "Back";
         spec.action = "Report Issue";
+        spec.actionKey = "X";
+        spec.actionKeys = KEY_X;
         const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
                              u32 iconColor, bool tile) {
             ui::Control control;
@@ -1788,50 +1680,50 @@ void App::settingsScreen()
             ui::drawTopChrome("Settings", ui::Icon::Gear, ui::color::IconGrey);
             ui::drawPanel();
             spec.controls[1].badge = updateAvailable_ ? "New" : "";
-            const float left = ui::TopPanel.x + 18;
-            if (focus == ui::ScreenAction) {
-                ui::drawWrapped("Where to report a bug, ask a question or "
-                                "reach the developer, as QR codes to scan "
-                                "with a phone.",
-                                left, ui::TopPanel.y + 12, ui::type::Small,
-                                ui::color::Ink, ui::TopPanel.w - 36, 3);
-                return;
-            }
+            // The highlighted section's current values.
             const int shown = focus >= 0 && focus < 6 ? focus : 2;
-            float y = ui::drawWrapped(TileHelp[shown], left, ui::TopPanel.y + 12,
-                                      ui::type::Small, ui::color::Ink,
-                                      ui::TopPanel.w - 36, 3) +
-                      10;
+            std::vector<ui::Fact> facts;
             if (shown == 1) {
                 const updater::Status update = updater::status();
-                y = ui::drawTagRow(left, y, 96, "Installed", APP_VERSION);
+                facts = {{"Installed", APP_VERSION}};
                 if (update.state == updater::State::Available) {
-                    ui::drawTagRow(left, y, 96, "New", update.release.version,
-                                   ui::color::Good);
+                    facts.push_back({"New", update.release.version,
+                                     ui::color::Good});
                 } else {
-                    ui::drawTagRow(left, y, 96, "At Startup",
-                                   settings_.checkForUpdates ? "Check"
-                                                             : "Don't Check");
+                    facts.push_back({"At Startup", settings_.checkForUpdates
+                                                       ? "Check"
+                                                       : "Don't Check"});
                 }
-            } else if (shown == 3) {
-                ui::drawTagRow(left, y, 96, "Saves to", settings_.destination);
-            } else if (shown == 4) {
-                ui::drawTagRow(left, y, 96, "Console",
-                               units::dateTime(platform::now()));
-            } else if (shown == 5) {
-                y = ui::drawTagRow(left, y, 96, "History",
-                                   plural(history_.size(), "download"));
-                ui::drawTagRow(left, y, 96, "Sounds",
-                               sound::available() ? onOff(settings_.sounds)
-                                                  : "Unavailable");
             } else if (shown == 2) {
-                y = ui::drawTagRow(left, y, 96, "Resume",
-                                   onOff(settings_.resumeDownloads));
-                ui::drawTagRow(left, y, 96, "After a CIA",
-                               ciaActionLabel(settings_.afterCiaDownload));
+                facts = {{"Resume", onOff(settings_.resumeDownloads)},
+                         {"Max Connections",
+                          std::to_string(settings_.maxConnections)},
+                         {"Stay Awake", onOff(settings_.keepAwake)},
+                         {"Ask to Extract",
+                          onOff(settings_.offerZipExtraction)},
+                         {"After a CIA",
+                          ciaActionLabel(settings_.afterCiaDownload)}};
+            } else if (shown == 3) {
+                facts = {{"Saves to", settings_.destination}};
+            } else if (shown == 4) {
+                facts = {{"Console", units::dateTime(platform::now())}};
+                if (settings_.timeZoneSet) {
+                    facts.push_back(
+                        {"Time Zone",
+                         tz::formatOffset(settings_.timeZoneMinutes)});
+                }
+            } else if (shown == 5) {
+                facts = {{"Sort Files",
+                          Sorts[static_cast<int>(settings_.fileSort)]},
+                         {"Hidden Files", onOff(settings_.showHiddenFiles)},
+                         {"Sounds", sound::available() ? onOff(settings_.sounds)
+                                                       : "Unavailable"},
+                         {"History", plural(history_.size(), "download")}};
             } else {
-                ui::drawTagRow(left, y, 96, "Version", APP_VERSION);
+                facts = {{"Version", APP_VERSION},
+                         {"Settings in", storage::DataFolder}};
             }
+            ui::drawFacts(facts);
         };
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         switch (result.choice) {
@@ -1892,21 +1784,16 @@ bool App::chooseTimeZone(int64_t utcNowSeconds)
             return;
         }
         const tz::Zone &zone = zones[index];
-        const float left = ui::TopPanel.x + 18;
-        float y = ui::TopPanel.y + 20;
-        y = ui::drawTagRow(left, y, 92, "Offset",
-                           tz::formatOffset(zone.offsetMinutes));
+        std::vector<ui::Fact> facts = {
+            {"Offset", tz::formatOffset(zone.offsetMinutes)}};
         if (utcNowSeconds >= 0) {
-            y = ui::drawTagRow(
-                left, y, 92, "Time there",
-                units::dateTime(utcNowSeconds + zone.offsetMinutes * 60 +
-                                static_cast<int64_t>(
-                                    (osGetTime() - openedAt) / 1000)));
+            facts.push_back(
+                {"Time there",
+                 units::dateTime(utcNowSeconds + zone.offsetMinutes * 60 +
+                                 static_cast<int64_t>(
+                                     (osGetTime() - openedAt) / 1000))});
         }
-        ui::drawWrapped("Pick the offset in use right now. Summer time "
-                        "usually adds one hour.",
-                        200, y + 12, ui::type::Small, ui::color::InkSoft, 320,
-                        2, C2D_AlignCenter);
+        ui::drawFacts(facts);
     };
 
     const ui::ListResult result = ui::runList(spec, cursor);
@@ -1923,10 +1810,15 @@ bool App::clockScreen()
 {
     while (ui::keepRunning()) {
         ntp::Result network;
-        tasks::busy("Console Clock", "Asking a time server for the current "
-                                     "time...", [&]() {
-            network = ntp::queryAny(ntp::defaultServers());
-        });
+        if (!tasks::busy("Console Clock",
+                         "Asking a time server for the current time...",
+                         [&](tasks::Busy &busy) {
+                             network = ntp::queryAny(ntp::defaultServers(), 123,
+                                                     2500, &busy.cancel);
+                         },
+                         true)) {
+            return false;
+        }
         const u64 answeredAt = osGetTime();
         if (!ui::keepRunning()) {
             return false;
@@ -1938,8 +1830,8 @@ bool App::clockScreen()
             dialog.title = "The time could not be checked online.";
             dialog.tone = ui::Tone::Error;
             dialog.body.push_back({network.error, ui::color::Text, 0.5f, 3});
-            dialog.body.push_back({"Check the Wi-Fi connection. Some networks "
-                                   "also block time servers (UDP port 123).",
+            dialog.body.push_back({"Check Wi-Fi. Some networks block time "
+                                   "servers (UDP port 123).",
                                    ui::color::Muted, 0.44f, 3});
             dialog.buttons = {"Try Again", "Back"};
             dialog.cancelButton = 1;
@@ -1975,47 +1867,33 @@ bool App::clockScreen()
 
             ui::ScreenSpec spec;
             spec.back = "Back";
+            // The two buttons centred above the tabs.
             ui::Control set;
-            set.rect = {26, 26, 268, 40};
+            set.rect = {26, 52, 268, 40};
             set.label = "Set the Clock";
             spec.controls.push_back(set);
             ui::Control change = set;
-            change.rect = {26, 80, 268, 40};
+            change.rect = {26, 106, 268, 40};
             change.label = "Change Time Zone";
             spec.controls.push_back(change);
             spec.drawTop = [&]() {
                 ui::drawTopChrome("Console Clock", ui::Icon::Clock,
                                   ui::color::IconBlue);
                 ui::drawPanel();
-                const float left = ui::TopPanel.x + 18;
-                float y = ui::TopPanel.y + 14;
-                y = ui::drawTagRow(left, y, 108, "This console",
-                                   units::dateTime(platform::now()));
-                y = ui::drawTagRow(left, y, 108, "Internet time",
-                                   units::dateTime((utcNowMs() + offset * 60000LL) /
-                                                   1000),
-                                   ui::color::Good);
-                y = ui::drawTagRow(left, y, 108, "Time zone",
-                                   tz::formatOffset(offset) +
-                                       (zone >= 0 ? std::string(", ") +
-                                                        tz::zones()[zone].places
-                                                  : std::string()),
-                                   ui::color::Neutral);
-                ui::drawWrapped(wrong ? "The clock is " +
-                                            tz::describeDrift(console, correct) +
-                                            ". Secure downloads fail until it "
-                                            "is set."
-                                      : "The clock is right.",
-                                200, y + 6, ui::type::Small,
-                                wrong ? ui::color::rgb(0xB84A1A)
-                                      : ui::color::Good,
-                                330, 2, C2D_AlignCenter);
-            };
-            spec.drawBottom = [&]() {
-                ui::drawWrapped("Setting the clock needs the CIA version of "
-                                "3dsDL. Rosalina can also set the time.",
-                                160, 136, ui::type::Tiny, ui::color::InkSoft,
-                                260, 3, C2D_AlignCenter);
+                ui::drawFacts(
+                    {{"This console", units::dateTime(platform::now())},
+                     {"Internet time",
+                      units::dateTime((utcNowMs() + offset * 60000LL) / 1000),
+                      ui::color::Good},
+                     {"Time zone",
+                      tz::formatOffset(offset) +
+                          (zone >= 0 ? std::string(", ") +
+                                           tz::zones()[zone].places
+                                     : std::string()),
+                      ui::color::Neutral},
+                     {"Clock",
+                      wrong ? tz::describeDrift(console, correct) : "Right",
+                      wrong ? ui::color::Bad : ui::color::Good}});
             };
             int focus = wrong ? 0 : 1;
             const int choice = ui::runScreen(spec, focus).choice;
@@ -2037,8 +1915,7 @@ bool App::clockScreen()
             ui::message("Clock set",
                         "The console clock now reads " +
                             units::dateTime(targetMs / 1000) + " (" +
-                            tz::formatOffset(offset) +
-                            "). HTTPS downloads should work again.",
+                            tz::formatOffset(offset) + ").",
                         ui::Tone::Success);
             return true;
         }
@@ -2048,22 +1925,35 @@ bool App::clockScreen()
 
 void App::aboutScreen()
 {
-    ui::Dialog dialog;
-    dialog.header = "3dsDL " APP_VERSION;
-    dialog.title = "3dsDL " APP_VERSION;
-    dialog.body.push_back({"Download files straight onto your Nintendo 3DS "
-                           "from a link or a QR code. Settings and history "
-                           "live in " +
-                               std::string(storage::DataFolder) + ".",
-                           ui::color::Ink, 0.5f, 6});
-    dialog.body.push_back({"GPLv3. Built on libcurl, Mbed TLS, quirc and "
-                           "Citro2D, and grew out of Multidownload by "
-                           "hax0kartik. CIA installing follows FBI by "
-                           "Steveice10 (MIT).",
-                           ui::color::InkSoft, 0.5f, 3});
-    dialog.buttons = {"OK", "Report an Issue"};
-    dialog.cancelButton = 0;
-    if (ui::choose(dialog) == 1) {
+    // Who and what on the top screen, the credits on the bottom one.
+    ui::ScreenSpec spec;
+    spec.back = "Back";
+    spec.action = "Report Issue";
+    spec.actionKey = "X";
+    spec.actionKeys = KEY_X;
+    spec.drawTop = []() {
+        ui::drawTopChrome("About 3dsDL", ui::Icon::AppMark, ui::color::Accent);
+        ui::drawPanel();
+        const float left = ui::TopPanel.x + 18;
+        // The icon and name over one tag row, centred in the panel.
+        const float top = ui::TopPanel.y + (ui::TopPanel.h - 84) / 2;
+        ui::drawIcon(ui::Icon::AppMark, left, top, 48, ui::color::Accent);
+        ui::drawText("3dsDL", left + 60, top + 2, 0.62f, ui::color::InkStrong);
+        ui::drawText("Version " APP_VERSION, left + 60, top + 30,
+                     ui::type::Small, ui::color::InkSoft);
+        ui::drawTagRow(left, top + 64, 96, "Settings in", storage::DataFolder);
+    };
+    spec.drawBottom = []() {
+        const ui::Rect panel = {13, 12, 294, 186};
+        ui::drawPanel(panel);
+        ui::drawPanelText("Free software under the GPLv3. Built on libcurl, "
+                          "Mbed TLS, quirc and Citro2D, and grew out of "
+                          "Multidownload by hax0kartik. CIA installing "
+                          "follows FBI by Steveice10 (MIT).",
+                          panel, ui::type::Small, ui::color::Ink, 7);
+    };
+    int focus = 0; // nothing to focus: B and X do it all
+    if (ui::runScreen(spec, focus).choice == ui::ScreenAction) {
         reportScreen();
     }
 }

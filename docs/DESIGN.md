@@ -20,23 +20,38 @@ the system font itself, which is what makes it read as native.
 
 ## Rules
 
-1. **The top screen explains, the bottom screen does.** Titles, previews,
-   details and help text go up top. Everything interactive is on the bottom
+1. **The top screen shows, the bottom screen does.** Titles, previews and
+   facts go up top. Everything interactive is on the bottom
    screen. Nothing on the top screen responds to input.
 2. **Few, large controls.** Embossed cream buttons 26 to 40 px tall, at most
    four or five choices per screen. Long lists page through a recessed panel
    with a page counter instead of scrolling.
 3. **Back and OK live in the bottom corners.** Grey tabs, Back (or Cancel or
    Close) on the left, the screen's main action on the right. The home screen
-   has one full-width Close bar instead.
+   has one full-width Close bar instead. Tabs are pressed by their key or by
+   touch, and every tab shows its key as a cap: B on the left, the action's
+   key (X, Y or START) on the right.
 4. **The green ring is the D-pad.** Touch and buttons work everywhere. The
-   ring marks where A goes. A chosen option turns yellow with orange brackets.
+   ring marks where A goes, on content controls and dialog buttons only; it
+   never lands on a tab. A chosen option turns yellow with orange brackets,
+   and picking one takes effect at once.
 5. **Questions are system dialogs.** A cream box over the dimmed bottom
    screen with a gold button strip. Destructive questions get a red button
    and a dark Cancel strip.
 6. **Words like the system's.** Title Case on buttons ("Install and Delete
-   File"), sentences in panels, "Please wait..." while busy, no jargon in the
-   first line of an error; the technical detail goes on the top screen.
+   File"), "Please wait..." while busy, no jargon in the first line of an
+   error; the technical detail goes on the top screen.
+7. **Facts, not explanations.** No taglines, no help paragraphs for the
+   highlighted control, no footnotes, no subtitles that repeat what is
+   already on screen. A screen shows what is true (values, sizes, paths,
+   versions, counts) as tag rows (`ui::drawFacts`) and lets labels say what
+   happens ("Install and Delete File"). A top screen with nothing to add
+   shows the section's icon (`ui::drawEmblem`), never a repeat of the
+   bottom screen. When a screen would not make sense
+   without a sentence, fix the label or the layout instead. Sentences are
+   kept for three things only: the question in a dialog, an error or result,
+   and a warning that data will be lost, folded into the question where it
+   fits. Empty states are one short line.
 
 ## Tokens
 
@@ -91,8 +106,9 @@ first guess is cap 15 at scale 0.72.
 ### Top screen
 
 - Status bar, y 0 to 17: Wi-Fi bars at x 3, the connection pill at x 27
-  ("Connected" in blue, "Not Connected" in grey), date and time right-aligned
-  to x 362, battery at x 371.
+  ("Connected" in blue, "Not Connected" in grey), the SD card's free space
+  ("SD 8.00 GiB" in the soft ink, orange under 256 MiB) just right of the
+  pill, date and time right-aligned to x 362, battery at x 371.
 - Title row, y 24 to 50: icon and title centred, in 3dsDL blue.
 - Dotted divider at y 57.
 - Info panel at x 17 to 383, y 69 to 225. Content screens (text editor, hex
@@ -123,16 +139,16 @@ strip for a red button and a 30 px dark Cancel strip.
 
 | Board | Top screen | Bottom screen |
 | --- | --- | --- |
-| Home | app icon, name, folder and free space | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
-| Scan QR code | camera with corner brackets, status strip at the bottom | title, help panel, Type a URL Instead, Back |
-| Confirm download | file, host, URL, Save to and HTTPS tags | folder recess, Change Folder, Cancel / Download |
-| Downloading | file, progress, amounts, speed, connections tag | saving to, Sleep Mode note, Cancel |
+| Home | app icon, name and download folder | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
+| Scan QR code | camera with corner brackets, status strip at the bottom | title, Type a URL Instead, Back |
+| Confirm download | file, host, URL, Save to and HTTPS tags | Download, Add to Queue, Change Folder, Cancel |
+| Downloading | file, progress, amounts, speed, connections tag | saving to, Cancel |
 | File exists | which file and what each choice does | dialog: Keep Both / Replace / Cancel |
 | Install prompt | icon, name, publisher, Title ID, Version, Size | Install, Install and Delete File, Keep File |
 | Installing | icon, name, progress | do not turn off, Cancel |
 | Installed | icon, name, time taken | dialog: Close / Launch |
 | Files | details of the highlighted entry | path, six rows, Back, page counter, Options |
-| File options | what the highlighted choice does | eight small buttons in two columns |
+| File options | the file the choices act on | eight small buttons in two columns |
 | Picture viewer | the picture, nothing else | name, size, position, Previous / Next |
 | Text editor | ruled page with line numbers, current line in blue | the full current line, Edit / New Line / Delete, Close / Save |
 | Hex view | offset, bytes, characters | offset, page buttons |
@@ -140,9 +156,9 @@ strip for a red button and a 30 px dark Cancel strip.
 | CIA details | icon, name, Title ID, Version, Size | Install, Install and Delete File, Delete File |
 | Delete | what goes and how big it is | destructive dialog |
 | History | the highlighted download in full | rows with Installed, Resume, Saved, Failed badges |
-| Settings | what is in the highlighted section | About and Updates bars, four tiles, Back / Report Issue |
-| Report an Issue | QR code, name, what it is for and the address of the highlighted place | Report a Bug, Discord Server, Developer on X; the details line to mention; Back |
-| Setting choice | what the setting does | recessed options, the current one chosen |
+| Settings | the highlighted section's current values | About and Updates bars, four tiles, Back / Report Issue |
+| Report an Issue | QR code, name and address of the highlighted place | Report a Bug, Discord Server, Developer on X; the Details row to mention; Back |
+| Setting choice | the setting's icon | recessed options, the current one chosen |
 | Console clock | console time, internet time, zone | Set the Clock, Change Time Zone |
 | Download folder | current and selected folder | presets and recent folders |
 | Error | what was kept, the technical detail | dialog: Close / Retry |

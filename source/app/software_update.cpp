@@ -36,16 +36,7 @@ void drawBadgeIcon(float x, float y, ui::Icon icon, u32 fill)
     ui::drawIcon(icon, x + 8, y + 8, 32, ui::color::rgb(0xFFFFFF));
 }
 
-std::string firstNote(const update::Release &release)
-{
-    for (const std::string &line : update::noteLines(release.notes)) {
-        if (!line.empty()) {
-            return line;
-        }
-    }
-    return "";
-}
-
+// The badge and headline over facts about the installed and newest versions.
 void drawUpdateTop(const updater::Status &status)
 {
     ui::drawTopChrome("Software Update", ui::Icon::Download,
@@ -55,67 +46,55 @@ void drawUpdateTop(const updater::Status &status)
     const float top = ui::TopPanel.y + 12;
     const update::Release &release = status.release;
 
+    ui::Icon icon = ui::Icon::Warning;
+    u32 fill = ui::color::IconOrange;
+    std::string headline = "Update check failed.";
+    std::vector<ui::Fact> facts = {{"Installed", APP_VERSION}};
     switch (status.state) {
     case updater::State::Available: {
-        drawBadgeIcon(left, top, ui::Icon::AppMark, ui::color::Accent);
-        ui::drawText("3dsDL " + release.version, left + 60, top + 2, 0.62f,
-                     ui::color::InkStrong);
-        ui::drawText(release.published.empty()
-                         ? "A new version is available."
-                         : "Released " + release.published,
-                     left + 60, top + 30, ui::type::Small, ui::color::InkSoft);
-        float y = top + 60;
-        y = ui::drawTagRow(left, y, 96, "Installed", APP_VERSION);
+        icon = ui::Icon::AppMark;
+        fill = ui::color::Accent;
+        headline = "An update is available.";
         const update::Asset *asset =
             update::findAsset(release, updater::assetName());
-        y = ui::drawTagRow(left, y, 96, "New",
-                           release.version +
-                               (asset != nullptr && asset->size > 0
-                                    ? ", " + units::bytes(asset->size)
-                                    : ""),
-                           ui::color::Good);
-        const std::string note = firstNote(release);
-        if (!note.empty()) {
-            ui::drawMarquee(note, left, y + 2, ui::type::Small, ui::color::Ink,
-                            ui::TopPanel.w - 36);
+        facts.push_back({"New",
+                         release.version +
+                             (asset != nullptr && asset->size > 0
+                                  ? ", " + units::bytes(asset->size)
+                                  : ""),
+                         ui::color::Good});
+        if (!release.published.empty()) {
+            facts.push_back({"Released", release.published});
         }
-        return;
+        break;
     }
     case updater::State::UpToDate:
-        drawBadgeIcon(left, top, ui::Icon::Check, ui::color::Good);
-        ui::drawText("3dsDL is up to date.", left + 60, top + 2, 0.62f,
-                     ui::color::InkStrong);
-        ui::drawText("No newer version has been released.", left + 60,
-                     top + 30, ui::type::Small, ui::color::InkSoft);
-        {
-            const float y = ui::drawTagRow(left, top + 60, 96, "Installed",
-                                           APP_VERSION);
-            ui::drawTagRow(left, y, 96, "Newest",
-                           release.version +
-                               (release.published.empty()
-                                    ? ""
-                                    : ", released " + release.published));
+        icon = ui::Icon::Check;
+        fill = ui::color::Good;
+        headline = "3dsDL is up to date.";
+        facts.push_back({"Newest", release.version});
+        if (!release.published.empty()) {
+            facts.push_back({"Released", release.published});
         }
-        return;
+        break;
     default:
+        facts.push_back({"Error", status.message.empty() ? "Not checked yet."
+                                                         : status.message});
+        // A wrong clock makes every certificate look invalid.
+        if (status.certificateProblem) {
+            facts.push_back({"Clock", "Check Settings, Console Clock",
+                             ui::color::Badge});
+        }
         break;
     }
 
-    drawBadgeIcon(left, top, ui::Icon::Warning, ui::color::IconOrange);
-    ui::drawText("Could not check for updates.", left + 60, top + 2, 0.62f,
-                 ui::color::InkStrong);
-    ui::drawText("Installed: " APP_VERSION, left + 60, top + 30,
-                 ui::type::Small, ui::color::InkSoft);
-    float y = ui::drawWrapped(status.message.empty() ? "Not checked yet."
-                                                     : status.message,
-                              left, top + 62, ui::type::Small, ui::color::Ink,
-                              ui::TopPanel.w - 36, 3);
-    if (status.certificateProblem) {
-        ui::drawWrapped("The console's clock may be wrong. Check it in "
-                        "Settings, Console Clock.",
-                        left, y + 4, ui::type::Small, ui::color::Caution,
-                        ui::TopPanel.w - 36, 2);
-    }
+    drawBadgeIcon(left, top, icon, fill);
+    // Level with the badge's middle, to the panel's inner edge.
+    ui::drawMarquee(headline, left + 60, top + (48 - ui::lineHeight(0.62f)) / 2,
+                    0.62f, ui::color::InkStrong, ui::TopPanel.w - 36 - 60);
+    const float below = top + 52;
+    ui::drawFacts(facts, {ui::TopPanel.x, below, ui::TopPanel.w,
+                          ui::TopPanel.y + ui::TopPanel.h - below});
 }
 
 } // namespace
@@ -149,8 +128,10 @@ void App::softwareUpdateScreen()
 {
     updater::Status status = updater::status();
     const auto check = [&]() {
-        tasks::busy("Software Update", "Checking for updates...",
-                    [&]() { status = updater::checkNow(); });
+        tasks::busy(
+            "Software Update", "Checking for updates...",
+            [&](tasks::Busy &busy) { status = updater::checkNow(&busy.cancel); },
+            true);
         updateGeneration_ = updater::generation();
         updateAvailable_ = status.state == updater::State::Available;
         // Seen here, so the notification has nothing left to say.
@@ -179,40 +160,26 @@ void App::softwareUpdateScreen()
             control.scale = ui::type::Small + 0.06f;
             spec.controls.push_back(control);
         };
+        // Centred between the top and the tabs.
         if (available) {
-            add({30, 16, 260, 44}, "Update to " + status.release.version,
+            add({30, 40, 260, 44}, "Update to " + status.release.version,
                 ui::Icon::Download, ui::color::IconGreen, true);
             spec.controls.back().scale = ui::type::Button;
         } else {
-            add({30, 16, 260, 44}, "Check for Updates", ui::Icon::Globe,
+            add({30, 40, 260, 44}, "Check for Updates", ui::Icon::Globe,
                 ui::color::IconTeal, true);
             spec.controls.back().scale = ui::type::Button;
         }
-        add({30, 70, 260, 32},
+        add({30, 94, 260, 32},
             haveRelease ? "What's New in " + status.release.version
                         : "What's New",
             ui::Icon::Text, ui::color::IconGrey,
             haveRelease && !status.release.notes.empty());
-        add({30, 112, 260, 32},
+        add({30, 136, 260, 32},
             std::string("Check at Startup: ") +
                 (settings_.checkForUpdates ? "On" : "Off"),
             ui::Icon::Clock, ui::color::IconBlue, true);
         spec.drawTop = [&]() { drawUpdateTop(status); };
-        spec.drawBottom = [&]() {
-            const std::string text =
-                available
-                    ? std::string("Downloads ") + updater::assetName() +
-                          " from GitHub and checks it against the release's "
-                          "checksum before " +
-                          (updater::runningAsCia() ? "installing it."
-                                                   : "replacing " +
-                                                         basename(updater::homebrewPath()) +
-                                                         ".")
-                    : "With Check at Startup on, 3dsDL looks for a new "
-                      "version on GitHub each time it opens.";
-            ui::drawWrapped(text, 160, 154, ui::type::Tiny, ui::color::InkSoft,
-                            270, 3, C2D_AlignCenter);
-        };
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         switch (result.choice) {
@@ -328,12 +295,8 @@ void App::showReleaseNotes(const update::Release &release)
         }
 
         ui::beginBottom();
-        ui::drawPanel({13, 16, 294, 104});
-        ui::drawPanelText("Drag here, or press Up and Down, to read on.",
-                          {13, 16, 294, 104}, ui::type::Small,
-                          ui::color::InkSoft, 3);
-        ui::drawTab(ui::Tab::Left, "Back", "",
-                    false, backPressed && (input.held & KEY_TOUCH));
+        ui::drawTab(ui::Tab::Left, "Back", "B",
+                    backPressed && (input.held & KEY_TOUCH));
         ui::endFrame();
     }
 }
@@ -360,8 +323,14 @@ void App::installUpdate(const update::Release &release)
     std::string listing;
     std::string error;
     bool listed = false;
-    tasks::busy("Software Update", "Getting the release's checksums...",
-                [&]() { listed = updater::fetchChecksums(release, listing, error); });
+    if (!tasks::busy("Software Update", "Getting the release's checksums...",
+                     [&](tasks::Busy &busy) {
+                         listed = updater::fetchChecksums(release, listing,
+                                                          error, &busy.cancel);
+                     },
+                     true)) {
+        return;
+    }
     const std::string expected =
         listed ? update::checksumFor(listing, name) : "";
     if (expected.empty()) {
@@ -392,7 +361,7 @@ void App::installUpdate(const update::Release &release)
     request.userAgent = http::UserAgent;
     request.allowResume = false;
     request.socketBufferSize = http::SocketBufferSize;
-    request.connections = http::DownloadConnections;
+    request.connections = settings_.maxConnections;
     request.freeSpace = [](const std::string &) {
         return platform::sdFreeBytes();
     };
@@ -480,9 +449,6 @@ void App::installUpdate(const update::Release &release)
         dialog.header = "Software Update";
         dialog.title = "3dsDL has been updated to " + release.version + ".";
         dialog.tone = ui::Tone::Success;
-        dialog.body.push_back({"3dsDL will restart now to start the new "
-                               "version.",
-                               ui::color::Text, 0.5f, 2});
         dialog.buttons = {"Restart"};
         ui::choose(dialog);
         // Closing with the chainloader set starts the new version.
@@ -515,11 +481,6 @@ void App::installUpdate(const update::Release &release)
     dialog.header = "Software Update";
     dialog.title = "3dsDL has been updated to " + release.version + ".";
     dialog.tone = ui::Tone::Success;
-    dialog.body.push_back({"3dsDL will close now. Open it again from the "
-                           "Homebrew Launcher to use the new version.",
-                           ui::color::Text, 0.5f, 3});
-    dialog.body.push_back({"Saved as " + target + ".", ui::color::Muted, 0.42f,
-                           2});
     dialog.buttons = {"Close 3dsDL"};
     ui::choose(dialog);
     quit_ = true;

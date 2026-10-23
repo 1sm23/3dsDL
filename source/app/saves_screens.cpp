@@ -64,17 +64,29 @@ void App::saveTitlesScreen()
 {
     // Which software has a save: its archive opens. Checked once.
     std::vector<titles::Title> withSaves;
-    tasks::busy("Save Data", "Looking for save data...", [&]() {
-        for (const titles::Title &title : library_.titles) {
-            if (!titles::isSoftware(title.id) ||
-                !savedata::unsupportedReason(title).empty()) {
-                continue;
+    const bool looked = tasks::busy(
+        "Save Data", "Looking for save data...",
+        [&](tasks::Busy &busy) {
+            busy.total = library_.titles.size();
+            for (const titles::Title &title : library_.titles) {
+                if (busy.cancel) {
+                    return;
+                }
+                busy.done.fetch_add(1);
+                if (!titles::isSoftware(title.id) ||
+                    !savedata::unsupportedReason(title).empty()) {
+                    continue;
+                }
+                if (savedata::exists(
+                        savedata::saveOf(title, library::mediaOf(title)))) {
+                    withSaves.push_back(title);
+                }
             }
-            if (savedata::exists(savedata::saveOf(title, library::mediaOf(title)))) {
-                withSaves.push_back(title);
-            }
-        }
-    });
+        },
+        true);
+    if (!looked) {
+        return;
+    }
     const titles::Index index = titles::indexOf(library_.titles);
     std::stable_sort(withSaves.begin(), withSaves.end(),
                      [&](const titles::Title &a, const titles::Title &b) {
@@ -86,7 +98,7 @@ void App::saveTitlesScreen()
     while (ui::keepRunning() && !quit_) {
         ui::ListSpec spec;
         spec.title = "Save Data";
-        spec.emptyText = "No installed software has save data yet.";
+        spec.emptyText = "No save data.";
         for (const titles::Title &title : withSaves) {
             ui::ListItem item;
             item.label = titles::displayName(title, index);
@@ -104,7 +116,7 @@ void App::saveTitlesScreen()
             ui::drawTopChrome("Save Data", ui::Icon::Chip, ui::color::IconTeal);
             ui::drawPanel();
             if (highlighted < 0 || highlighted >= static_cast<int>(withSaves.size())) {
-                ui::drawPanelText(spec.emptyText, ui::TopPanel);
+                ui::drawEmblem(ui::Icon::Chip, ui::color::IconTeal);
                 return;
             }
             const titles::Title &title = withSaves[highlighted];
@@ -156,7 +168,7 @@ void App::saveDataScreen(const savedata::Target &target,
         spec.action = "Browse";
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
-        spec.drawTop = [&](int highlighted) {
+        spec.drawTop = [&](int) {
             ui::drawTopChrome(kindTitle(target.kind), kindIcon(target.kind),
                               kindColor(target.kind));
             ui::drawPanel();
@@ -168,16 +180,7 @@ void App::saveDataScreen(const savedata::Target &target,
                             left + 60, top + 2, 0.62f, ui::color::InkStrong, 280);
             ui::drawText(plural(names.size(), "backup"), left + 60, top + 30,
                          ui::type::Small, ui::color::InkSoft);
-            float y = ui::drawTagRow(left, top + 60, 76, "Folder", target.folder);
-            ui::drawWrapped(highlighted <= 0
-                                ? "Copies the " + what + " into a new backup. "
-                                  "Checkpoint uses the same folders, so each "
-                                  "app sees the other's backups."
-                                : "Restore puts this backup back, replacing "
-                                  "the " +
-                                      what + " on the console.",
-                            left, y + 2, ui::type::Tiny, ui::color::InkSoft,
-                            ui::TopPanel.w - 36, 3);
+            ui::drawTagRow(left, top + 60, 76, "Folder", target.folder);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
@@ -205,11 +208,8 @@ void App::saveDataScreen(const savedata::Target &target,
             if (std::find(names.begin(), names.end(), name) != names.end()) {
                 ui::Dialog dialog;
                 dialog.header = "Backup";
-                dialog.title = "A backup named " + name + " already exists.";
+                dialog.title = "Replace the backup " + name + "?";
                 dialog.tone = ui::Tone::Warning;
-                dialog.body.push_back({"Replace it with the " + what +
-                                           " as it is now?",
-                                       ui::color::Text, 0.5f, 2});
                 dialog.buttons = {"Replace", "Cancel"};
                 dialog.dangerous = 0;
                 dialog.initial = 1;
@@ -229,8 +229,7 @@ void App::saveDataScreen(const savedata::Target &target,
                             ui::Tone::Success,
                             outcome.skipped > 0
                                 ? plural(outcome.skipped, "file") +
-                                      " the system was using were left out, "
-                                      "as Checkpoint does."
+                                      " the system was using were left out."
                                 : target.folder + name);
             } else {
                 ui::message("Not Backed Up", outcome.message, ui::Tone::Error);
@@ -241,29 +240,21 @@ void App::saveDataScreen(const savedata::Target &target,
         const std::string name = names[result.index - 1];
         const int choice = ui::menu(
             {{"Restore", true, true}, {"Delete Backup", true, true}},
-            [&](int focus) {
+            [&](int) {
                 ui::drawTopChrome(name, kindIcon(target.kind), kindColor(target.kind));
                 ui::drawPanel();
-                ui::drawPanelText(focus == 0
-                                      ? "Puts this backup back. The " + what +
-                                            " on the console now is backed up "
-                                            "first, so this can be undone."
-                                      : "Deletes this backup from the SD card.",
-                                  ui::TopPanel);
+                ui::drawFacts({{"Title", target.name.empty()
+                                             ? kindTitle(target.kind)
+                                             : target.name},
+                               {"Folder", target.folder + name + "/"}});
             });
         if (choice == 0) {
+            // No body, so the backup's facts stay on the top screen.
             ui::Dialog dialog;
             dialog.header = "Restore";
-            dialog.title = "Restore " + name + "?";
+            dialog.title = "Replace the " + what + " on the console with " +
+                           name + "?";
             dialog.tone = ui::Tone::Warning;
-            dialog.icon = icon.empty() ? nullptr : ui::showIcon(icon);
-            dialog.body.push_back({"The " + what + " of " + target.name +
-                                       " is replaced with this backup.",
-                                   ui::color::Text, 0.5f, 3});
-            dialog.body.push_back({"Close the game first if it is open in "
-                                   "the background. What is there now is "
-                                   "backed up before anything changes.",
-                                   ui::color::Muted, 0.44f, 3});
             dialog.buttons = {"Restore", "Cancel"};
             dialog.dangerous = 0;
             dialog.initial = 1;
@@ -349,6 +340,8 @@ void App::dataBrowser(const savedata::Target &target)
         fs::sortEntries(entries, fs::SortOrder::Name);
         ui::ListSpec spec;
         spec.title = target.name + "  " + folder.substr(root.size() - 1);
+        spec.heading = spec.title;
+        spec.tapToSelect = true;
         spec.back = folder == root ? "Close" : "Back";
         spec.emptyText = readable ? "This folder is empty." : "This folder cannot be read.";
         for (const fs::Entry &entry : entries) {
@@ -379,15 +372,10 @@ void App::dataBrowser(const savedata::Target &target)
                 y = ui::drawTagRow(left, y, 76, entry.folder ? "Folder" : "File",
                                    entry.name);
                 if (!entry.folder && entry.size >= 0) {
-                    y = ui::drawTagRow(left, y, 76, "Size",
-                                       units::bytes(static_cast<uint64_t>(entry.size)));
+                    ui::drawTagRow(left, y, 76, "Size",
+                                   units::bytes(static_cast<uint64_t>(entry.size)));
                 }
             }
-            ui::drawWrapped("Looking only: nothing here is changed. Copy files "
-                            "to the SD card, or use Restore to put a backup "
-                            "back.",
-                            left, y + 2, ui::type::Tiny, ui::color::InkSoft,
-                            ui::TopPanel.w - 36, 2);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_B || result.key == 0) {
@@ -423,9 +411,13 @@ void App::dataBrowser(const savedata::Target &target)
                 [&](int) {
                     ui::drawTopChrome(entry.name, ui::Icon::File, ui::color::IconGrey);
                     ui::drawPanel();
-                    ui::drawPanelText("Copies go to a folder you choose on the "
-                                      "SD card.",
-                                      ui::TopPanel);
+                    std::vector<ui::Fact> facts = {
+                        {"Folder", folder.substr(root.size() - 1)}};
+                    if (entry.size >= 0) {
+                        facts.push_back(
+                            {"Size", units::bytes(static_cast<uint64_t>(entry.size))});
+                    }
+                    ui::drawFacts(facts);
                 });
             if (choice == 0) {
                 hexViewer(file);

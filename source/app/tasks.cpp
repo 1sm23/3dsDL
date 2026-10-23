@@ -1,5 +1,6 @@
 #include "tasks.hpp"
 
+#include "sound.hpp"
 #include "ui.hpp"
 #include "units.hpp"
 #include "url.hpp"
@@ -78,9 +79,6 @@ bool confirmStop(const std::string &what)
     dialog.header = "cancel";
     dialog.title = "Stop " + what + "?";
     dialog.tone = ui::Tone::Warning;
-    dialog.body.push_back({"It keeps running in the background while this "
-                           "question is open.",
-                           ui::color::Muted, 0.48f, 2});
     dialog.buttons = {"Keep Going", "Stop"};
     dialog.dangerous = 1;
     dialog.cancelButton = 0;
@@ -91,13 +89,6 @@ bool wantsCancel(const ui::Input &input)
 {
     return (input.down & KEY_B) != 0 ||
            input.tapped(ui::ProgressCancelButton);
-}
-
-std::string footer(bool keepAwake)
-{
-    return keepAwake ? "Sleep Mode is paused until this finishes, so "
-                       "closing the system will not stop it."
-                     : "Closing the system will interrupt this.";
 }
 
 std::string capitalised(std::string value)
@@ -292,14 +283,15 @@ void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
 }
 
 struct BusyJob {
-    const std::function<void()> *work = nullptr;
+    const std::function<void(Busy &)> *work = nullptr;
+    Busy busy;
     std::atomic<bool> finished {false};
 };
 
 void runBusy(void *argument)
 {
     BusyJob &job = *static_cast<BusyJob *>(argument);
-    (*job.work)();
+    (*job.work)(job.busy);
     job.finished = true;
 }
 
@@ -308,21 +300,66 @@ void runBusy(void *argument)
 void busy(const std::string &header, const std::string &title,
           const std::function<void()> &work)
 {
+    busy(header, title, [&](Busy &) { work(); }, false);
+}
+
+bool busy(const std::string &header, const std::string &title,
+          const std::function<void(Busy &)> &work, bool cancellable)
+{
     BusyJob job;
     job.work = &work;
     Thread thread = startWorker(runBusy, &job);
     if (thread == nullptr) {
-        work();
-        return;
+        work(job.busy);
+        return !job.busy.cancel.load();
     }
+    bool pressed = false;
     while (!job.finished) {
-        ui::keepRunning();
-        ui::readInput();
-        ui::drawBusy(header, title);
+        if (!ui::keepRunning()) {
+            job.busy.cancel = true;
+        }
+        const ui::Input input = ui::readInput();
+        const bool stopping = job.busy.cancel.load();
+        if (cancellable && !stopping) {
+            bool cancel = (input.down & KEY_B) != 0;
+            if (input.down & KEY_TOUCH) {
+                pressed = ui::BusyCancelButton.contains(input.touch);
+            }
+            if ((input.up & KEY_TOUCH) && pressed) {
+                pressed = false;
+                cancel = cancel || ui::BusyCancelButton.contains(input.touch);
+            }
+            if (cancel) {
+                job.busy.cancel = true;
+                sound::play(sound::Effect::Back);
+            }
+        }
+
+        ui::BusyView view;
+        view.header = header;
+        view.title = title;
+        view.cancellable = cancellable;
+        view.stopping = job.busy.cancel.load();
+        view.pressed = pressed && !view.stopping &&
+                       (input.held & KEY_TOUCH) &&
+                       ui::BusyCancelButton.contains(input.touch);
+        const uint64_t total = job.busy.total.load();
+        if (total > 0) {
+            const uint64_t done = std::min(job.busy.done.load(), total);
+            view.progress = true;
+            view.fraction = static_cast<float>(static_cast<double>(done) /
+                                               static_cast<double>(total));
+            view.amount = job.busy.bytes.load()
+                              ? units::bytes(done) + " of " + units::bytes(total)
+                              : std::to_string(done) + " of " +
+                                    std::to_string(total);
+        }
+        ui::drawBusy(view);
         gspWaitForVBlank();
     }
     threadJoin(thread, U64_MAX);
     threadFree(thread);
+    return !job.busy.cancel.load();
 }
 
 net::Result download(const net::Request &request, bool keepAwake,
@@ -388,9 +425,6 @@ net::Result download(const net::Request &request, bool keepAwake,
         view.source = "from " + host;
         view.message = direct ? "Installing as it downloads"
                               : "Saving to " + request.folder;
-        view.detail = direct ? "Nothing is saved on the SD card. "
-                               "Stopping leaves the console as it was."
-                             : footer(keepAwake);
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -436,7 +470,6 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
         view.name = name;
         view.tag = std::to_string(archive.fileCount) + " files";
         view.message = "Extracting into " + folder;
-        view.detail = footer(keepAwake);
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -487,7 +520,6 @@ installer::Result install(const std::string &path, uint64_t titleId,
         view.source = path.substr(path.find_last_of('/') + 1);
         view.titleIcon = icon;
         view.message = "Do not turn off the power or remove the SD card.";
-        view.detail = "Installing from " + path;
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -544,7 +576,6 @@ fileops::Result fileOperation(
                                               : ui::color::IconOrange;
         view.name = title;
         view.message = "In " + folder;
-        view.detail = footer(keepAwake);
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });

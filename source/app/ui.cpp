@@ -4,6 +4,7 @@
 #include "platform.hpp"
 #include "sound.hpp"
 #include "text.hpp"
+#include "units.hpp"
 
 #include "stb_image.h"
 
@@ -42,6 +43,11 @@ constexpr const char *Ellipsis = "...";
 // the system applets (a tab label 9 px tall instead of 14). Every size is
 // scaled by this one factor, so measuring and drawing always agree.
 constexpr float TextBoost = 1.4f;
+
+// Text up to this much too wide is drawn narrower instead of scrolling a
+// few pixels or losing its end. The console's font runs a little wider
+// than Azahar's, so text that fits in the emulator can miss on hardware.
+constexpr float MaxSqueeze = 0.88f;
 
 // --- Textures ------------------------------------------------------------------
 
@@ -214,6 +220,33 @@ std::string withEllipsis(const std::string &value, float scale,
         end = glyph.offset + glyph.length;
     }
     return rtrimSpaces(value.substr(0, end)) + Ellipsis;
+}
+
+// drawText with the glyphs narrowed to squeeze of their width.
+void drawSqueezed(const std::string &value, float x, float y, float scale,
+                  float squeeze, u32 textColor, u32 flags)
+{
+    C2D_Text textObject;
+    C2D_TextParse(&textObject, textBuffer, value.c_str());
+    C2D_TextOptimize(&textObject);
+    C2D_DrawText(&textObject, flags | C2D_WithColor, x, y, Depth,
+                 scale * TextBoost * squeeze, scale * TextBoost, textColor);
+}
+
+// One line no wider than maxWidth: as it is, a little narrower, or cut
+// with "..." when even that is not enough.
+void drawFitted(const std::string &value, float x, float y, float scale,
+                u32 textColor, float maxWidth, u32 flags = 0)
+{
+    const float width = textWidth(value, scale);
+    if (width <= maxWidth + 0.5f) {
+        drawSqueezed(value, x, y, scale, 1, textColor, flags);
+    } else if (width * MaxSqueeze <= maxWidth) {
+        drawSqueezed(value, x, y, scale, maxWidth / width, textColor, flags);
+    } else {
+        drawSqueezed(withEllipsis(value, scale, maxWidth), x, y, scale, 1,
+                     textColor, flags);
+    }
 }
 
 // --- Colour --------------------------------------------------------------------
@@ -663,8 +696,12 @@ struct Status {
     bool connected = false;
     int battery = 5;
     bool charging = false;
+    int64_t sdFree = -1; // -1 when the card cannot be read
 };
 Status status;
+
+// Below this the free space is shown as a warning.
+constexpr int64_t LowSdSpace = 256LL * 1024 * 1024;
 
 void refreshStatus()
 {
@@ -673,6 +710,8 @@ void refreshStatus()
         return;
     }
     status.checked = time;
+    // A cheap call: the FS module keeps the free cluster count.
+    status.sdFree = platform::sdFreeBytes();
     status.connected = platform::wifiStatus() == platform::Wifi::Connected;
     status.bars = status.connected ? osGetWifiStrength() : 0;
     if (ptmu) {
@@ -776,15 +815,27 @@ void drawButtonBody(const Rect &area, float radius, Style style, bool pressed)
 void drawLabel(const std::string &label, const Rect &area, float scale,
                u32 textColor)
 {
+    const float room = area.w - 14;
     float use = scale;
-    if (textWidth(label, use) > area.w - 14) {
-        use = std::max(scale * 0.82f, (area.w - 14) / std::max(1.0f, textWidth(label, 1.0f)));
+    if (textWidth(label, use) > room) {
+        use = std::max(scale * 0.82f, room / std::max(1.0f, textWidth(label, 1.0f)));
     }
-    if (textWidth(label, use) <= area.w - 14) {
+    const float width = textWidth(label, use);
+    if (width <= room) {
         drawCentered(label, area, use, textColor);
         return;
     }
-    const float small = scale * 0.82f;
+    if (width * MaxSqueeze <= room) {
+        drawSqueezed(label, area.x + area.w / 2,
+                     area.y + (area.h - lineHeight(use)) / 2 + 1, use,
+                     room / width, textColor, C2D_AlignCenter);
+        return;
+    }
+    // Two lines, small enough that both fit the button's height.
+    float small = scale * 0.82f;
+    while (small > 0.36f && lineHeight(small) * 0.92f * 2 > area.h - 2) {
+        small -= 0.02f;
+    }
     const std::vector<std::string> lines = wrap(label, small, area.w - 12, 2);
     const float step = lineHeight(small) * 0.92f;
     float y = area.y + area.h / 2 - step * lines.size() / 2;
@@ -800,6 +851,7 @@ void drawLabel(const std::string &label, const Rect &area, float scale,
 constexpr Rect DialogBox = {10, 12, 300, 216};
 constexpr float StripHeight = 39;
 constexpr float DangerStripHeight = 30;
+constexpr float StripRadius = 13; // the dialog box's corners
 
 std::vector<Rect> stripButtons(const Rect &box, size_t count, float height)
 {
@@ -852,7 +904,7 @@ void drawStrip(const Rect &box, const std::vector<std::string> &labels,
                 stop.color = darker(stop.color, 0.12f);
             }
         }
-        fillShape(area, 13, corners, stops, 4);
+        fillShape(area, StripRadius, corners, stops, 4);
         if (index > 0) {
             rect(area.x, area.y, 1, area.h, color::rgb(0x191817));
         }
@@ -860,15 +912,29 @@ void drawStrip(const Rect &box, const std::vector<std::string> &labels,
                             : static_cast<int>(index) == dangerLabel
                                 ? color::Bad
                                 : color::InkDialog;
-        // One line per button; a long label shrinks instead of wrapping.
+        // One line per button, shrinking; a label still too long at the
+        // smallest size goes on two lines rather than losing its end.
         float scale = type::Tab;
         while (scale > 0.42f && textWidth(labels[index], scale) > area.w - 12) {
             scale -= 0.02f;
         }
-        drawCentered(labels[index], area, scale, textColor);
+        if (textWidth(labels[index], scale) <= area.w - 12) {
+            drawCentered(labels[index], area, scale, textColor);
+        } else {
+            const std::vector<std::string> lines =
+                wrap(labels[index], scale, area.w - 10, 2);
+            const float step = lineHeight(scale) * 0.92f;
+            float y = area.y + (area.h - step * lines.size()) / 2 + 1;
+            for (const std::string &line : lines) {
+                drawFitted(line, area.x + area.w / 2, y, scale, textColor,
+                           area.w - 10, C2D_AlignCenter);
+                y += step;
+            }
+        }
         if (static_cast<int>(index) == selected) {
+            // Concentric with the strip's rounded corners, square elsewhere.
             const Rect ring = area.inset(3);
-            strokeRound(ring, 6, 3, withAlpha(color::Focus, 1.0f), corners);
+            strokeRound(ring, StripRadius - 3, 3, color::Focus, corners);
         }
     }
     rect(box.x, box.y + box.h - height, box.w, 1, color::rgb(0x555553));
@@ -980,6 +1046,9 @@ void lockTouch()
 void enterScreen(const std::string &id)
 {
     lockTouch();
+    // Read the status bar again, so the SD card's free space is right as
+    // soon as a copy, delete or install brings us back.
+    status.checked = 0;
     // The same screen shown again (after a dialog, or a key that redraws
     // it) does not fade.
     if (id != lastScreen) {
@@ -1371,6 +1440,10 @@ void drawMarquee(const std::string &value, float x, float y, float scale,
         drawText(value, x, y, scale, textColor, flags);
         return;
     }
+    if (width * MaxSqueeze <= maxWidth) {
+        drawSqueezed(value, x, y, scale, maxWidth / width, textColor, flags);
+        return;
+    }
     const u32 align = flags & C2D_AlignMask;
     const float left = align == C2D_AlignCenter ? x - maxWidth / 2
                      : align == C2D_AlignRight  ? x - maxWidth
@@ -1602,6 +1675,19 @@ void drawStatusBar()
                   parts.tm_hour, parts.tm_min);
     drawText(clock, 364, 1, 0.4f, color::rgb(0x323232), C2D_AlignRight);
 
+    // The SD card's free space, on every screen. It sits by the connection
+    // pill, softer than the clock, so the two never read as one line.
+    if (status.sdFree >= 0) {
+        const float left = pill.x + pill.w + 8;
+        const float clockLeft = 364 - textWidth(clock, 0.4f);
+        // shortBytes keeps it to "SD 99.5 GiB" wide on any card.
+        drawFitted("SD " +
+                       units::shortBytes(static_cast<uint64_t>(status.sdFree)),
+                   left, 1, 0.4f,
+                   status.sdFree < LowSdSpace ? color::Caution : color::InkSoft,
+                   clockLeft - 16 - left);
+    }
+
     // Battery, four cells.
     const Rect battery = {371, 3, 24, 13};
     fillRound(battery, 2.5f, color::rgb(0x222222));
@@ -1647,16 +1733,27 @@ void drawRecess(const Rect &area)
 float drawPanelText(const std::string &value, const Rect &area, float scale,
                     u32 textColor, size_t maxLines)
 {
-    const ScrollingLines wrapped =
-        wrapScrolling(value, scale, area.w - 32, maxLines);
-    const float step = lineHeight(scale) * 1.05f;
+    // Smaller, down to four fifths of scale, until every line fits the
+    // panel; only then does the last line scroll.
+    float use = scale;
+    ScrollingLines wrapped;
+    for (bool first = true;; first = false, use -= 0.02f) {
+        const size_t room = std::max<size_t>(
+            1, static_cast<size_t>((area.h - 8) / (lineHeight(use) * 1.05f)));
+        wrapped = wrapScrolling(value, use, area.w - 32,
+                                first ? std::min(maxLines, room) : room);
+        if (!wrapped.lastScrolls || use - 0.02f < scale * 0.8f) {
+            break;
+        }
+    }
+    const float step = lineHeight(use) * 1.05f;
     float y = area.y + (area.h - step * wrapped.lines.size()) / 2;
     for (size_t index = 0; index < wrapped.lines.size(); ++index) {
         if (wrapped.lastScrolls && index + 1 == wrapped.lines.size()) {
-            drawMarquee(wrapped.lines[index], area.x + area.w / 2, y, scale,
+            drawMarquee(wrapped.lines[index], area.x + area.w / 2, y, use,
                         textColor, area.w - 32, C2D_AlignCenter);
         } else {
-            drawText(wrapped.lines[index], area.x + area.w / 2, y, scale,
+            drawText(wrapped.lines[index], area.x + area.w / 2, y, use,
                      textColor, C2D_AlignCenter);
         }
         y += step;
@@ -1682,14 +1779,22 @@ void drawButton(const Rect &area, const std::string &label, Style style,
         drawLabel(label, inside, scale, textColor);
         return;
     }
+    // Like a label alone, it gets a little smaller before it is squeezed or
+    // scrolls, and keeps the same margin on both sides.
     const float iconSize = std::min(20.0f, area.h - 10);
-    const float width = iconSize + 6 + textWidth(label, scale);
-    const float x = area.x + std::max(8.0f, (area.w - width) / 2);
+    const float room = area.w - 18 - iconSize - 6;
+    float use = scale;
+    if (textWidth(label, use) > room) {
+        use = std::max(scale * 0.85f,
+                       room / std::max(1.0f, textWidth(label, 1.0f)));
+    }
+    const float width = iconSize + 6 + std::min(room, textWidth(label, use));
+    const float x = area.x + std::max(9.0f, (area.w - width) / 2);
     drawIcon(icon, x, inside.y + (area.h - iconSize) / 2, iconSize, iconColor);
     drawCenteredMarquee(label,
                         {x + iconSize + 6, inside.y,
-                         area.x + area.w - 10 - (x + iconSize + 6), area.h},
-                        scale, textColor, true);
+                         area.x + area.w - 9 - (x + iconSize + 6), area.h},
+                        use, textColor, true);
 }
 
 void drawTile(const Rect &area, const std::string &label, Icon icon,
@@ -1723,30 +1828,96 @@ void drawFocus(const Rect &area, float radius, float gap, float width)
                 withAlpha(color::FocusGlow, glow * 0.6f));
 }
 
+namespace {
+
+constexpr float TabWidth = 126;
+constexpr float WideTabWidth = 150;
+constexpr float KeyScale = 0.36f;
+constexpr float GlyphScale = 0.56f;
+
+// The system font's own A, B, X or Y button (U+E000 to U+E003) as UTF-8,
+// or "" for other keys and for fonts without them, such as Azahar's.
+std::string buttonGlyph(const std::string &key)
+{
+    static const char Keys[] = "ABXY";
+    if (key.size() != 1) {
+        return "";
+    }
+    const char *at = std::strchr(Keys, key[0]);
+    if (at == nullptr || key[0] == '\0') {
+        return "";
+    }
+    const uint32_t codePoint = 0xE000 + static_cast<uint32_t>(at - Keys);
+    if (C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint) ==
+        fontGetInfo(fontGetSystemFont())->alterCharIndex) {
+        return "";
+    }
+    return {static_cast<char>(0xE0 | (codePoint >> 12)),
+            static_cast<char>(0x80 | ((codePoint >> 6) & 0x3f)),
+            static_cast<char>(0x80 | (codePoint & 0x3f))};
+}
+
+// The key cap's width and the gap after it.
+float keyCapWidth(const std::string &key)
+{
+    if (key.empty()) {
+        return 0;
+    }
+    const std::string glyph = buttonGlyph(key);
+    if (!glyph.empty()) {
+        return textWidth(glyph, GlyphScale) + 4;
+    }
+    // A single letter gets a 16 px circle: its ink is an even number of
+    // pixels each way, so it centres exactly.
+    const bool round = key.size() == 1;
+    return std::max(round ? 16.0f : 15.0f,
+                    textWidth(key, KeyScale) + (round ? 7 : 11)) +
+           5;
+}
+
+} // namespace
+
 Rect tabRect(Tab tab)
 {
     switch (tab) {
     case Tab::Left:
-        return {0, 209, 126, 31};
+        return {0, 209, TabWidth, 31};
     case Tab::Right:
-        return {194, 209, 126, 31};
+        return {320 - TabWidth, 209, TabWidth, 31};
     case Tab::Full:
         break;
     }
     return {0, 209, 320, 31};
 }
 
-void drawTab(Tab tab, const std::string &label, const std::string &key,
-             bool focused, bool pressed)
+Rect tabRect(Tab tab, const std::string &label, const std::string &key)
 {
-    const Rect area = tabRect(tab);
+    Rect area = tabRect(tab);
+    if (tab == Tab::Right) {
+        // An action too long for the tab even at drawTab's smallest size
+        // grows it towards the middle, so the two tabs stay alike otherwise.
+        const float wanted = std::min(
+            WideTabWidth, std::max(TabWidth, textWidth(label, 0.47f) +
+                                                 keyCapWidth(key) + 22));
+        area.x -= wanted - area.w;
+        area.w = wanted;
+    }
+    return area;
+}
+
+void drawTab(Tab tab, const std::string &label, const std::string &key,
+             bool pressed)
+{
+    const Rect area = tabRect(tab, label, key);
     const unsigned corners = tab == Tab::Left    ? corner::TopRight
                            : tab == Tab::Right ? corner::TopLeft
                                                : corner::Top;
+    // fillRound keeps a corner to half the height.
+    const float radius = std::min(22.0f, area.h / 2);
     fillRound({area.x - (tab == Tab::Left ? 0 : 2), area.y - 2,
                area.w + (tab == Tab::Full ? 4 : 2), area.h + 2},
               24, color::rgb(0x000000, 0x30), corners);
-    fillRound(area, 22, color::rgb(0xC4C4C4), corners);
+    fillRound(area, radius, color::rgb(0xC4C4C4), corners);
     Stop body[] = {{0, color::rgb(0x8A8A8A)}, {0.12f, color::rgb(0x7C7C7C)},
                    {0.6f, color::rgb(0x707070)}, {1, color::rgb(0x666666)}};
     if (pressed) {
@@ -1757,22 +1928,21 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     fillShape({area.x, area.y + 2, area.w, area.h - 2}, 21, corners, body, 4);
 
     // Label, with the button that also does this as a white key cap.
-    // A single letter gets a 16 px circle: its ink is an even number of
-    // pixels each way, so it centres exactly.
+    const std::string glyph = buttonGlyph(key);
     const bool round = key.size() == 1;
     const float capSize = round ? 16 : 15;
-    const float keyWidth =
-        key.empty() ? 0
-                    : std::max(capSize, textWidth(key, 0.36f) + (round ? 7 : 11)) +
-                          5;
+    const float keyWidth = keyCapWidth(key);
     // Shrink a long label so it and its key cap stay on the flat part of
-    // the tab, clear of the rounded corner.
+    // the tab, clear of the rounded corner; past that it is squeezed, so
+    // it never runs off the tab.
+    const float room = area.w - 22 - keyWidth;
     float labelScale = type::Tab;
-    while (labelScale > 0.45f &&
-           textWidth(label, labelScale) + keyWidth > area.w - 22) {
+    while (labelScale > 0.45f && textWidth(label, labelScale) > room) {
         labelScale -= 0.02f;
     }
-    const float labelWidth = textWidth(label, labelScale);
+    const float squeeze =
+        std::min(1.0f, room / std::max(1.0f, textWidth(label, labelScale)));
+    const float labelWidth = textWidth(label, labelScale) * squeeze;
     // Centred on the tab, a little away from its rounded inner corner, and
     // on the middle of the grey body below the highlight.
     const float inset = tab == Tab::Full ? 0 : 6;
@@ -1781,7 +1951,12 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
     // Whole pixels, so the key cap and its letter line up exactly.
     float x = std::round(centre - (labelWidth + keyWidth) / 2);
     const Rect line = {x, area.y + 3.5f, labelWidth + keyWidth, area.h - 3};
-    if (!key.empty()) {
+    if (!glyph.empty()) {
+        drawText(glyph, x,
+                 std::round(line.y + (line.h - lineHeight(GlyphScale)) / 2 + 1),
+                 GlyphScale, color::rgb(0xFFFFFF));
+        x += keyWidth;
+    } else if (!key.empty()) {
         const float capWidth = keyWidth - 5;
         // Centred on the same line as the label beside it.
         const Rect cap = {x, line.y + (line.h - 15) / 2, capWidth, capSize};
@@ -1790,19 +1965,14 @@ void drawTab(Tab tab, const std::string &label, const std::string &key,
         // half a pixel, and rounded to whole pixels so it stays sharp.
         // Placed as in a 15 px cap; the 16 px circle adds its row below.
         drawText(key,
-                 std::round(cap.x + (cap.w - textWidth(key, 0.36f)) / 2 +
-                            inkOffset(key, 0.36f)),
-                 std::round(cap.y - 0.5f + (15 - lineHeight(0.36f)) / 2 + 1),
-                 0.36f, color::rgb(0x6C6C6C));
+                 std::round(cap.x + (cap.w - textWidth(key, KeyScale)) / 2 +
+                            inkOffset(key, KeyScale)),
+                 std::round(cap.y - 0.5f + (15 - lineHeight(KeyScale)) / 2 + 1),
+                 KeyScale, color::rgb(0x6C6C6C));
         x += keyWidth;
     }
-    drawCentered(label, {x, line.y, labelWidth, line.h}, labelScale,
-                 color::rgb(0xFFFFFF), true);
-
-    if (focused) {
-        const Rect ring = {area.x + 3, area.y + 3, area.w - 6, area.h - 3};
-        strokeRound(ring, 19, 3, color::Focus, corners, true);
-    }
+    drawSqueezed(label, x, line.y + (line.h - lineHeight(labelScale)) / 2 + 1,
+                 labelScale, squeeze, color::rgb(0xFFFFFF), 0);
 }
 
 float drawTag(float x, float y, const std::string &label, u32 fill)
@@ -1831,6 +2001,36 @@ float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
     drawCenteredMarquee(value, {x + tagWidth + 10, y, 366 - tagWidth - 40, 20},
                         type::Small, color::Ink, true);
     return y + 26;
+}
+
+float drawFacts(const std::vector<Fact> &facts, const Rect &area)
+{
+    constexpr float Row = 20;
+    constexpr float Pitch = 26;
+    float tagWidth = 76;
+    for (const Fact &fact : facts) {
+        tagWidth = std::max(tagWidth, textWidth(fact.tag, 0.4f) + 16);
+    }
+    tagWidth = std::min(tagWidth, 150.0f);
+    const float left = area.x + 18;
+    const float valueWidth = area.w - 36 - tagWidth - 10;
+    float y = area.y + (area.h - (Pitch * facts.size() - (Pitch - Row))) / 2;
+    for (const Fact &fact : facts) {
+        fillRound({left, y, tagWidth, Row}, 5, fact.fill);
+        drawCentered(fitEnd(fact.tag, 0.4f, tagWidth - 6), {left, y, tagWidth, Row},
+                     0.4f, color::rgb(0xFFFFFF));
+        drawCenteredMarquee(fact.value, {left + tagWidth + 10, y, valueWidth, Row},
+                            type::Small, color::Ink, true);
+        y += Pitch;
+    }
+    return y;
+}
+
+void drawEmblem(Icon icon, u32 iconColor, const Rect &area)
+{
+    constexpr float Size = 64;
+    drawIcon(icon, area.x + (area.w - Size) / 2, area.y + (area.h - Size) / 2,
+             Size, iconColor);
 }
 
 void drawProgressBar(const Rect &area, float fraction)
@@ -2263,7 +2463,16 @@ int nearest(const std::vector<Target> &targets, int from, u32 key)
     const Rect &a = targets[from].rect;
     const float ax = a.x + a.w / 2;
     const float ay = a.y + a.h / 2;
+    const bool across = key == KEY_LEFT || key == KEY_RIGHT;
+    // Targets in line with this one (overlapping it across the direction
+    // of travel) come first, so Right from Back reaches the tab beside it
+    // rather than a tile that is closer but higher up.
+    const auto inLine = [&](const Rect &b) {
+        return across ? b.y < a.y + a.h && b.y + b.h > a.y
+                      : b.x < a.x + a.w && b.x + b.w > a.x;
+    };
     int best = -1;
+    bool bestInLine = false;
     float bestScore = 1e9f;
     for (int index = 0; index < static_cast<int>(targets.size()); ++index) {
         if (index == from) {
@@ -2291,8 +2500,11 @@ int nearest(const std::vector<Target> &targets, int from, u32 key)
             continue;
         }
         const float score = primary + secondary * 2;
-        if (score < bestScore) {
+        const bool lined = inLine(b);
+        if ((lined && !bestInLine) ||
+            (lined == bestInLine && score < bestScore)) {
             bestScore = score;
+            bestInLine = lined;
             best = index;
         }
     }
@@ -2312,6 +2524,10 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
               std::to_string(static_cast<int>(control.icon));
     }
     enterScreen(id);
+    // Controls first, then the tabs. The ring and the D-pad only reach the
+    // controls: tabs answer to their keys and to touch, as the system's
+    // bottom bar does, since a ring on a shape that runs off the screen
+    // reads as a stray line.
     std::vector<Target> targets;
     for (size_t index = 0; index < spec.controls.size(); ++index) {
         if (spec.controls[index].enabled) {
@@ -2326,13 +2542,21 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
             targets.push_back({tabRect(Tab::Left), ScreenBack, true});
         }
         if (!spec.action.empty()) {
-            targets.push_back({tabRect(Tab::Right), ScreenAction, true});
+            targets.push_back({tabRect(Tab::Right, spec.action, spec.actionKey),
+                               ScreenAction, true});
         }
     }
-    int current = 0;
-    for (size_t index = 0; index < targets.size(); ++index) {
-        if (targets[index].choice == focus) {
-            current = static_cast<int>(index);
+    std::vector<Target> controls;
+    for (const Target &target : targets) {
+        if (!target.tab) {
+            controls.push_back(target);
+        }
+    }
+    const int controlCount = static_cast<int>(controls.size());
+    int current = controlCount > 0 ? 0 : -1;
+    for (int index = 0; index < controlCount; ++index) {
+        if (controls[index].choice == focus) {
+            current = index;
         }
     }
     int pressed = -1;
@@ -2370,21 +2594,21 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
         }
         const int before = current;
         for (const u32 key : {KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT}) {
-            if (input.repeat & key) {
-                current = nearest(targets, current, key);
+            if ((input.repeat & key) && current >= 0) {
+                current = nearest(controls, current, key);
             }
         }
         if (current != before) {
             sound::play(sound::Effect::Move);
         }
-        if ((input.down & KEY_A) && current >= 0 &&
-            current < static_cast<int>(targets.size())) {
-            result.choice = targets[current].choice;
+        if ((input.down & KEY_A) && current >= 0) {
+            result.choice = controls[current].choice;
             break;
         }
         if (input.down & KEY_TOUCH) {
             pressed = targetAt(input.touch);
-            if (pressed >= 0) {
+            // Controls come first in targets, at the same index.
+            if (pressed >= 0 && pressed < controlCount) {
                 current = pressed;
             }
         }
@@ -2402,8 +2626,8 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
                 : -1;
         // drawTop may describe the control under the ring, so keep focus
         // current while the screen is open.
-        if (current >= 0 && current < static_cast<int>(targets.size())) {
-            focus = targets[current].choice;
+        if (current >= 0) {
+            focus = controls[current].choice;
         }
 
         beginFrame();
@@ -2437,28 +2661,22 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
                            control.scale);
             }
         }
-        const int focusedChoice =
-            current >= 0 && current < static_cast<int>(targets.size())
-                ? targets[current].choice
-                : ScreenClosed;
+        const auto tabDown = [&](int choice) {
+            return showPressed >= 0 && targets[showPressed].choice == choice;
+        };
         if (spec.closeBar) {
-            drawTab(Tab::Full, "Close", "START", focusedChoice == ScreenBack,
-                    showPressed >= 0 && targets[showPressed].choice == ScreenBack);
+            drawTab(Tab::Full, "Close", "START", tabDown(ScreenBack));
         } else {
             if (!spec.back.empty()) {
-                drawTab(Tab::Left, spec.back, "", focusedChoice == ScreenBack,
-                        showPressed >= 0 &&
-                            targets[showPressed].choice == ScreenBack);
+                drawTab(Tab::Left, spec.back, "B", tabDown(ScreenBack));
             }
             if (!spec.action.empty()) {
                 drawTab(Tab::Right, spec.action, spec.actionKey,
-                        focusedChoice == ScreenAction,
-                        showPressed >= 0 &&
-                            targets[showPressed].choice == ScreenAction);
+                        tabDown(ScreenAction));
             }
         }
-        if (focusedChoice >= 0) {
-            const Control &control = spec.controls[focusedChoice];
+        if (current >= 0) {
+            const Control &control = spec.controls[controls[current].choice];
             drawFocus(control.rect, control.tile ? 10
                                     : control.rect.h >= 34 ? 9
                                                            : 8);
@@ -2482,8 +2700,8 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
         }
         endFrame();
     }
-    if (current >= 0 && current < static_cast<int>(targets.size())) {
-        focus = targets[current].choice;
+    if (current >= 0) {
+        focus = controls[current].choice;
     }
     if (result.choice == ScreenBack) {
         sound::play(sound::Effect::Back);
@@ -2542,49 +2760,38 @@ int menu(const std::vector<MenuItem> &items,
     return result.choice >= 0 ? result.choice : -1;
 }
 
-int chooseOption(const std::string &title, const std::string &description,
+int chooseOption(const std::string &title,
                  const std::vector<std::string> &options, int current,
                  Icon icon, u32 iconColor)
 {
-    int chosen = std::max(0, std::min(current, static_cast<int>(options.size()) - 1));
-    int focus = chosen;
-    while (keepRunning()) {
-        ScreenSpec spec;
-        spec.back = "Back";
-        spec.action = "OK";
-        const float pitch = 39;
-        const float height = pitch * options.size() + 8;
-        const float top = std::max(22.0f, 24 + (180 - height) / 2);
-        for (size_t index = 0; index < options.size(); ++index) {
-            Control control;
-            control.rect = {30, top + 8 + index * pitch, 260, 30};
-            control.label = options[index];
-            control.scale = type::Body + 0.04f;
-            control.style = static_cast<int>(index) == chosen ? Style::Chosen
-                                                              : Style::Normal;
-            spec.controls.push_back(control);
-        }
-        spec.drawTop = [&]() {
-            drawTopChrome(title, icon, iconColor);
-            drawPanel();
-            drawPanelText(description, TopPanel);
-        };
-        spec.drawBottom = [&]() {
-            drawMarquee(title, 160, 3, type::Small, color::rgb(0x63593F), 300,
-                        C2D_AlignCenter);
-            drawRecess({18, top, 284, height});
-        };
-        const ScreenResult result = runScreen(spec, focus);
-        if (result.choice >= 0) {
-            chosen = result.choice;
-            continue;
-        }
-        if (result.choice == ScreenAction) {
-            return chosen;
-        }
-        return -1;
+    // Choosing an option saves it and goes back, so there is no OK.
+    const int chosen =
+        std::max(0, std::min(current, static_cast<int>(options.size()) - 1));
+    ScreenSpec spec;
+    spec.back = "Back";
+    const float pitch = 39;
+    const float height = pitch * options.size() + 8;
+    const float top = std::max(22.0f, 24 + (180 - height) / 2);
+    for (size_t index = 0; index < options.size(); ++index) {
+        Control control;
+        control.rect = {30, top + 8 + index * pitch, 260, 30};
+        control.label = options[index];
+        control.scale = type::Body + 0.04f;
+        control.style = static_cast<int>(index) == chosen ? Style::Chosen
+                                                          : Style::Normal;
+        spec.controls.push_back(control);
     }
-    return -1;
+    spec.drawTop = [&]() {
+        drawTopChrome(title, icon, iconColor);
+        drawPanel();
+        // The options below show the current one as chosen.
+        drawEmblem(icon, iconColor);
+    };
+    // The title is on the top screen already.
+    spec.drawBottom = [&]() { drawRecess({18, top, 284, height}); };
+    int focus = chosen;
+    const ScreenResult result = runScreen(spec, focus);
+    return result.choice >= 0 ? result.choice : -1;
 }
 
 // --- Scrolling -------------------------------------------------------------------
@@ -2702,12 +2909,17 @@ namespace {
 
 ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
-    enterScreen("list|" + spec.title + "|" + spec.back + "|" + spec.action);
+    enterScreen("list|" + spec.title + "|" + spec.heading + "|" + spec.back +
+                "|" + spec.action);
     constexpr float RowHeight = 25;
     constexpr float Pitch = 31;
-    const bool titled = !spec.title.empty();
-    // Titled, it starts below the title's descenders.
-    const Rect recess = {8, titled ? 25.0f : 6.0f, 304, titled ? 179.0f : 198.0f};
+    const bool headed = !spec.heading.empty();
+    // Under the heading, measured, so its descenders clear the recess with
+    // the console's font too.
+    const float listTop = headed ? std::ceil(3 + lineHeight(type::Small)) : 6.0f;
+    const Rect recess = {8, listTop, 304, 204 - listTop};
+    const Rect backTab = tabRect(Tab::Left);
+    const Rect actionTab = tabRect(Tab::Right, spec.action, spec.actionKey);
     const Rect inner = {recess.x, recess.y + 4, recess.w, recess.h - 8};
     const int count = static_cast<int>(spec.items.size());
     const float content = count * Pitch + 2;
@@ -2773,15 +2985,13 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
 
         // Tabs press on touch and act on release.
         if (input.down & KEY_TOUCH) {
-            tabPressed = !spec.back.empty() && tabRect(Tab::Left).contains(input.touch)
-                             ? -1
-                         : !spec.action.empty() &&
-                                 tabRect(Tab::Right).contains(input.touch)
+            tabPressed = !spec.back.empty() && backTab.contains(input.touch) ? -1
+                         : !spec.action.empty() && actionTab.contains(input.touch)
                              ? 1
                              : 0;
         }
         if ((input.up & KEY_TOUCH) && tabPressed != 0) {
-            const Rect area = tabRect(tabPressed < 0 ? Tab::Left : Tab::Right);
+            const Rect area = tabPressed < 0 ? backTab : actionTab;
             const int which = tabPressed;
             tabPressed = 0;
             if (area.contains(input.touch)) {
@@ -2794,7 +3004,11 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
 
         if (scroller.update(input, inner, content, viewport)) {
             const int row = rowAt(scroller.tapPoint);
-            if (row >= 0) {
+            if (row >= 0 && spec.tapToSelect && row != cursor) {
+                // The first tap only highlights; the next one opens.
+                cursor = row;
+                sound::play(sound::Effect::Move);
+            } else if (row >= 0) {
                 cursor = row;
                 return {KEY_A, cursor};
             }
@@ -2817,8 +3031,8 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             drawTopChrome(spec.title);
         }
         beginBottom();
-        if (titled) {
-            drawMarquee(spec.title, 160, 2, type::Small, color::rgb(0x63593F),
+        if (headed) {
+            drawMarquee(spec.heading, 160, 2, type::Small, color::rgb(0x63593F),
                         296, C2D_AlignCenter);
         }
         drawRecess(recess);
@@ -2870,9 +3084,11 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
                                     {textX, row.y, right - textX, row.h},
                                     type::Row, item.labelColor, true);
             } else {
-                drawCentered(fitEnd(item.label, type::Row, right - textX),
-                             {textX, row.y, right - textX, row.h}, type::Row,
-                             item.labelColor, true);
+                // Fitted the same way, so a row keeps its look as the
+                // ring arrives.
+                drawFitted(item.label, textX,
+                           row.y + (row.h - lineHeight(type::Row)) / 2 + 1,
+                           type::Row, item.labelColor, right - textX);
             }
             if (index == cursor && !scroller.dragging()) {
                 drawFocus(row, 8, 2.5f, 2.5f);
@@ -2894,17 +3110,21 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
         }
 
         if (!spec.back.empty()) {
-            drawTab(Tab::Left, spec.back, "", false,
+            drawTab(Tab::Left, spec.back, "B",
                     tabPressed < 0 && (input.held & KEY_TOUCH) &&
-                        tabRect(Tab::Left).contains(input.touch));
+                        backTab.contains(input.touch));
         }
         if (!spec.action.empty()) {
-            drawTab(Tab::Right, spec.action, spec.actionKey, false,
+            drawTab(Tab::Right, spec.action, spec.actionKey,
                     tabPressed > 0 && (input.held & KEY_TOUCH) &&
-                        tabRect(Tab::Right).contains(input.touch));
+                        actionTab.contains(input.touch));
         }
         if (!spec.hint.empty()) {
-            drawMarquee(spec.hint, 160, 220, type::Tiny, color::Counter, 60,
+            // In the gap between the tabs, which a wide action tab narrows.
+            const float gapLeft = backTab.x + backTab.w;
+            const float gapRight = spec.action.empty() ? 320 - gapLeft : actionTab.x;
+            drawMarquee(spec.hint, (gapLeft + gapRight) / 2, 220, type::Tiny,
+                        color::Counter, std::max(0.0f, gapRight - gapLeft - 8),
                         C2D_AlignCenter);
         }
         endFrame();
@@ -2961,8 +3181,7 @@ void drawProgress(const ProgressView &view)
     }
 
     beginBottom();
-    // Two lines of the message and three of the detail at most, which is
-    // what the panel holds; the detail is secondary, so it is the smaller.
+    // Two lines of the message at most.
     const Rect panel = {13, 10, 294, 128};
     drawPanel(panel);
     // A message that ends in a folder ("Saving to sdmc:/Downloads/") breaks
@@ -2977,11 +3196,7 @@ void drawProgress(const ProgressView &view)
     } else {
         lines = wrap(view.message, type::Body, 266, 2);
     }
-    const std::vector<std::string> more = wrap(view.detail, type::Tiny, 266, 3);
-    const float gap = more.empty() ? 0 : 8;
-    const float block = lines.size() * lineHeight(type::Body) + gap +
-                        more.size() * lineHeight(type::Tiny);
-    float y = panel.y + (panel.h - block) / 2;
+    float y = panel.y + (panel.h - lines.size() * lineHeight(type::Body)) / 2;
     for (size_t index = 0; index < lines.size(); ++index) {
         if (pathLine && index == 1) {
             drawMarquee(lines[index], 160, y, type::Body, color::Ink, 266,
@@ -2991,11 +3206,6 @@ void drawProgress(const ProgressView &view)
                      C2D_AlignCenter);
         }
         y += lineHeight(type::Body);
-    }
-    y += gap;
-    for (const std::string &line : more) {
-        drawText(line, 160, y, type::Tiny, color::InkSoft, C2D_AlignCenter);
-        y += lineHeight(type::Tiny);
     }
     if (view.stopping) {
         drawButton(ProgressCancelButton, "Stopping...", Style::Disabled,
@@ -3007,7 +3217,27 @@ void drawProgress(const ProgressView &view)
     endFrame();
 }
 
+namespace {
+
+constexpr Rect BusyBox = {10, 62, 300, 116};
+constexpr Rect CancellableBusyBox = {10, 50, 300, 140};
+
+} // namespace
+
+const Rect BusyCancelButton = {CancellableBusyBox.x,
+                               CancellableBusyBox.y + CancellableBusyBox.h -
+                                   StripHeight,
+                               CancellableBusyBox.w, StripHeight};
+
 void drawBusy(const std::string &header, const std::string &title)
+{
+    BusyView view;
+    view.header = header;
+    view.title = title;
+    drawBusy(view);
+}
+
+void drawBusy(const BusyView &view)
 {
     if (!lastFrameWasDialog && !inDialog) {
         captureBackdrop();
@@ -3015,30 +3245,42 @@ void drawBusy(const std::string &header, const std::string &title)
     const bool wasInDialog = inDialog;
     inDialog = true;
     beginFrame();
-    if (!title.empty()) {
-        drawTopChrome(titleCase(header), Icon::AppMark, color::Accent);
+    if (!view.title.empty()) {
+        drawTopChrome(titleCase(view.header), Icon::AppMark, color::Accent);
         drawPanel();
-        drawPanelText(title, TopPanel);
+        drawPanelText(view.title, TopPanel);
     } else {
         drawBackdrop(false);
     }
     beginBottom();
     drawBackdrop(true);
     rect(0, 0, BottomWidth, ScreenHeight, color::rgb(0x141208, 0x7A));
-    const Rect box = {10, 62, 300, 116};
+    const Rect box = view.cancellable ? CancellableBusyBox : BusyBox;
     drawDialogBox(box);
+    const float contentHeight = box.h - (view.cancellable ? StripHeight : 0);
+    // With a count, the spinner row moves up to make room for a bar.
+    const float rowY = view.progress ? box.y + 30 : box.y + contentHeight / 2;
     const float width = 30 + 12 + textWidth("Please wait...", type::Body);
-    drawSpinner(box.x + (box.w - width) / 2 + 15, box.y + box.h / 2, 15);
+    drawSpinner(box.x + (box.w - width) / 2 + 15, rowY, 15);
     drawCentered("Please wait...",
-                 {box.x + (box.w - width) / 2 + 42, box.y, 200, box.h},
+                 {box.x + (box.w - width) / 2 + 42, rowY - 20, 200, 40},
                  type::Body, color::InkDialog, true);
+    if (view.progress) {
+        drawProgressBar({box.x + 30, box.y + 54, box.w - 60, 12}, view.fraction);
+        drawFitted(view.amount, box.x + box.w / 2, box.y + 72, type::Tiny,
+                   color::InkSoft, box.w - 60, C2D_AlignCenter);
+    }
+    if (view.cancellable) {
+        drawStrip(box, {view.stopping ? "Stopping..." : "Cancel"}, -1,
+                  view.pressed ? 0 : -1, false, StripHeight, -1);
+    }
     endFrame();
     inDialog = wasInDialog;
     lastFrameWasDialog = true;
 }
 
 const Rect ScannerCancelButton = {0, 209, 120, 31};
-const Rect ScannerTypeButton = {36, 150, 248, 34};
+const Rect ScannerTypeButton = {36, 96, 248, 40};
 
 void drawScanner(const C2D_Image *preview, const std::string &statusText,
                  u32 statusColor)
@@ -3082,14 +3324,9 @@ void drawScanner(const C2D_Image *preview, const std::string &statusText,
     drawIcon(Icon::Scan, 160 - width / 2, 9, 20, color::Accent);
     drawText(title, 160 - width / 2 + 26, 19 - lineHeight(0.72f) / 2 + 1, 0.72f,
              color::Accent);
-    const Rect panel = {13, 44, 294, 90};
-    drawPanel(panel);
-    drawPanelText("Point the outer camera at a QR code that holds a download "
-                  "link.",
-                  panel);
     drawButton(ScannerTypeButton, "Type a URL Instead", Style::Normal,
                type::Body + 0.06f);
-    drawTab(Tab::Left, "Back");
+    drawTab(Tab::Left, "Back", "B");
     endFrame();
 }
 

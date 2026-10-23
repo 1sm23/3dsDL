@@ -89,17 +89,14 @@ void drawTitleTop(const std::string &header, ui::Icon headerIcon,
                    units::bytes(title.size) + ", " + placeName(title.place));
 }
 
+// No body or icon, so the top screen keeps showing what is being deleted.
 bool confirmDanger(const std::string &header, const std::string &title,
-                   const std::vector<ui::Paragraph> &body,
-                   const std::string &button,
-                   const std::vector<uint16_t> &icon = {})
+                   const std::string &button)
 {
     ui::Dialog dialog;
     dialog.header = header;
     dialog.title = title;
     dialog.tone = ui::Tone::Warning;
-    dialog.body = body;
-    dialog.icon = icon.empty() ? nullptr : ui::showIcon(icon);
     dialog.buttons = {button, "Cancel"};
     dialog.dangerous = 0;
     dialog.initial = 1;
@@ -120,13 +117,18 @@ const library::ExtData *extDataFor(const titles::Title &title,
 
 } // namespace
 
-bool App::reloadLibrary()
+bool App::reloadLibrary(bool cancellable)
 {
     std::string error;
     bool loaded = false;
-    tasks::busy("Titles", "Reading the installed software...",
-                [&]() { loaded = library::load(library_, error); });
-    if (!loaded) {
+    const bool finished = tasks::busy(
+        "Titles", "Reading the installed software...",
+        [&](tasks::Busy &busy) {
+            loaded = library::load(library_, error, &busy.cancel, &busy.done,
+                                   &busy.total);
+        },
+        cancellable);
+    if (!loaded && finished) {
         ui::message("Titles Unavailable", error, ui::Tone::Error);
     }
     return loaded;
@@ -134,25 +136,9 @@ bool App::reloadLibrary()
 
 void App::titlesScreen()
 {
-    if (!reloadLibrary()) {
+    if (!reloadLibrary(true)) {
         return;
     }
-    static const char *const Help[] = {
-        "Remove unfinished installs, which stop software from installing "
-        "again, and tickets for software that is gone.",
-        "Tickets let installed software start. Export them to the SD card, "
-        "or delete those of software that is gone.",
-        "Newer games need a seed to start. Import seeds from a seeddb.bin on "
-        "the SD card for the games installed here.",
-        "Games, apps, demos and DSiWare. Launch them, back up their saves, "
-        "get a game's seed, or delete them.",
-        "Updates and add-on content, listed under their game's name.",
-        "Back up and restore game saves in Checkpoint's folders, so either "
-        "app can restore the other's backups.",
-        "Data that software keeps outside its save, such as downloaded "
-        "content, courses or StreetPass data. Back it up, restore or delete "
-        "it.",
-    };
     int focus = 3;
     while (ui::keepRunning() && !quit_) {
         const titles::Index index = titles::indexOf(library_.titles);
@@ -166,7 +152,7 @@ void App::titlesScreen()
             }
         }
         const size_t unused =
-            titles::unusedTickets(library_.tickets, library_.titles).size();
+            library::unusedTickets(library_).size();
         const size_t cleanUp = unused + library_.pending.size();
 
         ui::ScreenSpec spec;
@@ -203,48 +189,39 @@ void App::titlesScreen()
         spec.drawTop = [&]() {
             ui::drawTopChrome("Titles", ui::Icon::GameCard, ui::color::IconBlue);
             ui::drawPanel();
-            const int shown = focus >= 0 && focus < 7 ? focus : 3;
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::drawWrapped(Help[shown], left, ui::TopPanel.y + 12,
-                                      ui::type::Small, ui::color::Ink,
-                                      ui::TopPanel.w - 36, 3) +
-                      10;
-            switch (shown) {
+            std::vector<ui::Fact> facts;
+            switch (focus) {
             case 0:
-                y = ui::drawTagRow(left, y, 110, "Unfinished",
-                                   plural(library_.pending.size(), "install"));
-                ui::drawTagRow(left, y, 110, "Unused",
-                               plural(unused, "ticket"));
+                facts = {{"Unfinished", plural(library_.pending.size(), "install")},
+                         {"Unused", plural(unused, "ticket")}};
                 break;
             case 1:
-                y = ui::drawTagRow(left, y, 110, "Tickets",
-                                   std::to_string(library_.tickets.size()));
-                ui::drawTagRow(left, y, 110, "Unused", std::to_string(unused));
+                facts = {{"Tickets", std::to_string(library_.tickets.size())},
+                         {"Unused", std::to_string(unused)}};
                 break;
             case 2:
-                ui::drawTagRow(left, y, 110, "Looks in", "sdmc:/seeddb.bin");
-                break;
-            case 3:
-                y = ui::drawTagRow(left, y, 110, "Installed",
-                                   plural(software, "title"));
-                ui::drawTagRow(left, y, 110, "On SD card",
-                               units::bytes(sdBytes));
+                facts = {{"Looks in", "sdmc:/seeddb.bin"}};
                 break;
             case 4:
-                ui::drawTagRow(left, y, 110, "Installed",
-                               plural(addOns, "item"));
+                facts = {{"Installed", plural(addOns, "item")}};
                 break;
             case 5:
-                ui::drawTagRow(left, y, 110, "Backups in",
-                               "sdmc:/3ds/Checkpoint/saves/");
+                facts = {{"Backups in", "sdmc:/3ds/Checkpoint/saves/"}};
+                break;
+            case 6:
+                facts = {{"On SD card", plural(library_.extData.size(), "item")},
+                         {"Backups in", "sdmc:/3ds/Checkpoint/extdata/"}};
                 break;
             default:
-                y = ui::drawTagRow(left, y, 110, "On SD card",
-                                   plural(library_.extData.size(), "item"));
-                ui::drawTagRow(left, y, 110, "Backups in",
-                               "sdmc:/3ds/Checkpoint/extdata/");
+                facts = {{"Installed", plural(software, "title")},
+                         {"On SD card", library_.sdListed
+                                            ? units::bytes(sdBytes)
+                                            : "Not readable",
+                          library_.sdListed ? ui::color::Tag
+                                            : ui::color::Badge}};
                 break;
             }
+            ui::drawFacts(facts);
         };
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         switch (result.choice) {
@@ -290,8 +267,8 @@ void App::titleList(bool software)
 
         ui::ListSpec spec;
         spec.title = software ? "Software" : "Updates and DLC";
-        spec.emptyText = software ? "No software is installed."
-                                  : "No updates or DLC are installed.";
+        spec.emptyText = software ? "No software installed."
+                                  : "No updates or DLC installed.";
         for (const titles::Title *title : shown) {
             ui::ListItem item;
             item.label = titles::displayName(*title, index);
@@ -312,7 +289,7 @@ void App::titleList(bool software)
                 ui::drawTopChrome(spec.title, ui::Icon::GameCard,
                                   ui::color::IconBlue);
                 ui::drawPanel();
-                ui::drawPanelText(spec.emptyText, ui::TopPanel);
+                ui::drawEmblem(ui::Icon::GameCard, ui::color::IconBlue);
                 return;
             }
             drawTitleTop(spec.title, software ? ui::Icon::GameCard
@@ -394,21 +371,21 @@ void App::titleOptions(titles::Title title)
     case Seed: {
         std::string message;
         bool added = false;
-        tasks::busy("Seeds", "Getting the seed " + name + " needs...",
-                    [&]() { added = installer::installSeed(title.id, message); });
+        if (!tasks::busy("Seeds", "Getting the seed " + name + " needs...",
+                         [&](tasks::Busy &busy) {
+                             added = installer::installSeed(title.id, message,
+                                                            &busy.cancel);
+                         },
+                         true)) {
+            return;
+        }
         ui::message(added ? "Seed Added" : "No Seed Added", message,
                     added ? ui::Tone::Success : ui::Tone::Warning);
         return;
     }
     case ExtraData:
-        if (confirmDanger("Delete",
-                          "Delete the extra data of " + name + "?",
-                          {{"Downloaded content, courses, StreetPass data and "
-                            "other things " + name +
-                                " keeps outside its save go. The save itself "
-                                "stays.",
-                            ui::color::Text, 0.5f, 4}},
-                          "Delete", title.icon)) {
+        if (confirmDanger("Delete", "Delete the extra data of " + name + "?",
+                          "Delete")) {
             if (!library::deleteExtData(extData->id, error)) {
                 ui::message("Not Deleted", error, ui::Tone::Error);
             }
@@ -418,26 +395,19 @@ void App::titleOptions(titles::Title title)
     case Delete:
     case DeleteWithTicket: {
         const bool withTicket = choices[picked] == DeleteWithTicket;
-        std::vector<ui::Paragraph> body;
-        if (kind == cia::Kind::Update) {
-            body.push_back({"The game stays installed and goes back to the "
-                            "version it came with.",
-                            ui::color::Text, 0.5f, 3});
-        } else if (kind == cia::Kind::Dlc) {
-            body.push_back({"The game stays installed without its add-on "
-                            "content.",
-                            ui::color::Text, 0.5f, 3});
+        // An update or DLC goes by its game's name, so the question says
+        // which; a game takes its save with it.
+        std::string question;
+        if (kind == cia::Kind::Update || kind == cia::Kind::Dlc) {
+            question = std::string("Delete the ") +
+                       (kind == cia::Kind::Update ? "update" : "DLC") +
+                       " for " + name + (withTicket ? " and its ticket?" : "?");
         } else {
-            body.push_back({"Its save data goes with it. Back the save up "
-                            "with Checkpoint first if you want to keep it.",
-                            ui::color::Warning, 0.5f, 3});
+            question = "Delete " + name +
+                       (withTicket ? ", its save data and its ticket?"
+                                   : " and its save data?");
         }
-        if (withTicket) {
-            body.push_back({"Its ticket is deleted too.", ui::color::Muted,
-                            0.46f, 2});
-        }
-        if (!confirmDanger("Delete", "Delete " + name + "?", body, "Delete",
-                           title.icon)) {
+        if (!confirmDanger("Delete", question, "Delete")) {
             return;
         }
         bool deleted = false;
@@ -483,27 +453,23 @@ void App::extraDataScreen()
 
         ui::ListSpec spec;
         spec.title = "Extra Data";
-        spec.emptyText = "No extra data on the SD card.";
+        spec.emptyText = "No extra data.";
         for (const library::ExtData *extData : shown) {
             ui::ListItem item;
             item.label = nameOf(*extData);
             item.icon = ui::Icon::Folder;
             item.iconColor = ui::color::IconOrange;
-            if (titles::ownerOfExtData(extData->id, library_.titles) == nullptr) {
+            if (!library::extDataInUse(library_, extData->id)) {
                 item.badge = "Unused";
                 item.badgeColor = ui::color::Neutral;
             }
             spec.items.push_back(item);
         }
-        spec.drawTop = [&](int highlighted) {
+        // The list and the menu for one item show the same facts.
+        const auto drawDetails = [&](const library::ExtData &extData) {
             ui::drawTopChrome("Extra Data", ui::Icon::Folder,
                               ui::color::IconOrange);
             ui::drawPanel();
-            if (highlighted < 0 || highlighted >= static_cast<int>(shown.size())) {
-                ui::drawPanelText(spec.emptyText, ui::TopPanel);
-                return;
-            }
-            const library::ExtData &extData = *shown[highlighted];
             const titles::Title *owner =
                 titles::ownerOfExtData(extData.id, library_.titles);
             const float left = ui::TopPanel.x + 18;
@@ -519,16 +485,21 @@ void App::extraDataScreen()
             char id[16];
             std::snprintf(id, sizeof(id), "%08llX",
                           static_cast<unsigned long long>(extData.id));
-            float y = ui::drawTagRow(left, top + 52, 96, "ID", id);
-            y = ui::drawTagRow(left, y, 96, "Software",
-                               owner != nullptr ? "Installed"
-                                                : "Not installed",
-                               owner != nullptr ? ui::color::Tag
-                                                : ui::color::Neutral);
-            ui::drawWrapped("Delete removes what the software keeps outside "
-                            "its save. The save itself stays.",
-                            left, y, ui::type::Tiny, ui::color::InkSoft,
-                            ui::TopPanel.w - 36, 2);
+            const float y = ui::drawTagRow(left, top + 60, 96, "ID", id);
+            const bool inUse = library::extDataInUse(library_, extData.id);
+            ui::drawTagRow(left, y, 96, "Software",
+                           inUse ? "Installed" : "Not installed",
+                           inUse ? ui::color::Tag : ui::color::Neutral);
+        };
+        spec.drawTop = [&](int highlighted) {
+            if (highlighted < 0 || highlighted >= static_cast<int>(shown.size())) {
+                ui::drawTopChrome("Extra Data", ui::Icon::Folder,
+                                  ui::color::IconOrange);
+                ui::drawPanel();
+                ui::drawEmblem(ui::Icon::Folder, ui::color::IconOrange);
+                return;
+            }
+            drawDetails(*shown[highlighted]);
         };
         if (!shown.empty()) {
             spec.action = "Delete";
@@ -545,17 +516,7 @@ void App::extraDataScreen()
         if (result.key == KEY_A) {
             const int choice = ui::menu(
                 {{"Back Up and Restore", false, true}, {"Delete", true, true}},
-                [&](int focus) {
-                    ui::drawTopChrome(name, ui::Icon::Folder, ui::color::IconOrange);
-                    ui::drawPanel();
-                    ui::drawPanelText(focus == 0
-                                          ? "Backups go in Checkpoint's extdata "
-                                            "folder, so either app can restore "
-                                            "them."
-                                          : "Deletes the extra data. The game "
-                                            "makes it again when it next starts.",
-                                      ui::TopPanel);
-                });
+                [&](int) { drawDetails(extData); });
             if (choice == 0) {
                 // Named after the game when it is installed, as Checkpoint
                 // names it; otherwise after the extra data's own icon.
@@ -576,11 +537,7 @@ void App::extraDataScreen()
             }
         }
         if (!confirmDanger("Delete", "Delete the extra data of " + name + "?",
-                           {{"Downloaded content, courses, StreetPass data and "
-                             "settings kept outside the save go. The save "
-                             "itself stays.",
-                             ui::color::Text, 0.5f, 4}},
-                           "Delete", extData.icon)) {
+                           "Delete")) {
             continue;
         }
         std::string error;
@@ -597,7 +554,7 @@ void App::ticketsScreen()
     while (ui::keepRunning() && !quit_) {
         const titles::Index index = titles::indexOf(library_.titles);
         const std::vector<uint64_t> unusedList =
-            titles::unusedTickets(library_.tickets, library_.titles);
+            library::unusedTickets(library_);
         const std::set<uint64_t> unused(unusedList.begin(), unusedList.end());
         std::vector<uint64_t> shown = library_.tickets;
         std::stable_sort(shown.begin(), shown.end(), [&](uint64_t a, uint64_t b) {
@@ -608,7 +565,7 @@ void App::ticketsScreen()
 
         ui::ListSpec spec;
         spec.title = "Tickets";
-        spec.emptyText = "There are no tickets for user software.";
+        spec.emptyText = "No tickets.";
         for (const uint64_t ticket : shown) {
             ui::ListItem item;
             item.label = titles::displayName(ticket, index);
@@ -622,14 +579,10 @@ void App::ticketsScreen()
             }
             spec.items.push_back(item);
         }
-        spec.drawTop = [&](int highlighted) {
+        // The list and the menu for one ticket show the same facts.
+        const auto drawDetails = [&](uint64_t ticket) {
             ui::drawTopChrome("Tickets", ui::Icon::Lock, ui::color::IconGrey);
             ui::drawPanel();
-            if (highlighted < 0 || highlighted >= static_cast<int>(shown.size())) {
-                ui::drawPanelText(spec.emptyText, ui::TopPanel);
-                return;
-            }
-            const uint64_t ticket = shown[highlighted];
             const auto own = index.find(ticket);
             const auto game = index.find(cia::baseTitle(ticket));
             const std::vector<uint16_t> noIcon;
@@ -640,25 +593,29 @@ void App::ticketsScreen()
             const float left = ui::TopPanel.x + 18;
             const float top = ui::TopPanel.y + 12;
             ui::drawTitleIcon(icon, left, top, ui::Icon::Lock);
+            // The name alone, level with the icon's middle; the list says
+            // the kind.
             ui::drawMarquee(titles::displayName(ticket, index), left + 60,
-                            top + 2, 0.62f, ui::color::InkStrong, 280);
-            ui::drawText(cia::kindName(cia::kind(ticket)), left + 60, top + 30,
-                         ui::type::Small, ui::color::InkSoft);
-            // Tight under the 48 px icon, so a two-line note still fits.
-            float y = ui::drawTagRow(left, top + 52, 96, "Title ID",
-                                     cia::titleIdText(ticket));
+                            top + (48 - ui::lineHeight(0.62f)) / 2, 0.62f,
+                            ui::color::InkStrong, 280);
+            const float y = ui::drawTagRow(left, top + 60, 96, "Title ID",
+                                           cia::titleIdText(ticket));
             const bool isUnused = unused.count(ticket) != 0;
-            y = ui::drawTagRow(left, y, 96, "Software",
-                               isUnused ? "Not installed" : "Installed",
-                               isUnused ? ui::color::Neutral : ui::color::Tag);
-            ui::drawWrapped(isUnused
-                                ? "Safe to delete. Installing a CIA again "
-                                  "brings its ticket back."
-                                : "The software will not start without its "
-                                  "ticket.",
-                            left, y, ui::type::Tiny,
-                            isUnused ? ui::color::InkSoft : ui::color::Caution,
-                            ui::TopPanel.w - 36, 2);
+            // Without the SD card's list, whether it is installed is unknown.
+            ui::drawTagRow(left, y, 96, "Software",
+                           !library_.sdListed ? "Unknown"
+                           : isUnused         ? "Not installed"
+                                              : "Installed",
+                           isUnused ? ui::color::Neutral : ui::color::Tag);
+        };
+        spec.drawTop = [&](int highlighted) {
+            if (highlighted < 0 || highlighted >= static_cast<int>(shown.size())) {
+                ui::drawTopChrome("Tickets", ui::Icon::Lock, ui::color::IconGrey);
+                ui::drawPanel();
+                ui::drawEmblem(ui::Icon::Lock, ui::color::IconGrey);
+                return;
+            }
+            drawDetails(shown[highlighted]);
         };
         if (!unusedList.empty()) {
             spec.action = "Delete Unused";
@@ -676,20 +633,9 @@ void App::ticketsScreen()
         }
         const uint64_t ticket = shown[result.index];
         const std::string name = titles::displayName(ticket, index);
-        const bool isUnused = unused.count(ticket) != 0;
         const int choice = ui::menu(
             {{"Export to SD Card", false, true}, {"Delete", true, true}},
-            [&](int focus) {
-                ui::drawTopChrome(name, ui::Icon::Lock, ui::color::IconGrey);
-                ui::drawPanel();
-                ui::drawPanelText(focus == 0
-                                      ? "Saves the ticket as " +
-                                            cia::titleIdText(ticket) +
-                                            ".tik in sdmc:/3ds/3dsDL/tickets/, "
-                                            "to install again with Files."
-                                      : "Deletes the ticket from the console.",
-                                  ui::TopPanel);
-            });
+            [&](int) { drawDetails(ticket); });
         if (choice == 0) {
             std::string path;
             std::string error;
@@ -709,14 +655,16 @@ void App::ticketsScreen()
         if (choice != 1) {
             continue;
         }
-        std::vector<ui::Paragraph> body;
-        body.push_back({isUnused ? "Its software is not installed."
-                                 : name + " will not start until it is "
-                                          "installed again with its ticket.",
-                        isUnused ? ui::color::Text : ui::color::Warning, 0.5f,
-                        3});
-        if (!confirmDanger("Delete", "Delete the ticket for " + name + "?",
-                           body, "Delete")) {
+        // Installed software does not start without its ticket. Asked
+        // fresh, so a misread list never words it as harmless.
+        const bool needed = library::installedAnywhere(ticket) ||
+                            library_.onSdCard.count(ticket) != 0 ||
+                            unused.count(ticket) == 0;
+        if (!confirmDanger("Delete",
+                           needed ? "Delete the ticket " + name +
+                                        " needs to start?"
+                                  : "Delete the ticket for " + name + "?",
+                           "Delete")) {
             continue;
         }
         std::string error;
@@ -729,30 +677,46 @@ void App::ticketsScreen()
 
 void App::deleteUnusedTickets()
 {
-    const std::vector<uint64_t> unused =
-        titles::unusedTickets(library_.tickets, library_.titles);
+    // Decided again from scratch, never from what the screens showed: a
+    // misread list of installed software makes the tickets games need to
+    // start look unused (a user lost 256 that way).
+    std::vector<uint64_t> unused;
+    std::string error;
+    bool checked = false;
+    tasks::busy("Tickets", "Checking which tickets are unused...",
+                [&]() { checked = library::checkUnusedTickets(unused, error); });
+    if (!checked) {
+        ui::message("Nothing Deleted", error, ui::Tone::Error);
+        reloadLibrary();
+        return;
+    }
     if (unused.empty()) {
         ui::message("Nothing to Delete", "Every ticket belongs to installed "
                                          "software.");
+        reloadLibrary();
         return;
     }
     if (!confirmDanger("Delete",
                        "Delete " + plural(unused.size(), "unused ticket") + "?",
-                       {{"They belong to software that is no longer installed. "
-                         "Installing a CIA again brings its ticket back.",
-                         ui::color::Text, 0.5f, 3}},
                        "Delete")) {
         return;
     }
     size_t deleted = 0;
-    std::string error;
-    tasks::busy("Delete", "Deleting unused tickets...", [&]() {
-        for (const uint64_t ticket : unused) {
-            if (library::deleteTicket(ticket, error)) {
-                ++deleted;
+    tasks::busy(
+        "Delete", "Deleting unused tickets...",
+        [&](tasks::Busy &busy) {
+            busy.total = unused.size();
+            for (const uint64_t ticket : unused) {
+                // Once more just before it goes, in case something was
+                // installed meanwhile.
+                if (!library::installedAnywhere(ticket) &&
+                    library::deleteTicket(ticket, error)) {
+                    ++deleted;
+                }
+                busy.done.fetch_add(1);
             }
-        }
-    });
+        },
+        false);
     if (deleted == unused.size()) {
         ui::message("Tickets Deleted", plural(deleted, "unused ticket") +
                                            " deleted.",
@@ -772,7 +736,8 @@ void App::cleanUpScreen()
     while (ui::keepRunning() && !quit_) {
         const size_t pending = library_.pending.size();
         const size_t unused =
-            titles::unusedTickets(library_.tickets, library_.titles).size();
+            library::unusedTickets(library_).size();
+        const size_t saved = library::deletedTicketCount();
         ui::ScreenSpec spec;
         spec.back = "Back";
         const auto add = [&](ui::Rect rect, const std::string &label,
@@ -786,51 +751,42 @@ void App::cleanUpScreen()
             control.scale = ui::type::Small + 0.06f;
             spec.controls.push_back(control);
         };
-        add({22, 30, 276, 44}, "Remove Unfinished Installs", pending > 0);
-        add({22, 86, 276, 44}, "Delete Unused Tickets", unused > 0);
+        // Centred between the top and the tabs.
+        add({22, 26, 276, 44}, "Remove Unfinished Installs", pending > 0);
+        add({22, 82, 276, 44}, "Delete Unused Tickets", unused > 0);
+        add({22, 138, 276, 44}, "Restore Deleted Tickets", saved > 0);
+        spec.controls.back().icon = ui::Icon::History;
+        spec.controls.back().iconColor = ui::color::IconGreen;
         spec.drawTop = [&]() {
             ui::drawTopChrome("Clean Up", ui::Icon::Trash, ui::color::IconRed);
             ui::drawPanel();
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::drawWrapped(
-                          "A stopped install can leave an unfinished entry "
-                          "that blocks installing the software again.",
-                          left, ui::TopPanel.y + 12, ui::type::Small,
-                          ui::color::Ink, ui::TopPanel.w - 36, 3) +
-                      10;
-            y = ui::drawTagRow(left, y, 110, "Unfinished",
-                               plural(pending, "install"),
-                               pending > 0 ? ui::color::Badge : ui::color::Tag);
-            ui::drawTagRow(left, y, 110, "Unused", plural(unused, "ticket"));
-        };
-        spec.drawBottom = [&]() {
-            ui::drawWrapped(pending + unused == 0
-                                ? "Nothing needs cleaning up."
-                                : "Installed software and its data are not "
-                                  "touched.",
-                            160, 150, ui::type::Tiny, ui::color::InkSoft, 270,
-                            2, C2D_AlignCenter);
+            ui::drawFacts({{"Unfinished", plural(pending, "install"),
+                            pending > 0 ? ui::color::Badge : ui::color::Tag},
+                           {"Unused", plural(unused, "ticket")},
+                           {"Saved", plural(saved, "deleted ticket")}});
         };
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         if (result.choice == 0) {
             if (!confirmDanger("Clean Up",
                                "Remove " + plural(pending, "unfinished install") +
                                    "?",
-                               {{"What these installs left behind is removed "
-                                 "so the software can be installed again.",
-                                 ui::color::Text, 0.5f, 3}},
                                "Remove")) {
                 continue;
             }
             size_t removed = 0;
             std::string error;
-            tasks::busy("Clean Up", "Removing unfinished installs...", [&]() {
-                for (const library::PendingTitle &title : library_.pending) {
-                    if (library::deletePending(title, error)) {
-                        ++removed;
+            tasks::busy(
+                "Clean Up", "Removing unfinished installs...",
+                [&](tasks::Busy &busy) {
+                    busy.total = library_.pending.size();
+                    for (const library::PendingTitle &title : library_.pending) {
+                        if (library::deletePending(title, error)) {
+                            ++removed;
+                        }
+                        busy.done.fetch_add(1);
                     }
-                }
-            });
+                },
+                false);
             ui::message(removed == pending ? "Cleaned Up" : "Some Remain",
                         plural(removed, "unfinished install") + " removed.",
                         removed == pending ? ui::Tone::Success
@@ -839,6 +795,20 @@ void App::cleanUpScreen()
             reloadLibrary();
         } else if (result.choice == 1) {
             deleteUnusedTickets();
+        } else if (result.choice == 2) {
+            std::string error;
+            size_t restored = 0;
+            tasks::busy("Tickets", "Restoring deleted tickets...", [&]() {
+                restored = library::restoreDeletedTickets(error);
+            });
+            ui::message(restored == saved ? "Tickets Restored"
+                                          : "Some Tickets Not Restored",
+                        plural(restored, "ticket") + " of " +
+                            std::to_string(saved) + " restored.",
+                        restored == saved ? ui::Tone::Success
+                                          : ui::Tone::Warning,
+                        error);
+            reloadLibrary();
         } else {
             return;
         }
@@ -857,8 +827,7 @@ void App::importSeeds()
     if (path.empty()) {
         ui::message("No seeddb.bin Found",
                     "Put a seeddb.bin in sdmc:/, sdmc:/3ds/ or "
-                    "sdmc:/3ds/3dsDL/ and try again. A single game's seed can "
-                    "also be fetched from Nintendo with Get Seed in Software.",
+                    "sdmc:/3ds/3dsDL/ and try again.",
                     ui::Tone::Info);
         return;
     }
@@ -882,25 +851,26 @@ void App::importSeeds()
     ui::Dialog dialog;
     dialog.header = "Seeds";
     dialog.title = "Add seeds for " + plural(wanted.size(), "installed game") +
-                   "?";
+                   " from " + path + "?";
     dialog.tone = ui::Tone::Info;
-    dialog.body.push_back({"From " + path + ", which holds " +
-                               plural(entries.size(), "seed") +
-                               ". Only the installed games' seeds are added.",
-                           ui::color::Text, 0.5f, 3});
     dialog.buttons = {"Add", "Cancel"};
     dialog.cancelButton = 1;
     if (ui::choose(dialog) != 0) {
         return;
     }
     size_t added = 0;
-    tasks::busy("Seeds", "Adding seeds...", [&]() {
-        for (const titles::SeedEntry &entry : wanted) {
-            if (installer::addSeed(entry.titleId, entry.seed.data(), error)) {
-                ++added;
+    tasks::busy(
+        "Seeds", "Adding seeds...",
+        [&](tasks::Busy &busy) {
+            busy.total = wanted.size();
+            for (const titles::SeedEntry &entry : wanted) {
+                if (installer::addSeed(entry.titleId, entry.seed.data(), error)) {
+                    ++added;
+                }
+                busy.done.fetch_add(1);
             }
-        }
-    });
+        },
+        false);
     ui::message(added == wanted.size() ? "Seeds Added" : "Some Seeds Not Added",
                 plural(added, "seed") + " added.",
                 added == wanted.size() ? ui::Tone::Success : ui::Tone::Warning,
