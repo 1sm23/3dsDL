@@ -161,26 +161,29 @@ class Elf:
 
 
 def find_elf(version):
-    with open(os.path.join(ROOT, "VERSION")) as file:
-        local = file.read().strip()
-    built = os.path.join(ROOT, "dist", "3dsDL.elf")
-    if version == local and os.path.exists(built):
-        return built
+    """The release's ELF; a local build's only for a version not released."""
     cache = os.path.join(os.path.expanduser(os.environ.get("XDG_CACHE_HOME", "~/.cache")),
                          "3dsDL", version)
     path = os.path.join(cache, "3dsDL.elf")
-    if not os.path.exists(path):
-        url = f"{RELEASES}/v{version}/3dsDL.elf"
-        print(f"Downloading {url}", file=sys.stderr)
-        os.makedirs(cache, exist_ok=True)
-        try:
-            with urllib.request.urlopen(url) as response, open(path + ".part", "wb") as out:
-                shutil.copyfileobj(response, out)
-        except OSError as error:
-            fail(f"no 3dsDL.elf for {version} ({error}). Older releases have "
-                 "none: run make at that tag in the build image named in "
-                 "scripts/build.sh, then pass --elf.")
-        os.replace(path + ".part", path)
+    if os.path.exists(path):
+        return path
+    url = f"{RELEASES}/v{version}/3dsDL.elf"
+    print(f"Downloading {url}", file=sys.stderr)
+    os.makedirs(cache, exist_ok=True)
+    try:
+        with urllib.request.urlopen(url) as response, open(path + ".part", "wb") as out:
+            shutil.copyfileobj(response, out)
+    except OSError as error:
+        with open(os.path.join(ROOT, "VERSION")) as file:
+            local = file.read().strip()
+        built = os.path.join(ROOT, "dist", "3dsDL.elf")
+        if version == local and os.path.exists(built):
+            print(f"Not released; using {os.path.relpath(built)}", file=sys.stderr)
+            return built
+        fail(f"no 3dsDL.elf for {version} ({error}). Older releases have "
+             "none: run make at that tag in the build image named in "
+             "scripts/build.sh, then pass --elf.")
+    os.replace(path + ".part", path)
     return path
 
 
@@ -280,7 +283,10 @@ def main():
     print(" ".join(heading) + f", {report.get('what', 'crash')}"
           + (f" on the {report['thread']} thread" if report.get("thread") else "")
           + (f", {report['time']}" if report.get("time") else ""))
-    print(f"From {report['kind']}, symbols {os.path.relpath(path)}")
+    shown = os.path.relpath(path)
+    if shown.startswith(".."):
+        shown = path.replace(os.path.expanduser("~"), "~", 1)
+    print(f"From {report['kind']}, symbols {shown}")
     if report.get("process"):
         print(f"Process {report['process']}")
     if report["screens"]:
