@@ -162,7 +162,15 @@ size_t collect(char *data, size_t size, size_t count, void *output)
     return size * count;
 }
 
-bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message)
+// Ends a transfer once stop is set.
+int stopWhenAsked(void *stop, curl_off_t, curl_off_t, curl_off_t,
+                  curl_off_t)
+{
+    return static_cast<const std::atomic<bool> *>(stop)->load() ? 1 : 0;
+}
+
+bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message,
+                  const std::atomic<bool> *stop)
 {
     CURL *curl = curl_easy_init();
     if (curl == nullptr) {
@@ -181,11 +189,21 @@ bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message)
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, collect);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
+    if (stop != nullptr) {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, stopWhenAsked);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA,
+                         const_cast<std::atomic<bool> *>(stop));
+    }
     const CURLcode code = curl_easy_perform(curl);
     long status = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
     curl_easy_cleanup(curl);
 
+    if (code == CURLE_ABORTED_BY_CALLBACK) {
+        message = "The seed lookup was stopped.";
+        return false;
+    }
     if (code != CURLE_OK) {
         message = std::string("Could not reach Nintendo's seed server: ") +
                   curl_easy_strerror(code) + ".";
@@ -204,17 +222,27 @@ bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message)
     return true;
 }
 
+// Creates the SD card's title database when AM says there is none, as on
+// a card that has never had a title installed, right before an install
+// needs it, the way FBI does. Never at startup: a database that exists but
+// is not available yet must not be replaced by an empty one.
+void prepareTitleDatabase(FS_MediaType media)
+{
+    bool available = true;
+    if (media == MEDIATYPE_SD &&
+        R_SUCCEEDED(AM_QueryAvailableExternalTitleDatabase(&available)) &&
+        !available) {
+        AM_InitializeExternalTitleDatabase(false);
+    }
+}
+
 } // namespace
 
 void init()
 {
     startResult = amInit();
     started = R_SUCCEEDED(startResult);
-    if (started) {
-        // Creates the SD card's title database when it is missing, as on a
-        // card that has never had a title installed. Leaves one that exists.
-        AM_InitializeExternalTitleDatabase(false);
-    }
+
 }
 
 void exit()
@@ -273,6 +301,7 @@ Result installCia(const std::string &path, uint64_t titleId,
 
     const u64 startTime = osGetTime();
     Handle target = 0;
+    prepareTitleDatabase(destination(titleId));
     code = AM_StartCiaInstall(destination(titleId), &target);
     if (R_FAILED(code)) {
         return failure(code, "The install could not start.");
@@ -337,6 +366,7 @@ bool StreamInstall::begin()
         return false;
     }
     startTime_ = osGetTime();
+    prepareTitleDatabase(destination(info.titleId));
     const ::Result code = AM_StartCiaInstall(destination(info.titleId), &target_);
     if (R_FAILED(code)) {
         result_ = failure(code, "The install could not start.");
@@ -464,7 +494,8 @@ int64_t requiredSpace(const std::string &path, uint64_t titleId)
     return static_cast<int64_t>(space);
 }
 
-bool installSeed(uint64_t titleId, std::string &message)
+bool installSeed(uint64_t titleId, std::string &message,
+                 const std::atomic<bool> *stop)
 {
     const std::string name = cia::titleIdText(titleId) + ".dat";
     uint8_t seed[SeedSize];
@@ -472,7 +503,7 @@ bool installSeed(uint64_t titleId, std::string &message)
     if (readSeedFile("sdmc:/3ds/3dsDL/seeds/" + name, seed) ||
         readSeedFile("sdmc:/fbi/seed/" + name, seed)) {
         source = "from the SD card";
-    } else if (downloadSeed(titleId, seed, message)) {
+    } else if (downloadSeed(titleId, seed, message, stop)) {
         source = "from Nintendo";
     } else {
         return false;

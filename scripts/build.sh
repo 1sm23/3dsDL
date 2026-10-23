@@ -102,7 +102,8 @@ step "Cleaning previous build outputs"
 run_builder make clean
 
 step "Compiling 3dsDL with ${BUILD_JOBS} job(s)"
-run_builder make -j"${BUILD_JOBS}"
+# THREEDSDL_EXTRA_DEFINES makes test builds, e.g. -DTHREEDSDL_FAULTS.
+run_builder make -j"${BUILD_JOBS}" EXTRA_DEFINES="${THREEDSDL_EXTRA_DEFINES:-}"
 
 step "Creating Home Menu metadata and banner"
 # The HOME Menu banner is the animated 3D model from resources/banner/ (see

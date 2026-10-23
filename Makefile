@@ -27,6 +27,8 @@ ICON            := resources/icon-3dsdl.png
 ARCH      := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS    := -g -Wall -Wextra -O2 -mword-relocations -ffunction-sections $(ARCH)
 CFLAGS    += $(INCLUDE) -D__3DS__ -DAPP_VERSION=\"$(APP_VERSION)\" -Wno-psabi
+# Test builds add defines here, e.g. make EXTRA_DEFINES=-DTHREEDSDL_FAULTS.
+CFLAGS    += $(EXTRA_DEFINES)
 CXXFLAGS  := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
