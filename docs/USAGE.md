@@ -43,7 +43,7 @@ Files browses the SD card. Tap a row to select it and tap again (or press <kbd>A
 
 Titles lists what's installed, like Data Management in System Settings.
 
-- **Software** and **Updates and DLC** launch, delete, and fetch a game's seed.
+- **Software** and **Updates and DLC** launch, delete, and fetch a game's seed. <kbd>X</kbd> sorts them by name or size, in either direction, and shows only the SD card or system memory (Software) or only updates or DLC.
 - **Save Data** and **Extra Data** back up, restore and browse. Backups go in `sdmc:/3ds/Checkpoint/saves/` and `.../extdata/`, named the way Checkpoint names them, so either app restores the other's. A restore backs up the current data first.
 - **Tickets** exports a title's ticket to `sdmc:/3ds/3dsDL/tickets/` or deletes unused ones. Install a `.tik` from Files.
 - **Clean Up** removes unfinished installs, which stop a CIA from installing again, and **Seeds** imports a `seeddb.bin`.

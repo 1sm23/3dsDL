@@ -41,6 +41,21 @@ std::string plural(uint64_t count, const std::string &word)
     return std::to_string(count) + " " + word + (count == 1 ? "" : "s");
 }
 
+std::string sortDescription(fs::SortOrder order, bool reverse)
+{
+    switch (order) {
+    case fs::SortOrder::Size:
+        return reverse ? "Smallest First" : "Largest First";
+    case fs::SortOrder::Date:
+        return reverse ? "Oldest First" : "Newest First";
+    case fs::SortOrder::Type:
+        return reverse ? "Type, Z to A" : "Type, A to Z";
+    case fs::SortOrder::Name:
+        break;
+    }
+    return reverse ? "Name, Z to A" : "Name, A to Z";
+}
+
 void drawLabelledPanel(float y, float height, const std::string &label,
                        const std::string &value, u32 valueColor)
 {

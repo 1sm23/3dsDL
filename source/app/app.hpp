@@ -124,6 +124,8 @@ private:
     // not be read.
     bool reloadLibrary();
     void titleList(bool software);
+    // Order (saved) and what the list shows (until 3dsDL closes).
+    void titleSortScreen(bool software);
     void titleOptions(titles::Title title);
     void extraDataScreen();
     void ticketsScreen();
@@ -183,6 +185,8 @@ private:
     library::Loader libraryLoader_;
     // Goes up each time library_ changes, so screens know to look again.
     uint32_t libraryGeneration_ = 0;
+    titles::Show softwareShow_ = titles::Show::All;
+    titles::Show addOnShow_ = titles::Show::All;
     std::vector<QueuedLink> queue_;
     uint64_t nextQueueId_ = 1;
     bool updateAvailable_ = false;

@@ -319,18 +319,58 @@ void App::titlesScreen()
     }
 }
 
+namespace {
+
+struct ShowChoice {
+    titles::Show show;
+    const char *label; // on the sort screen
+    const char *title; // the list's, while it shows only these
+    const char *empty;
+};
+
+const ShowChoice SoftwareShows[] = {
+    {titles::Show::All, "All Software", "Software", "No software installed."},
+    {titles::Show::SdCard, "SD Card", "Software on SD Card",
+     "No software on the SD card."},
+    {titles::Show::SystemMemory, "System Memory", "Software in System Memory",
+     "No software in system memory."},
+};
+const ShowChoice AddOnShows[] = {
+    {titles::Show::All, "Updates and DLC", "Updates and DLC",
+     "No updates or DLC installed."},
+    {titles::Show::Updates, "Updates", "Updates", "No updates installed."},
+    {titles::Show::Dlc, "DLC", "DLC", "No DLC installed."},
+};
+
+const ShowChoice &showChoice(bool software, titles::Show show)
+{
+    const ShowChoice *choices = software ? SoftwareShows : AddOnShows;
+    for (int index = 0; index < 3; ++index) {
+        if (choices[index].show == show) {
+            return choices[index];
+        }
+    }
+    return choices[0];
+}
+
+} // namespace
+
 void App::titleList(bool software)
 {
     int cursor = 0;
+    uint64_t follow = 0; // a title to land on after the order changes
     while (ui::keepRunning() && !quit_) {
         // Rebuilt whenever more titles arrive, so the list fills in while
         // it is open; rows are keyed by Title ID, so the highlight stays.
         titles::Index index;
         std::vector<const titles::Title *> shown;
+        const titles::Show show = software ? softwareShow_ : addOnShow_;
         ui::ListSpec spec;
-        spec.title = software ? "Software" : "Updates and DLC";
-        spec.emptyText = software ? "No software installed."
-                                  : "No updates or DLC installed.";
+        spec.title = showChoice(software, show).title;
+        spec.emptyText = showChoice(software, show).empty;
+        spec.action = "Sort";
+        spec.actionKey = "X";
+        spec.actionKeys = KEY_X;
         uint32_t seen = libraryGeneration_ - 1;
         spec.update = [&]() {
             if (seen == libraryGeneration_) {
@@ -340,11 +380,13 @@ void App::titleList(bool software)
             index = titles::indexOf(library_.titles);
             shown.clear();
             for (const titles::Title &title : library_.titles) {
-                if (titles::isSoftware(title.id) == software) {
+                if (titles::isSoftware(title.id) == software &&
+                    titles::shows(show, title)) {
                     shown.push_back(&title);
                 }
             }
-            titles::sortByName(shown, index);
+            titles::sortTitles(shown, index, settings_.titleSort,
+                               settings_.titleSortReverse);
             spec.items.clear();
             for (const titles::Title *title : shown) {
                 ui::ListItem item;
@@ -367,6 +409,12 @@ void App::titleList(bool software)
             return true;
         };
         spec.update();
+        for (size_t row = 0; follow != 0 && row < shown.size(); ++row) {
+            if (shown[row]->id == follow) {
+                cursor = static_cast<int>(row);
+            }
+        }
+        follow = 0;
         spec.loading = [&]() {
             std::string ignored;
             return !library_.complete && !libraryLoader_.failed(ignored);
@@ -384,11 +432,76 @@ void App::titleList(bool software)
                          *shown[highlighted], index);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
-        if (result.key != KEY_A || result.index < 0 ||
-            result.index >= static_cast<int>(shown.size())) {
+        const bool onRow =
+            result.index >= 0 && result.index < static_cast<int>(shown.size());
+        if (result.key == KEY_X) {
+            follow = onRow ? shown[result.index]->id : 0;
+            cursor = 0;
+            titleSortScreen(software);
+            continue;
+        }
+        if (result.key != KEY_A || !onRow) {
             return;
         }
         titleOptions(*shown[result.index]);
+    }
+}
+
+void App::titleSortScreen(bool software)
+{
+    titles::Show &show = software ? softwareShow_ : addOnShow_;
+    const ShowChoice *shows = software ? SoftwareShows : AddOnShows;
+    int focus = settings_.titleSort == fs::SortOrder::Size ? 1 : 0;
+    // Picks apply at once and the screen stays, like the files' Sort.
+    while (ui::keepRunning() && !quit_) {
+        ui::ScreenSpec spec;
+        spec.back = "Back";
+        const fs::SortOrder orders[] = {fs::SortOrder::Name, fs::SortOrder::Size};
+        for (int index = 0; index < 2; ++index) {
+            ui::Control control;
+            control.rect = {index == 0 ? 26.0f : 164.0f, 29, 130, 40};
+            control.label = index == 0 ? "Name" : "Size";
+            control.style = settings_.titleSort == orders[index]
+                                ? ui::Style::Chosen
+                                : ui::Style::Normal;
+            spec.controls.push_back(control);
+        }
+        ui::Control reverse;
+        reverse.rect = {26, 81, 268, 40};
+        reverse.label = "Reverse Order";
+        reverse.style = settings_.titleSortReverse ? ui::Style::Chosen
+                                                   : ui::Style::Normal;
+        spec.controls.push_back(reverse);
+        for (int index = 0; index < 3; ++index) {
+            ui::Control control;
+            control.rect = {26.0f + index * 92.0f, 139, 84, 40};
+            control.label = shows[index].label;
+            control.style =
+                shows[index].show == show ? ui::Style::Chosen : ui::Style::Normal;
+            spec.controls.push_back(control);
+        }
+        spec.drawTop = [&]() {
+            ui::drawTopChrome("Sort", software ? ui::Icon::GameCard
+                                               : ui::Icon::Download,
+                              software ? ui::color::IconBlue : ui::color::IconGreen);
+            ui::drawPanel();
+            ui::drawFacts(
+                {{"Order", screens::sortDescription(settings_.titleSort,
+                                           settings_.titleSortReverse)},
+                 {"Showing", showChoice(software, show).label}});
+        };
+        const ui::ScreenResult result = ui::runScreen(spec, focus);
+        if (result.choice == 0 || result.choice == 1) {
+            settings_.titleSort = orders[result.choice];
+            persistSettings();
+        } else if (result.choice == 2) {
+            settings_.titleSortReverse = !settings_.titleSortReverse;
+            persistSettings();
+        } else if (result.choice >= 3 && result.choice < 6) {
+            show = shows[result.choice - 3].show;
+        } else {
+            return;
+        }
     }
 }
 

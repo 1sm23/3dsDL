@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cia.hpp"
+#include "fs_util.hpp"
 #include "ui.hpp"
 
 #include <cstdint>
@@ -23,6 +24,8 @@ namespace screens {
 
 std::string basename(const std::string &path);
 std::string plural(uint64_t count, const std::string &word);
+// How Files orders a folder, in words: "Name, A to Z", "Oldest First".
+std::string sortDescription(fs::SortOrder order, bool reverse);
 
 // A panel on the top screen with a small label above a wrapped value.
 void drawLabelledPanel(float y, float height, const std::string &label,
