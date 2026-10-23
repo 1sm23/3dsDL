@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "crash.hpp"
 #include "installer.hpp"
 #include "sound.hpp"
 #include "ui.hpp"
@@ -116,6 +117,7 @@ int main(int argc, char **argv)
     // The Homebrew Launcher passes the .3dsx's path, which an update
     // replaces.
     updater::setLaunchPath(argc > 0 ? argv[0] : nullptr);
+    crash::install(updater::runningAsCia());
     // Uses the New 3DS's faster clock and L2 cache when available. TLS and QR
     // decoding both benefit; on an Old 3DS this does nothing.
     osSetSpeedupEnable(true);

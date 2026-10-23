@@ -162,7 +162,7 @@ strip for a red button and a 30 px dark Cancel strip.
 | Delete | what goes and how big it is | destructive dialog |
 | History | the highlighted download in full | rows with Installed, Resume, Saved, Failed badges |
 | Settings | the highlighted section's current values | About and Updates bars, four tiles, Back / Report Issue |
-| Report an Issue | QR code, name and address of the highlighted place | Report a Bug, Discord Server, Developer on X; the Details row to mention; Back |
+| Report an Issue | QR code, name and address of the highlighted place | Report a Bug, Discord Server, Developer on X; the Details row to mention, and the Crash Log row when there is one; Back |
 | Setting choice | the setting's icon | recessed options, the current one chosen |
 | Console clock | console time, internet time, zone | Set the Clock, Change Time Zone |
 | Download folder | current and selected folder | presets and recent folders |

@@ -64,7 +64,7 @@ body:
     attributes:
       label: Error message
       description: |
-        The exact words on the screen, including any code like `0xD8E007F7`. If the console crashed into a Luma3DS exception screen, a photo of it helps a lot.
+        The exact words on the screen, including any code like `0xD8E007F7`. If the console crashed into an error screen, a photo of it helps a lot.
       render: text
 
   - type: input
@@ -79,6 +79,8 @@ body:
     attributes:
       label: Screenshots or anything else
       description: |
+        If 3dsDL crashed, drag in `sdmc:/3ds/3dsDL/crash.txt` (Receive can download it to your phone or computer). On versions before 0.8.2, the newest file in `sdmc:/luma/dumps/arm11/` does the same job.
+
         Rosalina can take screenshots of both screens: press L + Down + SELECT, then Take screenshot. They're saved in `sdmc:/luma/screenshots/`. Drag them in here.
 
   - type: checkboxes

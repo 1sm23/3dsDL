@@ -137,7 +137,7 @@ run_cia_tool makerom \
     -major "${VERSION_MAJOR}" -minor "${VERSION_MINOR}" -micro "${VERSION_MICRO}"
 
 step "Validating build artifacts"
-for artifact in 3dsDL.3dsx 3dsDL.smdh 3dsDL.cia; do
+for artifact in 3dsDL.3dsx 3dsDL.smdh 3dsDL.cia 3dsDL.elf; do
     [[ -s "${PROJECT_ROOT}/${artifact}" ]] || fail "Missing or empty artifact: ${artifact}"
     printf 'Found %s\n' "${artifact}"
 done
@@ -147,6 +147,9 @@ mkdir -p "${DIST_DIR}"
 cp "${PROJECT_ROOT}/3dsDL.3dsx" "${DIST_DIR}/3dsDL.3dsx"
 cp "${PROJECT_ROOT}/3dsDL.smdh" "${DIST_DIR}/3dsDL.smdh"
 cp "${PROJECT_ROOT}/3dsDL.cia" "${DIST_DIR}/3dsDL.cia"
+# The symbols for this build, so scripts/crash.py can name the functions in
+# a crash log or a Luma3DS dump. make clean below removes the original.
+cp "${PROJECT_ROOT}/3dsDL.elf" "${DIST_DIR}/3dsDL.elf"
 (
     cd "${DIST_DIR}"
     if command -v shasum >/dev/null 2>&1; then
@@ -165,4 +168,5 @@ printf '\nBuild of 3dsDL %s complete.\n' "${VERSION}"
 printf '  3DSX:     %s\n' "${DIST_DIR}/3dsDL.3dsx"
 printf '  CIA:      %s\n' "${DIST_DIR}/3dsDL.cia"
 printf '  Metadata: %s\n' "${DIST_DIR}/3dsDL.smdh"
+printf '  Symbols:  %s\n' "${DIST_DIR}/3dsDL.elf"
 printf '  Checksum: %s\n' "${DIST_DIR}/3dsDL.sha256"

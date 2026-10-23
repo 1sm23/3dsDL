@@ -1,5 +1,6 @@
 #include "ui.hpp"
 
+#include "crash.hpp"
 #include "image.hpp"
 #include "platform.hpp"
 #include "sound.hpp"
@@ -1053,6 +1054,7 @@ void enterScreen(const std::string &id)
     // it) does not fade.
     if (id != lastScreen) {
         lastScreen = id;
+        crash::noteScreen(id);
         fromCapture = frameShown && captureFrom(0, GFX_TOP, 400) &&
                       captureFrom(1, GFX_BOTTOM, 320);
         fadeStart = now();

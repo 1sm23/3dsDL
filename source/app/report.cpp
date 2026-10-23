@@ -1,12 +1,15 @@
 #include "app.hpp"
 
+#include "crash.hpp"
 #include "feedback.hpp"
+#include "fs_util.hpp"
 #include "platform.hpp"
 #include "qr_code.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
 
 #include <string>
+#include <vector>
 
 // Settings > Report Issue: where to report a bug, join the Discord server or
 // reach the developer. Each place is a QR code on the top screen, since a report
@@ -32,6 +35,9 @@ void App::reportScreen()
     console.model = feedback::modelName(platform::systemModel());
     console.system = platform::systemVersion();
     const std::string details = feedback::summary(console);
+    // A crash log is too long for the code, so its path is shown for the
+    // report to attach.
+    const bool crashed = fs::fileExists(crash::LogPath);
 
     // The bug report link carries the details, so it is long and gets the
     // compact code. Should it ever not fit, the plain form still works.
@@ -98,9 +104,14 @@ void App::reportScreen()
         };
         // The details to mention, midway between the buttons and Back.
         spec.drawBottom = [&]() {
-            const ui::Rect panel = {13, 156, 294, 32};
+            const ui::Rect panel =
+                crashed ? ui::Rect {13, 143, 294, 58} : ui::Rect {13, 156, 294, 32};
             ui::drawPanel(panel);
-            ui::drawFacts({{"Details", details}}, panel);
+            std::vector<ui::Fact> facts = {{"Details", details}};
+            if (crashed) {
+                facts.push_back({"Crash Log", crash::LogPath});
+            }
+            ui::drawFacts(facts, panel);
         };
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);

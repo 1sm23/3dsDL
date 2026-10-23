@@ -26,6 +26,11 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - Never call `C2D_DrawImageAt` in screens (use `ui::drawImage`) and never query AM every frame.
 - Files keeps folder listings, folder totals and file dates in `fileIndex_` (`source/core/file_index`), saved to `sdmc:/3ds/3dsDL/index.bin` between runs. What loads is a first answer only: totals come back unverified and are added up again, listings are read again, and a date counts only while its file keeps its size. Bump `Version` in `file_index.cpp` when the saved form changes. Code in 3dsDL that writes, moves or removes something on the SD card calls `App::sdChanged(path)` afterwards. Writers outside Files are caught by `checkSdIndex` (free space moved), but a rename or same-size write is only caught by `sdChanged`.
 
+## Crash reports
+
+- A crash writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`), then the system's error screen shows as before. Report Issue names the file while it exists.
+- Releases carry `3dsDL.elf`, and `scripts/build.sh` leaves it in `dist/`. `python3 -I scripts/crash.py crash.txt` names the functions and lines; a Luma3DS dump works too, with `--version`.
+
 ## Hardware pitfalls
 
 - Using a new libctru service or hardware block needs `resources/3dsDL.rsf` updated in the same change. Azahar does not enforce the RSF, so a missing entry only crashes the CIA on a console.
