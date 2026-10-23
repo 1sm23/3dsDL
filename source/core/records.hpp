@@ -15,6 +15,13 @@
 // What happens after a CIA finishes downloading.
 enum class CiaAction { Ask, Install, InstallAndDelete, Keep };
 
+// One connection carries at most one TCP window per round trip, about
+// 300 KiB/s from a server 150 ms away, so large files are split across
+// several to add those up. Four stays under the six per server that
+// browsers open; Settings can lower it for servers or networks that
+// dislike it.
+constexpr int MaxDownloadConnections = 4;
+
 struct Settings {
     std::string destination = "sdmc:/";
     // UI language code. English is the default for existing installations.
@@ -23,6 +30,8 @@ struct Settings {
     bool keepAwake = true;
     bool offerZipExtraction = false;
     CiaAction afterCiaDownload = CiaAction::Ask;
+    // The most connections one download opens, 1 to MaxDownloadConnections.
+    int maxConnections = MaxDownloadConnections;
     // Ask GitHub for a newer 3dsDL each time it starts.
     bool checkForUpdates = true;
     // Interface sounds.
@@ -30,6 +39,10 @@ struct Settings {
     // Files screen.
     bool showHiddenFiles = false;
     fs::SortOrder fileSort = fs::SortOrder::Name;
+    bool fileSortReverse = false;
+    // Software and Updates and DLC lists: Name or Size.
+    fs::SortOrder titleSort = fs::SortOrder::Name;
+    bool titleSortReverse = false;
     // UTC offset used when setting the clock from the internet.
     bool timeZoneSet = false;
     int timeZoneMinutes = 0;

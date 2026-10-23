@@ -5,6 +5,9 @@
 #include "installer.hpp"
 #include "zip.hpp"
 
+#include <3ds.h>
+
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -37,9 +40,32 @@ fileops::Result fileOperation(
     const std::function<fileops::Result(fileops::Observer &)> &work,
     bool keepAwake);
 
-// Runs a short job that cannot be cancelled, such as asking a time server,
-// while showing a "please wait" screen.
+// Starts entry on a worker thread the way every job here runs: on the New
+// 3DS's third core when there is one, otherwise just below the main thread.
+// Returns nullptr when no thread could be made.
+Thread startWorker(ThreadFunc entry, void *argument);
+
+// Runs a short job that cannot be cancelled while showing a "please wait"
+// screen.
 void busy(const std::string &header, const std::string &title,
           const std::function<void()> &work);
+
+// What a busy job shares with its "please wait" screen.
+struct Busy {
+    // Set when the user cancels (or 3dsDL is closing); the job should
+    // notice soon and return early.
+    std::atomic<bool> cancel {false};
+    // done of total items, or bytes when bytes is set; a bar shows once
+    // total is above zero, and done alone shows as a running count.
+    std::atomic<uint64_t> done {0};
+    std::atomic<uint64_t> total {0};
+    std::atomic<bool> bytes {false};
+};
+
+// The same, with a Busy the job reports progress through. When cancellable,
+// B or the Cancel button sets busy.cancel. Returns false when the job was
+// asked to stop.
+bool busy(const std::string &header, const std::string &title,
+          const std::function<void(Busy &)> &work, bool cancellable);
 
 } // namespace tasks

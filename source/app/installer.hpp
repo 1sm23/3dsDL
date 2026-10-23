@@ -4,6 +4,7 @@
 
 #include <3ds.h>
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -87,8 +88,10 @@ int64_t requiredSpace(const std::string &path, uint64_t titleId);
 
 // Adds the seed a title needs to start. It is looked for in
 // sdmc:/3ds/3dsDL/seeds/<title id>.dat and FBI's sdmc:/fbi/seed/ first, then
-// fetched from Nintendo. message says what happened.
-bool installSeed(uint64_t titleId, std::string &message);
+// fetched from Nintendo. message says what happened. Setting stop ends the
+// fetch early.
+bool installSeed(uint64_t titleId, std::string &message,
+                 const std::atomic<bool> *stop = nullptr);
 
 // Adds a 16-byte seed for titleId, as from a seeddb.bin.
 bool addSeed(uint64_t titleId, const uint8_t *seed, std::string &error);

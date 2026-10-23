@@ -37,13 +37,13 @@ curl -T game.cia -H 'X-Requested-With: 3dsDL' 'http://192.168.1.20/api/file?path
 
 Files browses the SD card. Tap a row to select it and tap again (or press <kbd>A</kbd>) to open it. Pictures fill the top screen, text and config files open in a line editor, ZIPs show their contents, CIAs and tickets install, and anything else opens as hex.
 
-<kbd>X</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>Y</kbd> marks several entries, and <kbd>SELECT</kbd> has the folder options (paste, new folder or file, sorting, hidden files).
+<kbd>Y</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>SELECT</kbd> marks several entries, and <kbd>START</kbd> has the folder options (paste, new folder or file, hidden files). <kbd>X</kbd> (or Sort at the right of the folder's path) sorts by name, date, size or type, in either direction. Folders always come before files, and sorting by size adds up each folder in the background. Properties adds up a folder or the marked items.
 
 ## Titles
 
 Titles lists what's installed, like Data Management in System Settings.
 
-- **Software** and **Updates and DLC** launch, delete, and fetch a game's seed.
+- **Software** and **Updates and DLC** launch, delete, and fetch a game's seed. <kbd>X</kbd> sorts them by name or size, in either direction, and shows only the SD card or system memory (Software) or only updates or DLC.
 - **Save Data** and **Extra Data** back up, restore and browse. Backups go in `sdmc:/3ds/Checkpoint/saves/` and `.../extdata/`, named the way Checkpoint names them, so either app restores the other's. A restore backs up the current data first.
 - **Tickets** exports a title's ticket to `sdmc:/3ds/3dsDL/tickets/` or deletes unused ones. Install a `.tik` from Files.
 - **Clean Up** removes unfinished installs, which stop a CIA from installing again, and **Seeds** imports a `seeddb.bin`.
@@ -57,7 +57,7 @@ System titles never appear, so they can't be deleted from here.
 | Everywhere | <kbd>A</kbd> / <kbd>B</kbd> | Choose / back |
 | Home | <kbd>START</kbd> | Exit |
 | Lists | <kbd>L</kbd> / <kbd>R</kbd> | Page up / down |
-| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> | Options / mark / folder options |
+| Files | <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>SELECT</kbd> / <kbd>START</kbd> | Sort / options / mark / folder options |
 | Text editor | <kbd>A</kbd> / <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>START</kbd> | Edit line / new line / delete line / save |
 | Pictures | <kbd>L</kbd> / <kbd>R</kbd> | Previous / next picture |
 
@@ -68,6 +68,7 @@ Everything also works by touch, and lists scroll with a flick.
 | Setting | Default | |
 | --- | --- | --- |
 | Resume interrupted downloads | On | Keeps partial downloads to continue later |
+| Max connections | 4 | The most connections one download is split across, 1 to 4; lower it for servers that refuse several |
 | Stay awake while downloading | On | Pauses Sleep Mode so closing the lid doesn't stop Wi-Fi |
 | Offer to extract ZIP files | Off | Asks to extract a ZIP after it downloads |
 | After a CIA downloads | Ask | Ask, install, install and delete, or keep |
@@ -82,7 +83,7 @@ is missing, so updating the catalog never makes an older installation unusable.
 
 ## Reporting a problem
 
-**Settings → Report Issue** (or **About → Report an Issue**) shows a QR code for each place to get help. Scan it with a phone:
+**Settings → Report Issue** (or **About → Report Issue**) shows a QR code for each place to get help. Scan it with a phone:
 
 - **Report a Bug** opens the [bug report form](https://github.com/ankushKun/3dsDL/issues/new?template=bug.yml) with your 3dsDL version, CIA or 3DSX, console model and system version already filled in.
 - **Discord Server** is an [invite](https://discord.gg/axrWTjyAWG) to the developer's server, for questions, ideas and chatting with other users.

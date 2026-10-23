@@ -217,8 +217,11 @@ const C2D_Image *showPicture(const std::vector<uint16_t> &pixels,
 // Wi-Fi, connection, date, time and battery along the top of the top screen.
 void drawStatusBar();
 // Top screen background, status bar, icon and title, and the dotted line.
+// order is how the list on the bottom screen is sorted ("Largest First"),
+// set into the right end of the dotted line, over the panel's corner.
 void drawTopChrome(const std::string &title, Icon icon = Icon::None,
-                   u32 iconColor = color::Accent);
+                   u32 iconColor = color::Accent,
+                   const std::string &order = "");
 // The khaki information panel on the top screen (x 17..383, y 69..225 by
 // default).
 constexpr Rect TopPanel = {17, 69, 366, 156};
@@ -245,9 +248,14 @@ void drawFocus(const Rect &rect, float radius, float gap = 3.5f,
 
 enum class Tab { Left, Right, Full };
 Rect tabRect(Tab tab);
-// key is a button name drawn as a small white key cap before the label.
+// Where drawTab puts the tab for this label and key: the right tab grows
+// towards the middle, up to 150 px, when a long action needs it.
+Rect tabRect(Tab tab, const std::string &label, const std::string &key = "");
+// key is the button that also presses the tab, drawn as a small white key
+// cap before the label (the system font's own symbol for A, B, X and Y when
+// it has them). Tabs never take the D-pad ring, so every tab shows its key.
 void drawTab(Tab tab, const std::string &label, const std::string &key = "",
-             bool focused = false, bool pressed = false);
+             bool pressed = false);
 
 // A blue label tag; returns its width.
 float drawTag(float x, float y, const std::string &label,
@@ -262,6 +270,20 @@ void drawSpinner(float centerX, float centerY, float radius = 14);
 // Returns the y of the next line.
 float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
                  const std::string &value, u32 fill = color::Tag);
+
+// A fact about what is on screen: "Installed" and "0.8.2". Screens show
+// facts rather than sentences explaining themselves (docs/DESIGN.md).
+struct Fact {
+    std::string tag;
+    std::string value;
+    u32 fill = color::Tag;
+};
+// Tag rows centred in area, the tags as wide as the widest. Returns the y
+// below them.
+float drawFacts(const std::vector<Fact> &facts, const Rect &area = TopPanel);
+// A large icon centred in area, for a top screen whose bottom screen
+// already shows everything there is to say.
+void drawEmblem(Icon icon, u32 iconColor, const Rect &area = TopPanel);
 
 // --- Dialogs -------------------------------------------------------------------
 
@@ -286,6 +308,8 @@ struct Dialog {
     int cancelButton = -1; // returned for B; -1 means B returns -1
     // A 48x48 picture shown on the top screen, such as a title's icon.
     const C2D_Image *icon = nullptr;
+    // Draws the whole top screen instead of header, body and icon.
+    std::function<void()> drawTop;
 };
 
 // Shows dialog over the current screens until a button is chosen. Returns
@@ -317,12 +341,18 @@ struct ScreenSpec {
     std::string back;      // left tab, "" for none; B always returns Back
     std::string action;    // right tab, "" for none
     std::string actionKey; // key cap shown on the right tab, e.g. "START"
-    u32 actionKeys = 0;    // keys that also press the right tab
-    bool closeBar = false; // one full-width START Close bar instead of tabs
+    u32 actionKeys = 0;    // keys that also press the right tab; set one,
+                           // as the D-pad cannot reach tabs
+    bool closeBar = false; // one full-width START Close bar instead of tabs;
+                           // B does nothing there
     u32 extraKeys = 0;     // other keys that end the screen
     std::function<void()> drawTop;
     // Drawn on the bottom screen under the controls.
     std::function<void()> drawBottom;
+    // Called every frame before anything else; returns true when it changed
+    // the controls (enabled, labels, badges), for screens whose data is
+    // still loading.
+    std::function<bool()> update;
 };
 
 constexpr int ScreenBack = -1;
@@ -336,8 +366,8 @@ struct ScreenResult {
 };
 
 // Shows the controls until one is chosen by A or by touch (on release, as
-// on the console). focus is the control the D-pad ring starts on and ends
-// on.
+// on the console), or a tab by its key or touch. focus is the control the
+// D-pad ring starts on and ends on; the ring never goes to a tab.
 ScreenResult runScreen(const ScreenSpec &spec, int &focus);
 
 // Two columns of small buttons, or one column of big ones for up to four.
@@ -351,11 +381,11 @@ int menu(const std::vector<MenuItem> &items,
          const std::function<void(int)> &drawTop,
          const std::string &back = "Back");
 
-// One choice out of several, the current one drawn as chosen. Returns the
-// picked index, or -1 for Back.
-int chooseOption(const std::string &title, const std::string &description,
+// One choice out of several, the current one drawn as chosen. Picking one
+// returns its index at once; Back returns -1.
+int chooseOption(const std::string &title,
                  const std::vector<std::string> &options, int current,
-                 Icon icon = Icon::Wrench, u32 iconColor = color::IconGrey);
+                 Icon icon = Icon::Gear, u32 iconColor = color::IconGrey);
 
 // --- Lists ---------------------------------------------------------------------
 
@@ -368,11 +398,23 @@ struct ListItem {
     u32 iconColor = color::IconGrey;
     std::string badge; // replaces detail with a coloured badge
     u32 badgeColor = color::Badge;
+    // Names the row, so the highlight follows it when update reorders the
+    // rows; "" for lists that never change while open.
+    std::string key;
 };
 
 struct ListSpec {
     std::string header;   // unused, kept for older callers
-    std::string title;    // small heading above the list
+    std::string title;    // the top screen's title when drawTop is unset
+    // A small line above the list on the bottom screen, for what the top
+    // screen does not already say, such as the folder being browsed.
+    std::string heading;
+    // An action at the right end of the heading, as a key cap and a word
+    // like the tabs but plain, such as Files' Sort. Its keys or a tap on it
+    // close the list, reporting its key.
+    std::string headingAction;
+    std::string headingActionKey; // its key cap
+    u32 headingActionKeys = 0;
     std::vector<ListItem> items;
     std::string emptyText;
     std::string back = "Back";
@@ -383,8 +425,16 @@ struct ListSpec {
     u32 extraKeys = 0;     // keys besides A and B that close the list
     // A long press on a row reports this key with that row highlighted.
     u32 longPressKey = 0;
+    // A tap highlights a row and a tap on the highlighted row opens it,
+    // instead of every tap opening, for browsing files and folders.
+    bool tapToSelect = false;
     // Draws the top screen for the highlighted item (index -1 when empty).
     std::function<void(int)> drawTop;
+    // For lists that fill in while open: called every frame before drawing,
+    // it may change items and returns true when it did.
+    std::function<bool()> update;
+    // While true, a spinner shows that more rows are on their way.
+    std::function<bool()> loading;
 };
 
 struct ListResult {
@@ -393,7 +443,7 @@ struct ListResult {
 };
 
 // Rows scroll smoothly: drag them, flick them, or move with the D-pad, L
-// and R. Tapping a row opens it.
+// and R. Tapping a row opens it (or highlights it, with tapToSelect).
 ListResult runList(const ListSpec &spec, int &cursor);
 
 // Touch scrolling with momentum for anything taller than its box.
@@ -406,6 +456,13 @@ public:
                 float viewport);
     float offset() const { return offset_; }
     void setOffset(float value) { offset_ = target_ = value; velocity_ = 0; }
+    // Moves the content by, as when rows are added above the view, without
+    // stopping a flick or a drag.
+    void shift(float by)
+    {
+        offset_ += by;
+        target_ += by;
+    }
     // Eases towards keeping [top, top + height) visible.
     void reveal(float top, float height, float viewport);
     bool dragging() const { return dragging_; }
@@ -443,8 +500,7 @@ struct ProgressView {
     std::string speed;   // "1.24 MiB/s, about 1 second left"
     std::string tag;     // "4 connections"
     std::string note;    // green, e.g. "Continuing from 12.0 MiB"
-    std::string message; // the bottom panel's first line
-    std::string detail;  // its second line
+    std::string message; // on the bottom panel: where it goes, or a warning
     bool stopping = false;
 };
 
@@ -453,6 +509,20 @@ void drawProgress(const ProgressView &view);
 
 // A "Please wait..." dialog over the current screens.
 void drawBusy(const std::string &header, const std::string &title);
+
+struct BusyView {
+    std::string header;
+    std::string title; // on the top screen's panel
+    bool progress = false; // a bar, filled to fraction, with amount under it
+    float fraction = 0;
+    std::string amount; // "3 of 12"
+    bool cancellable = false; // a Cancel button along the bottom of the box
+    bool stopping = false;    // it was pressed and the job is finishing
+    bool pressed = false;     // it is held down
+};
+// Where the Cancel button of a cancellable busy dialog is.
+extern const Rect BusyCancelButton;
+void drawBusy(const BusyView &view);
 
 extern const Rect ScannerCancelButton;
 extern const Rect ScannerTypeButton;

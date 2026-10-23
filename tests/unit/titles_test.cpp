@@ -2,6 +2,7 @@
 
 #include "titles.hpp"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -84,6 +85,40 @@ TEST("titles: sorts by name without case, then by ID")
     CHECK_EQ(list[3]->id, Demo);
 }
 
+TEST("titles: sorts by size, largest first, and reverses")
+{
+    std::vector<titles::Title> all = {title(Demo, "beta"), title(Game, "Alpha"),
+                                      title(DsiWare, "gamma")};
+    all[0].size = 300;
+    all[1].size = 100;
+    all[2].size = 300;
+    const titles::Index index = titles::indexOf(all);
+    std::vector<const titles::Title *> list = {&all[1], &all[2], &all[0]};
+    titles::sortTitles(list, index, fs::SortOrder::Size, false);
+    CHECK_EQ(list[0]->id, Demo); // ties go by name
+    CHECK_EQ(list[1]->id, DsiWare);
+    CHECK_EQ(list[2]->id, Game);
+    titles::sortTitles(list, index, fs::SortOrder::Size, true);
+    CHECK_EQ(list[0]->id, Game);
+    titles::sortTitles(list, index, fs::SortOrder::Name, true);
+    CHECK_EQ(list[0]->id, DsiWare);
+    CHECK_EQ(list[2]->id, Game);
+}
+
+TEST("titles: shows by place and by kind")
+{
+    titles::Title game = title(Game, "Alpha");
+    titles::Title nand = title(DsiWare, "beta");
+    nand.place = titles::Place::SystemMemory;
+    CHECK(titles::shows(titles::Show::All, nand));
+    CHECK(titles::shows(titles::Show::SdCard, game));
+    CHECK(!titles::shows(titles::Show::SdCard, nand));
+    CHECK(titles::shows(titles::Show::SystemMemory, nand));
+    CHECK(titles::shows(titles::Show::Updates, title(GameUpdate, "")));
+    CHECK(!titles::shows(titles::Show::Updates, title(GameDlc, "")));
+    CHECK(titles::shows(titles::Show::Dlc, title(GameDlc, "")));
+}
+
 TEST("titles: extra data belongs to the software with its unique ID")
 {
     const std::vector<titles::Title> all = {title(GameUpdate, ""),
@@ -92,6 +127,11 @@ TEST("titles: extra data belongs to the software with its unique ID")
     const titles::Title *owner = titles::ownerOfExtData(0x55D, all);
     CHECK(owner != nullptr && owner->id == Game);
     CHECK(titles::ownerOfExtData(0x777, all) == nullptr);
+    // Unlisted, but its folder is on the SD card: still in use.
+    CHECK(titles::extDataInUse(0x55D, all, {}));
+    CHECK(titles::extDataInUse(0x55D, {}, {Game}));
+    CHECK(!titles::extDataInUse(0x55D, {}, {GameUpdate}));
+    CHECK(!titles::extDataInUse(0x777, all, {Game}));
 }
 
 TEST("titles: unused tickets leave out installed and system titles")
@@ -102,6 +142,34 @@ TEST("titles: unused tickets leave out installed and system titles")
     CHECK_EQ(unused.size(), static_cast<size_t>(2));
     CHECK_EQ(unused[0], GameUpdate);
     CHECK_EQ(unused[1], Demo);
+}
+
+TEST("titles: a title list that failed to read never makes tickets unused")
+{
+    // Every game's folder is on the SD card, but the title list came back
+    // empty, as when reading it fails: nothing may count as unused.
+    const std::set<uint64_t> onSdCard = {Game, GameUpdate, Demo};
+    CHECK(titles::unusedTickets({Game, GameUpdate, Demo}, {}, onSdCard).empty());
+    // Only what is neither listed nor on the card is unused.
+    const std::vector<uint64_t> unused =
+        titles::unusedTickets({Game, Demo}, {}, {Game});
+    CHECK_EQ(unused.size(), static_cast<size_t>(1));
+    CHECK_EQ(unused[0], Demo);
+    // DSiWare lives in system memory, where its folder cannot be checked,
+    // so its tickets are never offered for bulk deletion.
+    CHECK(titles::unusedTickets({DsiWare}, {}).empty());
+}
+
+TEST("titles: SD card title folders name their titles")
+{
+    uint64_t id = 0;
+    CHECK(titles::titleFromSdFolders("00040000", "0012d400", id));
+    CHECK_EQ(id, static_cast<uint64_t>(0x000400000012D400ULL));
+    CHECK(titles::titleFromSdFolders("0004000E", "0012D400", id));
+    CHECK_EQ(id, static_cast<uint64_t>(0x0004000E0012D400ULL));
+    CHECK(!titles::titleFromSdFolders("0004000", "0012d400", id));
+    CHECK(!titles::titleFromSdFolders("00040000", "0012d40g", id));
+    CHECK(!titles::titleFromSdFolders("data", "0012d400", id));
 }
 
 TEST("titles: reads seeddb.bin and keeps seeds for installed software")

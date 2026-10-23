@@ -131,7 +131,8 @@ std::string ofString(const std::string &data)
     return hasher.finishHex();
 }
 
-std::string ofFile(const std::string &path)
+std::string ofFile(const std::string &path, const std::atomic<bool> *stop,
+                   std::atomic<uint64_t> *done)
 {
     FILE *file = std::fopen(path.c_str(), "rb");
     if (file == nullptr) {
@@ -141,9 +142,16 @@ std::string ofFile(const std::string &path)
     std::vector<uint8_t> buffer(64 * 1024);
     bool ok = true;
     while (true) {
+        if (stop != nullptr && stop->load()) {
+            ok = false;
+            break;
+        }
         const size_t got = std::fread(buffer.data(), 1, buffer.size(), file);
         if (got > 0) {
             hasher.update(buffer.data(), got);
+            if (done != nullptr) {
+                done->fetch_add(got);
+            }
         }
         if (got < buffer.size()) {
             ok = std::ferror(file) == 0;

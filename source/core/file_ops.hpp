@@ -1,6 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <string>
 
 // Copying, moving, deleting and measuring files and whole folders for Files.
@@ -29,8 +32,27 @@ struct Totals {
     uint64_t bytes = 0;
 };
 
-// Everything at path, which can be a file or a folder.
-Totals measure(const std::string &path);
+// Lets measure skip folders added up before and keep the ones it adds up.
+struct MeasureHooks {
+    // The totals for folder when already known, to use instead of reading it.
+    std::function<bool(const std::string &folder, Totals &totals)> known;
+    // Each folder read whole, with its totals and fs::fingerprint of its own
+    // entries.
+    std::function<void(const std::string &folder, const Totals &totals,
+                       uint64_t fingerprint)>
+        measured;
+};
+
+class Lookup;
+
+// Everything at path, which can be a file or a folder. Setting stop ends
+// the count early, with what was counted so far. bytes, when given, grows by
+// each size as it is counted, for a running total. lookup, when given,
+// answers what path itself is, for callers measuring many paths.
+Totals measure(const std::string &path,
+               const std::atomic<bool> *stop = nullptr,
+               std::atomic<uint64_t> *bytes = nullptr,
+               const MeasureHooks *hooks = nullptr, Lookup *lookup = nullptr);
 
 enum class Status { Ok, Cancelled, Failed };
 
@@ -62,6 +84,32 @@ bool exists(const std::string &path);
 bool isInside(const std::string &path, const std::string &folder);
 // Last part of a path: "sdmc:/a/b" -> "b".
 std::string name(const std::string &path);
+
+// Answers about many paths from their folders' listings, reading each folder
+// once. On the 3DS every exists, isFolder or size question searches the
+// path's folder on the card, so asking about hundreds of paths in a big
+// folder one by one takes minutes. Names match whatever their case, as on
+// FAT. A folder that changes after it was read is not read again.
+class Lookup {
+public:
+    bool exists(const std::string &path);
+    bool isFolder(const std::string &path);
+    // The file's size, or -1 for a folder or a path that is not there.
+    int64_t size(const std::string &path);
+    // Counts path as there from now on, as when it is about to be made.
+    void claim(const std::string &path, bool folder);
+
+private:
+    struct Known {
+        bool folder = false;
+        int64_t size = -1;
+    };
+    // The entry at path, or nullptr when there is none.
+    const Known *find(const std::string &path);
+    std::map<std::string, Known> &listing(const std::string &folder);
+    // Folder ("sdmc:/a/") to lower-case name to entry.
+    std::map<std::string, std::map<std::string, Known>> folders_;
+};
 
 // Checks a name typed for a new or renamed file or folder. FAT does not
 // allow \ / : * ? " < > | and names cannot be "." or "..".

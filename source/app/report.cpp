@@ -1,12 +1,15 @@
 #include "app.hpp"
 
+#include "crash.hpp"
 #include "feedback.hpp"
+#include "fs_util.hpp"
 #include "platform.hpp"
 #include "qr_code.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
 
 #include <string>
+#include <vector>
 
 // Settings > Report Issue: where to report a bug, join the Discord server or
 // reach the developer. Each place is a QR code on the top screen, since a report
@@ -18,7 +21,6 @@ struct Place {
     std::string label;
     ui::Icon icon;
     u32 iconColor;
-    std::string text;
     std::string shown; // the address under the code, without "https://"
     QrCode code;
 };
@@ -33,6 +35,9 @@ void App::reportScreen()
     console.model = feedback::modelName(platform::systemModel());
     console.system = platform::systemVersion();
     const std::string details = feedback::summary(console);
+    // A crash log is too long for the code, so its path is shown for the
+    // report to attach.
+    const bool crashed = fs::fileExists(crash::LogPath);
 
     // The bug report link carries the details, so it is long and gets the
     // compact code. Should it ever not fit, the plain form still works.
@@ -42,14 +47,11 @@ void App::reportScreen()
     }
     const Place places[] = {
         {"Report a Bug", ui::Icon::Warning, ui::color::IconOrange,
-         "Opens a new issue with your console's details filled in.",
          feedback::withoutScheme(feedback::IssuesPage), issue},
         {"Discord Server", ui::Icon::Chip, ui::color::IconPink,
-         "Ask questions and share ideas with other users.",
          feedback::withoutScheme(feedback::DiscordInvite),
          QrCode(feedback::DiscordInvite)},
         {"Developer on X", ui::Icon::Globe, ui::color::IconTeal,
-         "For quick questions, or if you don't use GitHub.",
          feedback::withoutScheme(feedback::DeveloperPage),
          QrCode(feedback::DeveloperPage)},
     };
@@ -87,33 +89,29 @@ void App::reportScreen()
             const float codeY = ui::TopPanel.y + (ui::TopPanel.h - side) / 2;
             place.code.draw(codeX, codeY, px);
 
-            // Name, description and address as one block, centred beside
-            // the code like the code itself.
+            // Name and address as one block, centred beside the code like
+            // the code itself.
             const float left = ui::TopPanel.x + 12 + column + 8;
             const float width = ui::TopPanel.x + ui::TopPanel.w - 10 - left;
-            const size_t lines =
-                ui::wrap(place.text, ui::type::Small, width, 4).size();
-            const float block = ui::lineHeight(ui::type::Small) * (1 + lines) +
-                                4 + 10 + ui::lineHeight(ui::type::Tiny);
-            float y = ui::TopPanel.y + (ui::TopPanel.h - block) / 2;
+            const float block = ui::lineHeight(ui::type::Small) + 6 +
+                                ui::lineHeight(ui::type::Tiny);
+            const float y = ui::TopPanel.y + (ui::TopPanel.h - block) / 2;
             ui::drawMarquee(place.label, left, y, ui::type::Small,
                             ui::color::InkStrong, width);
-            y += ui::lineHeight(ui::type::Small) + 4;
-            y = ui::drawWrapped(place.text, left, y, ui::type::Small,
-                                ui::color::Ink, width, 4) +
-                10;
-            ui::drawMarquee(place.shown, left, y, ui::type::Tiny,
-                            ui::color::Accent, width);
+            ui::drawMarquee(place.shown, left,
+                            y + ui::lineHeight(ui::type::Small) + 6,
+                            ui::type::Tiny, ui::color::Accent, width);
         };
+        // The details to mention, midway between the buttons and Back.
         spec.drawBottom = [&]() {
-            ui::drawText("Scan the code above with a phone.", 160, 142,
-                         ui::type::Tiny, ui::color::InkSoft, C2D_AlignCenter);
-            const ui::Rect panel = {13, 160, 294, 42};
+            const ui::Rect panel =
+                crashed ? ui::Rect {13, 143, 294, 58} : ui::Rect {13, 156, 294, 32};
             ui::drawPanel(panel);
-            ui::drawText("Mention this in your report:", 160, panel.y + 5,
-                         ui::type::Tiny, ui::color::InkSoft, C2D_AlignCenter);
-            ui::drawMarquee(details, 160, panel.y + 22, ui::type::Tiny,
-                            ui::color::Ink, panel.w - 16, C2D_AlignCenter);
+            std::vector<ui::Fact> facts = {{"Details", details}};
+            if (crashed) {
+                facts.push_back({"Crash Log", crash::LogPath});
+            }
+            ui::drawFacts(facts, panel);
         };
 
         const ui::ScreenResult result = ui::runScreen(spec, focus);

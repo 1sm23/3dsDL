@@ -7,10 +7,12 @@
 #include "image.hpp"
 #include "picture.hpp"
 #include "records.hpp"
+#include "sha256.hpp"
 #include "smdh.hpp"
 #include "text_doc.hpp"
 #include "title_meta.hpp"
 
+#include <atomic>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -91,6 +93,21 @@ TEST("fileops: copy, move and delete files and folders")
     CHECK_EQ(totals.files, static_cast<uint64_t>(2));
     CHECK_EQ(totals.folders, static_cast<uint64_t>(1));
     CHECK_EQ(totals.bytes, static_cast<uint64_t>(300005));
+    // The running total adds up across calls.
+    std::atomic<uint64_t> running(0);
+    fileops::measure(root + "src", nullptr, &running);
+    fileops::measure(root + "src/a.txt", nullptr, &running);
+    CHECK_EQ(running.load(), static_cast<uint64_t>(300010));
+
+    // Stopped before it starts, the count is empty.
+    const std::atomic<bool> stopped(true);
+    CHECK_EQ(fileops::measure(root + "src", &stopped).files,
+             static_cast<uint64_t>(0));
+    // The checksum counts what it reads, and gives up when stopped.
+    std::atomic<uint64_t> read(0);
+    CHECK(!sha256::ofFile(root + "src/inner/b.bin", nullptr, &read).empty());
+    CHECK_EQ(read.load(), static_cast<uint64_t>(300000));
+    CHECK_EQ(sha256::ofFile(root + "src/inner/b.bin", &stopped), std::string(""));
 
     Quiet observer;
     uint64_t done = 0;
@@ -138,6 +155,101 @@ TEST("fileops: a cancelled copy removes the unfinished file")
     CHECK(!fileops::exists(temp.path() + "copy.bin"));
 }
 
+TEST("fs: big folders are read in batches and merge into order")
+{
+    TempDir temp;
+    const std::string root = temp.path() + "big/";
+    CHECK(fs::makeDirectories(root + "zfolder/"));
+    CHECK(fs::makeDirectories(root + "Afolder/"));
+    for (int index = 0; index < 150; ++index) {
+        const std::string name = "file" + std::to_string(149 - index) +
+                                 (index % 3 == 0 ? ".txt" : ".bin");
+        CHECK(writeText(root + name, std::string(index % 7, 'x')));
+    }
+
+    size_t batches = 0;
+    std::vector<fs::Entry> merged;
+    CHECK(fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+        ++batches;
+        fs::mergeEntries(merged, std::move(batch), fs::SortOrder::Name);
+    }));
+    CHECK(batches >= 2);
+    CHECK_EQ(merged.size(), static_cast<size_t>(152));
+    // Merging batch by batch gives the order a full sort gives.
+    for (const fs::SortOrder order : {fs::SortOrder::Name, fs::SortOrder::Size,
+                                      fs::SortOrder::Type}) {
+        std::vector<fs::Entry> whole = fs::listEntries(root, nullptr, false, false);
+        fs::sortEntries(whole, order);
+        std::vector<fs::Entry> pieces;
+        fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+            fs::mergeEntries(pieces, std::move(batch), order);
+        });
+        CHECK_EQ(pieces.size(), whole.size());
+        bool same = pieces.size() == whole.size();
+        for (size_t index = 0; same && index < whole.size(); ++index) {
+            same = pieces[index].name == whole[index].name;
+        }
+        CHECK(same);
+    }
+    CHECK(merged.front().folder && merged.front().name == "Afolder");
+
+    // Stopped after the first batch, it reads no further.
+    std::atomic<bool> stop(false);
+    size_t seen = 0;
+    fs::readEntries(root, false, false, [&](std::vector<fs::Entry> &&batch) {
+        seen += batch.size();
+        stop = true;
+    }, &stop);
+    CHECK(seen > 0 && seen < 152);
+    CHECK(!fs::readEntries(root + "missing/", false, false,
+                           [](std::vector<fs::Entry> &&) {}));
+}
+
+TEST("fileops: a lookup answers from each folder's listing")
+{
+    TempDir temp;
+    const std::string root = temp.path();
+    fs::makeDirectories(root + "Music/Album/");
+    CHECK(writeText(root + "Music/Song.mp3", "12345"));
+    CHECK(writeText(root + "Music/.hidden", "x"));
+
+    fileops::Lookup lookup;
+    CHECK(lookup.exists(root + "Music/Song.mp3"));
+    CHECK(lookup.exists(root + "Music/song.MP3")); // FAT ignores case
+    CHECK(lookup.exists(root + "Music/.hidden"));
+    CHECK(!lookup.isFolder(root + "Music/Song.mp3"));
+    CHECK_EQ(lookup.size(root + "Music/Song.mp3"), int64_t(5));
+    CHECK(lookup.isFolder(root + "Music/Album"));
+    CHECK_EQ(lookup.size(root + "Music/Album"), int64_t(-1));
+    CHECK(!lookup.exists(root + "Music/Other.mp3"));
+    CHECK(!lookup.exists(root + "Missing/Song.mp3"));
+    CHECK(!lookup.exists(root + "Music/"));
+
+    // Read once: what changes on the card afterwards is not seen, but what
+    // is claimed is.
+    CHECK(writeText(root + "Music/New.mp3", "1"));
+    CHECK(!lookup.exists(root + "Music/New.mp3"));
+    lookup.claim(root + "Music/Song (1).mp3", false);
+    CHECK(lookup.exists(root + "Music/song (1).mp3"));
+    lookup.claim(root + "Missing/Folder", true);
+    CHECK(lookup.isFolder(root + "Missing/Folder"));
+
+    // measure asks the lookup what each path is, and reads folders as ever.
+    CHECK(writeText(root + "Music/Album/Track.mp3", "123"));
+    fileops::Lookup fresh;
+    const fileops::Totals song =
+        fileops::measure(root + "Music/Song.mp3", nullptr, nullptr, nullptr, &fresh);
+    CHECK_EQ(song.files, uint64_t(1));
+    CHECK_EQ(song.bytes, uint64_t(5));
+    const fileops::Totals album =
+        fileops::measure(root + "Music/Album", nullptr, nullptr, nullptr, &fresh);
+    CHECK_EQ(album.files, uint64_t(1));
+    CHECK_EQ(album.bytes, uint64_t(3));
+    CHECK_EQ(fileops::measure(root + "Music/Gone.mp3", nullptr, nullptr, nullptr,
+                              &fresh).files,
+             uint64_t(0));
+}
+
 TEST("fileops: names and paths")
 {
     std::string error;
@@ -179,12 +291,55 @@ TEST("fs: hidden entries and sort orders")
     CHECK_EQ(entries[2].name, std::string("b.txt"));
     CHECK_EQ(entries[3].name, std::string("a.zip"));
 
+    // Reversed, both groups turn around and folders still come first.
+    CHECK(fs::makeDirectories(temp.path() + "another/"));
+    entries = fs::listEntries(temp.path());
+    fs::sortEntries(entries, fs::SortOrder::Name, true);
+    CHECK_EQ(entries[0].name, std::string("folder"));
+    CHECK_EQ(entries[1].name, std::string("another"));
+    CHECK_EQ(entries[2].name, std::string("b.txt"));
+    CHECK_EQ(entries[3].name, std::string("a.zip"));
+    fs::sortEntries(entries, fs::SortOrder::Size, true);
+    CHECK_EQ(entries[2].name, std::string("b.txt")); // smallest first
+    // Folders sort by size once added up; until then they come last.
+    std::vector<fs::Entry> folders(3);
+    folders[0].name = "small";
+    folders[0].size = 10;
+    folders[1].name = "pending";
+    folders[2].name = "big";
+    folders[2].size = 900;
+    for (fs::Entry &folder : folders) {
+        folder.folder = true;
+    }
+    fs::sortEntries(folders, fs::SortOrder::Size);
+    CHECK_EQ(folders[0].name, std::string("big"));
+    CHECK_EQ(folders[1].name, std::string("small"));
+    CHECK_EQ(folders[2].name, std::string("pending"));
+    fs::sortEntries(folders, fs::SortOrder::Size, true);
+    CHECK_EQ(folders[0].name, std::string("small"));
+    CHECK_EQ(folders[2].name, std::string("pending"));
+    std::vector<fs::Entry> merged;
+    fs::mergeEntries(merged, fs::listEntries(temp.path()), fs::SortOrder::Name,
+                     true);
+    CHECK_EQ(merged.front().name, std::string("folder"));
+    CHECK_EQ(merged.back().name, std::string("a.zip"));
+
     Settings settings;
     settings.showHiddenFiles = true;
     settings.fileSort = fs::SortOrder::Date;
+    settings.fileSortReverse = true;
     const Settings parsed = parseSettings(serializeSettings(settings));
     CHECK(parsed.showHiddenFiles);
     CHECK(parsed.fileSort == fs::SortOrder::Date);
+    CHECK(parsed.fileSortReverse);
+    CHECK(!parseSettings("file_sort=name\n").fileSortReverse);
+    settings.titleSort = fs::SortOrder::Size;
+    settings.titleSortReverse = true;
+    const Settings titles = parseSettings(serializeSettings(settings));
+    CHECK(titles.titleSort == fs::SortOrder::Size);
+    CHECK(titles.titleSortReverse);
+    // Titles have no dates or types.
+    CHECK(parseSettings("title_sort=date\n").titleSort == fs::SortOrder::Name);
 }
 
 TEST("textdoc: keeps line endings, BOM and the final newline")

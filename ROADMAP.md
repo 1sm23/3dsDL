@@ -147,6 +147,10 @@ management, is in [docs/INSTALLER-PLAN.md](docs/INSTALLER-PLAN.md).
 - [x] 0.8.1: Reinstall a CIA that is already installed, backing up its save
       first, instead of failing with 0xC8E083FC; 3dsDL never removes itself
       while it runs; and its own versions read as versions.
+- [x] 0.8.2: Big folders open at once and fill in; Files and Titles sort
+      both ways, with the order on the top screen; Delete Unused Tickets
+      never touches installed software; Start opens a .3dsx; a crash leaves
+      a log with symbols to read it.
 - [ ] Hardware pass (items 58a to 58f in [docs/HARDWARE.md](docs/HARDWARE.md)).
       Partly done on 2026-10-20: see the results there. Multicast works,
       so 3ds.local does.

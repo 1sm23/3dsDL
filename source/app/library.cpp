@@ -1,14 +1,21 @@
 #include "library.hpp"
 
+#include "cia.hpp"
 #include "installer.hpp"
 #include "fs_util.hpp"
 #include "smdh.hpp"
+#include "tasks.hpp"
+#include "text.hpp"
 #include "title_meta.hpp"
 #include "updater.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
+#include <ctime>
+#include <functional>
 #include <memory>
+#include <set>
 
 namespace library {
 
@@ -53,24 +60,235 @@ FS_ExtSaveDataInfo extDataInfo(uint64_t id)
     return info;
 }
 
-void loadTitles(FS_MediaType media, Snapshot &out)
+#ifdef THREEDSDL_FAULTS
+// Test builds only: each line of sdmc:/3ds/3dsDL/faults.txt makes one of
+// the reads below go wrong the way a console can, so the safety checks
+// around deleting can be tried without breaking a real console.
+bool fault(const char *name)
 {
+    std::string text;
+    if (!fs::readFile("sdmc:/3ds/3dsDL/faults.txt", text)) {
+        return false;
+    }
+    const std::string wanted = std::string(name);
+    size_t start = 0;
+    while (start <= text.size()) {
+        size_t end = text.find('\n', start);
+        if (end == std::string::npos) {
+            end = text.size();
+        }
+        std::string line = text.substr(start, end - start);
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) {
+            line.pop_back();
+        }
+        if (line == wanted) {
+            return true;
+        }
+        start = end + 1;
+    }
+    return false;
+}
+#else
+constexpr bool fault(const char *)
+{
+    return false;
+}
+#endif
+
+// What the deleting code saw and did, kept with the backups for reports.
+void logTickets(const std::string &line)
+{
+    if (!fs::makeDirectories(DeletedTicketsFolder)) {
+        return;
+    }
+    const std::string path = std::string(DeletedTicketsFolder) + "log.txt";
+    FILE *file = std::fopen(path.c_str(), "a");
+    if (file == nullptr) {
+        return;
+    }
+    char stamp[32];
+    const time_t now = std::time(nullptr);
+    tm parts {};
+    gmtime_r(&now, &parts);
+    std::strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &parts);
+    std::fprintf(file, "%s %s %s\n", stamp, APP_VERSION, line.c_str());
+    std::fclose(file);
+}
+
+// Whether the SD card's title database is there for AM to answer from.
+bool sdDatabaseAvailable()
+{
+    bool available = false;
+    if (R_FAILED(AM_QueryAvailableExternalTitleDatabase(&available)) ||
+        fault("sd-db-unavailable")) {
+        return false;
+    }
+    return available;
+}
+
+// Every title ID on media. Fails rather than returning fewer when AM
+// cannot say: a short list makes the tickets of installed software look
+// unused, and deleting those leaves the software unable to start.
+bool titleIds(FS_MediaType media, std::vector<u64> &ids, std::string &error)
+{
+    ids.clear();
+    // Without the SD card's title database AM still answers, with no
+    // titles at all, rather than failing (faketik learnt this too).
+    if (media == MEDIATYPE_SD && !sdDatabaseAvailable()) {
+        error = "The console cannot read the list of software on the SD "
+                "card right now, so 3dsDL cannot tell what is installed.";
+        return false;
+    }
+    if (media == MEDIATYPE_SD && fault("sd-list-empty")) {
+        return true; // the answer that deleted a user's tickets
+    }
     u32 count = 0;
-    if (R_FAILED(AM_GetTitleCount(media, &count)) || count == 0) {
-        return;
+    ::Result code = fault(media == MEDIATYPE_SD ? "sd-list-error"
+                                                : "nand-list-error")
+                        ? -1
+                        : AM_GetTitleCount(media, &count);
+    if (R_SUCCEEDED(code) && count > 0) {
+        ids.resize(count);
+        u32 read = 0;
+        code = AM_GetTitleList(&read, media, count, ids.data());
+        if (R_SUCCEEDED(code) && read != count) {
+            code = -1; // it changed while being read
+        }
     }
-    std::vector<u64> ids(count);
-    u32 read = 0;
-    if (R_FAILED(AM_GetTitleList(&read, media, count, ids.data()))) {
-        return;
+    if (R_FAILED(code)) {
+        ids.clear();
+        error = std::string("Could not read the software installed ") +
+                (media == MEDIATYPE_NAND ? "in system memory" : "on the SD card") +
+                ". " + installer::describe(code);
+        return false;
     }
-    ids.resize(read);
+    return true;
+}
+
+// Every ticket's title ID, each once. Fails rather than returning fewer.
+bool ticketIds(std::vector<u64> &ids, std::string &error)
+{
+    ids.clear();
+    u32 count = 0;
+    ::Result code =
+        fault("ticket-list-error") ? -1 : AM_GetTicketCount(&count);
+    if (R_SUCCEEDED(code) && count > 0) {
+        ids.resize(count);
+        u32 read = 0;
+        code = AM_GetTicketList(&read, count, 0, ids.data());
+        if (R_SUCCEEDED(code) && read != count) {
+            code = -1;
+        }
+    }
+    if (R_FAILED(code)) {
+        ids.clear();
+        error = "Could not read the tickets. " + installer::describe(code);
+        return false;
+    }
+    // A title can hold several tickets; deleting its ID removes them all, so
+    // each title is listed once.
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    return true;
+}
+
+// Titles installed on the SD card by their own files: a folder Nintendo
+// 3DS/<id0>/<id1>/title/<high>/<low>/content holding a .tmd, for every
+// console the card has been in. Read from the card itself, so it does not
+// depend on AM listing them. Folders left behind without one, as after a
+// delete, do not count.
+bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
+{
+    out.clear();
+    if (fault("folder-scan-error")) {
+        error = "Could not read sdmc:/Nintendo 3DS/ (test fault).";
+        return false;
+    }
+    const std::string root = "sdmc:/Nintendo 3DS/";
+    if (!fs::directoryExists(root)) {
+        return true; // a card that has never held software
+    }
+    const auto folders = [&](const std::string &path,
+                             std::vector<std::string> &names) {
+        bool ok = false;
+        names.clear();
+        for (const fs::Entry &entry : fs::listEntries(path, &ok, true, false)) {
+            if (entry.folder) {
+                names.push_back(entry.name);
+            }
+        }
+        if (!ok) {
+            error = "Could not read " + path + ".";
+        }
+        return ok;
+    };
+    std::vector<std::string> id0s;
+    if (!folders(root, id0s)) {
+        return false;
+    }
+    std::vector<std::string> id1s;
+    std::vector<std::string> highs;
+    std::vector<std::string> lows;
+    for (const std::string &id0 : id0s) {
+        if (!folders(root + id0 + "/", id1s)) {
+            return false;
+        }
+        for (const std::string &id1 : id1s) {
+            const std::string titleRoot = root + id0 + "/" + id1 + "/title/";
+            if (!fs::directoryExists(titleRoot)) {
+                continue;
+            }
+            if (!folders(titleRoot, highs)) {
+                return false;
+            }
+            for (const std::string &high : highs) {
+                if (!folders(titleRoot + high + "/", lows)) {
+                    return false;
+                }
+                for (const std::string &low : lows) {
+                    uint64_t id = 0;
+                    if (!titles::titleFromSdFolders(high, low, id)) {
+                        continue;
+                    }
+                    const std::string content =
+                        titleRoot + high + "/" + low + "/content/";
+                    if (!fs::directoryExists(content)) {
+                        continue;
+                    }
+                    bool ok = false;
+                    const std::vector<fs::Entry> files =
+                        fs::listEntries(content, &ok, true, false);
+                    if (!ok) {
+                        error = "Could not read " + content + ".";
+                        return false;
+                    }
+                    for (const fs::Entry &file : files) {
+                        if (!file.folder && file.name.size() > 4 &&
+                            text::endsWithNoCase(file.name, ".tmd")) {
+                            out.insert(id);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+// Reads each title in ids, name and icon included, and hands it to emit as
+// soon as it is read. done counts every ID looked at; stop ends it early.
+void readTitles(FS_MediaType media, const std::vector<u64> &ids,
+                const std::atomic<bool> &stop, std::atomic<uint64_t> &done,
+                const std::function<void(titles::Title &&)> &emit)
+{
     std::vector<u64> shown;
     for (const u64 id : ids) {
         if (titles::isShown(id)) {
             shown.push_back(id);
         }
     }
+    done.fetch_add(ids.size() - shown.size());
     if (shown.empty()) {
         return;
     }
@@ -78,7 +296,7 @@ void loadTitles(FS_MediaType media, Snapshot &out)
     const bool haveInfo = R_SUCCEEDED(AM_GetTitleInfo(
         media, static_cast<u32>(shown.size()), shown.data(), infos.data()));
 
-    for (size_t index = 0; index < shown.size(); ++index) {
+    for (size_t index = 0; index < shown.size() && !stop.load(); ++index) {
         titles::Title title;
         title.id = shown[index];
         title.place = media == MEDIATYPE_NAND ? titles::Place::SystemMemory
@@ -102,31 +320,26 @@ void loadTitles(FS_MediaType media, Snapshot &out)
                 title.icon = std::move(info.icon);
             }
         }
-        out.titles.push_back(std::move(title));
+        if (fault("slow-titles")) {
+            svcSleepThread(400 * 1000 * 1000); // to watch a list fill in
+        }
+        emit(std::move(title));
+        done.fetch_add(1);
     }
 }
 
-void loadTickets(Snapshot &out)
+bool loadTickets(Snapshot &out, std::string &error)
 {
-    u32 count = 0;
-    if (R_FAILED(AM_GetTicketCount(&count)) || count == 0) {
-        return;
+    std::vector<u64> ids;
+    if (!ticketIds(ids, error)) {
+        return false;
     }
-    std::vector<u64> ids(count);
-    u32 read = 0;
-    if (R_FAILED(AM_GetTicketList(&read, count, 0, ids.data()))) {
-        return;
-    }
-    ids.resize(read);
-    // A title can hold several tickets; deleting its ID removes them all, so
-    // each title is listed once.
-    std::sort(ids.begin(), ids.end());
-    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
     for (const u64 id : ids) {
         if (titles::isShown(id)) {
             out.tickets.push_back(id);
         }
     }
+    return true;
 }
 
 void loadExtData(Snapshot &out)
@@ -179,22 +392,149 @@ void loadPending(FS_MediaType media, Snapshot &out)
 
 } // namespace
 
-bool load(Snapshot &out, std::string &error)
+Loader::Loader()
 {
-    out = Snapshot();
-    if (!installer::available()) {
-        error = installer::unavailableReason();
-        return false;
+    LightLock_Init(&lock_);
+}
+
+Loader::~Loader()
+{
+    stop();
+}
+
+void Loader::start()
+{
+    stop();
+    LightLock_Lock(&lock_);
+    arrived_.clear();
+    room_ = 0;
+    rest_ = Snapshot();
+    restReady_ = false;
+    failed_ = false;
+    error_.clear();
+    LightLock_Unlock(&lock_);
+    stop_ = false;
+    done_ = 0;
+    total_ = 0;
+    running_ = true;
+    thread_ = tasks::startWorker(run, this);
+    if (thread_ == nullptr) {
+        run(this); // no thread to be had: read it all now
     }
-    loadTitles(MEDIATYPE_SD, out);
-    loadTitles(MEDIATYPE_NAND, out);
-    // A 3DS game card in the slot, for its save data.
-    loadTitles(MEDIATYPE_GAME_CARD, out);
-    loadTickets(out);
-    loadExtData(out);
-    loadPending(MEDIATYPE_SD, out);
-    loadPending(MEDIATYPE_NAND, out);
-    return true;
+}
+
+void Loader::stop()
+{
+    stop_ = true;
+    if (thread_ != nullptr) {
+        threadJoin(thread_, U64_MAX);
+        threadFree(thread_);
+        thread_ = nullptr;
+    }
+    running_ = false;
+}
+
+bool Loader::take(Snapshot &snapshot)
+{
+    bool changed = false;
+    LightLock_Lock(&lock_);
+    // Room for every title up front, so adding them never moves the ones
+    // screens are pointing at.
+    if (room_ > snapshot.titles.capacity() && snapshot.titles.empty()) {
+        snapshot.titles.reserve(room_);
+    }
+    if (!arrived_.empty()) {
+        for (titles::Title &title : arrived_) {
+            snapshot.titles.push_back(std::move(title));
+        }
+        arrived_.clear();
+        changed = true;
+    }
+    if (restReady_ && !snapshot.complete) {
+        snapshot.tickets = std::move(rest_.tickets);
+        snapshot.extData = std::move(rest_.extData);
+        snapshot.pending = std::move(rest_.pending);
+        snapshot.onSdCard = std::move(rest_.onSdCard);
+        snapshot.sdListed = rest_.sdListed;
+        snapshot.complete = true;
+        changed = true;
+    }
+    LightLock_Unlock(&lock_);
+    return changed;
+}
+
+bool Loader::failed(std::string &error) const
+{
+    LightLock_Lock(&lock_);
+    const bool result = failed_;
+    error = error_;
+    LightLock_Unlock(&lock_);
+    return result;
+}
+
+void Loader::run(void *argument)
+{
+    Loader &loader = *static_cast<Loader *>(argument);
+    loader.work();
+    loader.running_ = false;
+}
+
+void Loader::work()
+{
+    const auto fail = [&](const std::string &error) {
+        LightLock_Lock(&lock_);
+        failed_ = true;
+        error_ = error;
+        LightLock_Unlock(&lock_);
+    };
+    if (!installer::available()) {
+        fail(installer::unavailableReason());
+        return;
+    }
+    // Anything that cannot be read fails the whole load: screens decide
+    // what is unused from this, and a partial list would mislead them.
+    std::string error;
+    Snapshot rest;
+    rest.sdListed = sdDatabaseAvailable();
+    std::vector<u64> sd;
+    std::vector<u64> nand;
+    std::vector<u64> card;
+    if ((rest.sdListed && !titleIds(MEDIATYPE_SD, sd, error)) ||
+        !titleIds(MEDIATYPE_NAND, nand, error)) {
+        fail(error);
+        return;
+    }
+    // A 3DS game card in the slot, for its save data. With no card in the
+    // slot there is nothing to read, which is not a failure.
+    std::string noCard;
+    titleIds(MEDIATYPE_GAME_CARD, card, noCard);
+    total_ = sd.size() + nand.size() + card.size();
+    LightLock_Lock(&lock_);
+    room_ = total_;
+    LightLock_Unlock(&lock_);
+
+    const auto emit = [&](titles::Title &&title) {
+        LightLock_Lock(&lock_);
+        arrived_.push_back(std::move(title));
+        LightLock_Unlock(&lock_);
+    };
+    readTitles(MEDIATYPE_SD, sd, stop_, done_, emit);
+    readTitles(MEDIATYPE_NAND, nand, stop_, done_, emit);
+    readTitles(MEDIATYPE_GAME_CARD, card, stop_, done_, emit);
+    if (stop_) {
+        return;
+    }
+    if (!loadTickets(rest, error) || !titlesOnSdCard(rest.onSdCard, error)) {
+        fail(error);
+        return;
+    }
+    loadExtData(rest);
+    loadPending(MEDIATYPE_SD, rest);
+    loadPending(MEDIATYPE_NAND, rest);
+    LightLock_Lock(&lock_);
+    rest_ = std::move(rest);
+    restReady_ = true;
+    LightLock_Unlock(&lock_);
 }
 
 FS_MediaType mediaOf(const titles::Title &title)
@@ -246,6 +586,118 @@ bool deleteTitle(const titles::Title &title, bool withTicket, std::string &error
     return true;
 }
 
+std::vector<uint64_t> unusedTickets(const Snapshot &snapshot)
+{
+    if (!snapshot.complete || !snapshot.sdListed) {
+        return {};
+    }
+    return titles::unusedTickets(snapshot.tickets, snapshot.titles,
+                                 snapshot.onSdCard);
+}
+
+bool extDataInUse(const Snapshot &snapshot, uint64_t extDataId)
+{
+    return !snapshot.complete || !snapshot.sdListed ||
+           titles::extDataInUse(extDataId, snapshot.titles, snapshot.onSdCard);
+}
+
+bool installedAnywhere(uint64_t titleId)
+{
+    if (fault("title-info-installed")) {
+        return true;
+    }
+    for (const FS_MediaType media : {MEDIATYPE_SD, MEDIATYPE_NAND}) {
+        u64 id = titleId;
+        AM_TitleInfo info {};
+        if (R_SUCCEEDED(AM_GetTitleInfo(media, 1, &id, &info))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool checkUnusedTickets(std::vector<uint64_t> &unused, std::string &error)
+{
+    unused.clear();
+    if (!installer::available()) {
+        error = installer::unavailableReason();
+        return false;
+    }
+    std::vector<u64> tickets;
+    std::vector<u64> sd;
+    std::vector<u64> nand;
+    std::set<uint64_t> onSdCard;
+    if (!ticketIds(tickets, error) || !titleIds(MEDIATYPE_SD, sd, error) ||
+        !titleIds(MEDIATYPE_NAND, nand, error) ||
+        !titlesOnSdCard(onSdCard, error)) {
+        return false;
+    }
+    logTickets("check: tickets " + std::to_string(tickets.size()) +
+               ", sd titles " + std::to_string(sd.size()) + ", nand titles " +
+               std::to_string(nand.size()) + ", on card " +
+               std::to_string(onSdCard.size()));
+    std::vector<titles::Title> installed;
+    for (const std::vector<u64> *list : {&sd, &nand}) {
+        for (const u64 id : *list) {
+            titles::Title title;
+            title.id = id;
+            installed.push_back(title);
+        }
+    }
+    for (const uint64_t id : titles::unusedTickets(tickets, installed, onSdCard)) {
+        // Asked a second way: if AM knows the title after all, the lists
+        // above cannot be trusted, and nothing is deleted.
+        if (installedAnywhere(id)) {
+            unused.clear();
+            error = cia::titleIdText(id) + " is installed but was not listed, "
+                    "so the installed software could not be read reliably.";
+            logTickets("check: stopped, " + cia::titleIdText(id) +
+                       " is installed but was not listed");
+            return false;
+        }
+        unused.push_back(id);
+    }
+    logTickets("check: " + std::to_string(unused.size()) + " unused");
+    return true;
+}
+
+namespace {
+
+bool hasTicket(uint64_t titleId)
+{
+    u64 ticketIds[8] = {};
+    u32 count = 0;
+    return R_SUCCEEDED(
+               AMNET_GetTitleTicketIds(&count, ticketIds, 8, titleId, false)) &&
+           count > 0;
+}
+
+bool installTicketData(const std::string &data, std::string &error)
+{
+    Handle ticket = 0;
+    ::Result code = AMNET_InstallTicketBegin(&ticket);
+    if (R_FAILED(code)) {
+        error = "The ticket install could not start. " + installer::describe(code);
+        return false;
+    }
+    u32 written = 0;
+    code = FSFILE_Write(ticket, &written, 0, data.data(),
+                        static_cast<u32>(data.size()), 0);
+    if (R_FAILED(code)) {
+        AMNET_InstallTicketAbort(ticket);
+        error = "The ticket could not be installed. " + installer::describe(code);
+        return false;
+    }
+    code = AMNET_InstallTicketFinish(ticket);
+    if (R_FAILED(code)) {
+        error = "The ticket could not be installed. " + installer::describe(code);
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
 bool deleteTicket(uint64_t titleId, std::string &error)
 {
     if (!titles::isShown(titleId)) {
@@ -256,12 +708,54 @@ bool deleteTicket(uint64_t titleId, std::string &error)
         error = "3dsDL needs its own ticket to start.";
         return false;
     }
+    // Saved first, so a deleted ticket can always be put back. No copy, no
+    // delete.
+    std::string backup = "nothing (test fault)";
+    if (!fault("skip-backup") &&
+        !exportTicket(titleId, DeletedTicketsFolder, backup, error)) {
+        error = "The ticket was kept, as it could not be saved first. " + error;
+        logTickets("kept " + cia::titleIdText(titleId) + ": no backup");
+        return false;
+    }
     const ::Result code = AM_DeleteTicket(titleId);
     if (R_FAILED(code)) {
         error = "The ticket could not be deleted. " + installer::describe(code);
         return false;
     }
+    logTickets("deleted " + cia::titleIdText(titleId) + ", saved as " + backup);
     return true;
+}
+
+size_t deletedTicketCount()
+{
+    size_t count = 0;
+    for (const fs::Entry &entry :
+         fs::listEntries(DeletedTicketsFolder, nullptr, true, false)) {
+        if (!entry.folder && text::endsWithNoCase(entry.name, ".tik")) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+size_t restoreDeletedTickets(std::string &error)
+{
+    size_t restored = 0;
+    for (const fs::Entry &entry :
+         fs::listEntries(DeletedTicketsFolder, nullptr, true, false)) {
+        if (entry.folder || !text::endsWithNoCase(entry.name, ".tik")) {
+            continue;
+        }
+        const std::string path = std::string(DeletedTicketsFolder) + entry.name;
+        uint64_t titleId = 0;
+        if (installTicket(path, titleId, error)) {
+            // Restored: the copy is no longer needed.
+            fs::removeFile(path);
+            logTickets("restored " + cia::titleIdText(titleId));
+            ++restored;
+        }
+    }
+    return restored;
 }
 
 bool deleteExtData(uint64_t extDataId, std::string &error)
@@ -313,27 +807,26 @@ bool installTicket(const std::string &path, uint64_t &titleId,
         return false;
     }
     // FBI replaces a ticket that is already installed by deleting it first.
+    // The one there is saved before that and put back if the new one fails,
+    // so a bad file never costs the console its ticket.
+    std::string saved;
+    std::string why;
+    const bool backedUp = exportTicket(titleId, ReplacedTicketsFolder, saved, why);
+    if (!backedUp && hasTicket(titleId)) {
+        error = "The ticket there now could not be saved first, so nothing "
+                "was changed. " + why;
+        return false;
+    }
     AM_DeleteTicket(titleId);
-    Handle ticket = 0;
-    ::Result code = AMNET_InstallTicketBegin(&ticket);
-    if (R_FAILED(code)) {
-        error = "The ticket install could not start. " + installer::describe(code);
-        return false;
+    if (installTicketData(data, error)) {
+        return true;
     }
-    u32 written = 0;
-    code = FSFILE_Write(ticket, &written, 0, data.data(),
-                        static_cast<u32>(data.size()), 0);
-    if (R_FAILED(code)) {
-        AMNET_InstallTicketAbort(ticket);
-        error = "The ticket could not be installed. " + installer::describe(code);
-        return false;
+    std::string previous;
+    if (backedUp && fs::readFile(saved, previous)) {
+        std::string ignored;
+        installTicketData(previous, ignored);
     }
-    code = AMNET_InstallTicketFinish(ticket);
-    if (R_FAILED(code)) {
-        error = "The ticket could not be installed. " + installer::describe(code);
-        return false;
-    }
-    return true;
+    return false;
 }
 
 bool exportTicket(uint64_t titleId, const std::string &folder,

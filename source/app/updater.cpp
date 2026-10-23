@@ -40,14 +40,15 @@ void publish(const Status &status)
     LightLock_Unlock(&lock);
 }
 
-net::FetchRequest githubRequest(const std::string &url, size_t maxBytes)
+net::FetchRequest githubRequest(const std::string &url, size_t maxBytes,
+                                const std::atomic<bool> *stop = nullptr)
 {
     net::FetchRequest request;
     request.url = url;
     request.caFile = http::CaBundle;
     request.userAgent = http::UserAgent;
     request.maxBytes = maxBytes;
-    request.cancel = &cancel;
+    request.cancel = stop != nullptr ? stop : &cancel;
     return request;
 }
 
@@ -63,13 +64,19 @@ std::string explain(const net::FetchResult &result)
     return result.message;
 }
 
-Status check()
+Status check(const std::atomic<bool> *stop = nullptr)
 {
     Status status;
-    net::FetchRequest request = githubRequest(update::LatestReleaseUrl, 512 * 1024);
+    net::FetchRequest request =
+        githubRequest(update::LatestReleaseUrl, 512 * 1024, stop);
     request.headers = {"Accept: application/vnd.github+json",
                        "X-GitHub-Api-Version: 2022-11-28"};
     const net::FetchResult result = net::fetch(request);
+    if (result.cancelled) {
+        status.state = State::Failed;
+        status.message = "The check was stopped.";
+        return status;
+    }
     if (!result.ok) {
         status.state = State::Failed;
         status.message = explain(result);
@@ -170,10 +177,17 @@ void startCheck()
     }
 }
 
-Status checkNow()
+Status checkNow(const std::atomic<bool> *stop)
 {
     ensureLock();
     if (thread != nullptr) {
+        // The check at startup is still asking; stop forwards to it.
+        while (running.load()) {
+            if (stop != nullptr && stop->load()) {
+                cancel.store(true);
+            }
+            svcSleepThread(20 * 1000 * 1000);
+        }
         threadJoin(thread, U64_MAX);
         threadFree(thread);
         thread = nullptr;
@@ -181,7 +195,14 @@ Status checkNow()
         return status();
     }
     cancel.store(false);
-    const Status result = check();
+    const Status result = check(stop);
+    // A check stopped part way says nothing new, so what was known stays.
+    if (stop != nullptr && stop->load()) {
+        const Status known = status();
+        if (known.state == State::Available || known.state == State::UpToDate) {
+            return known;
+        }
+    }
     finish(result);
     return result;
 }
@@ -212,7 +233,7 @@ void shutdown()
 }
 
 bool fetchChecksums(const update::Release &release, std::string &listing,
-                    std::string &error)
+                    std::string &error, const std::atomic<bool> *stop)
 {
     const update::Asset *sums = update::findAsset(release, update::ChecksumAsset);
     if (sums == nullptr) {
@@ -221,7 +242,8 @@ bool fetchChecksums(const update::Release &release, std::string &listing,
         return false;
     }
     cancel.store(false);
-    const net::FetchResult result = net::fetch(githubRequest(sums->url, 64 * 1024));
+    const net::FetchResult result =
+        net::fetch(githubRequest(sums->url, 64 * 1024, stop));
     if (!result.ok) {
         error = explain(result);
         return false;

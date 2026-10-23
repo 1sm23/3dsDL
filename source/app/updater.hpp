@@ -2,6 +2,7 @@
 
 #include "update.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -32,8 +33,9 @@ const char *assetName();
 // Starts a check on a background thread unless one is already running.
 void startCheck();
 // Checks on the calling thread and returns the answer. If a background
-// check is running, waits for that one instead of asking twice.
-Status checkNow();
+// check is running, waits for that one instead of asking twice. Setting
+// stop ends the check early, as a failed one.
+Status checkNow(const std::atomic<bool> *stop = nullptr);
 Status status();
 // Goes up by one each time a check finishes, so a screen can notice a new
 // answer without copying the status every frame.
@@ -42,7 +44,9 @@ uint32_t generation();
 void shutdown();
 
 // Downloads the release's checksum listing. Returns false with a reason.
+// Setting stop ends it early.
 bool fetchChecksums(const update::Release &release, std::string &listing,
-                    std::string &error);
+                    std::string &error,
+                    const std::atomic<bool> *stop = nullptr);
 
 } // namespace updater

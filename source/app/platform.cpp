@@ -39,6 +39,26 @@ int64_t sdTotalBytes()
            static_cast<int64_t>(resource.totalClusters);
 }
 
+uint64_t sdCardId()
+{
+    uint64_t id = 14695981039346656037ULL; // FNV-1a
+    const auto add = [&](const u8 *bytes, size_t size) {
+        for (size_t index = 0; index < size; ++index) {
+            id = (id ^ bytes[index]) * 1099511628211ULL;
+        }
+    };
+    u8 cid[16] = {};
+    const bool hasCid = R_SUCCEEDED(FSUSER_GetSdmcCid(cid, sizeof cid));
+    if (hasCid) {
+        add(cid, sizeof cid);
+    }
+    const int64_t total = sdTotalBytes();
+    if (total > 0) {
+        add(reinterpret_cast<const u8 *>(&total), sizeof total);
+    }
+    return hasCid || total > 0 ? id : 0;
+}
+
 int64_t now()
 {
     return static_cast<int64_t>(std::time(nullptr));

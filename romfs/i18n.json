@@ -44,24 +44,24 @@
     "zh": "下载"
   },
   "settings.downloads.resume": {
-    "en": "Resume Interrupted Downloads",
-    "zh": "继续未完成的下载"
+    "en": "Resume Downloads",
+    "zh": "断点续传"
   },
   "settings.downloads.resume.short": {
     "en": "Resume Downloads",
     "zh": "断点续传"
   },
   "settings.downloads.awake": {
-    "en": "Stay Awake While Downloading",
-    "zh": "下载时保持唤醒"
+    "en": "Stay Awake",
+    "zh": "保持唤醒"
   },
   "settings.downloads.awake.short": {
     "en": "Stay Awake",
     "zh": "保持唤醒"
   },
   "settings.downloads.zip": {
-    "en": "Offer to Extract ZIP Files",
-    "zh": "下载后询问是否解压 ZIP"
+    "en": "Ask to Extract ZIPs",
+    "zh": "询问是否解压 ZIP"
   },
   "settings.downloads.zip.short": {
     "en": "Extract ZIP Files",
@@ -210,5 +210,69 @@
   "settings.cia.keep": {
     "en": "Keep File",
     "zh": "仅保留文件"
+  },
+  "settings.downloads.connections": {
+    "en": "Max Connections",
+    "zh": "最大连接数"
+  },
+  "settings.sounds.unavailable_title": {
+    "en": "Sounds Unavailable",
+    "zh": "音效不可用"
+  },
+  "settings.facts.new": {
+    "en": "New",
+    "zh": "新版"
+  },
+  "settings.facts.installed": {
+    "en": "Installed",
+    "zh": "已安装"
+  },
+  "settings.facts.startup": {
+    "en": "At Startup",
+    "zh": "启动时"
+  },
+  "settings.facts.check": {
+    "en": "Check",
+    "zh": "检查"
+  },
+  "settings.facts.dont_check": {
+    "en": "Don't Check",
+    "zh": "不检查"
+  },
+  "settings.facts.extract": {
+    "en": "Ask to Extract",
+    "zh": "询问解压"
+  },
+  "settings.facts.cia": {
+    "en": "After a CIA",
+    "zh": "CIA 下载后"
+  },
+  "settings.facts.destination": {
+    "en": "Saves to",
+    "zh": "保存至"
+  },
+  "settings.facts.console": {
+    "en": "Console",
+    "zh": "主机"
+  },
+  "settings.facts.timezone": {
+    "en": "Time Zone",
+    "zh": "时区"
+  },
+  "settings.facts.hidden": {
+    "en": "Hidden Files",
+    "zh": "隐藏文件"
+  },
+  "settings.facts.history": {
+    "en": "History",
+    "zh": "下载记录"
+  },
+  "settings.facts.version": {
+    "en": "Version",
+    "zh": "版本"
+  },
+  "settings.facts.storage": {
+    "en": "Settings in",
+    "zh": "设置位置"
   }
 }

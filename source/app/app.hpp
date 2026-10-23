@@ -2,6 +2,7 @@
 
 #include "cia.hpp"
 #include "download_engine.hpp"
+#include "file_index.hpp"
 #include "file_types.hpp"
 #include "library.hpp"
 #include "savedata.hpp"
@@ -11,6 +12,8 @@
 
 #include <3ds.h>
 
+#include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,7 +40,6 @@ private:
     };
 
     Action home();
-    void refreshStatus(bool force);
 
     enum class Start { Cancelled, Done, Queued };
     // Asks to confirm, then downloads, or adds the link to the queue.
@@ -71,17 +73,27 @@ private:
 
     // Files, in files.cpp. Paths of entries never end with '/'; folders
     // being browsed always do.
+    // Files, then saves the index if it changed.
     void filesScreen();
-    void openFile(const std::string &path);
+    void browseFiles();
+    // folder, when given, is the whole folder path is in, already read and
+    // sorted, for the picture viewer's previous and next.
+    void openFile(const std::string &path,
+                  const std::vector<fs::Entry> *folder = nullptr);
+    // Picks how Files orders folders; changes apply as they are picked.
+    // folder is shown on the top screen when given. True when it changed.
+    bool sortScreen(const std::string &folder);
     void ciaOptions(const std::string &path);
     // Options for the marked entries, or the highlighted one. Returns true
     // when the folder's contents may have changed.
+    // entries is the folder as read so far, complete once all of it is;
+    // options that need every entry wait for that.
     bool entryOptions(const std::string &folder,
                       const std::vector<std::string> &paths,
                       std::vector<std::string> &marked,
-                      const std::vector<std::string> &all);
+                      const std::vector<fs::Entry> &entries, bool complete);
     bool folderOptions(const std::string &folder,
-                       const std::vector<std::string> &entries,
+                       const std::vector<fs::Entry> &entries, bool complete,
                        std::vector<std::string> &marked);
     void textEditor(const std::string &path);
     void hexViewer(const std::string &path);
@@ -113,10 +125,30 @@ private:
 
     // Installed software and its data, in titles_screens.cpp.
     void titlesScreen();
-    // Reads what is installed into library_; false (after saying why) when
-    // the AM service is unavailable.
+    // What is installed is read in the background into library_ (see
+    // library::Loader); startLibrary reads it again from scratch, and
+    // pollLibrary, run every frame, takes what has arrived.
+    void startLibrary();
+    void pollLibrary();
+    // Reads again and waits for all of it with a progress bar, for screens
+    // that need the whole picture; false, after saying why, when it could
+    // not be read.
     bool reloadLibrary();
+    // Something at path on the SD card was written, moved or removed by
+    // 3dsDL: the index forgets it and what holds it.
+    void sdChanged(const std::string &path);
+    // Before using the index: forgets every folder total when the card may
+    // have changed without 3dsDL saying where.
+    void checkSdIndex();
+    // The index is saved between runs in sdmc:/3ds/3dsDL/index.bin: read on
+    // a worker at start, taken in by the frame hook, saved when Files closes
+    // and when 3dsDL does.
+    void startIndexLoad();
+    void pollIndex();
+    void saveIndex();
     void titleList(bool software);
+    // Order (saved) and what the list shows (until 3dsDL closes).
+    void titleSortScreen(bool software);
     void titleOptions(titles::Title title);
     void extraDataScreen();
     void ticketsScreen();
@@ -172,10 +204,21 @@ private:
     // Copied or cut entries waiting to be pasted.
     std::vector<std::string> clipboard_;
     bool clipboardCut_ = false;
-    int64_t freeBytes_ = -1;
-    platform::Wifi wifi_ = platform::Wifi::Unknown;
-    u64 lastRefresh_ = 0;
     library::Snapshot library_;
+    library::Loader libraryLoader_;
+    // Goes up each time library_ changes, so screens know to look again.
+    uint32_t libraryGeneration_ = 0;
+    // What Files has read of the SD card this session.
+    fileindex::Index fileIndex_;
+    int64_t sdFreeSeen_ = -1; // free space when the index was last checked
+    std::atomic<bool> sdMayHaveChanged_ {false};
+    aptHookCookie aptCookie_ {};
+    uint64_t indexCard_ = 0; // platform::sdCardId when it was loaded
+    Thread indexLoader_ = nullptr;
+    std::unique_ptr<fileindex::Index> loadingIndex_;
+    std::atomic<bool> indexLoaded_ {false};
+    titles::Show softwareShow_ = titles::Show::All;
+    titles::Show addOnShow_ = titles::Show::All;
     std::vector<QueuedLink> queue_;
     uint64_t nextQueueId_ = 1;
     bool updateAvailable_ = false;

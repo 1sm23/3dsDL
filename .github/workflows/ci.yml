@@ -84,6 +84,7 @@ jobs:
           fi
           gh release create "${GITHUB_REF_NAME}" \
             dist/3dsDL.3dsx dist/3dsDL.cia dist/3dsDL.smdh dist/3dsDL.sha256 \
+            dist/3dsDL.elf \
             --title "3dsDL ${GITHUB_REF_NAME}" \
             --generate-notes \
             "${stage[@]}"

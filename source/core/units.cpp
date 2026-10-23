@@ -25,6 +25,38 @@ std::string bytes(uint64_t count)
     return buffer;
 }
 
+std::string grouped(uint64_t count)
+{
+    std::string digits = std::to_string(count);
+    for (int at = static_cast<int>(digits.size()) - 3; at > 0; at -= 3) {
+        digits.insert(static_cast<size_t>(at), ",");
+    }
+    return digits;
+}
+
+std::string shortBytes(uint64_t count)
+{
+    static const char *const suffixes[] = {"B", "KiB", "MiB", "GiB", "TiB"};
+    double value = static_cast<double>(count);
+    size_t suffix = 0;
+    // 999.5 would round to a fourth digit, so it moves up too.
+    while (value >= 999.5 && suffix + 1 < sizeof(suffixes) / sizeof(*suffixes)) {
+        value /= 1024.0;
+        ++suffix;
+    }
+    char buffer[32];
+    if (suffix == 0) {
+        std::snprintf(buffer, sizeof(buffer), "%llu B",
+                      static_cast<unsigned long long>(count));
+    } else {
+        std::snprintf(buffer, sizeof(buffer),
+                      value < 9.995 ? "%.2f %s" : value < 99.95 ? "%.1f %s"
+                                                                : "%.0f %s",
+                      value, suffixes[suffix]);
+    }
+    return buffer;
+}
+
 std::string rate(double bytesPerSecond)
 {
     if (bytesPerSecond < 0.0) {

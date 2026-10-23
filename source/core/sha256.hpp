@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -25,7 +26,10 @@ private:
 };
 
 std::string ofString(const std::string &data);
-// Hashes the file at path. Returns "" when it cannot be read.
-std::string ofFile(const std::string &path);
+// Hashes the file at path. Returns "" when it cannot be read, or when stop
+// is set while it reads. done, if given, counts the bytes read so far.
+std::string ofFile(const std::string &path,
+                   const std::atomic<bool> *stop = nullptr,
+                   std::atomic<uint64_t> *done = nullptr);
 
 } // namespace sha256

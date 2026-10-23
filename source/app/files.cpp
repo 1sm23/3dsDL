@@ -22,6 +22,7 @@
 #include "zip.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <functional>
@@ -35,6 +36,7 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::sortDescription;
 using screens::versionRow;
 
 // The background behind pictures, as RGB565: the app's dark blue.
@@ -50,19 +52,11 @@ Kind kindOf(const fs::Entry &entry)
     return entry.folder ? Kind::Folder : filetype::fromName(entry.name);
 }
 
-const char *sortLabel(fs::SortOrder order)
+// The top screen's title for a folder, as Files shows it.
+std::string folderTitle(const std::string &folder)
 {
-    switch (order) {
-    case fs::SortOrder::Size:
-        return "Size";
-    case fs::SortOrder::Date:
-        return "Date";
-    case fs::SortOrder::Type:
-        return "Type";
-    case fs::SortOrder::Name:
-        break;
-    }
-    return "Name";
+    return naming::parentFolder(folder) == folder ? "SD Card"
+                                                  : fileops::name(folder);
 }
 
 std::string sizeText(int64_t size)
@@ -78,7 +72,9 @@ bool confirm(const std::string &header, const std::string &title,
     dialog.header = header;
     dialog.title = title;
     dialog.tone = dangerous ? ui::Tone::Warning : ui::Tone::Info;
-    dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
+    if (!body.empty()) {
+        dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
+    }
     dialog.buttons = {yes, "Cancel"};
     dialog.dangerous = dangerous ? 0 : -1;
     dialog.initial = dangerous ? 1 : 0;
@@ -86,13 +82,23 @@ bool confirm(const std::string &header, const std::string &title,
     return ui::choose(dialog) == 0;
 }
 
-std::string totalsText(const fileops::Totals &totals)
+std::string contentsText(const fileops::Totals &totals)
 {
     std::string text = plural(totals.files, "file");
     if (totals.folders > 0) {
         text += " in " + plural(totals.folders, "folder");
     }
-    return text + ", " + units::bytes(totals.bytes);
+    return text;
+}
+
+std::string totalsText(const fileops::Totals &totals)
+{
+    return contentsText(totals) + ", " + units::bytes(totals.bytes);
+}
+
+ui::Fact clipboardFact(size_t count, bool cut)
+{
+    return {"Clipboard", plural(count, "item") + (cut ? ", cut" : ", copied")};
 }
 
 // What the top screen shows about an entry, worked out once because it
@@ -221,13 +227,14 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                   const Details &details)
 {
     const Kind kind = kindOf(entry);
-    const int64_t time = entry.modified > 0 ? entry.modified : details.modified;
+    const int64_t time = details.modified > 0 ? details.modified : entry.modified;
     const std::string modified = time > 0 ? units::dateTime(time) : "";
 
     if (kind == Kind::Folder) {
         drawEntryPanel({}, kind, entry.name, path + "/",
                        {{"Type", "Folder"},
                         {"Contains", plural(details.items, "item")},
+                        {"Size", sizeText(entry.size)}, // once added up
                         {"Changed", modified}});
         return;
     }
@@ -332,7 +339,324 @@ std::vector<std::string> splitLines(const std::string &value)
 
 // --- Browsing -------------------------------------------------------------------
 
+namespace {
+
+// Reads a folder on a worker thread and hands its entries over a batch at a
+// time, so a folder of thousands shows while it is read.
+class FolderReader {
+public:
+    FolderReader() { LightLock_Init(&lock_); }
+    ~FolderReader() { stop(); }
+    FolderReader(const FolderReader &) = delete;
+    FolderReader &operator=(const FolderReader &) = delete;
+
+    // Reads folder from the start, stopping a read under way.
+    void start(const std::string &folder, bool hidden, bool times)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        batches_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        hidden_ = hidden;
+        times_ = times;
+        stop_ = false;
+        finished_ = false;
+        readable_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            run(this); // no thread to be had: read it all now
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    // Moves the batches read so far into out (unsorted, each as read).
+    bool take(std::vector<std::vector<fs::Entry>> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !batches_.empty();
+        for (std::vector<fs::Entry> &batch : batches_) {
+            out.push_back(std::move(batch));
+        }
+        batches_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    // Once true, take has nothing more to give after one last call.
+    bool finished() const { return finished_; }
+    bool readable() const { return readable_; }
+
+private:
+    static void run(void *argument)
+    {
+        FolderReader &reader = *static_cast<FolderReader *>(argument);
+        reader.readable_ = fs::readEntries(
+            reader.folder_, reader.hidden_, reader.times_,
+            [&](std::vector<fs::Entry> &&batch) {
+                LightLock_Lock(&reader.lock_);
+                reader.batches_.push_back(std::move(batch));
+                LightLock_Unlock(&reader.lock_);
+            },
+            &reader.stop_);
+        reader.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    bool hidden_ = false;
+    bool times_ = false;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {false};
+    std::atomic<bool> readable_ {false};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<std::vector<fs::Entry>> batches_;
+};
+
+// Adds up the folders inside a folder, one after another on a worker thread,
+// so folders can sort by size. Totals already in the index are used as they
+// are, and every folder it reads whole comes back to go in the index.
+class FolderSizer {
+public:
+    struct Sized {
+        std::string path;
+        fileops::Totals totals;
+        uint64_t fingerprint = 0;
+    };
+
+    FolderSizer() { LightLock_Init(&lock_); }
+    ~FolderSizer() { stop(); }
+    FolderSizer(const FolderSizer &) = delete;
+    FolderSizer &operator=(const FolderSizer &) = delete;
+
+    void start(const std::string &folder, std::vector<std::string> names,
+               std::map<std::string, fileops::Totals> known)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        sized_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        names_ = std::move(names);
+        known_ = std::move(known);
+        stop_ = false;
+        finished_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            finished_ = true; // sizes stay unknown rather than hold up Files
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    // Moves the folders added up so far into out.
+    bool take(std::vector<Sized> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !sized_.empty();
+        for (Sized &sized : sized_) {
+            out.push_back(std::move(sized));
+        }
+        sized_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    bool finished() const { return finished_; }
+
+private:
+    static void run(void *argument)
+    {
+        FolderSizer &sizer = *static_cast<FolderSizer *>(argument);
+        fileops::MeasureHooks hooks;
+        hooks.known = [&](const std::string &path, fileops::Totals &totals) {
+            const auto found = sizer.known_.find(fileindex::keyOf(path));
+            if (found == sizer.known_.end()) {
+                return false;
+            }
+            totals = found->second;
+            return true;
+        };
+        hooks.measured = [&](const std::string &path,
+                             const fileops::Totals &totals, uint64_t print) {
+            LightLock_Lock(&sizer.lock_);
+            sizer.sized_.push_back({path, totals, print});
+            LightLock_Unlock(&sizer.lock_);
+        };
+        for (const std::string &name : sizer.names_) {
+            if (sizer.stop_) {
+                break;
+            }
+            fileops::measure(sizer.folder_ + name, &sizer.stop_, nullptr, &hooks);
+        }
+        sizer.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    std::vector<std::string> names_;
+    std::map<std::string, fileops::Totals> known_;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {true};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<Sized> sized_;
+};
+
+// Asks the SD card when each of a folder's entries last changed, one at a
+// time on a worker thread (the card searches the folder for each), for the
+// entries the index has no date for, so folders can sort by date.
+class DateReader {
+public:
+    struct Dated {
+        std::string name;
+        int64_t size = -1; // as listed, so the date is kept for that size
+        int64_t modified = 0;
+    };
+
+    DateReader() { LightLock_Init(&lock_); }
+    ~DateReader() { stop(); }
+    DateReader(const DateReader &) = delete;
+    DateReader &operator=(const DateReader &) = delete;
+
+    void start(const std::string &folder, std::vector<Dated> wanted)
+    {
+        stop();
+        LightLock_Lock(&lock_);
+        dated_.clear();
+        LightLock_Unlock(&lock_);
+        folder_ = folder;
+        wanted_ = std::move(wanted);
+        stop_ = false;
+        finished_ = false;
+        thread_ = tasks::startWorker(run, this);
+        if (thread_ == nullptr) {
+            finished_ = true; // dates stay unknown rather than hold up Files
+        }
+    }
+    void stop()
+    {
+        stop_ = true;
+        if (thread_ != nullptr) {
+            threadJoin(thread_, U64_MAX);
+            threadFree(thread_);
+            thread_ = nullptr;
+        }
+    }
+    bool take(std::vector<Dated> &out)
+    {
+        LightLock_Lock(&lock_);
+        const bool any = !dated_.empty();
+        for (Dated &dated : dated_) {
+            out.push_back(std::move(dated));
+        }
+        dated_.clear();
+        LightLock_Unlock(&lock_);
+        return any;
+    }
+    bool finished() const { return finished_; }
+
+private:
+    static void run(void *argument)
+    {
+        DateReader &reader = *static_cast<DateReader *>(argument);
+        for (Dated &wanted : reader.wanted_) {
+            if (reader.stop_) {
+                break;
+            }
+            wanted.modified = fs::modifiedTime(reader.folder_ + wanted.name);
+            LightLock_Lock(&reader.lock_);
+            reader.dated_.push_back(wanted);
+            LightLock_Unlock(&reader.lock_);
+        }
+        reader.finished_ = true;
+    }
+
+    Thread thread_ = nullptr;
+    std::string folder_;
+    std::vector<Dated> wanted_;
+    std::atomic<bool> stop_ {false};
+    std::atomic<bool> finished_ {true};
+    LightLock lock_;
+    // Guarded by lock_.
+    std::vector<Dated> dated_;
+};
+
+constexpr const char *IndexFile = "sdmc:/3ds/3dsDL/index.bin";
+
+} // namespace
+
+void App::startIndexLoad()
+{
+    indexCard_ = platform::sdCardId();
+    loadingIndex_.reset(new fileindex::Index());
+    indexLoaded_ = false;
+    indexLoader_ = tasks::startWorker(
+        [](void *argument) {
+            App &app = *static_cast<App *>(argument);
+            std::string data;
+            if (fs::readFile(IndexFile, data)) {
+                app.loadingIndex_->load(data, app.indexCard_);
+            }
+            app.indexLoaded_ = true;
+        },
+        this);
+    if (indexLoader_ == nullptr) {
+        loadingIndex_.reset(); // starts empty instead
+    }
+}
+
+void App::pollIndex()
+{
+    if (indexLoader_ == nullptr || !indexLoaded_) {
+        return;
+    }
+    threadJoin(indexLoader_, U64_MAX);
+    threadFree(indexLoader_);
+    indexLoader_ = nullptr;
+    // Anything read this run wins over the last run's answer.
+    fileIndex_.adopt(std::move(*loadingIndex_));
+    loadingIndex_.reset();
+}
+
+void App::saveIndex()
+{
+    if (indexLoader_ != nullptr) {
+        while (!indexLoaded_) { // still loading: take it in first
+            svcSleepThread(10 * 1000 * 1000);
+        }
+        pollIndex();
+    }
+    if (!fileIndex_.dirty()) {
+        return;
+    }
+    checkSdIndex(); // so only this write counts as explained
+    if (fs::makeDirectories(storage::DataFolder)) {
+        fs::writeFile(IndexFile, fileIndex_.save(indexCard_));
+    }
+    sdChanged(IndexFile);
+    fileIndex_.markSaved();
+}
+
 void App::filesScreen()
+{
+    browseFiles();
+    saveIndex();
+}
+
+void App::browseFiles()
 {
     if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
         filesFolder_ = fs::directoryExists(settings_.destination)
@@ -341,116 +665,361 @@ void App::filesScreen()
     }
     std::string &current = filesFolder_;
     int cursor = 0;
-    std::string landOn; // name to put the cursor on after reloading
+    std::string landOn; // name to put the cursor on once it has been read
     std::vector<std::string> marked;
     std::map<std::string, Details> details;
 
+    // A folder is read in the background and shows as it arrives, sorted.
+    // It is read again only when it may have changed, not after every key:
+    // a folder of thousands takes a while on the SD card.
+    FolderReader reader;
+    std::vector<fs::Entry> entries; // sorted, as far as it has been read
+    std::vector<std::vector<fs::Entry>> waiting; // read, not yet shown
+    std::vector<fs::Entry> incoming; // the same folder read again
+    std::string readFolder;          // the folder entries belong to
+    bool replacing = false; // show entries until incoming is whole
+    bool complete = false;
+    bool reload = true;
+    // Folders are added up for sorting by size; their totals go in
+    // fileIndex_, which keeps them while nothing under them changes.
+    FolderSizer sizer;
+    bool sizing = false; // sizer was started for this listing
+    // Folder sizes from the index, including those loaded from the last run
+    // until they are added up again; -1 for those not added up.
+    const auto fillSizes = [&](std::vector<fs::Entry> &list) {
+        for (fs::Entry &entry : list) {
+            fileops::Totals totals;
+            if (entry.folder) {
+                entry.size = fileIndex_.total(current + entry.name, totals)
+                                 ? static_cast<int64_t>(totals.bytes)
+                                 : -1;
+            }
+        }
+    };
+    DateReader dates;
+    bool dating = false; // dates was started for this listing
+    // Dates the index has for entries of the size they have now.
+    const auto fillDates = [&](std::vector<fs::Entry> &list) {
+        for (fs::Entry &entry : list) {
+            int64_t modified = 0;
+            if (fileIndex_.date(current + entry.name, entry.folder ? -1 : entry.size,
+                                modified)) {
+                entry.modified = modified;
+            }
+        }
+    };
+    const auto keepDates = [&]() {
+        std::vector<DateReader::Dated> dated;
+        if (!dates.take(dated)) {
+            return false;
+        }
+        for (const DateReader::Dated &entry : dated) {
+            fileIndex_.storeDate(current + entry.name, entry.size, entry.modified);
+        }
+        return true;
+    };
+    // Puts what the sizer added up in the index; true when there was any.
+    const auto keepSizes = [&]() {
+        std::vector<FolderSizer::Sized> sized;
+        if (!sizer.take(sized)) {
+            return false;
+        }
+        for (const FolderSizer::Sized &folder : sized) {
+            fileIndex_.storeTotal(folder.path, folder.totals, folder.fingerprint);
+        }
+        return true;
+    };
+    checkSdIndex();
+
     // quit_ is set when a .3dsx is started, which happens as 3dsDL closes.
     while (ui::keepRunning() && !quit_) {
-        bool readable = false;
-        // Times cost the SD card a search of the folder for each entry, so
-        // they are only read to sort by them; the details read their own.
-        std::vector<fs::Entry> entries =
-            fs::listEntries(current, &readable, settings_.showHiddenFiles,
-                            settings_.fileSort == fs::SortOrder::Date);
-        if (!readable && current != "sdmc:/") {
-            current = "sdmc:/";
-            cursor = 0;
-            marked.clear();
-            continue;
-        }
-        fs::sortEntries(entries, settings_.fileSort);
-        const bool atRoot = naming::parentFolder(current) == current;
-        // The Back tab and B go up a folder, so there is no ".." row.
-        const int first = 0;
-
-        // Marks for entries that are gone are dropped.
-        marked.erase(std::remove_if(marked.begin(), marked.end(),
-                                    [](const std::string &path) {
-                                        return !fileops::exists(path);
-                                    }),
-                     marked.end());
-        const std::set<std::string> markedSet(marked.begin(), marked.end());
-
-        if (!landOn.empty()) {
-            for (size_t index = 0; index < entries.size(); ++index) {
-                if (entries[index].name == landOn) {
-                    cursor = static_cast<int>(index) + first;
+        if (reload) {
+            reload = false;
+            if (current != "sdmc:/" && !fs::directoryExists(current)) {
+                current = "sdmc:/";
+                cursor = 0;
+                marked.clear();
+            }
+            checkSdIndex();
+            replacing = readFolder == current && !entries.empty();
+            if (!replacing) {
+                entries.clear();
+                // A folder read before shows at once, while it is read again.
+                const std::vector<fs::Entry> *known =
+                    fileIndex_.listing(current, settings_.showHiddenFiles);
+                if (known != nullptr && !known->empty()) {
+                    entries = *known;
+                    replacing = true;
                 }
             }
-            landOn.clear();
+            fillSizes(entries);
+            fillDates(entries);
+            fs::sortEntries(entries, settings_.fileSort, settings_.fileSortReverse);
+            waiting.clear();
+            incoming.clear();
+            readFolder = current;
+            complete = false;
+            sizer.stop();
+            sizing = false;
+            dates.stop();
+            dating = false;
+            // Dates come from the index, or from the date reader once the
+            // folder is read: asked for during the read, each costs the
+            // card a search of the folder.
+            reader.start(current, settings_.showHiddenFiles, false);
         }
+        const bool atRoot = naming::parentFolder(current) == current;
+
+        // Marks for entries that are gone are dropped once the folder is
+        // read whole, by its listing: asking the card about each mark
+        // searches the folder every time, which froze Files for a minute
+        // after Mark All in a folder of hundreds.
+        std::set<std::string> markedSet;
+        const auto dropGoneMarks = [&]() {
+            if (complete && !marked.empty()) {
+                std::set<std::string> listed;
+                for (const fs::Entry &entry : entries) {
+                    listed.insert(current + entry.name);
+                }
+                marked.erase(std::remove_if(marked.begin(), marked.end(),
+                                            [&](const std::string &path) {
+                                                return listed.count(path) == 0;
+                                            }),
+                             marked.end());
+            }
+            markedSet = std::set<std::string>(marked.begin(), marked.end());
+        };
+        dropGoneMarks();
 
         ui::ListSpec spec;
         spec.title = current;
-        spec.emptyText = readable
-            ? "This folder is empty. Options makes a new file or folder here."
-            : "The SD card could not be read.";
+        spec.heading = current;
+        spec.tapToSelect = true;
+        spec.emptyText = "This folder is empty.";
         spec.back = atRoot ? "Close" : "Back";
         spec.action = "Options";
-        spec.actionKey = "X";
-        spec.actionKeys = KEY_X;
-        spec.longPressKey = KEY_X;
-        spec.extraKeys = KEY_Y | KEY_SELECT | KEY_START;
-        spec.hint = !marked.empty() ? std::to_string(marked.size()) + " marked"
-                  : !clipboard_.empty()
-                      ? std::to_string(clipboard_.size()) +
-                            (clipboardCut_ ? " to move" : " to paste")
-                      : "";
-        for (const fs::Entry &entry : entries) {
-            ui::ListItem item;
-            const KindLook look = lookOf(kindOf(entry));
-            item.label = entry.name;
-            item.detail = entry.folder ? "" : sizeText(entry.size);
-            item.icon = look.icon;
-            item.iconColor = look.color;
-            item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
-                                                   : ui::color::InkButton;
-            item.marked = markedSet.count(current + entry.name) > 0;
-            if (item.marked) {
-                item.badge = "Marked";
-                item.badgeColor = ui::color::Tag;
+        spec.actionKey = "Y";
+        spec.actionKeys = KEY_Y;
+        spec.longPressKey = KEY_Y;
+        spec.extraKeys = KEY_SELECT | KEY_START;
+        spec.headingAction = "Sort";
+        // X sorts, as on the Software lists.
+        spec.headingActionKey = "X";
+        spec.headingActionKeys = KEY_X;
+        const auto hint = [&]() {
+            return !marked.empty() ? std::to_string(marked.size()) + " marked"
+                 : !clipboard_.empty()
+                     ? std::to_string(clipboard_.size()) +
+                           (clipboardCut_ ? " to move" : " to paste")
+                     : "";
+        };
+        spec.hint = hint();
+        const auto buildItems = [&]() {
+            spec.items.clear();
+            spec.items.reserve(entries.size());
+            for (const fs::Entry &entry : entries) {
+                ui::ListItem item;
+                const KindLook look = lookOf(kindOf(entry));
+                item.key = entry.name;
+                item.label = entry.name;
+                item.detail = sizeText(entry.size); // folders once added up
+                item.icon = look.icon;
+                item.iconColor = look.color;
+                item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
+                                                       : ui::color::InkButton;
+                item.marked = markedSet.count(current + entry.name) > 0;
+                if (item.marked) {
+                    item.badge = "Marked";
+                    item.badgeColor = ui::color::Tag;
+                }
+                spec.items.push_back(item);
             }
-            spec.items.push_back(item);
-        }
+        };
+        // Batches are shown at most every 150 ms while reading, so building
+        // the rows for thousands of entries does not slow the reading down.
+        uint64_t shownAt = 0;
+        const bool bySize = settings_.fileSort == fs::SortOrder::Size;
+        const bool byDate = settings_.fileSort == fs::SortOrder::Date;
+        spec.update = [&]() {
+            reader.take(waiting);
+            const bool finishing = !complete && reader.finished();
+            if (finishing) {
+                reader.take(waiting); // anything that came in at the end
+            }
+            const uint64_t now = osGetTime();
+            const bool due = finishing || (!waiting.empty() && now - shownAt >= 150);
+            // Once the listing is whole, its folders are added up to sort
+            // by size; folders added up before keep their sizes.
+            if (bySize && complete && !sizing) {
+                sizing = true;
+                // A total loaded from the last run shows meanwhile, but is
+                // added up again.
+                std::vector<std::string> unsized;
+                for (const fs::Entry &entry : entries) {
+                    fileops::Totals totals;
+                    bool verified = false;
+                    if (entry.folder &&
+                        (!fileIndex_.total(current + entry.name, totals, &verified) ||
+                         !verified)) {
+                        unsized.push_back(entry.name);
+                    }
+                }
+                if (!unsized.empty()) {
+                    sizer.start(current, std::move(unsized),
+                                fileIndex_.verifiedTotals());
+                }
+            }
+            if (byDate && complete && !dating) {
+                dating = true;
+                std::vector<DateReader::Dated> undated;
+                for (const fs::Entry &entry : entries) {
+                    if (entry.modified <= 0) {
+                        undated.push_back(
+                            {entry.name, entry.folder ? -1 : entry.size, 0});
+                    }
+                }
+                if (!undated.empty()) {
+                    dates.start(current, std::move(undated));
+                }
+            }
+            const bool gotDates = dating && !replacing &&
+                                  (now - shownAt >= 150 || dates.finished()) &&
+                                  keepDates();
+            if (gotDates) {
+                shownAt = now;
+                fillDates(entries);
+                fs::sortEntries(entries, settings_.fileSort,
+                                settings_.fileSortReverse);
+                buildItems();
+            }
+            const bool sized = sizing && !replacing &&
+                               (now - shownAt >= 150 || sizer.finished()) &&
+                               keepSizes();
+            if (sized) {
+                shownAt = now;
+                fillSizes(entries);
+                fs::sortEntries(entries, settings_.fileSort,
+                                settings_.fileSortReverse);
+                buildItems();
+            }
+            if (!due && landOn.empty()) {
+                return sized || gotDates;
+            }
+            if (due) {
+                shownAt = now;
+                std::vector<fs::Entry> &into = replacing ? incoming : entries;
+                for (std::vector<fs::Entry> &batch : waiting) {
+                    fillSizes(batch);
+                    fillDates(batch);
+                    fs::mergeEntries(into, std::move(batch), settings_.fileSort,
+                                     settings_.fileSortReverse);
+                }
+                waiting.clear();
+                if (finishing) {
+                    complete = true;
+                    if (replacing) {
+                        entries.swap(incoming);
+                        incoming.clear();
+                        replacing = false;
+                    }
+                    dropGoneMarks();
+                    spec.hint = hint();
+                    if (reader.readable()) {
+                        // Its total no longer counts if its own entries
+                        // are not the ones it was added up from.
+                        if (fileIndex_.verify(current, entries)) {
+                            fillSizes(entries);
+                        }
+                        fileIndex_.storeListing(current, settings_.showHiddenFiles,
+                                                entries);
+                    }
+                    if (!reader.readable()) {
+                        spec.emptyText = "The SD card could not be read.";
+                    }
+                }
+                if (replacing) {
+                    return false; // the old rows stay until the new are whole
+                }
+                buildItems();
+            }
+            bool moved = false;
+            if (!landOn.empty()) {
+                for (size_t index = 0; index < entries.size(); ++index) {
+                    if (entries[index].name == landOn) {
+                        cursor = static_cast<int>(index);
+                        landOn.clear();
+                        moved = true;
+                        break;
+                    }
+                }
+                if (complete) {
+                    landOn.clear(); // gone meanwhile
+                }
+            }
+            return due || moved || sized || gotDates;
+        };
+        buildItems();
+        spec.loading = [&]() {
+            return !complete || (bySize && sizing && !sizer.finished()) ||
+                   (byDate && dating && !dates.finished());
+        };
 
         spec.drawTop = [&](int index) {
             const std::string title =
                 atRoot ? "SD Card" : fileops::name(current);
-            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
-            const int position = index - first;
-            if (position < 0 ||
-                position >= static_cast<int>(entries.size())) {
+            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange,
+                              sortDescription(settings_.fileSort,
+                                              settings_.fileSortReverse));
+            if (index < 0 || index >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
-                std::string summary = plural(entries.size(), "item") +
-                                      ", sorted by " +
-                                      text::lower(sortLabel(settings_.fileSort)) +
-                                      ".";
-                if (!clipboard_.empty()) {
-                    summary += " " + plural(clipboard_.size(), "item") +
-                               " ready to paste from Options.";
+                std::vector<ui::Fact> facts = {{"Path", current}};
+                if (!complete) {
+                    facts.push_back({"Reading",
+                                     plural(entries.size(), "item") + " so far",
+                                     ui::color::Badge});
                 }
-                ui::drawPanelText(summary, ui::TopPanel);
+                if (!clipboard_.empty()) {
+                    facts.push_back(
+                        clipboardFact(clipboard_.size(), clipboardCut_));
+                }
+                ui::drawFacts(facts);
                 return;
             }
-            const fs::Entry &entry = entries[position];
+            const fs::Entry &entry = entries[index];
             const std::string path = current + entry.name;
             auto found = details.find(path);
             if (found == details.end()) {
                 found = details.emplace(path, loadDetails(path, kindOf(entry)))
                             .first;
+                // The date the card gives now replaces one the index kept.
+                const int64_t modified = found->second.modified;
+                if (modified > 0 && entry.modified != modified) {
+                    entries[index].modified = modified;
+                    fileIndex_.storeDate(path, entry.folder ? -1 : entry.size,
+                                         modified);
+                }
             }
             drawEntryTop(path, entry, found->second);
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
-        const int position = result.index - first;
+        // Whatever comes next has the SD card to itself; the sizes still
+        // missing are added up again on the way back. What changed on the
+        // card before this point is caught now, before the next action.
+        sizer.stop();
+        keepSizes();
+        sizing = false;
+        dates.stop();
+        keepDates();
+        dating = false;
+        checkSdIndex();
+        const int position = result.index;
         const bool onEntry =
             position >= 0 && position < static_cast<int>(entries.size());
         const std::string highlighted =
             onEntry ? current + entries[position].name : "";
 
-        if (result.key == 0 || result.key == KEY_START) {
+        if (result.key == 0) {
             return;
         }
         if (result.key == KEY_B) {
@@ -461,9 +1030,11 @@ void App::filesScreen()
             current = naming::parentFolder(current);
             cursor = 0;
             marked.clear();
+            reload = true;
             continue;
         }
-        if (result.key == KEY_Y) {
+        if (result.key == KEY_SELECT) {
+            // Marking only redraws the rows; the folder is not read again.
             if (onEntry) {
                 const auto at =
                     std::find(marked.begin(), marked.end(), highlighted);
@@ -473,57 +1044,100 @@ void App::filesScreen()
                     marked.erase(at);
                 }
                 cursor = std::min(cursor + 1,
-                                  static_cast<int>(spec.items.size()) - 1);
+                                  static_cast<int>(entries.size()) - 1);
             }
             continue;
         }
-        if (result.key == KEY_SELECT || (result.key == KEY_X && !onEntry &&
-                                         marked.empty())) {
-            std::vector<std::string> all;
-            for (const fs::Entry &entry : entries) {
-                all.push_back(current + entry.name);
+        // A new order is sorted in memory, keeping the highlighted entry;
+        // dates and folder sizes it needs are found after. Anything else the
+        // options did may have changed the folder.
+        const fs::SortOrder sortedBy = settings_.fileSort;
+        const bool reversed = settings_.fileSortReverse;
+        const auto afterOptions = [&](bool changed) {
+            if (settings_.fileSort == sortedBy &&
+                settings_.fileSortReverse == reversed) {
+                if (changed) {
+                    details.clear();
+                    reload = true;
+                }
+                return;
             }
-            if (folderOptions(current, all, marked)) {
-                details.clear();
-            }
-            continue;
-        }
-        if (result.key == KEY_X) {
-            std::vector<std::string> all;
-            for (const fs::Entry &entry : entries) {
-                all.push_back(current + entry.name);
-            }
-            const std::vector<std::string> targets =
-                marked.empty() ? std::vector<std::string>{highlighted} : marked;
-            if (entryOptions(current, targets, marked, all)) {
-                details.clear();
-                if (!marked.empty() &&
-                    std::none_of(marked.begin(), marked.end(),
-                                 [](const std::string &path) {
-                                     return fileops::exists(path);
-                                 })) {
-                    marked.clear();
+            const std::string keep = onEntry ? entries[position].name : "";
+            fs::sortEntries(entries, settings_.fileSort,
+                            settings_.fileSortReverse);
+            fs::sortEntries(incoming, settings_.fileSort,
+                            settings_.fileSortReverse);
+            for (size_t index = 0; index < entries.size(); ++index) {
+                if (entries[index].name == keep) {
+                    cursor = static_cast<int>(index);
                 }
             }
+        };
+        // What an action changed, for the index to forget: this folder,
+        // what it acted on, and where anything moved here came from.
+        const std::vector<std::string> clipboardBefore = clipboard_;
+        const bool cutBefore = clipboardCut_;
+        const auto noteChanges = [&](bool changed,
+                                     const std::vector<std::string> &targets) {
+            if (!changed) {
+                return;
+            }
+            for (const std::string &path : targets) {
+                sdChanged(path);
+            }
+            if (cutBefore && clipboard_ != clipboardBefore) {
+                for (const std::string &path : clipboardBefore) {
+                    sdChanged(path);
+                }
+            }
+            sdChanged(current);
+        };
+        if (result.key == KEY_X) {
+            afterOptions(sortScreen(current));
+            continue;
+        }
+        if (result.key == KEY_START || (result.key == KEY_Y && !onEntry &&
+                                         marked.empty())) {
+            const bool changed = folderOptions(current, entries, complete, marked);
+            noteChanges(changed, {});
+            afterOptions(changed);
+            continue;
+        }
+        if (result.key == KEY_Y) {
+            const std::vector<std::string> targets =
+                marked.empty() ? std::vector<std::string>{highlighted} : marked;
+            const bool changed =
+                entryOptions(current, targets, marked, entries, complete);
+            noteChanges(changed, targets);
+            afterOptions(changed);
             continue;
         }
         if (result.key != KEY_A || !onEntry) {
             continue;
         }
-        const fs::Entry &entry = entries[position];
+        const fs::Entry entry = entries[position];
         if (entry.folder) {
             current += entry.name + "/";
             cursor = 0;
             marked.clear();
+            reload = true;
             continue;
         }
-        openFile(highlighted);
+        // A viewer may save the file or extract next to it.
+        const int64_t freeBefore = platform::sdFreeBytes();
+        openFile(highlighted, complete ? &entries : nullptr);
+        if (platform::sdFreeBytes() != freeBefore ||
+            fs::fileSize(highlighted) != entry.size) {
+            sdChanged(highlighted);
+        }
         details.erase(highlighted);
         landOn = entry.name;
+        reload = true;
     }
 }
 
-void App::openFile(const std::string &path)
+void App::openFile(const std::string &path,
+                   const std::vector<fs::Entry> *folderEntries)
 {
     const Kind kind = filetype::fromName(basename(path));
     switch (kind) {
@@ -540,10 +1154,17 @@ void App::openFile(const std::string &path)
         const std::string folder = folderOf(path);
         std::vector<std::string> pictures;
         size_t index = 0;
-        std::vector<fs::Entry> entries =
-            fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
-                            settings_.fileSort == fs::SortOrder::Date);
-        fs::sortEntries(entries, settings_.fileSort);
+        // Files' own list when it has the whole folder, so a folder of
+        // thousands is not read again just to step through its pictures.
+        std::vector<fs::Entry> entries;
+        if (folderEntries != nullptr) {
+            entries = *folderEntries;
+        } else {
+            entries = fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
+                                      settings_.fileSort == fs::SortOrder::Date);
+            fs::sortEntries(entries, settings_.fileSort,
+                            settings_.fileSortReverse);
+        }
         for (const fs::Entry &entry : entries) {
             if (!entry.folder && kindOf(entry) == Kind::Image) {
                 if (folder + entry.name == path) {
@@ -606,14 +1227,16 @@ void App::ciaOptions(const std::string &path)
     add({26, 90, 268, 38}, "Install and Delete File", ui::type::Body + 0.06f, 0);
     add({26, 140, 268, 26}, "Delete File", ui::type::Small + 0.06f,
         ui::color::Bad);
-    const std::string state = installer::available()
-                                  ? screens::installState(info)
-                                  : "Installing is not available.";
     spec.drawTop = [&]() { screens::drawCiaTop(info, "CIA Installer"); };
-    spec.drawBottom = [&]() {
-        ui::drawMarquee(state, 160, 12, ui::type::Body, ui::color::Ink, 300,
-                        C2D_AlignCenter);
-    };
+    // The top screen shows whether it is installed; only say why the
+    // install buttons are off.
+    if (!installer::available()) {
+        spec.drawBottom = []() {
+            ui::drawMarquee("Installing is not available.", 160, 12,
+                            ui::type::Body, ui::color::Ink, 300,
+                            C2D_AlignCenter);
+        };
+    }
     int focus = installer::available() ? 0 : 2;
     const ui::ScreenResult result = ui::runScreen(spec, focus);
     if (result.choice == 0 || result.choice == 1) {
@@ -628,8 +1251,16 @@ void App::ciaOptions(const std::string &path)
 void App::showChecksum(const std::string &path)
 {
     std::string hash;
-    tasks::busy("SHA-256", "Reading " + basename(path) + "...",
-                [&]() { hash = sha256::ofFile(path); });
+    if (!tasks::busy("SHA-256", "Reading " + basename(path) + "...",
+                     [&](tasks::Busy &busy) {
+                         busy.bytes = true;
+                         busy.total = static_cast<uint64_t>(
+                             std::max<int64_t>(0, fs::fileSize(path)));
+                         hash = sha256::ofFile(path, &busy.cancel, &busy.done);
+                     },
+                     true)) {
+        return;
+    }
     if (hash.empty()) {
         ui::message("No Checksum", "The file could not be read.",
                     ui::Tone::Error, path);
@@ -645,7 +1276,7 @@ void App::showChecksum(const std::string &path)
             continue;
         }
         std::string listing;
-        if (fs::fileSize(folder + entry.name) > 1024 * 1024 ||
+        if (entry.size > 1024 * 1024 ||
             !fs::readFile(folder + entry.name, listing)) {
             continue;
         }
@@ -666,7 +1297,6 @@ void App::showChecksum(const std::string &path)
     dialog.tone = verdict.empty() ? ui::Tone::Info
                   : matches       ? ui::Tone::Success
                                   : ui::Tone::Error;
-    dialog.body.push_back({name, ui::color::Text, 0.5f, 2});
     dialog.body.push_back({hash.substr(0, 32) + "\n" + hash.substr(32),
                            ui::color::Text, 0.46f, 2});
     if (!verdict.empty()) {
@@ -681,10 +1311,10 @@ void App::showChecksum(const std::string &path)
 bool App::entryOptions(const std::string &folder,
                        const std::vector<std::string> &paths,
                        std::vector<std::string> &marked,
-                       const std::vector<std::string> &all)
+                       const std::vector<fs::Entry> &entries, bool complete)
 {
     if (paths.empty() || paths.front().empty()) {
-        return folderOptions(folder, all, marked);
+        return folderOptions(folder, entries, complete, marked);
     }
     enum class Action {
         Open,
@@ -709,22 +1339,23 @@ bool App::entryOptions(const std::string &folder,
     };
     std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    std::vector<std::string> notes;
     const auto add = [&](const std::string &label, Action action,
-                         const std::string &note, bool danger = false) {
+                         bool danger = false) {
         items.push_back({label, danger, true});
         actions.push_back(action);
-        notes.push_back(note);
     };
 
+    // What the targets are, from the folder's listing: asking the card
+    // about each of hundreds of marked entries took minutes.
+    fileops::Lookup lookup;
     const bool single = paths.size() == 1;
     const std::string &path = paths.front();
-    const bool isFolder = single && fileops::isFolder(path);
+    const bool isFolder = single && lookup.isFolder(path);
     const Kind kind = isFolder ? Kind::Folder
                              : filetype::fromName(basename(path));
     std::vector<std::string> cias;
     for (const std::string &entry : paths) {
-        if (!fileops::isFolder(entry) &&
+        if (!lookup.isFolder(entry) &&
             filetype::fromName(basename(entry)) == Kind::Cia) {
             cias.push_back(entry);
         }
@@ -741,69 +1372,86 @@ bool App::entryOptions(const std::string &folder,
         single && std::find(marked.begin(), marked.end(), path) != marked.end();
 
     if (single && kind == Kind::Cia) {
-        add("Install", Action::Install, "Installs the software and keeps the CIA file.");
-        add("Install and Delete", Action::InstallDelete,
-            "Installs the software, then removes the CIA file from the SD card.");
+        add("Install", Action::Install);
+        add("Install and Delete", Action::InstallDelete);
     } else if (single && kind == Kind::Ticket) {
-        add("Install Ticket", Action::InstallTicket,
-            "Adds this ticket to the console, replacing one it already has "
-            "for the same title, as FBI does.");
+        add("Install Ticket", Action::InstallTicket);
     } else if (single && kind == Kind::Text) {
-        add("Edit", Action::Edit, "Opens the file in the line editor.");
+        add("Edit", Action::Edit);
     } else if (single) {
-        add("Open", Action::Open, isFolder ? "Opens the folder."
-                                           : "Opens the file in the viewer that suits it.");
+        add("Open", Action::Open);
         if (kind == Kind::Zip) {
-            add("Extract", Action::Extract, "Extracts the archive here or into a new folder.");
+            add("Extract", Action::Extract);
         }
     }
     if ((!single || isFolder) && !cias.empty()) {
-        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll,
-            "Installs each CIA one after another.");
-        add("Install and Delete", Action::InstallDeleteAll,
-            "Installs each CIA, then removes the files that installed.");
+        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll);
+        add("Install and Delete", Action::InstallDeleteAll);
     }
     if (single && !isFolder && kind != Kind::Text && kind != Kind::Cia) {
-        add("Open as Text", Action::ViewText, "Shows the file as text, even if it is not meant to be.");
+        add("Open as Text", Action::ViewText);
     }
     if (single && !isFolder) {
-        add("Open as Hex", Action::ViewHex, "Shows the file byte by byte.");
+        add("Open as Hex", Action::ViewHex);
     }
     if (single) {
-        add("Rename", Action::Rename, "Gives it a new name.");
+        add("Rename", Action::Rename);
     }
-    add("Copy", Action::Copy, "Copies " + std::string(single ? "it" : "them") +
-                                  ". Open another folder and choose Paste.");
-    add("Cut", Action::Cut, "Moves " + std::string(single ? "it" : "them") +
-                                ". Open another folder and choose Paste.");
-    add("Delete", Action::Delete, "Deletes " + std::string(single ? "it" : "them") +
-                                      " for good, after asking.", true);
-    add("Properties", Action::Properties, "Size, date and where it is.");
+    add("Copy", Action::Copy);
+    add("Cut", Action::Cut);
+    add("Delete", Action::Delete, true);
+    add("Properties", Action::Properties);
     if (single && !isFolder) {
-        add("SHA-256", Action::Checksum,
-            "Works out the file's SHA-256 checksum and compares it with any "
-            ".sha256 list in the same folder.");
+        add("SHA-256", Action::Checksum);
     }
     if (single) {
-        add(isMarked ? "Unmark" : "Mark", Action::Mark,
-            "Marked items are copied, moved, installed or deleted together.");
+        add(isMarked ? "Unmark" : "Mark", Action::Mark);
     } else {
-        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
+        add("Clear Marks", Action::ClearMarks);
     }
-    add("This Folder...", Action::Folder,
-        "Paste, new folder, new file, sorting and hidden files.");
+    add("This Folder...", Action::Folder);
 
-    const std::string title = single ? basename(path)
+    // The top screen shows what the options act on: the entry as Files
+    // shows it, or what the marked items add up to without walking folders.
+    fs::Entry entry;
+    Details details;
+    std::vector<ui::Fact> facts;
+    if (single) {
+        entry.name = fileops::name(path);
+        entry.folder = isFolder;
+        entry.size = lookup.size(path);
+        details = loadDetails(path, kind);
+    } else {
+        size_t files = 0;
+        size_t folders = 0;
+        uint64_t bytes = 0;
+        for (const std::string &item : paths) {
+            if (lookup.isFolder(item)) {
+                ++folders;
+            } else {
+                ++files;
+                bytes += static_cast<uint64_t>(std::max<int64_t>(0, lookup.size(item)));
+            }
+        }
+        if (files > 0) {
+            facts.push_back({"Files", std::to_string(files) + ", " +
+                                          units::bytes(bytes)});
+        }
+        if (folders > 0) {
+            facts.push_back({"Folders", std::to_string(folders)});
+        }
+    }
+    const std::string title = single ? folderTitle(folder)
                                      : plural(paths.size(), "Marked Item");
-    const KindLook look = lookOf(kind);
-    const int choice = ui::menu(items, [&](int focus) {
-        ui::drawTopChrome(title, single ? look.icon : ui::Icon::Check,
-                          single ? look.color : ui::color::Tag);
+    const int choice = ui::menu(items, [&](int) {
+        if (single) {
+            ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
+            drawEntryTop(path, entry, details);
+            return;
+        }
+        ui::drawTopChrome(title, ui::Icon::Check, ui::color::Tag);
         ui::drawPanel();
-        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
-                              ? notes[focus]
-                              : "",
-                          ui::TopPanel);
+        ui::drawFacts(facts);
     });
     if (choice < 0) {
         return false;
@@ -847,9 +1495,9 @@ bool App::entryOptions(const std::string &folder,
         clipboard_ = paths;
         clipboardCut_ = actions[choice] == Action::Cut;
         ui::message(clipboardCut_ ? "Ready to Move" : "Ready to Copy",
-                    "Open the folder to put " +
-                        std::string(single ? "it" : "them") +
-                        " in, then choose Paste in Options.");
+                    std::string("Open a folder and choose ") +
+                        (clipboardCut_ ? "Move Here" : "Paste Here") +
+                        " in Options.");
         return true;
     case Action::Delete:
         return deleteEntries(paths);
@@ -870,13 +1518,13 @@ bool App::entryOptions(const std::string &folder,
         marked.clear();
         return false;
     case Action::Folder:
-        return folderOptions(folder, all, marked);
+        return folderOptions(folder, entries, complete, marked);
     }
     return false;
 }
 
 bool App::folderOptions(const std::string &folder,
-                        const std::vector<std::string> &entries,
+                        const std::vector<fs::Entry> &entries, bool complete,
                         std::vector<std::string> &marked)
 {
     enum class Action {
@@ -893,59 +1541,61 @@ bool App::folderOptions(const std::string &folder,
     };
     std::vector<ui::MenuItem> items;
     std::vector<Action> actions;
-    std::vector<std::string> notes;
     const auto add = [&](const std::string &label, Action action,
-                         const std::string &note) {
-        items.push_back({label, false, true});
+                         bool enabled = true) {
+        items.push_back({label, false, enabled});
         actions.push_back(action);
-        notes.push_back(note);
     };
 
+    // Sort first, so SELECT and A reach it from any folder.
+    add("Sort...", Action::Sort);
     if (!clipboard_.empty()) {
-        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste,
-            std::string(clipboardCut_ ? "Moves " : "Copies ") +
-                plural(clipboard_.size(), "item") + " into this folder.");
-        add("Forget Clipboard", Action::ClearClipboard,
-            "Forgets what was copied or cut. Nothing is deleted.");
+        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste);
+        add("Forget Clipboard", Action::ClearClipboard);
     }
-    add("New Folder", Action::NewFolder, "Makes an empty folder here.");
-    add("New File", Action::NewFile,
-        "Makes an empty file here and opens it in the editor, for configs "
-        "and notes.");
-    add(std::string("Sort: ") + sortLabel(settings_.fileSort), Action::Sort,
-        "Sorts by name, size, date or type. Folders always come first.");
+    add("New Folder", Action::NewFolder);
+    add("New File", Action::NewFile);
     add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
-        Action::Hidden, "Shows or hides files and folders whose names start "
-                        "with a dot.");
+        Action::Hidden);
+    // These act on every entry, so they wait until the folder is read.
     if (!entries.empty()) {
-        add("Mark All", Action::MarkAll, "Marks everything in this folder.");
+        add("Mark All", Action::MarkAll, complete);
     }
     if (!marked.empty()) {
-        add("Clear Marks", Action::ClearMarks, "Unmarks everything.");
+        add("Clear Marks", Action::ClearMarks);
     }
     size_t cias = 0;
-    for (const std::string &entry : entries) {
-        if (!fileops::isFolder(entry) &&
-            filetype::fromName(basename(entry)) == Kind::Cia) {
+    for (const fs::Entry &entry : entries) {
+        if (!entry.folder && filetype::fromName(entry.name) == Kind::Cia) {
             ++cias;
         }
     }
     if (cias > 0) {
-        add("Install All CIAs", Action::InstallAll,
-            "Installs " + plural(cias, "CIA") + " in this folder, one after "
-            "another.");
+        add("Install All CIAs", Action::InstallAll, complete);
     }
-    add("Properties", Action::Properties, "How much this folder holds.");
+    add("Properties", Action::Properties);
 
-    const std::string name =
-        naming::parentFolder(folder) == folder ? "SD Card" : fileops::name(folder);
-    const int choice = ui::menu(items, [&](int focus) {
+    const std::string name = folderTitle(folder);
+    std::vector<ui::Fact> facts = {
+        {"Path", folder},
+        {"Sorted", sortDescription(settings_.fileSort, settings_.fileSortReverse)}};
+    facts.push_back(complete ? ui::Fact {"Contains", plural(entries.size(), "item")}
+                             : ui::Fact {"Reading", plural(entries.size(), "item") +
+                                                        " so far",
+                                         ui::color::Badge});
+    if (cias > 0) {
+        facts.push_back({"CIAs", std::to_string(cias)});
+    }
+    if (!marked.empty()) {
+        facts.push_back({"Marked", plural(marked.size(), "item")});
+    }
+    if (!clipboard_.empty()) {
+        facts.push_back(clipboardFact(clipboard_.size(), clipboardCut_));
+    }
+    const int choice = ui::menu(items, [&](int) {
         ui::drawTopChrome(name, ui::Icon::Folder, ui::color::IconOrange);
         ui::drawPanel();
-        ui::drawPanelText(focus >= 0 && focus < static_cast<int>(notes.size())
-                              ? notes[focus]
-                              : folder,
-                          ui::TopPanel);
+        ui::drawFacts(facts);
     });
     if (choice < 0) {
         return false;
@@ -960,35 +1610,26 @@ bool App::folderOptions(const std::string &folder,
         return createFolder(folder);
     case Action::NewFile:
         return createFile(folder);
-    case Action::Sort: {
-        const int picked = ui::chooseOption(
-            "Sort Files", "Folders always come first, sorted by name.",
-            {"Name", "Size, Largest First", "Date, Newest First", "Type"},
-            static_cast<int>(settings_.fileSort), ui::Icon::Folder,
-            ui::color::IconOrange);
-        if (picked < 0) {
-            return false;
-        }
-        settings_.fileSort = static_cast<fs::SortOrder>(picked);
-        persistSettings();
-        return true;
-    }
+    case Action::Sort:
+        return sortScreen(folder);
     case Action::Hidden:
         settings_.showHiddenFiles = !settings_.showHiddenFiles;
         persistSettings();
         return true;
     case Action::MarkAll:
-        marked = entries;
+        marked.clear();
+        for (const fs::Entry &entry : entries) {
+            marked.push_back(folder + entry.name);
+        }
         return false;
     case Action::ClearMarks:
         marked.clear();
         return false;
     case Action::InstallAll: {
         std::vector<std::string> paths;
-        for (const std::string &entry : entries) {
-            if (!fileops::isFolder(entry) &&
-                filetype::fromName(basename(entry)) == Kind::Cia) {
-                paths.push_back(entry);
+        for (const fs::Entry &entry : entries) {
+            if (!entry.folder && filetype::fromName(entry.name) == Kind::Cia) {
+                paths.push_back(folder + entry.name);
             }
         }
         ui::Dialog dialog;
@@ -1016,6 +1657,70 @@ bool App::folderOptions(const std::string &folder,
     return false;
 }
 
+bool App::sortScreen(const std::string &folder)
+{
+    const fs::SortOrder startOrder = settings_.fileSort;
+    const bool startReverse = settings_.fileSortReverse;
+    // In the order people reach for them; SortOrder's values differ.
+    static const struct {
+        fs::SortOrder order;
+        const char *label;
+    } Orders[] = {{fs::SortOrder::Name, "Name"},
+                  {fs::SortOrder::Date, "Date"},
+                  {fs::SortOrder::Size, "Size"},
+                  {fs::SortOrder::Type, "Type"}};
+    int focus = 0;
+    for (int index = 0; index < 4; ++index) {
+        if (Orders[index].order == settings_.fileSort) {
+            focus = index;
+        }
+    }
+    // Picks apply at once and the screen stays, so order and direction can
+    // both be set; Back leaves.
+    while (ui::keepRunning() && !quit_) {
+        ui::ScreenSpec spec;
+        spec.back = "Back";
+        for (int index = 0; index < 4; ++index) {
+            ui::Control control;
+            control.rect = {index % 2 == 0 ? 26.0f : 164.0f,
+                            index < 2 ? 29.0f : 81.0f, 130, 40};
+            control.label = Orders[index].label;
+            control.style = Orders[index].order == settings_.fileSort
+                                ? ui::Style::Chosen
+                                : ui::Style::Normal;
+            spec.controls.push_back(control);
+        }
+        ui::Control reverse;
+        reverse.rect = {26, 139, 268, 40};
+        reverse.label = "Reverse Order";
+        reverse.style = settings_.fileSortReverse ? ui::Style::Chosen
+                                                  : ui::Style::Normal;
+        spec.controls.push_back(reverse);
+        spec.drawTop = [&]() {
+            ui::drawTopChrome("Sort", ui::Icon::Folder, ui::color::IconOrange);
+            ui::drawPanel();
+            std::vector<ui::Fact> facts = {
+                {"Order", sortDescription(settings_.fileSort,
+                                          settings_.fileSortReverse)}};
+            if (!folder.empty()) {
+                facts.push_back({"Folder", folder});
+            }
+            ui::drawFacts(facts);
+        };
+        const ui::ScreenResult result = ui::runScreen(spec, focus);
+        if (result.choice >= 0 && result.choice < 4) {
+            settings_.fileSort = Orders[result.choice].order;
+        } else if (result.choice == 4) {
+            settings_.fileSortReverse = !settings_.fileSortReverse;
+        } else {
+            break;
+        }
+        persistSettings();
+    }
+    return settings_.fileSort != startOrder ||
+           settings_.fileSortReverse != startReverse;
+}
+
 // --- File operations -------------------------------------------------------------
 
 void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
@@ -1033,6 +1738,7 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     }
 
     size_t installed = 0;
+    size_t kept = 0; // the same version was there and stayed
     std::vector<std::string> failed;
     for (const std::string &path : paths) {
         if (!ui::keepRunning()) {
@@ -1040,9 +1746,10 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
         }
         cia::Info info;
         std::string error;
+        bool already = false;
         if (cia::readInfo(path, info, error) &&
-            installCia(path, info, deleteAfter, "", true)) {
-            ++installed;
+            installCia(path, info, deleteAfter, "", true, &already)) {
+            ++(already ? kept : installed);
         } else {
             failed.push_back(basename(path));
         }
@@ -1053,7 +1760,11 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     }
     ui::message(failed.empty() ? "All installed" : "Some were not installed",
                 "Installed " + std::to_string(installed) + " of " +
-                    plural(paths.size(), "CIA") + ".",
+                    plural(paths.size(), "CIA") + "." +
+                    (kept > 0 ? " " + std::to_string(kept) +
+                                    (kept == 1 ? " was" : " were") +
+                                    " already installed."
+                              : ""),
                 failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
                 failed.empty() ? "" : "Not installed: " + list);
 }
@@ -1097,21 +1808,28 @@ bool App::renameEntry(const std::string &path)
 bool App::deleteEntries(const std::vector<std::string> &paths)
 {
     fileops::Totals totals;
-    tasks::busy("delete", "Counting what will be deleted...", [&]() {
-        for (const std::string &path : paths) {
-            const fileops::Totals part = fileops::measure(path);
-            totals.files += part.files;
-            totals.folders += part.folders + (fileops::isFolder(path) ? 1 : 0);
-            totals.bytes += part.bytes;
-        }
-    });
+    if (!tasks::busy("delete", "Counting what will be deleted...",
+                     [&](tasks::Busy &busy) {
+                         fileops::Lookup lookup;
+                         for (const std::string &path : paths) {
+                             const fileops::Totals part = fileops::measure(
+                                 path, &busy.cancel, nullptr, nullptr, &lookup);
+                             totals.files += part.files;
+                             totals.folders += part.folders +
+                                               (lookup.isFolder(path) ? 1 : 0);
+                             totals.bytes += part.bytes;
+                         }
+                     },
+                     true)) {
+        return false;
+    }
     const bool single = paths.size() == 1;
     const std::string what = single ? fileops::name(paths.front())
                                     : plural(paths.size(), "item");
-    std::string body = "This cannot be undone.";
-    if (totals.folders > 0 || !single) {
-        body = "That is " + totalsText(totals) + ". " + body;
-    }
+    // How much goes. Delete already says it is for good.
+    const std::string body = totals.folders > 0 || !single
+                                 ? totalsText(totals)
+                                 : units::bytes(totals.bytes);
     if (!confirm("delete", "Delete " + what + "?", body, "Delete", true)) {
         return false;
     }
@@ -1136,9 +1854,10 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
         settings_.keepAwake);
 
     // Copied entries that no longer exist cannot be pasted.
+    fileops::Lookup lookup;
     clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
-                                    [](const std::string &path) {
-                                        return !fileops::exists(path);
+                                    [&](const std::string &path) {
+                                        return !lookup.exists(path);
                                     }),
                      clipboard_.end());
     if (result.status == fileops::Status::Failed) {
@@ -1163,43 +1882,43 @@ bool App::pasteInto(const std::string &folder)
     };
     std::vector<Step> steps;
     std::vector<std::string> problems;
+    // From the folders' listings, with each destination claimed as it is
+    // chosen, so two items never pick the same free name.
+    fileops::Lookup lookup;
+    const naming::ExistsFunction exists = [&](const std::string &path) {
+        return lookup.exists(path);
+    };
 
     for (const std::string &source : clipboard_) {
-        if (!fileops::exists(source)) {
+        if (!lookup.exists(source)) {
             problems.push_back(fileops::name(source) + " no longer exists.");
             continue;
         }
         const std::string name = fileops::name(source);
         Step step {source, folder + name, false};
-        if (fileops::isFolder(source) &&
-            fileops::isInside(step.destination, source)) {
+        const bool folderSource = lookup.isFolder(source);
+        if (folderSource && fileops::isInside(step.destination, source)) {
             problems.push_back(name + " cannot go inside itself.");
             continue;
         }
         if (clipboardCut_ && step.destination == source) {
             continue; // already here
         }
-        if (fileops::exists(step.destination)) {
+        if (lookup.exists(step.destination)) {
             if (step.destination == source) {
                 // Copying into its own folder makes "name (1)".
-                step.destination =
-                    naming::unusedPath(folder, name, fileops::exists);
+                step.destination = naming::unusedPath(folder, name, exists);
             } else {
                 ui::Dialog dialog;
                 dialog.header = "paste";
                 dialog.title = name + " is already here.";
                 dialog.tone = ui::Tone::Warning;
-                dialog.body.push_back({"Keep Both adds a number to the new "
-                                       "one's name. Replace deletes the one "
-                                       "already in " + folder + " first.",
-                                       ui::color::Text, 0.46f, 4});
                 dialog.buttons = {"Keep Both", "Replace", "Skip"};
                 dialog.dangerous = 1;
                 dialog.cancelButton = 2;
                 const int answer = ui::choose(dialog);
                 if (answer == 0) {
-                    step.destination =
-                        naming::unusedPath(folder, name, fileops::exists);
+                    step.destination = naming::unusedPath(folder, name, exists);
                 } else if (answer == 1) {
                     step.replace = true;
                 } else {
@@ -1211,16 +1930,24 @@ bool App::pasteInto(const std::string &folder)
             problems.push_back("No free name was found for " + name + ".");
             continue;
         }
+        lookup.claim(step.destination, folderSource);
         steps.push_back(step);
     }
 
     uint64_t bytes = 0;
     if (!clipboardCut_ && !steps.empty()) {
-        tasks::busy("paste", "Measuring what will be copied...", [&]() {
-            for (const Step &step : steps) {
-                bytes += fileops::measure(step.source).bytes;
-            }
-        });
+        if (!tasks::busy("paste", "Measuring what will be copied...",
+                         [&](tasks::Busy &busy) {
+                             for (const Step &step : steps) {
+                                 bytes += fileops::measure(step.source,
+                                                           &busy.cancel, nullptr,
+                                                           nullptr, &lookup)
+                                              .bytes;
+                             }
+                         },
+                         true)) {
+            return false;
+        }
         const int64_t free = platform::sdFreeBytes();
         if (free >= 0 && static_cast<uint64_t>(free) < bytes) {
             ui::message("Not enough space",
@@ -1283,9 +2010,10 @@ bool App::pasteInto(const std::string &folder)
     // Moved items are no longer where the clipboard points; anything that
     // did not move stays ready to try again.
     if (clipboardCut_) {
+        fileops::Lookup moved;
         clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
-                                        [](const std::string &path) {
-                                            return !fileops::exists(path);
+                                        [&](const std::string &path) {
+                                            return !moved.exists(path);
                                         }),
                          clipboard_.end());
     }
@@ -1334,8 +2062,7 @@ bool App::createFile(const std::string &folder)
 {
     std::string typed;
     if (!platform::keyboard(platform::KeyboardKind::Name,
-                            "New file name, for example config.ini",
-                            "new.txt", typed)) {
+                            "New file name", "new.txt", typed)) {
         return false;
     }
     const std::string name = text::trim(typed);
@@ -1360,53 +2087,82 @@ bool App::createFile(const std::string &folder)
 
 void App::showProperties(const std::vector<std::string> &paths)
 {
-    ui::Dialog dialog;
-    dialog.header = "properties";
-    if (paths.size() == 1 && !fileops::isFolder(paths.front())) {
-        const std::string &path = paths.front();
-        const int64_t size = fs::fileSize(path);
-        const int64_t modified = fileops::modifiedTime(path);
-        dialog.title = fileops::name(path);
-        dialog.body.push_back(
-            {filetype::label(filetype::fromName(basename(path))),
-             ui::color::Muted, 0.46f, 1});
-        dialog.body.push_back(
-            {"Size: " + sizeText(size) + " (" + std::to_string(size) +
-                 " bytes)",
-             ui::color::Text, 0.46f, 1});
-        if (modified > 0) {
-            dialog.body.push_back({"Modified: " + units::dateTime(modified),
-                                   ui::color::Text, 0.46f, 1});
-        }
-        dialog.body.push_back({path, ui::color::Muted, 0.42f, 3});
-        ui::choose(dialog);
+    const bool single = paths.size() == 1;
+    const bool folder = single && fileops::isFolder(paths.front());
+    fileops::Totals totals;
+    // Read fresh, as asked; what it adds up goes in the index afterwards.
+    std::vector<std::pair<std::string, std::pair<fileops::Totals, uint64_t>>> found;
+    fileops::MeasureHooks hooks;
+    hooks.measured = [&](const std::string &path, const fileops::Totals &part,
+                         uint64_t print) {
+        found.push_back({path, {part, print}});
+    };
+    if (single && !folder) {
+        totals = fileops::measure(paths.front());
+    } else if (!tasks::busy("properties", "Adding up sizes...",
+                            [&](tasks::Busy &busy) {
+                                busy.bytes = true;
+                                fileops::Lookup lookup;
+                                for (const std::string &path : paths) {
+                                    const fileops::Totals part = fileops::measure(
+                                        path, &busy.cancel, &busy.done, &hooks,
+                                        &lookup);
+                                    totals.files += part.files;
+                                    totals.folders += part.folders;
+                                    totals.bytes += part.bytes;
+                                }
+                            },
+                            true)) {
         return;
     }
-
-    fileops::Totals totals;
-    tasks::busy("properties", "Adding up sizes...", [&]() {
-        for (const std::string &path : paths) {
-            const fileops::Totals part = fileops::measure(path);
-            totals.files += part.files;
-            totals.folders += part.folders;
-            totals.bytes += part.bytes;
-        }
-    });
-    dialog.title = paths.size() == 1 ? fileops::name(paths.front()) + "/"
-                                     : plural(paths.size(), "item");
-    dialog.body.push_back({"Holds " + totalsText(totals) + ".",
-                           ui::color::Text, 0.48f, 2});
-    dialog.body.push_back({"That is " + std::to_string(totals.bytes) +
-                               " bytes.",
-                           ui::color::Muted, 0.44f, 1});
-    if (paths.size() == 1) {
-        const int64_t modified = fileops::modifiedTime(paths.front());
-        if (modified > 0) {
-            dialog.body.push_back({"Modified: " + units::dateTime(modified),
-                                   ui::color::Text, 0.46f, 1});
-        }
-        dialog.body.push_back({paths.front(), ui::color::Muted, 0.42f, 3});
+    for (const auto &folderFound : found) {
+        fileIndex_.storeTotal(folderFound.first, folderFound.second.first,
+                              folderFound.second.second);
     }
+
+    std::string path = paths.front();
+    while (path.size() > 6 && path.back() == '/') {
+        path.pop_back();
+    }
+    const std::string parent = naming::parentFolder(path + "/");
+    const int64_t modified = single ? fileops::modifiedTime(path) : 0;
+    std::vector<std::pair<std::string, std::string>> tags;
+    if (folder || !single) {
+        tags.push_back({"Contains", contentsText(totals)});
+    } else {
+        tags.push_back({"Type", filetype::label(filetype::fromName(basename(path)))});
+    }
+    tags.push_back({"Size", units::bytes(totals.bytes)});
+    if (totals.bytes >= 1024) {
+        tags.push_back({"Bytes", units::grouped(totals.bytes)});
+    }
+    if (modified > 0) {
+        tags.push_back({"Changed", units::dateTime(modified)});
+    }
+
+    ui::Dialog dialog;
+    dialog.title = units::bytes(totals.bytes);
+    dialog.buttons = {"OK"};
+    dialog.drawTop = [&]() {
+        if (single) {
+            ui::drawTopChrome(folderTitle(parent), ui::Icon::Folder,
+                              ui::color::IconOrange);
+            fs::Entry entry;
+            entry.name = fileops::name(path);
+            entry.folder = folder;
+            drawEntryPanel({}, kindOf(entry), entry.name,
+                           folder ? path + "/" : path, tags);
+            return;
+        }
+        ui::drawTopChrome(plural(paths.size(), "Marked Item"), ui::Icon::Check,
+                          ui::color::Tag);
+        std::vector<ui::Fact> facts;
+        for (const auto &tag : tags) {
+            facts.push_back({tag.first, tag.second});
+        }
+        ui::drawPanel();
+        ui::drawFacts(facts);
+    };
     ui::choose(dialog);
 }
 
@@ -1437,14 +2193,40 @@ void App::installTicketFile(const std::string &path)
 
 namespace {
 
+// The title Luma3DS will swap for homebrew once 3dsDL closes: the Homebrew
+// Launcher Loader unless Rosalina's "Switch the hb. title" picked another,
+// such as Download Play. Luma keeps it in its config page, readable by
+// every process (luma_shared_config.h, "selected_hbldr_3dsx_tid").
+uint64_t homebrewTitle()
+{
+    return *reinterpret_cast<volatile const u64 *>(OS_SHAREDCFG_VADDR + 0x808);
+}
+
 // Asks Luma3DS's homebrew loader to start path once 3dsDL closes, the way
 // the Homebrew Launcher starts what it lists.
 bool startHomebrew(const std::string &path, std::string &error)
 {
+    // A global port, as the Homebrew Launcher opens it. Asking srv for it
+    // waits forever, since Luma never registers it there.
     Handle loader = 0;
-    if (R_FAILED(srvGetServiceHandle(&loader, "hb:ldr"))) {
+    if (R_FAILED(svcConnectToPort(&loader, "hb:ldr"))) {
         error = "Starting homebrew needs Luma3DS, and its homebrew loader "
                 "did not answer.";
+        return false;
+    }
+    // Under the Homebrew Launcher this app is the loader's own title, which
+    // loads the target when it starts again. A CIA jumps to that title, and
+    // libctru ignores a failed jump, which leaves 3dsDL hung on its last
+    // frame, so it has to be installed.
+    const uint64_t title = envIsHomebrew() ? 0 : homebrewTitle();
+    uint16_t version = 0;
+    if (!envIsHomebrew() &&
+        (title == 0 || !installer::installedVersion(title, version))) {
+        svcCloseHandle(loader);
+        error = "Luma3DS starts homebrew in place of " +
+                cia::titleIdText(title) +
+                ", which is not installed. Open the Homebrew Launcher "
+                "and start it from there.";
         return false;
     }
     // The loader takes the path inside the SD card, without "sdmc:".
@@ -1478,12 +2260,10 @@ bool startHomebrew(const std::string &path, std::string &error)
         error = "The homebrew loader did not take " + basename(path) + ".";
         return false;
     }
-    // Under the Homebrew Launcher this app is the loader's own title, which
-    // loads the target when it starts again. A CIA hands over to that title.
     if (envIsHomebrew()) {
         aptSetChainloaderToSelf();
     } else {
-        aptSetChainloader(0x000400000D921E00ULL, MEDIATYPE_SD);
+        aptSetChainloader(title, installer::destination(title));
     }
     return true;
 }
@@ -1492,24 +2272,28 @@ bool startHomebrew(const std::string &path, std::string &error)
 
 void App::titleDetails(const std::string &path, Kind kind)
 {
-    titlemeta::Meta meta;
-    std::string error;
-    const bool readable = titlemeta::read(path, kind, meta, error);
-    const KindLook look = lookOf(kind);
+    // The same top screen as the file has in Files.
+    fs::Entry entry;
+    entry.name = basename(path);
+    entry.size = fs::fileSize(path);
+    const Details details = loadDetails(path, kind);
+    const std::string folder = folderTitle(folderOf(path));
 
     ui::ScreenSpec spec;
     spec.back = "Back";
-    const bool ticket = kind == Kind::Ticket && readable;
+    const bool ticket = kind == Kind::Ticket && details.metaReadable;
     const bool homebrew = kind == Kind::Homebrew;
+    // One or two buttons, centred in the space above the tabs.
+    const bool pair = ticket || homebrew;
     ui::Control hex;
-    hex.rect = {46, ticket || homebrew ? 150.0f : 110.0f, 228, 34};
+    hex.rect = {46, pair ? 109.0f : 87.0f, 228, 34};
     hex.label = "Open as Hex";
     hex.icon = ui::Icon::Hex;
     hex.scale = ui::type::Body + 0.06f;
     spec.controls.push_back(hex);
     if (ticket) {
         ui::Control install = hex;
-        install.rect = {46, 106, 228, 34};
+        install.rect = {46, 65, 228, 34};
         install.label = "Install Ticket";
         install.icon = ui::Icon::Lock;
         install.iconColor = ui::color::IconGreen;
@@ -1517,42 +2301,17 @@ void App::titleDetails(const std::string &path, Kind kind)
     }
     if (homebrew) {
         ui::Control start = hex;
-        start.rect = {46, 106, 228, 34};
+        start.rect = {46, 65, 228, 34};
         start.label = "Start";
         start.icon = ui::Icon::App;
         start.iconColor = ui::color::IconGreen;
         spec.controls.push_back(start);
     }
     spec.drawTop = [&]() {
-        ui::drawTopChrome(filetype::label(kind), look.icon, look.color);
-        if (!readable) {
-            ui::drawPanel();
-            ui::drawPanelText(error, ui::TopPanel, ui::type::Body,
-                              ui::color::Caution);
-            return;
-        }
-        drawEntryPanel(meta.icon, kind,
-                       meta.name.empty() ? basename(path) : meta.name,
-                       meta.publisher.empty() ? basename(path) : meta.publisher,
-                       {{"Title ID", meta.hasTitleId
-                                         ? cia::titleIdText(meta.titleId)
-                                         : ""},
-                        {"Code", meta.productCode},
-                        {"Size", sizeText(fs::fileSize(path))},
-                        {"Note", meta.note}});
+        ui::drawTopChrome(folder, ui::Icon::Folder, ui::color::IconOrange);
+        drawEntryTop(path, entry, details);
     };
-    spec.drawBottom = [&]() {
-        const ui::Rect panel = {13, 16, 294, 76};
-        ui::drawPanel(panel);
-        ui::drawPanelText(kind == Kind::Homebrew
-                              ? "Start closes 3dsDL and opens it."
-                          : kind == Kind::Ticket
-                              ? "A ticket lets the console use a title's "
-                                "content."
-                              : basename(path),
-                          panel, ui::type::Small + 0.04f);
-    };
-    int focus = ticket || homebrew ? 1 : 0;
+    int focus = pair ? 1 : 0;
     const int choice = ui::runScreen(spec, focus).choice;
     if (choice == 0) {
         hexViewer(path);
@@ -1667,8 +2426,8 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
         return;
     }
     Pad pad;
-    const int previous = pad.add({16, 116, 140, 40}, pictures.size() > 1);
-    const int next = pad.add({164, 116, 140, 40}, pictures.size() > 1);
+    const int previous = pad.add({16, 137, 140, 40}, pictures.size() > 1);
+    const int next = pad.add({164, 137, 140, 40}, pictures.size() > 1);
     const int back = pad.add(ui::tabRect(ui::Tab::Left));
 
     while (ui::keepRunning()) {
@@ -1737,11 +2496,11 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             const std::string name = basename(path);
             const float width =
                 26 + std::min(260.0f, ui::textWidth(name, 0.68f));
-            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 9, 20,
+            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 30, 20,
                          ui::color::IconPink);
-            ui::drawMarquee(name, 160 - width / 2 + 26, 9, 0.68f,
+            ui::drawMarquee(name, 160 - width / 2 + 26, 30, 0.68f,
                             ui::color::Ink, 260);
-            const ui::Rect panel = {13, 44, 294, 54};
+            const ui::Rect panel = {13, 65, 294, 54};
             ui::drawPanel(panel);
             std::string facts = sizeText(fs::fileSize(path));
             if (shown.sourceWidth > 0) {
@@ -1752,8 +2511,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             ui::drawText(facts, 160, panel.y + 7, ui::type::Small,
                          ui::color::Ink, C2D_AlignCenter);
             ui::drawText("Picture " + std::to_string(index + 1) + " of " +
-                             std::to_string(pictures.size()) +
-                             " in this folder",
+                             std::to_string(pictures.size()),
                          160, panel.y + 28, ui::type::Small,
                          ui::color::InkSoft, C2D_AlignCenter);
             ui::drawButton(pad.rects[previous], "Previous",
@@ -1766,13 +2524,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
                                                : ui::Style::Disabled,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, next));
-            if (pictures.size() > 1) {
-                ui::drawText("Swipe, or press L and R, for the others.", 160,
-                             170, ui::type::Tiny, ui::color::InkSoft,
-                             C2D_AlignCenter);
-            }
-            ui::drawTab(ui::Tab::Left, "Back", "", false,
-                        pad.isDown(input, back));
+            ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
             ui::endFrame();
         }
     }
@@ -1817,26 +2569,18 @@ void App::zipViewer(const std::string &path)
             ui::drawTopChrome(basename(path), ui::Icon::Zip,
                               ui::color::IconGold);
             ui::drawPanel();
-            const float left = ui::TopPanel.x + 18;
-            float y = ui::TopPanel.y + 16;
-            y = ui::drawTagRow(left, y, 92, "Holds",
-                               plural(archive.fileCount, "file"));
-            y = ui::drawTagRow(left, y, 92, "Extracted",
-                               units::bytes(archive.totalSize));
+            std::vector<ui::Fact> facts = {
+                {"Holds", plural(archive.fileCount, "file")},
+                {"Extracted", units::bytes(archive.totalSize)}};
             if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
                 const zip::Entry &entry = archive.entries[index];
-                y = ui::drawTagRow(left, y, 92, "Selected", entry.name);
+                facts.push_back({"Selected", entry.name});
                 if (entry.path.empty()) {
-                    ui::drawTagRow(left, y, 92, "Skipped",
-                                   "Its path would leave the folder.",
-                                   ui::color::Bad);
+                    facts.push_back({"Skipped", "Path leaves the folder",
+                                     ui::color::Bad});
                 }
             }
-            ui::drawWrapped("Paths that would leave the folder are "
-                            "skipped.",
-                            left, ui::TopPanel.y + ui::TopPanel.h - 48,
-                            ui::type::Small, ui::color::InkSoft,
-                            ui::TopPanel.w - 36, 2);
+            ui::drawFacts(facts);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
@@ -1865,10 +2609,10 @@ void App::hexViewer(const std::string &path)
     }
 
     Pad pad;
-    const int pageUp = pad.add({16, 72, 140, 32});
-    const int pageDown = pad.add({164, 72, 140, 32});
-    const int start = pad.add({16, 114, 140, 32});
-    const int end = pad.add({164, 114, 140, 32});
+    const int pageUp = pad.add({16, 87, 140, 32});
+    const int pageDown = pad.add({164, 87, 140, 32});
+    const int start = pad.add({16, 129, 140, 32});
+    const int end = pad.add({164, 129, 140, 32});
     const int back = pad.add(ui::tabRect(ui::Tab::Left));
     const uint64_t lastTop =
         size > Page ? ((size - Page + Columns - 1) / Columns) * Columns : 0;
@@ -1960,16 +2704,13 @@ void App::hexViewer(const std::string &path)
         }
 
         ui::beginBottom();
-        const ui::Rect panel = {13, 10, 294, 50};
+        const ui::Rect panel = {13, 47, 294, 28};
         ui::drawPanel(panel);
         char where[96];
         std::snprintf(where, sizeof(where), "Offset 0x%llX of %s",
                       static_cast<unsigned long long>(top),
                       units::bytes(size).c_str());
         ui::drawText(where, 160, panel.y + 6, ui::type::Small, ui::color::Ink,
-                     C2D_AlignCenter);
-        ui::drawText("Drag or flick to scroll, L and R for a page.", 160,
-                     panel.y + 27, ui::type::Tiny, ui::color::InkSoft,
                      C2D_AlignCenter);
         ui::drawButton(pad.rects[pageUp], "Page Up", ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
@@ -1983,7 +2724,7 @@ void App::hexViewer(const std::string &path)
         ui::drawButton(pad.rects[end], "Go to End", ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, end));
-        ui::drawTab(ui::Tab::Left, "Back", "", false, pad.isDown(input, back));
+        ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
         ui::endFrame();
     }
     std::fclose(file);
@@ -2000,9 +2741,6 @@ void App::textEditor(const std::string &path)
         ui::Dialog dialog;
         dialog.header = basename(path);
         dialog.title = "This is not a text file.";
-        dialog.body.push_back({"It holds binary data. The hex view shows it "
-                               "byte by byte.",
-                               ui::color::Text, 0.48f, 3});
         dialog.buttons = {"Close", "Open as Hex"};
         dialog.initial = 1;
         dialog.cancelButton = 0;
@@ -2024,11 +2762,9 @@ void App::textEditor(const std::string &path)
     std::string readOnlyReason;
     if (document.truncated) {
         readOnlyReason = "Only the first " +
-                         units::bytes(textdoc::MaxEditableBytes) +
-                         " is shown, so it cannot be edited here.";
+                         units::bytes(textdoc::MaxEditableBytes) + " is shown.";
     } else if (readOnly) {
-        readOnlyReason = "It is not UTF-8 text, so editing could change "
-                         "characters you cannot see.";
+        readOnlyReason = "Not UTF-8 text.";
     }
 
     constexpr float LinePitch = 16;
@@ -2040,10 +2776,13 @@ void App::textEditor(const std::string &path)
     bool saved = false; // shows "saved" until the next change
     ui::Scroller scroller;
 
+    // The bottom screen's controls, centred above the tabs, with room for
+    // the read-only reason under them.
+    const float top = readOnly ? 32 : 45;
     Pad pad;
-    const int edit = pad.add({13, 92, 94, 34}, !readOnly);
-    const int insert = pad.add({113, 92, 94, 34}, !readOnly);
-    const int remove = pad.add({213, 92, 94, 34}, !readOnly);
+    const int edit = pad.add({13, top + 84, 94, 34}, !readOnly);
+    const int insert = pad.add({113, top + 84, 94, 34}, !readOnly);
+    const int remove = pad.add({213, top + 84, 94, 34}, !readOnly);
     const int close = pad.add(ui::tabRect(ui::Tab::Left));
     const int save = pad.add(ui::tabRect(ui::Tab::Right), !readOnly);
 
@@ -2240,7 +2979,7 @@ void App::textEditor(const std::string &path)
                       0, ui::color::TopB);
 
         ui::beginBottom();
-        const ui::Rect recess = {13, 8, 294, 72};
+        const ui::Rect recess = {13, top, 294, 72};
         ui::drawRecess(recess);
         ui::drawText("Line " + std::to_string(cursor + 1) + " of " +
                          std::to_string(count),
@@ -2262,15 +3001,13 @@ void App::textEditor(const std::string &path)
         if (!readOnly) {
             ui::drawFocus(pad.rects[edit], 9);
         }
-        ui::drawText(readOnly ? readOnlyReason
-                              : "A Edit   X New line   Y Delete",
-                     160, 140, ui::type::Tiny, ui::color::InkSoft,
-                     C2D_AlignCenter);
-        ui::drawText("Drag or flick here to scroll the page.", 160, 160,
-                     ui::type::Tiny, ui::color::Counter, C2D_AlignCenter);
-        ui::drawTab(ui::Tab::Left, "Close", "", false, pad.isDown(input, close));
+        if (readOnly) {
+            ui::drawText(readOnlyReason, 160, top + 132, ui::type::Tiny,
+                         ui::color::InkSoft, C2D_AlignCenter);
+        }
+        ui::drawTab(ui::Tab::Left, "Close", "B", pad.isDown(input, close));
         if (!readOnly) {
-            ui::drawTab(ui::Tab::Right, "Save", "START", false,
+            ui::drawTab(ui::Tab::Right, "Save", "START",
                         pad.isDown(input, save));
         }
         ui::endFrame();

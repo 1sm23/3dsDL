@@ -13,6 +13,9 @@ Wifi wifiStatus();
 int64_t sdFreeBytes();
 // The SD card's size in bytes, or -1 when it cannot be read.
 int64_t sdTotalBytes();
+// Tells one SD card from another: its serial (CID) where the console gives
+// it, and its size; 0 when neither can be read.
+uint64_t sdCardId();
 // Seconds since 1970 by the console clock (which has no time zone).
 int64_t now();
 

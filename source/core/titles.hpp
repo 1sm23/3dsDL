@@ -1,10 +1,12 @@
 #pragma once
 
 #include "cia.hpp"
+#include "fs_util.hpp"
 
 #include <array>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -47,16 +49,40 @@ std::string displayName(uint64_t titleId, const Index &index);
 
 // Sorted by display name, ignoring case, then by Title ID.
 void sortByName(std::vector<const Title *> &list, const Index &index);
+// The title lists' orders: Name (A to Z) or Size (largest first), the way
+// files sort; reverse flips it. Ties go by name.
+void sortTitles(std::vector<const Title *> &list, const Index &index,
+                fs::SortOrder order, bool reverse);
+
+// What a title list shows: Software by where it is installed, Updates and
+// DLC by kind.
+enum class Show { All, SdCard, SystemMemory, Updates, Dlc };
+bool shows(Show show, const Title &title);
 
 // Most software keeps its extra data under its unique ID, bits 8 to 27 of
 // the Title ID.
 uint32_t uniqueId(uint64_t titleId);
 // The installed software whose unique ID is extDataId, or nullptr.
 const Title *ownerOfExtData(uint64_t extDataId, const std::vector<Title> &all);
+// Whether software with extDataId as its unique ID is installed, by the
+// title list or by its folder on the SD card (see unusedTickets).
+bool extDataInUse(uint64_t extDataId, const std::vector<Title> &all,
+                  const std::set<uint64_t> &onSdCard);
 
-// Tickets whose title is not installed, leaving out system tickets.
+// Tickets whose title is not installed, leaving out system tickets and
+// DSiWare, whose titles live in system memory where nothing else can
+// confirm they are gone. onSdCard lists titles that have a folder on the
+// SD card (see titleFromSdFolders); they count as installed whatever the
+// title list says, since a title list that failed to read in full would
+// otherwise make the tickets of installed software look unused.
 std::vector<uint64_t> unusedTickets(const std::vector<uint64_t> &tickets,
-                                    const std::vector<Title> &installed);
+                                    const std::vector<Title> &installed,
+                                    const std::set<uint64_t> &onSdCard = {});
+
+// The title of an SD card folder Nintendo 3DS/<id0>/<id1>/title/<high>/<low>,
+// from its two 8-digit hex names, or false when they are not.
+bool titleFromSdFolders(const std::string &high, const std::string &low,
+                        uint64_t &titleId);
 
 // --- Seeds ---------------------------------------------------------------------
 
