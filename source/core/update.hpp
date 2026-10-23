@@ -9,9 +9,10 @@
 // here; the app does the networking and installing.
 namespace update {
 
-// The newest published release. Drafts and pre-releases never appear here.
+// This fork's newest published release. Drafts and pre-releases never
+// appear here; using upstream's releases would replace the localized build.
 constexpr const char *LatestReleaseUrl =
-    "https://api.github.com/repos/ankushKun/3dsDL/releases/latest";
+    "https://api.github.com/repos/1sm23/3dsDL/releases/latest";
 // Every release carries these files (see .github/workflows/ci.yml).
 constexpr const char *CiaAsset = "3dsDL.cia";
 constexpr const char *HomebrewAsset = "3dsDL.3dsx";

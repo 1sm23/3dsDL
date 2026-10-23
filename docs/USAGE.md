@@ -122,6 +122,20 @@ The host tests (`make -C tests check`) need a C++17 compiler, libcurl and zlib h
 
 To publish, commit the new `VERSION` and push a matching tag (`v0.8.0-beta.1`). CI builds it, checks the tag against `VERSION`, and either publishes a GitHub pre-release straight away (testers install it from the release page) or, for a release, creates a draft to review and publish. The updater in 3dsDL only looks at the latest release, so it never offers a pre-release, and someone on `0.8.0-beta.3` is offered `0.8.0` as soon as it is out.
 
+This fork checks [1sm23/3dsDL releases](https://github.com/1sm23/3dsDL/releases)
+for self-updates. The release notes, CIA or 3DSX, and SHA-256 checksums all
+come from that fork's release. With no published stable release, the app
+reports that no release has been published. Installing a build with this
+update source is required once to migrate from a build that checks upstream.
+
+Create release tags from `feat/i18n` (or a branch containing its changes);
+`main` tracks upstream and does not include the localization. Set `VERSION`
+to a version newer than the installed build, push its matching tag, then
+publish the stable release draft made by CI. For example, a build on `0.8.2`
+needs a release such as `0.8.3`; adding `+i18n` does not make a version newer.
+Keep the CI-generated `3dsDL.cia`, `3dsDL.3dsx` and `3dsDL.sha256` assets in
+the release so both installation formats can update and verify the download.
+
 | Folder | |
 | --- | --- |
 | `source/app/` | 3DS code: screens, UI toolkit, scanner, workers |
