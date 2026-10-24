@@ -52,6 +52,34 @@ install render's LED position (`.led`, in its 736 × 736 pixel space).
 one 400 × 480 screenshot at 0,0 and 40,240. Recapture them whenever the
 screens they show change.
 
+## Loved on Reddit
+
+The `#reddit` section quotes comments from the launch threads on
+[r/3dshomebrew](https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/) and
+[r/3dsqrcodes](https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/). Each
+bubble links to its comment, with the score it had when it was copied, and
+the bar shows each thread's upvotes and comments from the same copy. On every
+visit `app.js` deals the posts out afresh: each row takes quotes of roughly
+similar length, so its bubbles stay close in height, but which quotes, which
+row, their order and where each row starts are random, and the rows with
+longer quotes drift slower. The HTML's order (long, short, then the rest) is
+what shows without the script. A quote over 130 characters gets `post-long`
+and one of 30 or fewer gets `post-short`.
+
+The drift is a Web Animation on each `.plaza-track`, so the compositor runs
+it without per-frame script or DOM writes (session replay records nothing
+while it moves). Only keyboard focus, a drag, a swipe or a sideways scroll
+stops a row.
+
+To add one, copy a `.post` with the comment's permalink, username, score
+and words, and save the commenter's avatar as
+`assets/reddit/<username in lower case>.webp`, 96 × 96. Reddit refuses
+scripted requests, so open these in a browser and copy the JSON: the thread
+with `.json` added to its address (each comment's `author_fullname` is its
+account id), then
+`https://www.reddit.com/api/user_data_by_account_ids.json?ids=t2_…,t2_…`,
+whose `profile_img` is each avatar.
+
 To preview locally, run `python3 -m http.server -d site` and open
 http://localhost:8000.
 
@@ -67,7 +95,7 @@ Privacy Control.
 Custom events go through `window.track(name, props)`: `send_qr_made`, `send_qr_enlarged` and
 `send_link_shared` from the "send a link" tool (with the link's host, never the whole link),
 `install_method`, `feature_viewed`, `faq_opened`, `menu_sounds`, `download_link_copied` and
-`buddy_opened` (the 3dsFM card). The send form, its QR code and the large-code dialog carry
+`buddy_opened` (the 3dsFM card), and `reddit_comment_opened` (with the commenter's username). The send form, its QR code and the large-code dialog carry
 `ph-no-capture`, so neither autocapture nor session replay records them, and a shared `?url=` is
 taken out of the address bar before PostHog starts. What the site sends is listed on https://ankush.one/privacy/, so
 update that page when adding an event.

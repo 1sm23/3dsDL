@@ -1298,6 +1298,269 @@ html:not(.js) .tray {
   }
 }
 
+/* --------------------------------------------- Loved on Reddit: a plaza
+   What people said, as speech bubbles over their avatars in the lime of
+   Nintendo's old community plaza. app.js makes each row drift; without it
+   the rows scroll sideways. */
+
+.plaza {
+  --plaza-bg: #f4faec;
+  --fade: 24px;
+  overflow: hidden;
+  border: 2px solid #b6dc8c;
+  border-radius: 20px;
+  background: var(--plaza-bg);
+  box-shadow: 0 4px 0 #d6ecbd;
+}
+
+.plaza-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 12px;
+  border-bottom: 2px solid #b6dc8c;
+  background: linear-gradient(#f7fdee, #dff2c5);
+  font: 400 15px/1.2 var(--dot);
+  color: #3f6d12;
+}
+
+.plaza-bar > .icon {
+  font-size: 18px;
+}
+
+/* A thread: its subreddit, then its upvotes and comments. */
+.plaza-thread {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 4px 10px 3px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-ui) var(--ease-out);
+}
+
+.plaza-thread:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.plaza-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 800 13px/1.2 var(--font);
+  color: #2f5f07;
+}
+
+.plaza-stat .icon {
+  vertical-align: 0;
+}
+
+@media (max-width: 640px) {
+  .plaza-bar > .icon {
+    display: none;
+  }
+}
+
+/* Each row is contained, so a hovered bubble repaints only its own row. The
+   padding is as wide as the edge fades, so a post brought into view sits
+   clear of them. */
+.plaza-row {
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  contain: content;
+  padding: 18px var(--fade) 14px;
+}
+
+/* The edges fade into the plaza. Two still overlays cost nothing per frame,
+   where a mask on the moving row can make Safari repaint it. */
+.plaza.is-drifting .plaza-row::before,
+.plaza.is-drifting .plaza-row::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: var(--fade);
+  pointer-events: none;
+}
+
+.plaza.is-drifting .plaza-row::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--plaza-bg), rgba(244, 250, 236, 0));
+}
+
+.plaza.is-drifting .plaza-row::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--plaza-bg), rgba(244, 250, 236, 0));
+}
+
+.plaza-row + .plaza-row {
+  padding-top: 8px;
+}
+
+.plaza-row:last-child {
+  padding-bottom: 22px;
+}
+
+/* Bubbles stand on one line of names, so they rise to their own heights. */
+.plaza-track {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  width: max-content;
+}
+
+/* The script takes over the scrolling: rows drift, and drag or swipe
+   sideways. Vertical swipes still scroll the page. */
+.plaza.is-drifting .plaza-row {
+  overflow: clip;
+  touch-action: pan-y;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.plaza.is-drifting .plaza-row.is-dragging {
+  cursor: grabbing;
+}
+
+.post {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: max-content;
+  max-width: 18.5rem;
+  color: var(--ink);
+  text-decoration: none;
+  outline: none;
+}
+
+.post-text {
+  position: relative;
+  margin: 0;
+  padding: 12px 16px 13px;
+  border: 2px solid #b6dc8c;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 3px 0 #d6ecbd;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  transition: border-color var(--dur-ui) var(--ease-out);
+}
+
+/* The tail, pointing down at the avatar. */
+.post-text::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: solid #b6dc8c;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: border-color var(--dur-ui) var(--ease-out);
+}
+
+.post-long {
+  max-width: 24rem;
+}
+
+.post-short .post-text {
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.post:hover .post-text,
+.post:hover .post-text::after {
+  border-color: #6abf1f;
+}
+
+.post:focus-visible .post-text {
+  outline: 3px solid #4aa8ff;
+  outline-offset: 2px;
+}
+
+.post-by {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.post-pfp {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  border: 2px solid #fff;
+  background: #e3eaf0;
+  box-shadow: 0 0 0 1px #c3ced8, 0 2px 0 1px #cfd8e1;
+}
+
+.post-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 13px/1.2 var(--dot);
+  letter-spacing: 0.02em;
+  color: var(--mute);
+}
+
+/* The upvotes, as a "Yeah!" pill. */
+.post-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  margin-left: auto;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #2f5f07;
+  background: #e2f4cc;
+}
+
+.post-score .icon {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: 0;
+}
+
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .plaza {
+    --fade: 16px;
+  }
+
+  .post {
+    max-width: 14.5rem;
+  }
+
+  .post-long {
+    max-width: 17.5rem;
+  }
+}
+
 /* ----------------------------------------------- Send a link: PictoChat
    Ruled paper, and messages framed in their sender's colour with the name in
    the corner. */
@@ -2206,6 +2469,7 @@ dialog::backdrop {
   .js .home-screen > .feature,
   .picker::before,
   .faq summary::after,
+  .post-text,
   .note-icon .icon,
   .faq.is-ready .note-new {
     transition: none;

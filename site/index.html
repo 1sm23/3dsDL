@@ -46,6 +46,9 @@
     <symbol id="g-receive" viewBox="0 0 24 24"><path d="M5 9.5a10 10 0 0 1 14 0M7.8 12.5a6 6 0 0 1 8.4 0"/><circle cx="12" cy="16" r="1.4"/><path d="M12 19.5v1"/></symbol>
     <symbol id="g-queue" viewBox="0 0 24 24"><path d="M8 6.5h11M8 12h11M8 17.5h11"/><path d="M4.5 6.5h.5M4.5 12h.5M4.5 17.5h.5"/></symbol>
     <symbol id="g-zip" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M12 3.5v1.5M12 7v1.5M12 10.5V12"/><rect x="10" y="13.5" width="4" height="4" rx="1"/></symbol>
+    <symbol id="i-bubble" viewBox="0 0 24 24"><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-4.5 3.5v-3.5H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/><path d="M12 13.6c-2.2-1.4-3.6-2.6-3.6-4a1.8 1.8 0 0 1 3.6-.5 1.8 1.8 0 0 1 3.6.5c0 1.4-1.4 2.6-3.6 4z"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 4.5l7 7.5h-4v7.5H9V12H5z"/></symbol>
+    <symbol id="i-comments" viewBox="0 0 24 24"><path d="M12 4c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-1 0-2-.1-2.9-.4L4.5 20l1.2-3.6C4.3 15 3.5 13.1 3.5 11c0-3.9 3.8-7 8.5-7z"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path class="fill" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
   </svg>
 
@@ -284,6 +287,233 @@
               <button class="app-icon" type="button" role="tab" id="tab-speed" aria-controls="feat-speed" aria-selected="false" tabindex="-1" style="--tint:#2fb6e8"><span class="app-glyph"><svg class="icon"><use href="#g-download"/></svg></span><span class="app-label">Speed</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-safe" aria-controls="feat-safe" aria-selected="false" tabindex="-1" style="--tint:#f08a3c"><span class="app-glyph"><svg class="icon"><use href="#g-shield"/></svg></span><span class="app-label">Safe saves</span></button>
               <button class="app-icon" type="button" role="tab" id="tab-updates" aria-controls="feat-updates" aria-selected="false" tabindex="-1" style="--tint:#6a75e8"><span class="app-glyph"><svg class="icon"><use href="#g-resume"/></svg></span><span class="app-label">Updates</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- What people said on Reddit, as speech bubbles in a plaza: three
+           rows drift past, slow to a stop under the pointer or focus, and
+           each bubble opens its comment. app.js deals the posts into new
+           rows on every visit. Without the script, or with reduced motion,
+           the rows scroll by hand. The avatars in assets/reddit/
+           come from Reddit's profiles (see README.md). -->
+      <section id="reddit" class="section panel reveal">
+        <header class="section-head">
+          <h2>Loved on Reddit</h2>
+        </header>
+        <div class="plaza" data-plaza>
+          <div class="plaza-bar">
+            <svg class="icon"><use href="#i-bubble"/></svg>
+            <a class="plaza-thread" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/"><span class="plaza-sub">r/3dshomebrew</span><span class="plaza-stat" title="Upvotes"><svg class="icon"><use href="#i-up"/></svg>2,561<span class="vh"> upvotes</span></span><span class="plaza-stat" title="Comments"><svg class="icon"><use href="#i-comments"/></svg>383<span class="vh"> comments</span></span></a>
+            <a class="plaza-thread" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/"><span class="plaza-sub">r/3dsqrcodes</span><span class="plaza-stat" title="Upvotes"><svg class="icon"><use href="#i-up"/></svg>707<span class="vh"> upvotes</span></span><span class="plaza-stat" title="Comments"><svg class="icon"><use href="#i-comments"/></svg>117<span class="vh"> comments</span></span></a>
+          </div>
+          <div class="plaza-row" data-drift="left">
+            <div class="plaza-track">
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhs67guznpd/" data-user="No_Grocery_1917">
+                <p class="post-text">I just got it and damnnn I’m never touching FBI again I can definitely tell how much love was poured into this app!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/no_grocery_1917.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/No_Grocery_1917</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>42<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-long" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhurdsa3q2p/" data-user="japzone">
+                <p class="post-text">No kidding, instantly won me over as soon as I opened it. Great UI, downloads and installs CIAs fast, and it even has a lot of QOL tools in there like Time Server syncing.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/japzone.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/japzone</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>16<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhkni217xz7/" data-user="mouldyfrog71538">
+                <p class="post-text">Goodbye low speeds and very bland interfaces. Hello high speeds and well designed interface.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/mouldyfrog71538.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/mouldyfrog71538</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>12<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhpstbjvsg4/" data-user="Happy_Garlic858">
+                <p class="post-text">Techie, thank you bro. If I could give you the sloppiest kiss I would. This is gonna help me out SO MUCH.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/happy_garlic858.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Happy_Garlic858</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>8<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhxwaix3jya/" data-user="Strict-Top6935">
+                <p class="post-text">You’ve made my day. I love the UI and the transfer speed. This is going to save me hours during development.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/strict-top6935.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Strict-Top6935</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>8<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19ri1vwrjbqcg/" data-user="CheckPointTV1">
+                <p class="post-text">Saw this at the perfect time. I was downloading a game that was gonna take 9 hours. Now it’s only gonna take around 1.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/checkpointtv1.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/CheckPointTV1</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>7<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-long" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhn6fe9tw69/" data-user="Huge-Insect-7759">
+                <p class="post-text">I’m honestly hoping just given the download speeds alone that this can actually replace FBI and be apart of the 3DS hacks Guide essentials package</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/huge-insect-7759.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Huge-Insect-7759</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>6<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh5irwlsuyr/" data-user="PablosH_Snake">
+                <p class="post-text">I tried your app and I like a lot the interface and usability. Thanks for your job and effort :)</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/pablosh_snake.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/PablosH_Snake</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>5<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rid3ua72thc/" data-user="WeirdInstance9357">
+                <p class="post-text">i have tested on new 2ds xl. it works fine, no bugs and as advertized, much faster download speed.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/weirdinstance9357.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/WeirdInstance9357</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-long" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh88sya7w75/" data-user="ClockIllustrious2077">
+                <p class="post-text" lang="es">La acabo de probar en mi old 3ds y si me sorprendió, realmente funciona y el hecho de que la interfaz sea similar al sistema oficial lo hace cómodo</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/clockillustrious2077.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/ClockIllustrious2077</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rixv6mikxj4/" data-user="cyandead">
+                <p class="post-text">Oh my god I’m so happy the 3DS community is alive and thriving!! Thanks for this, it looks gorgeous!!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/cyandead.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/cyandead</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rjp7cuizohw/" data-user="mdlmemorybank">
+                <p class="post-text">This is fantastic, ive always wanted something like this and it feels very polished.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/mdlmemorybank.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/mdlmemorybank</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rid6pflvow3/" data-user="Angeldust078">
+                <p class="post-text">I love how the UI it’s integrated and how easy are the menus … Keep going it’s an awesome homebrew app &lt;3</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/angeldust078.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Angeldust078</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19ri7ca3x738i/" data-user="EXTintoy">
+                <p class="post-text">What a great app. Finally finished downloading a PS1 game. I usually just don’t bother because of the long download time.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/extintoy.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/EXTintoy</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-long" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rkjzqr3dr1f/" data-user="fingerbentcircuits">
+                <p class="post-text">After a full day of use, I haven’t run into any problems at all. The ftp file transfer stuff is particularly well done, and the interface as a whole just feels so fresh and aesthetically pleasing.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/fingerbentcircuits.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/fingerbentcircuits</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-long" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ri0vu27tole/" data-user="10Thunderbolt">
+                <p class="post-text">Thank you for your incredible work! I’ve been a bit stuck downloading content for my 3DS since I don’t have an efficient way to get an SD Card inserted into a computer, but this has basically changed all of that.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/10thunderbolt.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/10Thunderbolt</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
+            </div>
+          </div>
+          <div class="plaza-row" data-drift="right">
+            <div class="plaza-track">
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh79eoiykzp/" data-user="LeTasse">
+                <p class="post-text">oh my gosh<br>FILES OVER WIFI???</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/letasse.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/LeTasse</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>25<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhk863jxusi/" data-user="Ozyfm">
+                <p class="post-text">So it’s fbi but better? Nice</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/ozyfm.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Ozyfm</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>19<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhzo785av2d/" data-user="ZeNicolas_">
+                <p class="post-text">thank you for this app brother.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/zenicolas_.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/ZeNicolas_</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>15<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh2j2ma8on8/" data-user="Arch-Meridian">
+                <p class="post-text">This is pretty neat!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/arch-meridian.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Arch-Meridian</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>9<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhzhco8cou9/" data-user="moarcheese667">
+                <p class="post-text">It looks very nice! I’m gonna try it asap.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/moarcheese667.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/moarcheese667</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>6<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhjttm50729/" data-user="Low_Ad_3957">
+                <p class="post-text">absolute peak folk</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/low_ad_3957.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Low_Ad_3957</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>4<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhk9foh8k6b/" data-user="I_like_microwave">
+                <p class="post-text">Love this!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/i_like_microwave.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/I_like_microwave</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhmoa6wyrs0/" data-user="ArabianKnightGaming">
+                <p class="post-text">This is awesome! … Great work BTW</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/arabianknightgaming.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/ArabianKnightGaming</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh5brat7iyr/" data-user="G_Game_MII">
+                <p class="post-text">WAIT THIS IS PEAK??</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/g_game_mii.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/G_Game_MII</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ri6rn96103m/" data-user="gabn_29_31">
+                <p class="post-text">I love you</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/gabn_29_31.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/gabn_29_31</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh9m8or1iv9/" data-user="MO35AB">
+                <p class="post-text">Just .. amazing ... nothing to add.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/mo35ab.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/MO35AB</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19riezg8uro3p/" data-user="AccessReady2017">
+                <p class="post-text" lang="zh">很漂亮啊，很充分的利用了下屏幕</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/accessready2017.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/AccessReady2017</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rjqwlzprxur/" data-user="PowerOfL">
+                <p class="post-text">Love your project, it’s very helpful!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/powerofl.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/PowerOfL</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rjcplmpmfj4/" data-user="aphoenixsunrise">
+                <p class="post-text">This is exciting</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/aphoenixsunrise.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/aphoenixsunrise</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ri56l7cvqo4/" data-user="ItsJohnCena_">
+                <p class="post-text">downloaded it, works great!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/itsjohncena_.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/ItsJohnCena_</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
+              <a class="post post-short" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhfejeptl1h/" data-user="DharcAluran">
+                <p class="post-text">Now this is a cool app</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/dharcaluran.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/DharcAluran</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+            </div>
+          </div>
+          <div class="plaza-row" data-drift="left">
+            <div class="plaza-track">
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhjpzghfeox/" data-user="NickTheKnight99">
+                <p class="post-text">Man, it feels great to live in this era of 3DS Modding, Peak stuff!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/nicktheknight99.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/NickTheKnight99</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>50<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ri1gi0ndu4l/" data-user="Instinct_Gamer10">
+                <p class="post-text">A 1gb game now takes 26 mins to download...<br>This is insane.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/instinct_gamer10.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Instinct_Gamer10</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>21<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh9j0gb4y4j/" data-user="Chompsky___Honk">
+                <p class="post-text">I just tried it, it works INSANELY well.<br>Props man, amazing job.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/chompsky___honk.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Chompsky___Honk</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>5<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhlk14zqev9/" data-user="dampflokfreund">
+                <p class="post-text">This platform gets a second revival. Crazy.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/dampflokfreund.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/dampflokfreund</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>4<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhcbvw9yjlx/" data-user="Ireja">
+                <p class="post-text" lang="fr">Salut, ton logiciel est super, un magnifique travail, j’apprécie l’interface.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/ireja.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Ireja</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>4<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rhxdux873fk/" data-user="JellyfishThree">
+                <p class="post-text">I have been longing for a new downloader for a long time</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/jellyfishthree.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/JellyfishThree</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rjak0bosdup/" data-user="gametechboy">
+                <p class="post-text">I wish there was something like this for the switch too, it’s so useful</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/gametechboy.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/gametechboy</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhe9qyb88n6/" data-user="TabouletVR">
+                <p class="post-text">It’s looks so cool and it looks like yall put a ton of effort to it</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/tabouletvr.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/TabouletVR</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rh48q93tq69/" data-user="FiloGCM">
+                <p class="post-text">Beautiful, I’m installing as soon as I get home</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/filogcm.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/FiloGCM</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ria7k1gghj4/" data-user="SteKun_">
+                <p class="post-text">very cool having everything in the same app tho!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/stekun_.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/SteKun_</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>3<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rj3nogsfsbn/" data-user="TryToBeHopefulAgain">
+                <p class="post-text">It probably doesn’t need to be said, but this app is so good! … So pretty!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/trytobehopefulagain.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/TryToBeHopefulAgain</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19rjy4kl4ctno/" data-user="Melodic_Check_8040">
+                <p class="post-text">just tried, CRAZY how fast it is, even the cam to scan the QR goes faster</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/melodic_check_8040.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Melodic_Check_8040</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rhegb61k24j/" data-user="Administrative-Cat15">
+                <p class="post-text">This is the best thing to come out of 2026 :0</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/administrative-cat15.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Administrative-Cat15</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/3dsdl_multipurpose_downloader_with_56x_speeds/19ri26r9xlyxt/" data-user="Physical-Statement-8">
+                <p class="post-text">Just keep up the good work! Downloads are insanely fast BTW!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/physical-statement-8.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Physical-Statement-8</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>2<span class="vh"> upvotes</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ric89rz7tmo/" data-user="reukiodo">
+                <p class="post-text">thanks! I just dug out my n3DS just for this!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/reukiodo.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/reukiodo</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19ri71iwf2zt0/" data-user="Clean-Space7974">
+                <p class="post-text">This is so sick! I didn’t know about half this stuff!</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/clean-space7974.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Clean-Space7974</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
+              <a class="post" href="https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/3dsdl_download_straight_to_your_3ds_up_to_5x/19rinyih8kx51/" data-user="Ok_Gas9524">
+                <p class="post-text">From the bottom of my heart, thank you OP.</p>
+                <span class="post-by"><img class="post-pfp" src="assets/reddit/ok_gas9524.webp" width="40" height="40" alt="" loading="lazy" decoding="async" draggable="false"><span class="post-name">u/Ok_Gas9524</span><span class="post-score"><svg class="icon"><use href="#i-up"/></svg>1<span class="vh"> upvote</span></span></span>
+              </a>
             </div>
           </div>
         </div>

@@ -820,6 +820,268 @@
     });
   }
 
+  // The Reddit plaza. Every visit deals the posts out afresh: rows still
+  // take quotes of similar length, so their bubbles stay close in height,
+  // but the lengths are fuzzed so a quote can land in a neighbouring row,
+  // and the order, the rows' bands and where each row starts are random.
+  // A row holds its posts twice and drifts by one copy's width, so it wraps
+  // without a seam. The drift is a Web Animation, which the compositor runs
+  // without touching the DOM; the main thread only steps in to stop a row
+  // under keyboard focus, and to follow a drag, swipe or sideways scroll,
+  // after which the row waits a moment and eases back into its drift.
+  // The pointer alone never stops a row.
+  // With reduced motion the rows stay plain scrollers.
+  function setUpPlaza() {
+    var plaza = document.querySelector("[data-plaza]");
+    if (!plaza) return;
+    var strips = Array.prototype.slice.call(plaza.querySelectorAll(".plaza-track"));
+
+    function shuffle(list) {
+      for (var i = list.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var swap = list[i];
+        list[i] = list[j];
+        list[j] = swap;
+      }
+      return list;
+    }
+
+    var posts = [];
+    strips.forEach(function (strip) { posts = posts.concat(Array.prototype.slice.call(strip.children)); });
+    var dealt = posts.map(function (post) {
+      return { post: post, key: post.querySelector(".post-text").textContent.length * (0.7 + Math.random() * 0.6) };
+    }).sort(function (a, b) { return a.key - b.key; });
+    // Bands from short to long; longer quotes drift slower, to stay readable.
+    var bandSpeeds = [27, 22, 17];
+    var bands = shuffle([0, 1, 2]);
+    strips.forEach(function (strip, index) {
+      var band = bands[index];
+      var from = Math.round(dealt.length * band / 3);
+      var to = Math.round(dealt.length * (band + 1) / 3);
+      shuffle(dealt.slice(from, to)).forEach(function (item) { strip.appendChild(item.post); });
+      strip.parentNode.dataset.speed = bandSpeeds[band];
+    });
+
+    plaza.addEventListener("click", function (event) {
+      var post = event.target.closest(".post");
+      if (post) track("reddit_comment_opened", { user: post.dataset.user });
+    });
+
+    // One tab stop per row, so the page's later sections stay a few tabs
+    // away; the arrow keys, Home and End move along a row.
+    strips.forEach(function (strip) {
+      var list = Array.prototype.slice.call(strip.children);
+      list.forEach(function (post, index) { post.tabIndex = index ? -1 : 0; });
+      strip.addEventListener("keydown", function (event) {
+        var index = list.indexOf(event.target);
+        var next = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: list.length - 1 }[event.key];
+        if (index < 0 || next === undefined) return;
+        event.preventDefault();
+        next = Math.max(0, Math.min(list.length - 1, next));
+        list[index].tabIndex = -1;
+        list[next].tabIndex = 0;
+        list[next].focus();
+      });
+    });
+
+    if (reduceMotion || !("IntersectionObserver" in window) || !plaza.animate) return;
+
+    var rows = strips.map(function (strip) {
+      var count = strip.children.length;
+      for (var i = 0; i < count; i++) {
+        var copy = strip.children[i].cloneNode(true);
+        copy.setAttribute("aria-hidden", "true");
+        copy.tabIndex = -1;
+        strip.appendChild(copy);
+      }
+      var element = strip.parentNode;
+      return {
+        element: element,
+        strip: strip,
+        first: strip.children[0],
+        copy: strip.children[count],
+        direction: element.dataset.drift === "right" ? -1 : 1,
+        speed: Number(element.dataset.speed),
+        period: 0,
+        animation: null,
+        rate: 1,
+        focus: false,
+        press: null,
+        resumeAt: 0
+      };
+    });
+    plaza.classList.add("is-drifting");
+
+    // x is how far the row has moved left, in [0, period).
+    function mod(x, period) { return ((x % period) + period) % period; }
+    function getX(row) {
+      var duration = row.period / row.speed * 1000;
+      var progress = mod(row.animation.currentTime || 0, duration) / duration;
+      return row.direction > 0 ? progress * row.period : (1 - progress) * row.period;
+    }
+    function setX(row, x) {
+      var duration = row.period / row.speed * 1000;
+      var progress = mod(x, row.period) / row.period;
+      row.animation.currentTime = (row.direction > 0 ? progress : mod(1 - progress, 1)) * duration;
+    }
+
+    // One copy's width, gap included, from fractional positions so the wrap
+    // lands exactly. It changes when the fonts arrive or the page resizes.
+    function measure(row) {
+      var period = row.copy.getBoundingClientRect().left - row.first.getBoundingClientRect().left;
+      if (!(period > 0) || Math.abs(period - row.period) < 0.01) return;
+      var x = row.animation ? getX(row) / row.period : Math.random();
+      row.period = period;
+      var frames = [
+        { transform: "translate3d(0, 0, 0)" },
+        { transform: "translate3d(" + -period + "px, 0, 0)" }
+      ];
+      if (row.direction < 0) frames.reverse();
+      var timing = { duration: period / row.speed * 1000, iterations: Infinity };
+      if (row.animation) {
+        row.animation.effect.setKeyframes(frames);
+        row.animation.effect.updateTiming(timing);
+      } else {
+        row.animation = row.strip.animate(frames, timing);
+        row.animation.playbackRate = row.rate;
+        if (!visible) row.animation.pause();
+      }
+      setX(row, x * period);
+    }
+
+    var visible = false;
+    rows.forEach(measure);
+    if ("ResizeObserver" in window) {
+      var resize = new ResizeObserver(function () { rows.forEach(measure); });
+      rows.forEach(function (row) { resize.observe(row.strip); });
+    }
+
+    // Easing a row's speed to its target is the only per-frame work, and it
+    // stops once every row has settled.
+    var easing = 0;
+    var last = 0;
+    function target(row) {
+      var held = row.focus || (row.press && row.press.moved) || performance.now() < row.resumeAt;
+      return held ? 0 : 1;
+    }
+    function ease(now) {
+      var seconds = Math.min((now - last) / 1000, 0.05);
+      var busy = false;
+      last = now;
+      rows.forEach(function (row) {
+        var goal = target(row);
+        var rate = row.rate + (goal - row.rate) * Math.min(seconds * 6, 1);
+        if (Math.abs(goal - rate) < 0.01) rate = goal;
+        else busy = true;
+        if (rate !== row.rate && row.animation) row.animation.playbackRate = row.rate = rate;
+      });
+      easing = busy ? requestAnimationFrame(ease) : 0;
+    }
+    function settle() {
+      if (easing) return;
+      last = performance.now();
+      easing = requestAnimationFrame(ease);
+    }
+    function stop(row) {
+      row.rate = 0;
+      if (row.animation) row.animation.playbackRate = 0;
+    }
+    function holdThenDrift(row) {
+      row.resumeAt = performance.now() + 1500;
+      clearTimeout(row.resume);
+      row.resume = setTimeout(settle, 1550);
+    }
+
+    // Run only near the screen. The avatars are lazy, but rows that clip
+    // sideways hide them from the browser's lazy loading, so they all load
+    // once the plaza is close.
+    new IntersectionObserver(function (entries) {
+      visible = entries[0].isIntersecting;
+      if (visible) plaza.querySelectorAll("img[loading=lazy]").forEach(function (img) { img.loading = "eager"; });
+      rows.forEach(function (row) {
+        if (row.animation) row.animation[visible ? "play" : "pause"]();
+      });
+    }, { rootMargin: "200px 0px" }).observe(plaza);
+
+    rows.forEach(function (row) {
+      var element = row.element;
+      var swallowClick = false;
+
+      // Tabbing to a post stops the row and brings all of the post into
+      // view, clear of the edge fades. A click focuses a post too, but that
+      // shouldn't hold the row.
+      element.addEventListener("focusin", function (event) {
+        var post = event.target.closest(".post");
+        if (!post || !post.matches(":focus-visible") || !row.animation) return;
+        row.focus = true;
+        stop(row);
+        var edge = parseFloat(getComputedStyle(element).paddingLeft);
+        var box = element.getBoundingClientRect();
+        var rect = post.getBoundingClientRect();
+        var shift = 0;
+        if (rect.left - box.left < edge) shift = rect.left - box.left - edge;
+        else if (box.right - rect.right < edge) shift = edge - (box.right - rect.right);
+        if (shift) setX(row, Math.max(0, getX(row) + shift));
+      });
+      element.addEventListener("focusout", function (event) {
+        if (element.contains(event.relatedTarget)) return;
+        row.focus = false;
+        settle();
+      });
+
+      // Dragging starts after a few pixels, so a tap or click still opens
+      // the post, and the click that ends a drag is dropped.
+      element.addEventListener("pointerdown", function (event) {
+        if (event.button !== 0 || !row.animation) return;
+        row.press = { id: event.pointerId, from: event.clientX, x: 0, moved: false };
+      });
+      element.addEventListener("pointermove", function (event) {
+        var press = row.press;
+        if (!press || press.id !== event.pointerId) return;
+        var moved = event.clientX - press.from;
+        if (!press.moved) {
+          if (Math.abs(moved) < 6) return;
+          press.moved = true;
+          press.from = event.clientX;
+          moved = 0;
+          stop(row);
+          press.x = getX(row);
+          element.setPointerCapture(event.pointerId);
+          element.classList.add("is-dragging");
+        }
+        setX(row, press.x - moved);
+      });
+      function release(event) {
+        var press = row.press;
+        if (!press || press.id !== event.pointerId) return;
+        row.press = null;
+        if (!press.moved) return;
+        element.classList.remove("is-dragging");
+        holdThenDrift(row);
+        swallowClick = true;
+        setTimeout(function () { swallowClick = false; }, 0);
+      }
+      element.addEventListener("pointerup", release);
+      element.addEventListener("pointercancel", release);
+      element.addEventListener("click", function (event) {
+        if (!swallowClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+      }, true);
+      element.addEventListener("dragstart", function (event) { event.preventDefault(); });
+
+      // Sideways wheel and trackpad scrolling move the row; vertical scrolling
+      // is left to the page, and the handler does no work for it.
+      element.addEventListener("wheel", function (event) {
+        if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) || !row.animation) return;
+        event.preventDefault();
+        stop(row);
+        setX(row, getX(row) + event.deltaX);
+        holdThenDrift(row);
+      }, { passive: false });
+    });
+  }
+
   // Scroll reveals. The reveal-ready class is added only here, so sections
   // are never hidden unless this code is running and can show them again.
   function setUpReveals() {
@@ -974,6 +1236,7 @@
   setUpHome();
   setUpNotifications();
   setUpFaq();
+  setUpPlaza();
   setUpInstaller();
   setUpReveals();
   setUpTabs();
