@@ -90,11 +90,11 @@ std::string systemVersion()
 
 bool setConsoleClock(int64_t localUnixMilliseconds, std::string &error)
 {
-    // System Settings keeps manual changes as an offset from the hardware
-    // clock (config block 0x30001). Clearing it makes the console show
-    // exactly the time written below.
-    constexpr u32 UserTimeOffsetBlock = 0x30001;
-
+    // The console shows the hardware clock plus a user time offset that PTM
+    // keeps in memory and in config block 0x30001. SetUserTime moves that
+    // offset, so the change shows at once; SetSystemTime then records the
+    // time as set, as System Settings does. Writing the block directly would
+    // only take effect after a restart.
     const auto explain = [&](const char *step, Result result) {
         char code[16];
         std::snprintf(code, sizeof(code), "0x%08lX",
@@ -105,24 +105,31 @@ bool setConsoleClock(int64_t localUnixMilliseconds, std::string &error)
                 "options and choose \"Update time and date via NTP\".";
     };
 
-    Result result = ptmSetsInit();
+    Result result = ptmSysmInit();
     if (R_FAILED(result)) {
+        explain("Access to the clock service", result);
+        return false;
+    }
+    result = ptmSetsInit();
+    if (R_FAILED(result)) {
+        ptmSysmExit();
         explain("Access to the clock service", result);
         return false;
     }
     result = cfguInit();
     if (R_FAILED(result)) {
         ptmSetsExit();
+        ptmSysmExit();
         explain("Access to the system settings", result);
         return false;
     }
 
-    const u64 zero = 0;
-    result = CFG_SetConfigInfoBlk4(sizeof(zero), UserTimeOffsetBlock, &zero);
+    const s64 msY2k = localUnixMilliseconds - tz::UnixToY2kMs;
+    result = PTMSYSM_SetUserTime(msY2k);
     if (R_FAILED(result)) {
-        explain("Clearing the time offset", result);
+        explain("Setting the time", result);
     } else {
-        result = PTMSETS_SetSystemTime(localUnixMilliseconds - tz::UnixToY2kMs);
+        result = PTMSETS_SetSystemTime(msY2k);
         if (R_FAILED(result)) {
             explain("Setting the time", result);
         } else {
@@ -135,6 +142,7 @@ bool setConsoleClock(int64_t localUnixMilliseconds, std::string &error)
 
     cfguExit();
     ptmSetsExit();
+    ptmSysmExit();
     return R_SUCCEEDED(result);
 }
 
