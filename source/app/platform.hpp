@@ -11,6 +11,8 @@ enum class Wifi { Connected, Disconnected, Unknown };
 Wifi wifiStatus();
 // Free space on the SD card in bytes, or -1 when it cannot be read.
 int64_t sdFreeBytes();
+// The SD card's cluster size: the least space any file takes. 0 when unknown.
+uint64_t sdClusterSize();
 // The SD card's size in bytes, or -1 when it cannot be read.
 int64_t sdTotalBytes();
 // Tells one SD card from another: its serial (CID) where the console gives

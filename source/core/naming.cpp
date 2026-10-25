@@ -195,6 +195,15 @@ std::string stem(const std::string &filename)
                                                 : filename.substr(0, dot);
 }
 
+std::string archiveStem(const std::string &filename)
+{
+    std::string name = stem(filename);
+    if (text::endsWithNoCase(name, ".tar")) {
+        name.resize(name.size() - 4);
+    }
+    return name;
+}
+
 std::string extension(const std::string &filename)
 {
     const size_t dot = filename.find_last_of('.');

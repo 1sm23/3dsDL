@@ -1,5 +1,6 @@
 #pragma once
 
+#include "archives.hpp"
 #include "cia.hpp"
 #include "download_engine.hpp"
 #include "file_index.hpp"
@@ -50,10 +51,13 @@ private:
     void installDirectly(const std::string &address);
     void finishDownload(const std::string &address, const std::string &folder,
                         const net::Result &result);
-    void offerExtraction(const std::string &zipPath, const std::string &folder,
+    // Asks where to extract an archive, then extracts it. known is a
+    // listing already read, such as the archive viewer's.
+    void offerExtraction(const std::string &path, const std::string &folder,
                          const std::string &summary,
                          const std::string &title =
-                             "Download complete. Extract the archive?");
+                             "Download complete. Extract the archive?",
+                         const archives::Listing *known = nullptr);
 
     // Asks what to do with a CIA that just finished downloading.
     void offerInstall(const std::string &path, const std::string &address,
@@ -99,7 +103,7 @@ private:
     void hexViewer(const std::string &path);
     void pictureViewer(const std::vector<std::string> &pictures,
                        size_t index);
-    void zipViewer(const std::string &path);
+    void archiveViewer(const std::string &path);
     void titleDetails(const std::string &path, filetype::Kind kind);
     void showProperties(const std::vector<std::string> &paths);
     void showChecksum(const std::string &path);

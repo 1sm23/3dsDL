@@ -4,6 +4,7 @@
 import os
 import struct
 import sys
+import warnings
 import zipfile
 
 BINARY = bytes(range(256)) * 40
@@ -45,11 +46,43 @@ def main(folder):
     write(join("zip64.zip"), [("big.bin", BINARY)], zip64=True)
 
     write(join("mixed.zip"), [
-        ("bz.txt", b"bzip2 is not supported\n", zipfile.ZIP_BZIP2),
+        ("bz.txt", b"packed with bzip2\n", zipfile.ZIP_BZIP2),
         ("plain.txt", b"plain\n"),
     ])
 
     write(join("utf8.zip"), [("na\u00efve.txt", b"utf8\n")])
+
+    write(join("rooted.zip"), [
+        ("Game/", b""),
+        ("Game/a.txt", b"a\n"),
+        ("Game/sub/b.txt", b"b\n"),
+    ])
+
+    # The same name twice, the second shorter: the last one wins, whole.
+    with zipfile.ZipFile(join("dupes.zip"), "w") as archive, \
+            warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        archive.writestr("same.txt", b"the first, longer copy\n")
+        archive.writestr("same.txt", b"second\n")
+
+    # The same for files too large for one write, which go through a
+    # temporary name.
+    with zipfile.ZipFile(join("dupes-big.zip"), "w") as archive, \
+            warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        archive.writestr("big.bin", b"1" * (300 * 1024))
+        archive.writestr("big.bin", b"2" * (300 * 1024))
+
+    # Mark the first entry as PPMd (98), which neither reader extracts.
+    write(join("odd.zip"), [("odd.bin", b"odd\n"), ("plain.txt", b"plain\n")],
+          compression=zipfile.ZIP_STORED)
+    with open(join("odd.zip"), "r+b") as handle:
+        data = bytearray(handle.read())
+        data[8:10] = struct.pack("<H", 98)
+        central = data.index(b"PK\x01\x02")
+        data[central + 10:central + 12] = struct.pack("<H", 98)
+        handle.seek(0)
+        handle.write(data)
 
     # Flip one byte of stored data so the CRC check must fail.
     write(join("corrupt.zip"), [("data.bin", b"A" * 1000)],

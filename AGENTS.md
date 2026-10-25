@@ -26,6 +26,11 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - Never call `C2D_DrawImageAt` in screens (use `ui::drawImage`) and never query AM every frame.
 - Files keeps folder listings, folder totals and file dates in `fileIndex_` (`source/core/file_index`), saved to `sdmc:/3ds/3dsDL/index.bin` between runs. What loads is a first answer only: totals come back unverified and are added up again, listings are read again, and a date counts only while its file keeps its size. Bump `Version` in `file_index.cpp` when the saved form changes. Code in 3dsDL that writes, moves or removes something on the SD card calls `App::sdChanged(path)` afterwards. Writers outside Files are caught by `checkSdIndex` (free space moved), but a rename or same-size write is only caught by `sdChanged`.
 
+## Archives
+
+- `source/core/archives` reads and extracts: ZIP through 3dsDL's own reader (`zip.cpp`, stored and deflated, in stored order), everything else (7z, RAR, tar and compressed tars, ZIPs packed with bzip2, LZMA, XZ or Zstandard) through libarchive. Both write through `archives::Writer`.
+- On FAT every lookup reads through the whole folder, so per-file calls are what makes thousands of files slow. Writer looks up nothing for a small new file: existing names come from one listing per folder (`FolderNames`), each folder is made once, and the file is just open, a size check on the open file, write and close. Only large files and files being replaced are looked up. Keep it that way.
+
 ## Crash reports
 
 - A crash writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`), then the system's error screen shows as before. Report Issue names the file while it exists.

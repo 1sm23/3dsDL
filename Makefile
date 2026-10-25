@@ -37,7 +37,8 @@ LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 LDFLAGS   += -Wl,--wrap=poll
 
 LIBS      := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 \
-             -lmbedcrypto -lturbojpeg -lz -lctru -lm
+             -lmbedcrypto -lturbojpeg -larchive -lzstd -llz4 -llzma -lbz2 \
+             -lz -lctru -lm
 LIBDIRS   := $(CTRULIB) $(PORTLIBS)
 
 #---------------------------------------------------------------------------------

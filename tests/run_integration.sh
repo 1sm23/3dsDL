@@ -47,6 +47,7 @@ export FIXTURE_HTTPS="https://localhost:${HTTPS_PORT}"
 export FIXTURE_HTTPS_IP="https://127.0.0.1:${HTTPS_PORT}"
 export FIXTURE_CERT="${WORK}/cert.pem"
 export FIXTURE_ZIPS="${WORK}/zips"
+export FIXTURE_RARS="${HERE}/fixtures/rar"
 export MOZILLA_CA="${HERE}/../romfs/cacert.pem"
 export NTP_GOOD NTP_UNSYNCED NTP_MISMATCHED
 

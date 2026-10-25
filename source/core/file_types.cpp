@@ -29,6 +29,10 @@ const char *const AudioExtensions[] = {"mp3",  "ogg", "opus", "wav", "flac",
                                        "mod",  "xm",  "it",   "s3m"};
 const char *const VideoExtensions[] = {"mp4", "mkv", "avi", "webm", "mov",
                                        "moflex", "3gp"};
+const char *const ArchiveExtensions[] = {"zip", "7z",  "rar", "tar", "tgz",
+                                         "tbz", "tbz2", "txz", "tzst"};
+// Compressed tars by their last extension, after ".tar".
+const char *const TarFilters[] = {"gz", "bz2", "xz", "lzma", "zst"};
 
 } // namespace
 
@@ -58,8 +62,11 @@ Kind fromName(const std::string &name)
     if (bare == "firm") {
         return Kind::Firm;
     }
-    if (bare == "zip") {
-        return Kind::Zip;
+    if (oneOf(bare, ArchiveExtensions) ||
+        (oneOf(bare, TarFilters) &&
+         text::endsWithNoCase(name.substr(0, name.size() - extension.size()),
+                              ".tar"))) {
+        return Kind::Archive;
     }
     if (oneOf(bare, ImageExtensions)) {
         return Kind::Image;
@@ -99,8 +106,8 @@ const char *label(Kind kind)
         return "Picture";
     case Kind::Text:
         return "Text";
-    case Kind::Zip:
-        return "ZIP archive";
+    case Kind::Archive:
+        return "Archive";
     case Kind::Audio:
         return "Audio";
     case Kind::Video:

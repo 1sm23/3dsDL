@@ -1,5 +1,6 @@
 #include "tasks.hpp"
 
+#include "app_util.hpp"
 #include "sound.hpp"
 #include "ui.hpp"
 #include "units.hpp"
@@ -9,6 +10,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <unordered_set>
 
 namespace tasks {
 namespace {
@@ -158,36 +160,34 @@ void runDownload(void *argument)
     job.finished = true;
 }
 
-struct ExtractJob : zip::Observer {
-    std::string zipPath;
-    const zip::Archive *archive = nullptr;
+struct ExtractJob : archives::Observer {
+    std::string path;
+    const archives::Listing *listing = nullptr;
     std::string folder;
-    zip::Existing existing = zip::Existing::Skip;
-    zip::Result result;
+    archives::Options options;
+    archives::Result result;
     std::atomic<bool> cancel {false};
     std::atomic<bool> closing {false};
     std::atomic<bool> finished {false};
 
     LightLock lock;
-    uint64_t done = 0;
-    std::string current;
+    archives::Progress progress;
 
     ExtractJob() { LightLock_Init(&lock); }
 
     bool cancelRequested() override { return cancel.load(); }
-    void onProgress(uint64_t now, uint64_t, const std::string &name) override
+    void onProgress(const archives::Progress &now) override
     {
         Guard guard(lock);
-        done = now;
-        current = name;
+        progress = now;
     }
 };
 
 void runExtract(void *argument)
 {
     ExtractJob &job = *static_cast<ExtractJob *>(argument);
-    job.result = zip::extract(job.zipPath, *job.archive, job.folder,
-                              job.existing, job);
+    job.result = archives::extract(job.path, *job.listing, job.folder,
+                                   job.options, job);
     job.finished = true;
 }
 
@@ -441,15 +441,35 @@ net::Result download(const net::Request &request, bool keepAwake,
     return job.result;
 }
 
-zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
-                    const std::string &folder, zip::Existing existing,
-                    bool keepAwake)
+archives::Result extract(const std::string &path,
+                         const archives::Listing &listing,
+                         const std::string &folder,
+                         const archives::Options &options, bool keepAwake)
 {
     ExtractJob job;
-    job.zipPath = zipPath;
-    job.archive = &archive;
+    job.path = path;
+    job.listing = &listing;
     job.folder = folder;
-    job.existing = existing;
+    job.options = options;
+
+    // What the bar fills towards. A file costs about this much writing on
+    // top of its bytes, so thousands of small files still move it.
+    constexpr uint64_t FileWeight = 128 * 1024;
+    uint64_t totalBytes = 0;
+    unsigned totalFiles = 0;
+    if (listing.complete) {
+        const std::unordered_set<std::string> only(options.only.begin(),
+                                                   options.only.end());
+        for (const archives::Entry &entry : listing.entries) {
+            // What the extractors count: every file with a safe path.
+            if (!entry.directory && !entry.path.empty() &&
+                (only.empty() || only.count(entry.path) > 0)) {
+                totalBytes += entry.size;
+                ++totalFiles;
+            }
+        }
+    }
+    const uint64_t totalWork = totalBytes + totalFiles * FileWeight;
 
     StayAwake awake(keepAwake);
     Thread thread = startWorkerThread(runExtract, &job);
@@ -458,27 +478,64 @@ zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
         return job.result;
     }
 
-    const std::string name =
-        zipPath.substr(zipPath.find_last_of('/') + 1);
+    const std::string name = path.substr(path.find_last_of('/') + 1);
+    units::RateMeter speed;
+    units::RateMeter work;
     supervise(job, thread, "extracting", [&]() {
-        ui::ProgressView view;
+        archives::Progress progress;
         {
             Guard guard(job.lock);
-            view.source = job.current.empty() ? "Reading the archive..."
-                                              : job.current;
-            const uint64_t total = archive.totalSize;
-            view.fraction = total > 0
-                ? static_cast<float>(static_cast<double>(job.done) /
-                                     static_cast<double>(total))
-                : -1.0f;
-            view.amounts = units::bytes(job.done) + " of " +
-                           units::bytes(total);
+            progress = job.progress;
         }
+        ui::ProgressView view;
         view.title = "Extracting";
         view.icon = ui::Icon::Zip;
         view.iconColor = ui::color::IconGold;
         view.name = name;
-        view.tag = std::to_string(archive.fileCount) + " files";
+        view.source = progress.current.empty() ? "Reading the archive..."
+                                               : progress.current;
+        const uint64_t now = osGetTime();
+        speed.sample(now, progress.bytes);
+        if (listing.complete) {
+            const uint64_t done = progress.bytes + progress.files * FileWeight;
+            work.sample(now, done);
+            view.fraction = totalWork > 0
+                ? static_cast<float>(static_cast<double>(done) /
+                                     static_cast<double>(totalWork))
+                : -1.0f;
+            // Files lead: with thousands of small ones, bytes say little.
+            view.amounts = units::grouped(progress.files) + " of " +
+                           screens::plural(totalFiles, "file");
+            if (work.hasRate()) {
+                const int64_t left = work.secondsLeft(
+                    totalWork > done ? totalWork - done : 0);
+                if (left >= 0) {
+                    view.speed = units::duration(left) + " left";
+                }
+            }
+            if (speed.hasRate()) {
+                view.tag = units::rate(speed.bytesPerSecond());
+            }
+        } else {
+            work.sample(now, progress.archiveBytes);
+            view.fraction = listing.archiveSize > 0
+                ? static_cast<float>(
+                      static_cast<double>(progress.archiveBytes) /
+                      static_cast<double>(listing.archiveSize))
+                : -1.0f;
+            view.amounts = units::bytes(progress.archiveBytes) + " of " +
+                           units::bytes(listing.archiveSize);
+            view.tag = screens::plural(progress.files, "file");
+            if (work.hasRate()) {
+                const int64_t left = work.secondsLeft(
+                    listing.archiveSize > progress.archiveBytes
+                        ? listing.archiveSize - progress.archiveBytes
+                        : 0);
+                if (left >= 0) {
+                    view.speed = units::duration(left) + " left";
+                }
+            }
+        }
         view.message = "Extracting into " + folder;
         view.stopping = job.cancel;
         ui::drawProgress(view);

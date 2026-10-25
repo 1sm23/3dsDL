@@ -32,6 +32,8 @@ std::string chooseFilename(const std::string &contentDisposition,
                            const std::string &effectiveUrl);
 
 std::string stem(const std::string &filename);
+// The name for a folder of an archive's files: "pack" for pack.tar.gz.
+std::string archiveStem(const std::string &filename);
 // Extension including the dot, or "" when there is none.
 std::string extension(const std::string &filename);
 

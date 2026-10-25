@@ -74,7 +74,13 @@ TEST("filetype: classifies by extension")
     CHECK(filetype::fromName("README.md") == Kind::Text);
     CHECK(filetype::fromName("boot.firm") == Kind::Firm);
     CHECK(filetype::fromName("song.mp3") == Kind::Audio);
-    CHECK(filetype::fromName("pack.zip") == Kind::Zip);
+    CHECK(filetype::fromName("pack.zip") == Kind::Archive);
+    CHECK(filetype::fromName("pack.7z") == Kind::Archive);
+    CHECK(filetype::fromName("Pack.RAR") == Kind::Archive);
+    CHECK(filetype::fromName("pack.tar.gz") == Kind::Archive);
+    CHECK(filetype::fromName("pack.tar.XZ") == Kind::Archive);
+    CHECK(filetype::fromName("pack.tgz") == Kind::Archive);
+    CHECK(filetype::fromName("notes.gz") == Kind::Other);
     CHECK(filetype::fromName("noextension") == Kind::Other);
     CHECK(filetype::fromName(".hidden") == Kind::Other);
     CHECK(filetype::hasTitleMeta(Kind::Nds));

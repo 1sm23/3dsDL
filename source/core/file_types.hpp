@@ -17,7 +17,7 @@ enum class Kind {
     Firm,
     Image,
     Text,
-    Zip,
+    Archive, // .zip, .7z, .rar, .tar and compressed tars
     Audio,
     Video,
     Other

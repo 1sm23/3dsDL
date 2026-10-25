@@ -19,7 +19,6 @@
 #include "ui.hpp"
 #include "units.hpp"
 #include "update.hpp"
-#include "zip.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -36,6 +35,7 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::readArchive;
 using screens::sortDescription;
 using screens::versionRow;
 
@@ -181,7 +181,7 @@ KindLook lookOf(Kind kind)
         return {ui::Icon::Picture, ui::color::IconPink};
     case Kind::Text:
         return {ui::Icon::Text, ui::color::IconGrey};
-    case Kind::Zip:
+    case Kind::Archive:
         return {ui::Icon::Zip, ui::color::IconGold};
     case Kind::Audio:
         return {ui::Icon::Music, ui::color::IconPink};
@@ -1147,8 +1147,8 @@ void App::openFile(const std::string &path,
     case Kind::Text:
         textEditor(path);
         return;
-    case Kind::Zip:
-        zipViewer(path);
+    case Kind::Archive:
+        archiveViewer(path);
         return;
     case Kind::Image: {
         const std::string folder = folderOf(path);
@@ -1380,7 +1380,7 @@ bool App::entryOptions(const std::string &folder,
         add("Edit", Action::Edit);
     } else if (single) {
         add("Open", Action::Open);
-        if (kind == Kind::Zip) {
+        if (kind == Kind::Archive) {
             add("Extract", Action::Extract);
         }
     }
@@ -2530,16 +2530,15 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
     }
 }
 
-void App::zipViewer(const std::string &path)
+void App::archiveViewer(const std::string &path)
 {
-    zip::Archive archive;
+    archives::Listing listing;
     std::string error;
-    bool ok = false;
-    tasks::busy("ZIP Archive", "Reading " + basename(path) + "...",
-                [&]() { ok = zip::readArchive(path, archive, error); });
-    if (!ok) {
-        ui::message("Cannot Open the Archive", error, ui::Tone::Error,
-                    basename(path));
+    if (!readArchive(path, archives::Scan::Full, listing, error)) {
+        if (!error.empty()) {
+            ui::message("Cannot Open the Archive", error, ui::Tone::Error,
+                        basename(path));
+        }
         return;
     }
 
@@ -2551,7 +2550,7 @@ void App::zipViewer(const std::string &path)
         spec.action = "Extract";
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
-        for (const zip::Entry &entry : archive.entries) {
+        for (const archives::Entry &entry : listing.entries) {
             ui::ListItem item;
             const KindLook look = lookOf(entry.directory
                                              ? Kind::Folder
@@ -2560,7 +2559,7 @@ void App::zipViewer(const std::string &path)
             item.detail = entry.directory ? "" : units::bytes(entry.size);
             item.icon = look.icon;
             item.iconColor = look.color;
-            if (entry.path.empty()) {
+            if (entry.path.empty() || !entry.supported) {
                 item.labelColor = ui::color::Bad;
             }
             spec.items.push_back(item);
@@ -2570,13 +2569,17 @@ void App::zipViewer(const std::string &path)
                               ui::color::IconGold);
             ui::drawPanel();
             std::vector<ui::Fact> facts = {
-                {"Holds", plural(archive.fileCount, "file")},
-                {"Extracted", units::bytes(archive.totalSize)}};
-            if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
-                const zip::Entry &entry = archive.entries[index];
+                {"Format", listing.format},
+                {"Holds", plural(listing.fileCount, "file")},
+                {"Extracted", units::bytes(listing.totalSize)}};
+            if (index >= 0 && index < static_cast<int>(listing.entries.size())) {
+                const archives::Entry &entry = listing.entries[index];
                 facts.push_back({"Selected", entry.name});
                 if (entry.path.empty()) {
                     facts.push_back({"Skipped", "Path leaves the folder",
+                                     ui::color::Bad});
+                } else if (!entry.supported) {
+                    facts.push_back({"Skipped", "Encrypted, a link or unknown",
                                      ui::color::Bad});
                 }
             }
@@ -2585,7 +2588,7 @@ void App::zipViewer(const std::string &path)
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
             offerExtraction(path, folderOf(path), "",
-                            "Extract " + basename(path) + "?");
+                            "Extract " + basename(path) + "?", &listing);
             return;
         }
         if (result.key != KEY_A) {

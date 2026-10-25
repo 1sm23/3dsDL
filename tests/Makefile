@@ -22,9 +22,17 @@ SAN      ?= -fsanitize=address,undefined -fno-sanitize-recover=undefined \
             -fno-omit-frame-pointer
 WARN     := -Wall -Wextra
 CPPFLAGS := -I$(CORE) -I$(NET) -I$(QUIRC) -I$(STB)
+LDLIBS   := -lcurl -larchive -lz -lm
+
+# Homebrew keeps libarchive out of the compiler's paths on macOS.
+ARCHIVE_PREFIX := $(shell brew --prefix libarchive 2>/dev/null)
+ifneq ($(ARCHIVE_PREFIX),)
+CPPFLAGS += -I$(ARCHIVE_PREFIX)/include
+LDLIBS   := -L$(ARCHIVE_PREFIX)/lib $(LDLIBS)
+endif
+
 CXXFLAGS := -std=c++17 -g -O1 $(WARN) -Werror $(SAN) $(CPPFLAGS)
 CFLAGS   := -std=gnu99 -g -O1 $(WARN) $(SAN) $(CPPFLAGS)
-LDLIBS   := -lcurl -lz -lm
 
 CORE_SRC        := $(wildcard $(CORE)/*.cpp)
 NET_SRC         := $(wildcard $(NET)/*.cpp)

@@ -1,6 +1,7 @@
 #include "app_util.hpp"
 
 #include "installer.hpp"
+#include "tasks.hpp"
 #include "units.hpp"
 
 #include <map>
@@ -38,7 +39,39 @@ std::string basename(const std::string &path)
 
 std::string plural(uint64_t count, const std::string &word)
 {
-    return std::to_string(count) + " " + word + (count == 1 ? "" : "s");
+    return units::grouped(count) + " " + word + (count == 1 ? "" : "s");
+}
+
+bool readArchive(const std::string &path, archives::Scan scan,
+                 archives::Listing &listing, std::string &error)
+{
+    // The bar follows how far into the archive file the read has got.
+    struct Reading : archives::Observer {
+        tasks::Busy &busy;
+        explicit Reading(tasks::Busy &busy) : busy(busy) {}
+        bool cancelRequested() override { return busy.cancel.load(); }
+        void onProgress(const archives::Progress &progress) override
+        {
+            busy.done = progress.archiveBytes;
+        }
+    };
+    bool ok = false;
+    error.clear();
+    const bool finished = tasks::busy(
+        "Archive", "Reading " + basename(path) + "...",
+        [&](tasks::Busy &busy) {
+            const int64_t size = fs::fileSize(path);
+            busy.bytes = true;
+            busy.total = size > 0 ? static_cast<uint64_t>(size) : 0;
+            Reading observer(busy);
+            ok = archives::read(path, scan, listing, error, &observer);
+        },
+        true);
+    if (!finished) {
+        error.clear();
+        return false;
+    }
+    return ok;
 }
 
 std::string sortDescription(fs::SortOrder order, bool reverse)

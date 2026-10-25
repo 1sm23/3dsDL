@@ -29,6 +29,15 @@ int64_t sdFreeBytes()
            static_cast<int64_t>(resource.freeClusters);
 }
 
+uint64_t sdClusterSize()
+{
+    FS_ArchiveResource resource {};
+    if (R_FAILED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD))) {
+        return 0;
+    }
+    return resource.clusterSize;
+}
+
 int64_t sdTotalBytes()
 {
     FS_ArchiveResource resource {};

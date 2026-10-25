@@ -20,7 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libcurl4-openssl-dev zlib1g-dev
+            libcurl4-openssl-dev zlib1g-dev libarchive-dev
 
       - name: Unit and integration tests (ASan + UBSan)
         run: make -C tests check

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "archives.hpp"
 #include "download_engine.hpp"
 #include "file_ops.hpp"
 #include "installer.hpp"
-#include "zip.hpp"
 
 #include <3ds.h>
 
@@ -22,9 +22,12 @@ namespace tasks {
 net::Result download(const net::Request &request, bool keepAwake,
                      const std::string &step = "", bool direct = false);
 
-zip::Result extract(const std::string &zipPath, const zip::Archive &archive,
-                    const std::string &folder, zip::Existing existing,
-                    bool keepAwake);
+// Extracts into folder with a progress screen. When the listing is not
+// complete, progress follows how far into the archive file it has read.
+archives::Result extract(const std::string &path,
+                         const archives::Listing &listing,
+                         const std::string &folder,
+                         const archives::Options &options, bool keepAwake);
 
 // Installs the CIA at path. name is shown while it runs.
 installer::Result install(const std::string &path, uint64_t titleId,
