@@ -251,10 +251,15 @@ bool listSdEntries(const std::string &folder, bool hidden, bool times,
             while (length < 0x106 && item.name[length] != 0) {
                 ++length;
             }
-            std::string name(length * 3 + 1, '\0');
+            // The last argument is the room for the UTF-8, which takes up
+            // to three bytes for each unit outside ASCII. The result counts
+            // what the whole name needs, even when it did not fit.
+            std::string name(length * 3, '\0');
             const ssize_t bytes = utf16_to_utf8(
-                reinterpret_cast<uint8_t *>(&name[0]), item.name, length);
-            name.resize(bytes > 0 ? static_cast<size_t>(bytes) : 0);
+                reinterpret_cast<uint8_t *>(&name[0]), item.name, name.size());
+            name.resize(bytes > 0 ? std::min(static_cast<size_t>(bytes),
+                                             name.size())
+                                  : 0);
             if (name.empty() || name == "." || name == ".." ||
                 (name[0] == '.' && !hidden)) {
                 continue;
