@@ -1,0 +1,55 @@
+name: Sync upstream main
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 11:17 Beijing time (03:17 UTC)
+    - cron: '17 3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream main
+        run: |
+          git remote add upstream https://github.com/ankushKun/3dsDL.git
+          git fetch --prune upstream main
+          git fetch --prune origin main
+
+      - name: Merge upstream when conflict-free
+        id: merge
+        run: |
+          git checkout -B sync-upstream origin/main
+
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Fork main is already up to date."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A conflict stops this job before anything is pushed to main.
+          git merge --no-edit --no-ff upstream/main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push synchronized main
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD:main
