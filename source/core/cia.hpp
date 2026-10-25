@@ -103,6 +103,7 @@ std::string versionText(uint16_t version);
 // over the one before (see scripts/version.sh):
 // major * 16384 + minor * 256 + patch * 16 + step, where step is the
 // pre-release's last number (1 to 14) and 15 for the release.
+// This fork appends n and adds one to that number, e.g. 0.8.2n is 2096.
 constexpr uint64_t OwnTitleId = 0x0004000003D5D100ull;
 
 // The build number for a version such as "0.8.1-beta.2", or -1 when the

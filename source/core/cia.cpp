@@ -316,14 +316,19 @@ std::string versionText(uint16_t version)
 
 int buildNumber(const std::string &version)
 {
+    std::string base = version;
+    const bool fork = !base.empty() && base.back() == 'n';
+    if (fork) {
+        base.pop_back();
+    }
     unsigned major = 0, minor = 0, patch = 0;
     int used = 0;
-    if (std::sscanf(version.c_str(), "%u.%u.%u%n", &major, &minor, &patch, &used) != 3 ||
+    if (std::sscanf(base.c_str(), "%u.%u.%u%n", &major, &minor, &patch, &used) != 3 ||
         major > 3 || minor > 63 || patch > 15) {
         return -1;
     }
     unsigned step = 15;
-    const std::string rest = version.substr(static_cast<size_t>(used));
+    const std::string rest = base.substr(static_cast<size_t>(used));
     if (!rest.empty()) {
         const size_t digits = rest.find_last_not_of("0123456789");
         const std::string last = rest.substr(digits + 1);
@@ -336,7 +341,9 @@ int buildNumber(const std::string &version)
             return -1;
         }
     }
-    return static_cast<int>(major * 16384 + minor * 256 + patch * 16 + step);
+    const unsigned number = major * 16384 + minor * 256 + patch * 16 + step +
+                            (fork ? 1 : 0);
+    return number <= 65535 ? static_cast<int>(number) : -1;
 }
 
 std::string versionText(uint64_t titleId, uint16_t version,
@@ -349,11 +356,15 @@ std::string versionText(uint64_t titleId, uint16_t version,
     if (!running.empty() && buildNumber(running) == version) {
         text = running;
     } else {
-        const unsigned step = version % 16;
-        text = std::to_string(version / 16384) + "." +
-               std::to_string(version / 256 % 64) + "." +
-               std::to_string(version / 16 % 16) +
-               (step == 15 ? "" : "-pre." + std::to_string(step));
+        // Step zero is the number just after an upstream stable release.
+        const bool fork = version % 16 == 0;
+        const unsigned base = fork ? version - 1 : version;
+        const unsigned step = base % 16;
+        text = std::to_string(base / 16384) + "." +
+               std::to_string(base / 256 % 64) + "." +
+               std::to_string(base / 16 % 16) +
+               (step == 15 ? "" : "-pre." + std::to_string(step)) +
+               (fork ? "n" : "");
     }
     return text + " (v" + std::to_string(version) + ")";
 }

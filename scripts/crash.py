@@ -25,6 +25,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RELEASES = "https://github.com/ankushKun/3dsDL/releases/download"
+FORK_RELEASES = "https://github.com/1sm23/3dsDL/releases/download"
 LUMA_TYPES = {1: "undefined instruction", 2: "prefetch abort", 3: "data abort"}
 LUMA_REGISTERS = [f"r{n}" for n in range(13)] + [
     "sp", "lr", "pc", "cpsr", "dfsr", "ifsr", "far", "fpexc", "fpinst", "fpinst2"]
@@ -167,7 +168,8 @@ def find_elf(version):
     path = os.path.join(cache, "3dsDL.elf")
     if os.path.exists(path):
         return path
-    url = f"{RELEASES}/v{version}/3dsDL.elf"
+    releases = FORK_RELEASES if version.endswith("n") else RELEASES
+    url = f"{releases}/v{version}/3dsDL.elf"
     print(f"Downloading {url}", file=sys.stderr)
     os.makedirs(cache, exist_ok=True)
     try:

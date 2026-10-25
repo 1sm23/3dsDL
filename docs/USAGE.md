@@ -74,6 +74,10 @@ Everything also works by touch, and lists scroll with a flick.
 | After a CIA downloads | Ask | Ask, install, install and delete, or keep |
 | Check for updates | On | Looks for a new 3dsDL when it opens |
 | Sounds | On | Needs `sdmc:/3ds/dspfirm.cdc` |
+| Language | English | Change the interface language in **Settings → Other Settings** |
+
+The language catalog is bundled in the app. English is used when a translation
+is missing, so updating the catalog never makes an older installation unusable.
 
 **Console Clock** compares the console's time with internet time and sets it for your time zone. HTTPS fails when the date is wrong. Setting the clock needs the CIA build; Rosalina (<kbd>L</kbd> + <kbd>Down</kbd> + <kbd>SELECT</kbd>, Miscellaneous options) can also set it.
 
@@ -117,6 +121,24 @@ The host tests (`make -C tests check`) need a C++17 compiler, libcurl and zlib h
 `VERSION` holds a release, `0.8.1`, or a pre-release of one that ends in a number from 1 to 14, `0.8.1-beta.1` or `0.8.1-rc.3`. 3dsDL shows it as written. A CIA's version is a single number that the console only lets go up, the same number again included, so each build gets a build number made from its version (`major × 16384 + minor × 256 + patch × 16 + step`, where step is the pre-release's last number and 15 for the release). Every build installs over the one before it, so keep that last number rising across labels for one version: beta.1, beta.2, rc.3. `scripts/version.sh` prints the numbers for the current `VERSION`.
 
 To publish, commit the new `VERSION` and push a matching tag (`v0.8.0-beta.1`). CI builds it, checks the tag against `VERSION`, and either publishes a GitHub pre-release straight away (testers install it from the release page) or, for a release, creates a draft to review and publish. The updater in 3dsDL only looks at the latest release, so it never offers a pre-release, and someone on `0.8.0-beta.3` is offered `0.8.0` as soon as it is out.
+
+This fork checks [1sm23/3dsDL releases](https://github.com/1sm23/3dsDL/releases)
+for self-updates. The release notes, CIA or 3DSX, and SHA-256 checksums all
+come from that fork's release. With no published stable release, the app
+reports that no release has been published. Installing a build with this
+update source is required once to migrate from a build that checks upstream.
+
+Create release tags from `feat/i18n` (or a branch containing its changes);
+`main` tracks upstream and does not include the localization. This fork
+appends `n` to the upstream version: `0.8.2` becomes `0.8.2n`, with tag
+`v0.8.2n`. Set `VERSION`, push its matching tag, then publish the stable
+release draft made by CI as the latest release. The updater orders versions
+as `0.8.2 < 0.8.2n < 0.8.3 < 0.8.3n`. Its CIA build number is one higher
+than the matching upstream build (`0.8.2n` is 2096, `0.8.2` is 2095), so
+the console can install it over that build. The first `n` release needs a
+manual install when migrating from an older build without suffix support.
+Keep the CI-generated `3dsDL.cia`, `3dsDL.3dsx` and `3dsDL.sha256` assets in
+the release so both installation formats can update and verify the download.
 
 | Folder | |
 | --- | --- |

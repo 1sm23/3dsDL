@@ -150,8 +150,24 @@ float inkOffset(const std::string &value, float scale)
     if (value.empty()) {
         return 0;
     }
-    const fontGlyphPos_s first = glyphPos(static_cast<unsigned char>(value.front()));
-    const fontGlyphPos_s last = glyphPos(static_cast<unsigned char>(value.back()));
+    uint32_t firstCodePoint = 0xfffd;
+    size_t firstLength = text::utf8SequenceLength(value, 0, &firstCodePoint);
+    if (firstLength == 0) {
+        firstCodePoint = 0xfffd;
+    }
+    uint32_t lastCodePoint = 0xfffd;
+    for (size_t index = 0; index < value.size();) {
+        uint32_t codePoint = 0xfffd;
+        size_t length = text::utf8SequenceLength(value, index, &codePoint);
+        if (length == 0) {
+            length = 1;
+            codePoint = 0xfffd;
+        }
+        lastCodePoint = codePoint;
+        index += length;
+    }
+    const fontGlyphPos_s first = glyphPos(firstCodePoint);
+    const fontGlyphPos_s last = glyphPos(lastCodePoint);
     const float trailing = last.xAdvance - (last.xOffset + last.width);
     return (trailing - first.xOffset) / 2 * fontScale * scale * TextBoost;
 }
