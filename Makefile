@@ -32,6 +32,9 @@ CFLAGS    += $(EXTRA_DEFINES)
 CXXFLAGS  := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+# Every poll(), libcurl's included, goes through net::pollInSteps so no
+# thread waits inside the network service (source/net/socket_wait.hpp).
+LDFLAGS   += -Wl,--wrap=poll
 
 LIBS      := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 \
              -lmbedcrypto -lturbojpeg -lz -lctru -lm

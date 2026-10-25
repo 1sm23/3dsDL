@@ -17,6 +17,18 @@ namespace net {
 // returns: the number of ready sockets, 0 on timeout, -1 on error.
 int waitSockets(pollfd *sockets, nfds_t count, int timeoutMs, int stepMs);
 
+// poll() with ask doing the asking, which only ever gets a zero timeout.
+// Asks every millisecond at first, so an answer that comes quickly is seen
+// quickly, then every 5 and every 20, so a long wait does not keep the
+// system core busy: the network service shares it with the SD card. A
+// negative timeoutMs waits until a socket is ready.
+//
+// The console links every poll() through this (-Wl,--wrap=poll in the
+// Makefile), so libcurl's waits while it connects, shakes hands and
+// downloads do not hold up the service either.
+int pollInSteps(int (*ask)(pollfd *, nfds_t, int), pollfd *sockets,
+                nfds_t count, int timeoutMs);
+
 // Makes a socket's calls return at once instead of waiting.
 void setNonBlocking(int socketFd);
 
