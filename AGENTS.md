@@ -31,6 +31,11 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - `source/core/archives` reads and extracts: ZIP through 3dsDL's own reader (`zip.cpp`, stored and deflated, in stored order), everything else (7z, RAR, tar and compressed tars, ZIPs packed with bzip2, LZMA, XZ or Zstandard) through libarchive. Both write through `archives::Writer`.
 - On FAT every lookup reads through the whole folder, so per-file calls are what makes thousands of files slow. Writer looks up nothing for a small new file: existing names come from one listing per folder (`FolderNames`), each folder is made once, and the file is just open, a size check on the open file, write and close. Only large files and files being replaced are looked up. Keep it that way.
 
+## Testing in Azahar
+
+- Azahar only takes taps while it has focus. A build with `THREEDSDL_EXTRA_DEFINES=-DTHREEDSDL_SCRIPTED_INPUT` also reads lines appended to `sdmc:/3ds/3dsDL/input.txt` (`tap X Y` in bottom-screen pixels, or `key A`, `key DOWN` and so on), so it can be driven in the background while screenshots come from the window.
+- Azahar runs file Read, Write, SetSize and Close asynchronously, about a frame each, so time there follows the number of calls, not the bytes.
+
 ## Crash reports
 
 - A crash writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`), then the system's error screen shows as before. Report Issue names the file while it exists.
