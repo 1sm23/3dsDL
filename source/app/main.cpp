@@ -1,6 +1,7 @@
 #include "app.hpp"
 #include "crash.hpp"
 #include "installer.hpp"
+#include "i18n.hpp"
 #include "sound.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
         Services services;
         std::string error;
         if (services.start(error)) {
+            i18n::init("romfs:/i18n.json");
             App app;
             app.run();
         } else {

@@ -1,0 +1,278 @@
+{
+  "common.on": {
+    "en": "On",
+    "zh": "开"
+  },
+  "common.off": {
+    "en": "Off",
+    "zh": "关"
+  },
+  "common.unavailable": {
+    "en": "Unavailable",
+    "zh": "不可用"
+  },
+  "common.back": {
+    "en": "Back",
+    "zh": "返回"
+  },
+  "settings.about.title": {
+    "en": "About",
+    "zh": "关于"
+  },
+  "settings.updates.title": {
+    "en": "Updates",
+    "zh": "更新"
+  },
+  "settings.folder.title": {
+    "en": "Download Folder",
+    "zh": "下载目录"
+  },
+  "settings.clock.title": {
+    "en": "Console Clock",
+    "zh": "主机时钟"
+  },
+  "settings.report_issue": {
+    "en": "Report Issue",
+    "zh": "反馈问题"
+  },
+  "settings.title": {
+    "en": "Settings",
+    "zh": "设置"
+  },
+  "settings.downloads.title": {
+    "en": "Downloads",
+    "zh": "下载"
+  },
+  "settings.downloads.resume": {
+    "en": "Resume Downloads",
+    "zh": "断点续传"
+  },
+  "settings.downloads.resume.short": {
+    "en": "Resume Downloads",
+    "zh": "断点续传"
+  },
+  "settings.downloads.awake": {
+    "en": "Stay Awake",
+    "zh": "保持唤醒"
+  },
+  "settings.downloads.awake.short": {
+    "en": "Stay Awake",
+    "zh": "保持唤醒"
+  },
+  "settings.downloads.zip": {
+    "en": "Ask to Extract ZIPs",
+    "zh": "询问是否解压 ZIP"
+  },
+  "settings.downloads.zip.short": {
+    "en": "Extract ZIP Files",
+    "zh": "解压 ZIP 文件"
+  },
+  "settings.downloads.cia": {
+    "en": "After a CIA Downloads",
+    "zh": "CIA 下载完成后"
+  },
+  "settings.downloads.cia.ask_each": {
+    "en": "Ask Each Time",
+    "zh": "每次询问"
+  },
+  "settings.downloads.cia.install_delete": {
+    "en": "Install and Delete File",
+    "zh": "安装并删除文件"
+  },
+  "settings.downloads.cia.keep": {
+    "en": "Only Keep the File",
+    "zh": "仅保留文件"
+  },
+  "settings.downloads.resume.help": {
+    "en": "When a download is interrupted, keep what arrived and continue from there next time. 3dsDL only resumes when the server confirms the file has not changed.",
+    "zh": "下载中断时保留已接收内容，下次继续下载。只有服务器确认文件未改变时，3dsDL 才会继续传输。"
+  },
+  "settings.downloads.awake.help": {
+    "en": "Pause Sleep Mode while a download or install runs. Closing the system would otherwise turn Wi-Fi off and stop the transfer.",
+    "zh": "下载或安装时暂停休眠模式，否则合上主机可能关闭 Wi-Fi 并中断传输。"
+  },
+  "settings.downloads.zip.help": {
+    "en": "After a ZIP file finishes downloading, ask whether to extract it. Nothing is ever extracted without asking.",
+    "zh": "ZIP 文件下载完成后询问是否解压。未经确认不会自动解压。"
+  },
+  "settings.downloads.cia.help": {
+    "en": "Choose what 3dsDL does when a CIA finishes downloading. Ask Each Time shows the icon and version before anything is installed.",
+    "zh": "选择 CIA 下载完成后的操作。每次询问会在安装前显示图标和版本。"
+  },
+  "settings.about.help": {
+    "en": "Version, credits and where 3dsDL keeps its files.",
+    "zh": "版本、致谢以及 3dsDL 保存文件的位置。"
+  },
+  "settings.updates.help": {
+    "en": "Check for a newer 3dsDL and install it.",
+    "zh": "检查并安装新版 3dsDL。"
+  },
+  "settings.downloads.help": {
+    "en": "Resuming, Sleep Mode, ZIP files and what happens after a CIA downloads.",
+    "zh": "断点续传、休眠模式、ZIP 文件以及 CIA 下载完成后的操作。"
+  },
+  "settings.folder.help": {
+    "en": "The folder new downloads are saved to.",
+    "zh": "新下载文件保存到的目录。"
+  },
+  "settings.clock.help": {
+    "en": "Compare the console's clock with the time online and set it. Secure downloads fail when the date is wrong.",
+    "zh": "将主机时钟与网络时间比较并设置。日期错误会导致安全下载失败。"
+  },
+  "settings.other.title": {
+    "en": "Other Settings",
+    "zh": "其他设置"
+  },
+  "settings.other.help": {
+    "en": "Language, file sorting, hidden files, sounds, and download history.",
+    "zh": "语言、文件排序、隐藏文件、音效和下载记录。"
+  },
+  "settings.language.title": {
+    "en": "Language",
+    "zh": "语言"
+  },
+  "settings.language.help": {
+    "en": "Choose the language used for the 3dsDL interface.",
+    "zh": "选择 3dsDL 界面使用的语言。"
+  },
+  "settings.sort.title": {
+    "en": "Sort Files",
+    "zh": "文件排序"
+  },
+  "settings.sort.help": {
+    "en": "Folders always come first. Choose how files are sorted.",
+    "zh": "文件夹始终排在前面。选择文件的排序方式。"
+  },
+  "settings.sort.name": {
+    "en": "Name",
+    "zh": "名称"
+  },
+  "settings.sort.size": {
+    "en": "Size, Largest First",
+    "zh": "大小，最大优先"
+  },
+  "settings.sort.date": {
+    "en": "Date, Newest First",
+    "zh": "日期，最新优先"
+  },
+  "settings.sort.type": {
+    "en": "Type",
+    "zh": "类型"
+  },
+  "settings.hidden.title": {
+    "en": "Show Hidden Files",
+    "zh": "显示隐藏文件"
+  },
+  "settings.hidden.help": {
+    "en": "Show files and folders whose names start with a dot.",
+    "zh": "显示名称以点开头的文件和文件夹。"
+  },
+  "settings.sounds.title": {
+    "en": "Sounds",
+    "zh": "音效"
+  },
+  "settings.sounds.help": {
+    "en": "Soft sounds when moving, choosing and going back, as in the system menus.",
+    "zh": "移动、选择和返回时播放轻柔的系统菜单风格音效。"
+  },
+  "settings.sounds.unavailable_help": {
+    "en": "Sounds need the DSP firmware dump, sdmc:/3ds/dspfirm.cdc. Make it with DSP1, then start 3dsDL again.",
+    "zh": "音效需要 DSP 固件文件 sdmc:/3ds/dspfirm.cdc。请使用 DSP1 生成该文件，然后重新启动 3dsDL。"
+  },
+  "settings.history.title": {
+    "en": "Clear Download History",
+    "zh": "清除下载记录"
+  },
+  "settings.history.help": {
+    "en": "Removes the list of past downloads and any partial downloads kept for resuming. Downloaded files stay.",
+    "zh": "删除过往下载记录以及为断点续传保留的未完成文件。已下载完成的文件不会删除。"
+  },
+  "settings.history.empty_title": {
+    "en": "History Is Empty",
+    "zh": "下载记录为空"
+  },
+  "settings.history.empty": {
+    "en": "There is nothing to clear.",
+    "zh": "没有可清除的内容。"
+  },
+  "settings.cia.ask": {
+    "en": "Ask",
+    "zh": "每次询问"
+  },
+  "settings.cia.install": {
+    "en": "Install",
+    "zh": "安装"
+  },
+  "settings.cia.install_delete": {
+    "en": "Install, Delete",
+    "zh": "安装后删除文件"
+  },
+  "settings.cia.keep": {
+    "en": "Keep File",
+    "zh": "仅保留文件"
+  },
+  "settings.downloads.connections": {
+    "en": "Max Connections",
+    "zh": "最大连接数"
+  },
+  "settings.sounds.unavailable_title": {
+    "en": "Sounds Unavailable",
+    "zh": "音效不可用"
+  },
+  "settings.facts.new": {
+    "en": "New",
+    "zh": "新版"
+  },
+  "settings.facts.installed": {
+    "en": "Installed",
+    "zh": "已安装"
+  },
+  "settings.facts.startup": {
+    "en": "At Startup",
+    "zh": "启动时"
+  },
+  "settings.facts.check": {
+    "en": "Check",
+    "zh": "检查"
+  },
+  "settings.facts.dont_check": {
+    "en": "Don't Check",
+    "zh": "不检查"
+  },
+  "settings.facts.extract": {
+    "en": "Ask to Extract",
+    "zh": "询问解压"
+  },
+  "settings.facts.cia": {
+    "en": "After a CIA",
+    "zh": "CIA 下载后"
+  },
+  "settings.facts.destination": {
+    "en": "Saves to",
+    "zh": "保存至"
+  },
+  "settings.facts.console": {
+    "en": "Console",
+    "zh": "主机"
+  },
+  "settings.facts.timezone": {
+    "en": "Time Zone",
+    "zh": "时区"
+  },
+  "settings.facts.hidden": {
+    "en": "Hidden Files",
+    "zh": "隐藏文件"
+  },
+  "settings.facts.history": {
+    "en": "History",
+    "zh": "下载记录"
+  },
+  "settings.facts.version": {
+    "en": "Version",
+    "zh": "版本"
+  },
+  "settings.facts.storage": {
+    "en": "Settings in",
+    "zh": "设置位置"
+  }
+}

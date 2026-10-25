@@ -13,6 +13,7 @@ namespace {
 struct Version {
     std::vector<long> numbers;
     std::string label; // "beta.1" in "0.8.0-beta.1"; empty for a release
+    bool fork = false; // this fork appends n to its upstream version
 };
 
 // Reads "v1.2.3-beta.1+build" leniently: the numbers until something else,
@@ -46,11 +47,22 @@ Version parseVersion(const std::string &text)
             break;
         }
     }
+    if (!out.numbers.empty() && position < text.size() && text[position] == 'n' &&
+        (position + 1 == text.size() || text[position + 1] == '+' ||
+         std::isspace(static_cast<unsigned char>(text[position + 1])))) {
+        out.fork = true;
+        ++position;
+    }
     if (!out.numbers.empty() && position < text.size() && text[position] == '-') {
         const size_t end = text.find_first_of("+ \t\r\n", position + 1);
         out.label = text.substr(position + 1, end == std::string::npos
                                                   ? std::string::npos
                                                   : end - position - 1);
+        if (out.label.size() >= 2 && out.label.back() == 'n' &&
+            std::isdigit(static_cast<unsigned char>(out.label[out.label.size() - 2]))) {
+            out.fork = true;
+            out.label.pop_back();
+        }
     }
     return out;
 }
@@ -236,12 +248,16 @@ int compareVersions(const std::string &a, const std::string &b)
         }
     }
     // The same numbers: a pre-release comes before its release.
-    if (first.label.empty() || second.label.empty()) {
-        return first.label.empty() == second.label.empty()
-                   ? 0
-                   : (first.label.empty() ? 1 : -1);
+    if (first.label.empty() != second.label.empty()) {
+        return first.label.empty() ? 1 : -1;
     }
-    return compareLabels(first.label, second.label);
+    if (!first.label.empty()) {
+        const int order = compareLabels(first.label, second.label);
+        if (order != 0) {
+            return order;
+        }
+    }
+    return first.fork == second.fork ? 0 : (first.fork ? 1 : -1);
 }
 
 bool isNewer(const std::string &candidate, const std::string &current)

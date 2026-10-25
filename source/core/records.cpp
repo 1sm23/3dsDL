@@ -165,6 +165,12 @@ Settings parseSettings(const std::string &contents)
                               const std::string &value) {
         if (key == "destination" && !value.empty()) {
             settings.destination = value;
+        } else if (key == "language") {
+            // Unknown language codes stay on the durable default instead of
+            // making the UI unusable after a hand-edited settings file.
+            if (value == "en" || value == "zh") {
+                settings.language = value;
+            }
         } else if (key == "resume_downloads") {
             settings.resumeDownloads =
                 parseBool(value, settings.resumeDownloads);
@@ -234,6 +240,9 @@ std::string serializeSettings(const Settings &settings)
 {
     std::string output = "# 3dsDL settings\n";
     output += "destination=" + text::singleLine(settings.destination) + "\n";
+    output += "language=" +
+              (settings.language == "zh" ? std::string("zh") : "en") +
+              "\n";
     output += std::string("resume_downloads=") +
               (settings.resumeDownloads ? "1" : "0") + "\n";
     output += std::string("keep_awake=") + (settings.keepAwake ? "1" : "0") +

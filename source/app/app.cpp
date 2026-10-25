@@ -5,6 +5,7 @@
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "i18n.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "platform.hpp"
@@ -56,22 +57,22 @@ constexpr Preset Presets[] = {
 
 std::string onOff(bool value)
 {
-    return value ? "On" : "Off";
+    return i18n::t(value ? "common.on" : "common.off");
 }
 
-const char *ciaActionLabel(CiaAction action)
+std::string ciaActionLabel(CiaAction action)
 {
     switch (action) {
     case CiaAction::Install:
-        return "Install";
+        return i18n::t("settings.cia.install");
     case CiaAction::InstallAndDelete:
-        return "Install, Delete";
+        return i18n::t("settings.cia.install_delete");
     case CiaAction::Keep:
-        return "Keep File";
+        return i18n::t("settings.cia.keep");
     case CiaAction::Ask:
         break;
     }
-    return "Ask";
+    return i18n::t("settings.cia.ask");
 }
 
 std::string entryName(const HistoryEntry &entry)
@@ -154,6 +155,7 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
 App::App()
     : settings_(storage::loadSettings()), history_(storage::loadHistory())
 {
+    i18n::setLanguage(settings_.language);
     sound::setEnabled(settings_.sounds);
     // Interrupted downloads from before names were kept: their resume file
     // knows the name the server gave.
@@ -1550,15 +1552,16 @@ void App::settingsScreen()
         std::string label;
         std::string value;
     };
-    const auto settingsList = [&](const std::string &title, ui::Icon icon,
-                                  u32 iconColor,
+    const auto settingsList = [&](const std::function<std::string()> &title,
+                                  ui::Icon icon, u32 iconColor,
                                   const std::function<std::vector<Row>()> &rows,
                                   const std::function<void(int)> &change) {
         int cursor = 0;
         while (ui::keepRunning()) {
             const std::vector<Row> current = rows();
             ui::ListSpec spec;
-            spec.title = title;
+            spec.title = title();
+            spec.back = i18n::t("common.back");
             for (const Row &row : current) {
                 ui::ListItem item;
                 item.label = row.label;
@@ -1569,7 +1572,7 @@ void App::settingsScreen()
             // The rows already show every value, so the top screen only
             // says which section this is.
             spec.drawTop = [&](int) {
-                ui::drawTopChrome(title, icon, iconColor);
+                ui::drawTopChrome(title(), icon, iconColor);
                 ui::drawPanel();
                 ui::drawEmblem(icon, iconColor);
             };
@@ -1581,9 +1584,9 @@ void App::settingsScreen()
         }
     };
     const auto onOffChoice = [&](const std::string &title, bool &value) {
-        const int picked = ui::chooseOption(title, {"On", "Off"},
-                                            value ? 0 : 1, ui::Icon::Download,
-                                            ui::color::IconGreen);
+        const int picked = ui::chooseOption(
+            title, {i18n::t("common.on"), i18n::t("common.off")},
+            value ? 0 : 1, ui::Icon::Download, ui::color::IconGreen);
         if (picked >= 0 && (picked == 0) != value) {
             value = picked == 0;
             persistSettings();
@@ -1592,23 +1595,27 @@ void App::settingsScreen()
 
     const auto downloads = [&]() {
         settingsList(
-            "Downloads", ui::Icon::Download, ui::color::IconGreen,
+            []() { return i18n::t("settings.downloads.title"); },
+            ui::Icon::Download, ui::color::IconGreen,
             [&]() {
                 return std::vector<Row>{
                     // Short, so the value badge leaves them room.
-                    {"Resume Downloads", onOff(settings_.resumeDownloads)},
-                    {"Max Connections",
+                    {i18n::t("settings.downloads.resume"),
+                     onOff(settings_.resumeDownloads)},
+                    {i18n::t("settings.downloads.connections"),
                      std::to_string(settings_.maxConnections)},
-                    {"Stay Awake", onOff(settings_.keepAwake)},
+                    {i18n::t("settings.downloads.awake"),
+                     onOff(settings_.keepAwake)},
                     // It only ever asks, so the name says so.
-                    {"Ask to Extract ZIPs",
+                    {i18n::t("settings.downloads.zip"),
                      onOff(settings_.offerZipExtraction)},
-                    {"After a CIA Downloads",
+                    {i18n::t("settings.downloads.cia"),
                      ciaActionLabel(settings_.afterCiaDownload)}};
             },
             [&](int index) {
                 if (index == 0) {
-                    onOffChoice("Resume Downloads", settings_.resumeDownloads);
+                    onOffChoice(i18n::t("settings.downloads.resume"),
+                                settings_.resumeDownloads);
                 } else if (index == 1) {
                     // The engine uses fewer when a file is small or the
                     // server refuses more; this is only the most it opens.
@@ -1618,7 +1625,7 @@ void App::settingsScreen()
                         counts.push_back(std::to_string(count));
                     }
                     const int picked = ui::chooseOption(
-                        "Max Connections", counts,
+                        i18n::t("settings.downloads.connections"), counts,
                         settings_.maxConnections - 1, ui::Icon::Download,
                         ui::color::IconGreen);
                     if (picked >= 0 && picked + 1 != settings_.maxConnections) {
@@ -1626,15 +1633,18 @@ void App::settingsScreen()
                         persistSettings();
                     }
                 } else if (index == 2) {
-                    onOffChoice("Stay Awake", settings_.keepAwake);
+                    onOffChoice(i18n::t("settings.downloads.awake"),
+                                settings_.keepAwake);
                 } else if (index == 3) {
-                    onOffChoice("Ask to Extract ZIPs",
+                    onOffChoice(i18n::t("settings.downloads.zip"),
                                 settings_.offerZipExtraction);
                 } else if (index == 4) {
                     const int picked = ui::chooseOption(
-                        "After a CIA Downloads",
-                        {"Ask Each Time", "Install", "Install and Delete File",
-                         "Only Keep the File"},
+                        i18n::t("settings.downloads.cia"),
+                        {i18n::t("settings.downloads.cia.ask_each"),
+                         i18n::t("settings.cia.install"),
+                         i18n::t("settings.downloads.cia.install_delete"),
+                         i18n::t("settings.downloads.cia.keep")},
                         static_cast<int>(settings_.afterCiaDownload),
                         ui::Icon::Package, ui::color::IconBlue);
                     if (picked >= 0) {
@@ -1647,35 +1657,61 @@ void App::settingsScreen()
     };
     const auto filesAndHistory = [&]() {
         settingsList(
-            "Other Settings", ui::Icon::Gear, ui::color::IconGrey,
+            []() { return i18n::t("settings.other.title"); },
+            ui::Icon::Gear, ui::color::IconGrey,
             [&]() {
                 return std::vector<Row>{
-                    {"Sort Files", screens::sortDescription(
-                                       settings_.fileSort,
-                                       settings_.fileSortReverse)},
-                    {"Show Hidden Files", onOff(settings_.showHiddenFiles)},
-                    {"Sounds", sound::available() ? onOff(settings_.sounds)
-                                                  : "Unavailable"},
-                    {"Clear Download History",
+                    {i18n::t("settings.language.title"),
+                     i18n::languageName(settings_.language)},
+                    {i18n::t("settings.sort.title"),
+                     screens::sortDescription(settings_.fileSort,
+                                              settings_.fileSortReverse)},
+                    {i18n::t("settings.hidden.title"),
+                     onOff(settings_.showHiddenFiles)},
+                    {i18n::t("settings.sounds.title"),
+                     sound::available() ? onOff(settings_.sounds)
+                                        : i18n::t("common.unavailable")},
+                    {i18n::t("settings.history.title"),
                      std::to_string(history_.size())}};
             },
             [&](int index) {
                 if (index == 0) {
-                    sortScreen("");
+                    const std::vector<i18n::Language> &languages =
+                        i18n::languages();
+                    std::vector<std::string> options;
+                    int current = 0;
+                    for (size_t i = 0; i < languages.size(); ++i) {
+                        options.push_back(languages[i].name);
+                        if (settings_.language == languages[i].code) {
+                            current = static_cast<int>(i);
+                        }
+                    }
+                    const int picked = ui::chooseOption(
+                        i18n::t("settings.language.title"), options, current,
+                        ui::Icon::Globe, ui::color::IconBlue);
+                    if (picked >= 0 &&
+                        settings_.language != languages[picked].code) {
+                        settings_.language = languages[picked].code;
+                        i18n::setLanguage(settings_.language);
+                        persistSettings();
+                    }
                 } else if (index == 1) {
-                    onOffChoice("Show Hidden Files", settings_.showHiddenFiles);
+                    sortScreen("");
                 } else if (index == 2) {
+                    onOffChoice(i18n::t("settings.hidden.title"),
+                                settings_.showHiddenFiles);
+                } else if (index == 3) {
                     if (!sound::available()) {
-                        ui::message("Sounds Unavailable",
-                                    "Sounds need the DSP firmware dump, "
-                                    "sdmc:/3ds/dspfirm.cdc. Make it with the "
-                                    "DSP1 homebrew, then start 3dsDL again.");
+                        ui::message(i18n::t("settings.sounds.unavailable_title"),
+                                    i18n::t("settings.sounds.unavailable_help"));
                     } else {
-                        onOffChoice("Sounds", settings_.sounds);
+                        onOffChoice(i18n::t("settings.sounds.title"),
+                                    settings_.sounds);
                         sound::setEnabled(settings_.sounds);
                     }
                 } else if (history_.empty()) {
-                    ui::message("History Is Empty", "There is nothing to clear.");
+                    ui::message(i18n::t("settings.history.empty_title"),
+                                i18n::t("settings.history.empty"));
                 } else {
                     confirmClearHistory();
                 }
@@ -1685,12 +1721,12 @@ void App::settingsScreen()
     int focus = 2;
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
-        spec.back = "Back";
-        spec.action = "Report Issue";
+        spec.back = i18n::t("common.back");
+        spec.action = i18n::t("settings.report_issue");
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
-        const auto add = [&](ui::Rect rect, const char *label, ui::Icon icon,
-                             u32 iconColor, bool tile) {
+        const auto add = [&](ui::Rect rect, const std::string &label,
+                             ui::Icon icon, u32 iconColor, bool tile) {
             ui::Control control;
             control.rect = rect;
             control.label = label;
@@ -1700,65 +1736,81 @@ void App::settingsScreen()
             control.scale = ui::type::Small + 0.06f;
             spec.controls.push_back(control);
         };
-        add({16, 6, 140, 26}, "About", ui::Icon::AppMark, ui::color::Accent,
-            false);
-        add({164, 6, 140, 26}, "Updates", ui::Icon::Download,
+        add({16, 6, 140, 26}, i18n::t("settings.about.title"),
+            ui::Icon::AppMark, ui::color::Accent, false);
+        add({164, 6, 140, 26}, i18n::t("settings.updates.title"),
+            ui::Icon::Download,
             ui::color::IconGreen, false);
-        add({16, 42, 140, 78}, "Downloads", ui::Icon::Download,
+        add({16, 42, 140, 78}, i18n::t("settings.downloads.title"),
+            ui::Icon::Download,
             ui::color::IconGreen, true);
-        add({164, 42, 140, 78}, "Download Folder", ui::Icon::Folder,
+        add({164, 42, 140, 78}, i18n::t("settings.folder.title"), ui::Icon::Folder,
             ui::color::IconOrange, true);
-        add({16, 127, 140, 76}, "Console Clock", ui::Icon::Clock,
+        add({16, 127, 140, 76}, i18n::t("settings.clock.title"), ui::Icon::Clock,
             ui::color::IconBlue, true);
-        add({164, 127, 140, 76}, "Other Settings", ui::Icon::Gear,
+        add({164, 127, 140, 76}, i18n::t("settings.other.title"), ui::Icon::Gear,
             ui::color::IconGrey, true);
         spec.drawTop = [&]() {
-            ui::drawTopChrome("Settings", ui::Icon::Gear, ui::color::IconGrey);
+            ui::drawTopChrome(i18n::t("settings.title"), ui::Icon::Gear,
+                              ui::color::IconGrey);
             ui::drawPanel();
-            spec.controls[1].badge = updateAvailable_ ? "New" : "";
+            spec.controls[1].badge =
+                updateAvailable_ ? i18n::t("settings.facts.new") : "";
             // The highlighted section's current values.
             const int shown = focus >= 0 && focus < 6 ? focus : 2;
             std::vector<ui::Fact> facts;
             if (shown == 1) {
                 const updater::Status update = updater::status();
-                facts = {{"Installed", APP_VERSION}};
+                facts = {{i18n::t("settings.facts.installed"), APP_VERSION}};
                 if (update.state == updater::State::Available) {
-                    facts.push_back({"New", update.release.version,
+                    facts.push_back({i18n::t("settings.facts.new"),
+                                     update.release.version,
                                      ui::color::Good});
                 } else {
-                    facts.push_back({"At Startup", settings_.checkForUpdates
-                                                       ? "Check"
-                                                       : "Don't Check"});
+                    facts.push_back(
+                        {i18n::t("settings.facts.startup"),
+                         settings_.checkForUpdates
+                             ? i18n::t("settings.facts.check")
+                             : i18n::t("settings.facts.dont_check")});
                 }
             } else if (shown == 2) {
-                facts = {{"Resume", onOff(settings_.resumeDownloads)},
-                         {"Max Connections",
+                facts = {{i18n::t("settings.downloads.resume.short"),
+                          onOff(settings_.resumeDownloads)},
+                         {i18n::t("settings.downloads.connections"),
                           std::to_string(settings_.maxConnections)},
-                         {"Stay Awake", onOff(settings_.keepAwake)},
-                         {"Ask to Extract",
+                         {i18n::t("settings.downloads.awake"),
+                          onOff(settings_.keepAwake)},
+                         {i18n::t("settings.facts.extract"),
                           onOff(settings_.offerZipExtraction)},
-                         {"After a CIA",
+                         {i18n::t("settings.facts.cia"),
                           ciaActionLabel(settings_.afterCiaDownload)}};
             } else if (shown == 3) {
-                facts = {{"Saves to", settings_.destination}};
+                facts = {{i18n::t("settings.facts.destination"),
+                          settings_.destination}};
             } else if (shown == 4) {
-                facts = {{"Console", units::dateTime(platform::now())}};
+                facts = {{i18n::t("settings.facts.console"),
+                          units::dateTime(platform::now())}};
                 if (settings_.timeZoneSet) {
                     facts.push_back(
-                        {"Time Zone",
+                        {i18n::t("settings.facts.timezone"),
                          tz::formatOffset(settings_.timeZoneMinutes)});
                 }
             } else if (shown == 5) {
-                facts = {{"Sort Files",
+                facts = {{i18n::t("settings.language.title"),
+                          i18n::languageName(settings_.language)},
+                         {i18n::t("settings.sort.title"),
                           screens::sortDescription(settings_.fileSort,
                                                    settings_.fileSortReverse)},
-                         {"Hidden Files", onOff(settings_.showHiddenFiles)},
-                         {"Sounds", sound::available() ? onOff(settings_.sounds)
-                                                       : "Unavailable"},
-                         {"History", plural(history_.size(), "download")}};
+                         {i18n::t("settings.facts.hidden"),
+                          onOff(settings_.showHiddenFiles)},
+                         {i18n::t("settings.sounds.title"),
+                          sound::available() ? onOff(settings_.sounds)
+                                             : i18n::t("common.unavailable")},
+                         {i18n::t("settings.facts.history"),
+                          std::to_string(history_.size())}};
             } else {
-                facts = {{"Version", APP_VERSION},
-                         {"Settings in", storage::DataFolder}};
+                facts = {{i18n::t("settings.facts.version"), APP_VERSION},
+                         {i18n::t("settings.facts.storage"), storage::DataFolder}};
             }
             ui::drawFacts(facts);
         };

@@ -122,6 +122,28 @@ TEST("update: compares versions number by number")
     CHECK_EQ(update::compareVersions("0.6.0", "0.6.2"), -1);
 }
 
+TEST("update: fork releases sort after their matching upstream version")
+{
+    const char *order[] = {"0.8.2-beta.1", "0.8.2-beta.1n", "0.8.2-beta.2",
+                           "0.8.2", "0.8.2n", "0.8.3-beta.1n", "0.8.3",
+                           "0.8.3n", "0.9.0n"};
+    for (size_t index = 0; index + 1 < sizeof(order) / sizeof(order[0]); ++index) {
+        CHECK(update::isNewer(order[index + 1], order[index]));
+        CHECK(!update::isNewer(order[index], order[index + 1]));
+    }
+    CHECK_EQ(update::compareVersions("v0.8.2n", "0.8.2n"), 0);
+    CHECK_EQ(update::compareVersions("0.8.2n+build", "0.8.2n"), 0);
+    CHECK_EQ(update::compareVersions("0.8.2-beta.1n+build", "0.8.2-beta.1n"), 0);
+    CHECK(!update::isNewer("0.8.2n", "0.8.2n"));
+
+    update::Release release;
+    std::string error;
+    CHECK(update::parseRelease(
+        R"({"tag_name":"v0.8.2n","prerelease":false,"assets":[]})",
+        release, error));
+    CHECK_EQ(release.version, std::string("0.8.2n"));
+}
+
 TEST("update: finds a file's checksum in a sha256sum listing")
 {
     const std::string listing =
