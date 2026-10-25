@@ -9,12 +9,11 @@ The static site published at https://ankush.one/3dsDL/ by
   Notifications read state, the installer tabs, the device screens and their
   boot animation, the synthesised menu sounds and the scroll reveals, and
   shows the latest release version and file sizes from the GitHub API.
-- `classic.html`, `classic.css`, `classic.js`: a snapshot of the page before
-  the retheme (also tagged `site-classic`), kept for comparison. It is
-  marked `noindex`.
-- `qr/`: install QR codes. They point at `releases/latest/download/...`, so
-  they stay valid for every release. Regenerate with
-  `scripts/make-site-qr.sh` only if the repository or asset names change.
+- The page before the retheme is tagged `site-classic`.
+- `qr/install-cia.svg`: the install QR code. It points at
+  `releases/latest/download/3dsDL.cia`, so it stays valid for every release.
+  Regenerate it with `scripts/make-site-qr.sh` only if the repository or
+  asset name changes.
 - `vendor/qrcode.js`: [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)
   1.4.4 by Kazuhiko Arase (MIT), SHA-256
   `18ae399f81182bc9de916e9c77b195df20cc58d6f2d55a62b085a299f1bf1780`.
@@ -22,8 +21,8 @@ The static site published at https://ankush.one/3dsDL/ by
   pixel face for system labels) and Gaegu (the handwriting on the doodles),
   Latin subsets, all under the SIL Open Font License (the `OFL-*.txt` files).
 - `assets/`: the icons and the social image (`banner.jpg`), rendered from the
-  3D banner model by `resources/banner/render.sh`, plus the two console
-  images below.
+  3D banner model by `resources/banner/render.sh`, the two console images
+  below, and `screens/`, screenshots of 3dsDL.
 
 ## Console images
 
@@ -39,15 +38,47 @@ swap it for a freely licensed front view if one turns up.
 
 ### Live screens on the images
 
-Both images show 3dsDL on their screens. The screens are HTML drawn at the
-3DS's native sizes (400 × 240 and 320 × 240 px) using the same coordinates
-as `ui.cpp` (`drawProgress()` in the hero; the install section shows the
-QR code and steps for whichever method is picked), then projected onto the photographed screens with a CSS
-`matrix3d()`. Each image's matrices live on `.device-angled` and
+Both images show 3dsDL on their screens, at the 3DS's native sizes
+(400 × 240 and 320 × 240 px), projected onto the photographed screens with a
+CSS `matrix3d()`. The hero steps through screenshots of a download and
+install; the install section shows HTML for whichever method is picked. Each image's matrices live on `.device-angled` and
 `.device-front` in `styles.css` and come from `scripts/screen-map`; see its
 README. If an image is replaced, its matrices have to be recomputed, and so do the
 hero doodles (drawn in the angled photo's 1356 × 1177 pixel space) and the
 install render's LED position (`.led`, in its 736 × 736 pixel space).
+
+`assets/screens/` holds lossless WebP captures from Azahar, each
+`<name>-top.webp` (400 × 240) and `<name>-bottom.webp` (320 × 240) cut from
+one 400 × 480 screenshot at 0,0 and 40,240. Recapture them whenever the
+screens they show change.
+
+## Loved on Reddit
+
+The `#reddit` section quotes comments from the launch threads on
+[r/3dshomebrew](https://www.reddit.com/r/3dshomebrew/comments/1xcc2gw/) and
+[r/3dsqrcodes](https://www.reddit.com/r/3dsqrcodes/comments/1xcje47/). Each
+bubble links to its comment, with the score it had when it was copied, and
+the bar shows each thread's upvotes and comments from the same copy. On every
+visit `app.js` deals the posts out afresh: each row takes quotes of roughly
+similar length, so its bubbles stay close in height, but which quotes, which
+row, their order and where each row starts are random, and the rows with
+longer quotes drift slower. The HTML's order (long, short, then the rest) is
+what shows without the script. A quote over 130 characters gets `post-long`
+and one of 30 or fewer gets `post-short`.
+
+The drift is a Web Animation on each `.plaza-track`, so the compositor runs
+it without per-frame script or DOM writes (session replay records nothing
+while it moves). Only keyboard focus, a drag, a swipe or a sideways scroll
+stops a row.
+
+To add one, copy a `.post` with the comment's permalink, username, score
+and words, and save the commenter's avatar as
+`assets/reddit/<username in lower case>.webp`, 96 × 96. Reddit refuses
+scripted requests, so open these in a browser and copy the JSON: the thread
+with `.json` added to its address (each comment's `author_fullname` is its
+account id), then
+`https://www.reddit.com/api/user_data_by_account_ids.json?ids=t2_…,t2_…`,
+whose `profile_img` is each avatar.
 
 To preview locally, run `python3 -m http.server -d site` and open
 http://localhost:8000.
@@ -64,5 +95,7 @@ Privacy Control.
 Custom events go through `window.track(name, props)`: `send_qr_made`, `send_qr_enlarged` and
 `send_link_shared` from the "send a link" tool (with the link's host, never the whole link),
 `install_method`, `feature_viewed`, `faq_opened`, `menu_sounds`, `download_link_copied` and
-`buddy_opened` (the 3dsFM card). What the site sends is listed on https://ankush.one/privacy/, so
-update that page when adding an event. `classic.html` has no analytics.
+`buddy_opened` (the 3dsFM card), and `reddit_comment_opened` (with the commenter's username). The send form, its QR code and the large-code dialog carry
+`ph-no-capture`, so neither autocapture nor session replay records them, and a shared `?url=` is
+taken out of the address bar before PostHog starts. What the site sends is listed on https://ankush.one/privacy/, so
+update that page when adding an event.

@@ -662,55 +662,6 @@ symbol .fill {
   background: linear-gradient(105deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0) 45%);
 }
 
-/* Screen pixels: --x/--y/--w/--h are 3DS pixels and --s is the scale
-   ui.cpp draws text at. 24 px is the system font's cell height at scale 1. */
-.screen .t,
-.screen .r {
-  position: absolute;
-  left: calc(var(--x) * 1px);
-  top: calc(var(--y) * 1px);
-}
-
-.screen .t {
-  font-size: calc(var(--s) * 24px);
-  line-height: 1.25;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.screen .r {
-  width: calc(var(--w) * 1px);
-  height: calc(var(--h) * 1px);
-}
-
-.r-fill {
-  background: var(--app-primary);
-}
-
-.screen .r-fill {
-  width: calc(var(--w) * 1px * var(--p, 0.7));
-}
-
-.t-end {
-  transform: translateX(-100%);
-}
-
-.t-mid {
-  transform: translateX(-50%);
-}
-
-.t-muted {
-  color: var(--app-muted);
-}
-
-.t-green {
-  color: var(--app-green);
-}
-
-.t-warn {
-  color: var(--app-yellow);
-}
-
 /* Power-on: the screens light up, the 3dsDL logo pops in, and the boot
    screen fades away to the app. Only with the script (the screens need it
    anyway) and only when motion is welcome. */
@@ -937,49 +888,23 @@ html:not(.js) .tray {
 }
 
 /* ---------------------------------------------------------------- Sections
-   Each section is a rounded panel on the backdrop, labelled by a tab in its
-   face button's colour. */
+   Each section is a rounded panel on the backdrop. */
 
 .panel {
   position: relative;
   margin-top: 46px;
-  padding: 54px var(--pad) 46px;
+  padding: 46px var(--pad);
   background: var(--panel);
   border: 1px solid var(--rim);
   border-radius: 30px;
   box-shadow: inset 0 2px 0 #fff, 0 5px 0 var(--rim-lo), 0 20px 40px rgba(36, 56, 78, 0.1);
 }
 
-.tone-x { --tone: var(--x); --tone-ink: var(--x-ink); }
-.tone-y { --tone: var(--y); --tone-ink: var(--y-ink); }
-.tone-b { --tone: var(--b); --tone-ink: var(--b-ink); }
-.tone-a { --tone: var(--a); --tone-ink: var(--a-ink); }
 
 .section-head {
   max-width: 40rem;
   margin: 0 auto 30px;
   text-align: center;
-}
-
-.eyebrow {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 5px 18px;
-  border-radius: 999px;
-  border: 2px solid var(--tone);
-  background: #fff;
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--tone) 45%, #fff);
-  font: 400 15px/1.2 var(--dot);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--tone-ink);
-  transform: translate(-50%, -50%);
 }
 
 .section-head h2 {
@@ -995,7 +920,8 @@ html:not(.js) .tray {
   .panel {
     --pad: 16px;
     margin-top: 40px;
-    padding-top: 46px;
+    padding-top: 36px;
+    padding-bottom: 36px;
     border-radius: 24px;
   }
 }
@@ -1077,72 +1003,6 @@ html:not(.js) .tray {
   background: linear-gradient(90deg, var(--app-bg), var(--app-bg-2));
 }
 
-.m-line {
-  display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.m-small {
-  font-size: 0.85em;
-  white-space: normal;
-}
-
-.m-muted { color: var(--app-muted); }
-.m-green { color: var(--app-green); }
-.m-warn { color: var(--app-yellow); }
-.m-cyan { color: var(--app-primary); }
-
-/* A small "new" badge next to a feature's name. */
-.tag-new {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--app-primary);
-  color: #08131f;
-  font-size: 0.6em;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  vertical-align: middle;
-}
-
-.m-bar {
-  display: block;
-  height: 0.92em;
-  background: var(--app-raised);
-}
-
-.m-bar i {
-  display: block;
-  height: 100%;
-  background: var(--app-primary);
-}
-
-.m-buttons {
-  display: flex;
-  gap: 0.38em;
-  margin-top: 0.28em;
-}
-
-.m-buttons b {
-  flex: 1;
-  display: grid;
-  place-items: center;
-  height: 2.05em;
-  font-size: 0.78em;
-  font-weight: 700;
-  background: var(--app-raised);
-  box-shadow: 0.12em 0.17em 0 rgba(0, 0, 0, 0.35);
-}
-
-.m-buttons b.on {
-  color: var(--app-bg);
-  background: var(--app-primary);
-}
-
 /* A feature shown by the real app: its top and bottom screens side by
    side at the same height, as captured at native size. */
 .feature-demo.shot-pair,
@@ -1175,26 +1035,6 @@ html:not(.js) .tray {
 
 .shot-pair img:last-child {
   flex: 320 1 0;
-}
-
-.feature-demo.m-list {
-  justify-content: flex-start;
-  gap: 0.22em;
-  padding: 0.75em 0.95em;
-}
-
-.m-row {
-  display: block;
-  padding: 0.26em 0.45em;
-  font-size: 0.9em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.m-row.on {
-  background: var(--app-raised);
-  box-shadow: inset 0.19em 0 0 var(--app-primary);
 }
 
 /* The console look. The two screens sit in dark glass bezels. */
@@ -1259,12 +1099,7 @@ html:not(.js) .tray {
   background: var(--app-primary);
 }
 
-.home-app-state {
-  font-size: 14px;
-  color: var(--app-muted);
-}
-
-/* All six share one grid cell, so the screen is as tall as the tallest and
+/* They all share one grid cell, so the screen is as tall as the tallest and
    never jumps; only the selected one is shown. */
 .js .home-screen {
   grid-template-rows: auto minmax(0, 1fr);
@@ -1294,10 +1129,6 @@ html:not(.js) .tray {
   padding: 1em 1.3em 0.7em;
   font-size: clamp(12px, 3.4cqi, 22px);
   background: none;
-}
-
-.js .home .feature-demo.m-list {
-  padding: 0.8em 1.1em 0.5em;
 }
 
 /* The banner label along the bottom of the top screen. */
@@ -1436,9 +1267,6 @@ html:not(.js) .tray {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .js .home .feature.is-on .m-bar i {
-    animation: bar-grow 1.4s var(--ease-out) both;
-  }
 }
 
 @keyframes bar-grow {
@@ -1470,12 +1298,267 @@ html:not(.js) .tray {
   }
 }
 
-.also {
-  max-width: 44em;
-  margin: 26px auto 0;
-  text-align: center;
-  font-size: 0.86rem;
-  color: var(--dim);
+/* --------------------------------------------- Loved on Reddit: a plaza
+   What people said, as speech bubbles over their avatars in the lime of
+   Nintendo's old community plaza. app.js makes each row drift; without it
+   the rows scroll sideways. */
+
+.plaza {
+  --plaza-bg: #f4faec;
+  --fade: 24px;
+  overflow: hidden;
+  border: 2px solid #b6dc8c;
+  border-radius: 20px;
+  background: var(--plaza-bg);
+  box-shadow: 0 4px 0 #d6ecbd;
+}
+
+.plaza-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 12px;
+  border-bottom: 2px solid #b6dc8c;
+  background: linear-gradient(#f7fdee, #dff2c5);
+  font: 400 15px/1.2 var(--dot);
+  color: #3f6d12;
+}
+
+.plaza-bar > .icon {
+  font-size: 18px;
+}
+
+/* A thread: its subreddit, then its upvotes and comments. */
+.plaza-thread {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 4px 10px 3px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-ui) var(--ease-out);
+}
+
+.plaza-thread:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.plaza-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 800 13px/1.2 var(--font);
+  color: #2f5f07;
+}
+
+.plaza-stat .icon {
+  vertical-align: 0;
+}
+
+@media (max-width: 640px) {
+  .plaza-bar > .icon {
+    display: none;
+  }
+}
+
+/* Each row is contained, so a hovered bubble repaints only its own row. The
+   padding is as wide as the edge fades, so a post brought into view sits
+   clear of them. */
+.plaza-row {
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  contain: content;
+  padding: 18px var(--fade) 14px;
+}
+
+/* The edges fade into the plaza. Two still overlays cost nothing per frame,
+   where a mask on the moving row can make Safari repaint it. */
+.plaza.is-drifting .plaza-row::before,
+.plaza.is-drifting .plaza-row::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: var(--fade);
+  pointer-events: none;
+}
+
+.plaza.is-drifting .plaza-row::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--plaza-bg), rgba(244, 250, 236, 0));
+}
+
+.plaza.is-drifting .plaza-row::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--plaza-bg), rgba(244, 250, 236, 0));
+}
+
+.plaza-row + .plaza-row {
+  padding-top: 8px;
+}
+
+.plaza-row:last-child {
+  padding-bottom: 22px;
+}
+
+/* Bubbles stand on one line of names, so they rise to their own heights. */
+.plaza-track {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  width: max-content;
+}
+
+/* The script takes over the scrolling: rows drift, and drag or swipe
+   sideways. Vertical swipes still scroll the page. */
+.plaza.is-drifting .plaza-row {
+  overflow: clip;
+  touch-action: pan-y;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.plaza.is-drifting .plaza-row.is-dragging {
+  cursor: grabbing;
+}
+
+.post {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: max-content;
+  max-width: 18.5rem;
+  color: var(--ink);
+  text-decoration: none;
+  outline: none;
+}
+
+.post-text {
+  position: relative;
+  margin: 0;
+  padding: 12px 16px 13px;
+  border: 2px solid #b6dc8c;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 3px 0 #d6ecbd;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  transition: border-color var(--dur-ui) var(--ease-out);
+}
+
+/* The tail, pointing down at the avatar. */
+.post-text::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: solid #b6dc8c;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: border-color var(--dur-ui) var(--ease-out);
+}
+
+.post-long {
+  max-width: 24rem;
+}
+
+.post-short .post-text {
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.post:hover .post-text,
+.post:hover .post-text::after {
+  border-color: #6abf1f;
+}
+
+.post:focus-visible .post-text {
+  outline: 3px solid #4aa8ff;
+  outline-offset: 2px;
+}
+
+.post-by {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.post-pfp {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  border: 2px solid #fff;
+  background: #e3eaf0;
+  box-shadow: 0 0 0 1px #c3ced8, 0 2px 0 1px #cfd8e1;
+}
+
+.post-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 13px/1.2 var(--dot);
+  letter-spacing: 0.02em;
+  color: var(--mute);
+}
+
+/* The upvotes, as a "Yeah!" pill. */
+.post-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  margin-left: auto;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #2f5f07;
+  background: #e2f4cc;
+}
+
+.post-score .icon {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: 0;
+}
+
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .plaza {
+    --fade: 16px;
+  }
+
+  .post {
+    max-width: 14.5rem;
+  }
+
+  .post-long {
+    max-width: 17.5rem;
+  }
 }
 
 /* ----------------------------------------------- Send a link: PictoChat
@@ -1512,12 +1595,6 @@ html:not(.js) .tray {
   color: #fff;
   background: var(--y);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 0 #1d7a3a;
-}
-
-.chat-who {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--dim);
 }
 
 .chat-log {
@@ -1907,20 +1984,12 @@ html:not(.js) .tray {
   font-size: 0.98rem;
 }
 
-.pick-sub {
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
-
 @media (max-width: 480px) {
   .pick {
     padding: 8px 8px 9px;
   }
   .pick-title {
     font-size: 0.9rem;
-  }
-  .pick-sub {
-    font-size: 0.72rem;
   }
 }
 
@@ -1975,7 +2044,8 @@ html:not(.js) .install-panel {
   display: none;
 }
 
-/* Top screen: QR code on the left, what to scan it with on the right. */
+/* Top screen: the QR code and the file it installs, or the file and the
+   folder it goes in. */
 .qr-view {
   display: flex;
   align-items: center;
@@ -2006,39 +2076,36 @@ html:not(.js) .install-panel {
   min-width: 0;
 }
 
-.qr-kicker {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--app-muted);
-}
-
 .qr-app {
-  font-size: 36px;
+  font-size: 30px;
   line-height: 1;
   font-weight: 800;
   color: var(--app-primary);
 }
 
-.qr-path {
-  font-size: 15px;
-  line-height: 1.35;
-  color: var(--app-text);
+.qr-size {
+  font-size: 16px;
+  color: var(--app-muted);
 }
 
-.qr-file {
-  justify-self: start;
-  margin-top: 4px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font: 500 12px var(--mono);
+.path-view {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+}
+
+.path {
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font: 500 20px var(--mono);
   color: var(--app-text);
   background: var(--app-raised);
-  box-shadow: inset 3px 0 0 var(--app-primary);
+  box-shadow: inset 4px 0 0 var(--app-primary);
 }
 
-/* Touch screen: title, file, steps and two buttons. */
+/* Touch screen: the steps and two buttons. */
 .info-view {
   display: flex;
   flex-direction: column;
@@ -2046,43 +2113,10 @@ html:not(.js) .install-panel {
   padding: 13px 15px 14px;
 }
 
-.info-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.info-head h3 {
-  font-size: 18px;
-  color: var(--app-text);
-}
-
-.chip {
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--app-bg);
-  background: var(--app-green);
-}
-
-.info-meta {
-  margin: 0;
-  font-size: 12px;
-  color: var(--app-muted);
-}
-
-.size-inline:not(:empty)::before {
-  content: " · ";
-}
-
 .info-steps {
   display: grid;
-  gap: 6px;
-  margin: 2px 0 0;
+  gap: 8px;
+  margin: auto 0;
   padding: 0;
   list-style: none;
   counter-reset: step;
@@ -2121,7 +2155,6 @@ html:not(.js) .install-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: auto;
 }
 
 /* Buttons in 3dsDL's own style: flat, with a hard drop shadow. */
@@ -2241,36 +2274,6 @@ html:not(.js) .install-panel {
 .nojs-downloads img {
   display: block;
   margin-top: 6px;
-}
-
-.notice {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  max-width: 760px;
-  margin: 26px auto 0;
-  padding: 14px 18px;
-  border-radius: 18px;
-  border: 2px solid #f0d27a;
-  background: #fff8dc;
-  box-shadow: 0 3px 0 #f3e3ac;
-  font-size: 0.9rem;
-}
-
-.notice-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: #5a3d00;
-  background: linear-gradient(#ffe08a, var(--b));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 0 #c99415;
-}
-
-.notice p {
-  margin: 0;
 }
 
 /* --------------------------------------------- Footer: the back of the box */
@@ -2466,6 +2469,7 @@ dialog::backdrop {
   .js .home-screen > .feature,
   .picker::before,
   .faq summary::after,
+  .post-text,
   .note-icon .icon,
   .faq.is-ready .note-new {
     transition: none;
@@ -2473,8 +2477,7 @@ dialog::backdrop {
 }
 
 /* ---- The buddy card: the other app, peeking in from the right edge like
-   a game card left in the slot. Hover or tap slides it out; the icon bobs
-   and now and then gives a wiggle; a handwritten "psst!" shows up once. ---- */
+   a game card left in the slot. Hover or tap slides it out. ---- */
 .buddy {
   position: fixed;
   right: 0;
@@ -2488,10 +2491,6 @@ dialog::backdrop {
 .buddy:hover,
 .buddy:focus-within {
   transform: translateX(0);
-}
-.buddy.is-hidden {
-  transform: translateX(110%);
-  pointer-events: none;
 }
 .buddy-card {
   display: flex;
@@ -2555,11 +2554,6 @@ dialog::backdrop {
   width: 168px;
   min-width: 0;
 }
-.buddy-kicker {
-  font: 400 12px/1.2 var(--dot);
-  letter-spacing: 0.08em;
-  color: var(--dim);
-}
 .buddy-title {
   font: 800 18px/1.1 var(--font);
   color: var(--ink);
@@ -2567,73 +2561,6 @@ dialog::backdrop {
 .buddy-sub {
   font: 500 12.5px/1.35 var(--font);
   color: var(--mute);
-}
-.buddy-go {
-  justify-self: start;
-  margin-top: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 30px;
-  padding: 0 10px 0 13px;
-  border-radius: 3px;
-  font: 700 13px var(--font);
-  color: #fff;
-  background: var(--buddy-tone);
-  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.4), 2px 3px 0 rgba(0, 0, 0, 0.25);
-  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out);
-}
-.buddy-go .icon {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.buddy-card:active .buddy-go {
-  transform: translate(2px, 3px);
-  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.4), 0 0 0 rgba(0, 0, 0, 0.25);
-}
-.buddy-psst {
-  position: absolute;
-  left: 2px;
-  top: -36px;
-  padding: 2px 8px;
-  border-radius: 10px 10px 2px 10px;
-  background: var(--b);
-  color: var(--b-ink);
-  font: 700 18px/1.2 var(--hand);
-  transform: rotate(-6deg) scale(0);
-  transform-origin: 100% 100%;
-  transition: transform 420ms var(--spring);
-  pointer-events: none;
-}
-.buddy.is-psst .buddy-psst {
-  transform: rotate(-6deg) scale(1);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .buddy-icon {
-    animation: buddy-bob 3.6s ease-in-out infinite;
-  }
-  .buddy.is-wiggle .buddy-icon {
-    animation: buddy-wiggle 700ms var(--ease-out) 1;
-  }
-  .buddy.is-nudge {
-    transform: translateX(calc(100% - 56px));
-  }
-}
-@keyframes buddy-bob {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -3px; }
-}
-@keyframes buddy-wiggle {
-  0% { rotate: 0deg; }
-  20% { rotate: -9deg; }
-  45% { rotate: 7deg; }
-  70% { rotate: -4deg; }
-  100% { rotate: 0deg; }
 }
 @media (max-width: 640px) {
   .buddy {
