@@ -167,6 +167,10 @@ TEST("archives: ZIP stored, deflated and empty entries")
 TEST("archives: existing files are skipped, or replaced whole")
 {
     TempDir folder;
+    if (!foldsCase(folder.path())) {
+        check::fail(__FILE__, __LINE__, "TMPDIR must ignore case, as FAT does");
+        return;
+    }
     CHECK(writeText(folder.path() + "README.TXT", "mine"));
     archives::Listing listing;
     std::string error;
@@ -675,6 +679,10 @@ TEST("archives: a file the listing missed is never written over")
 TEST("archives: a damaged second copy keeps the first, folders stay put")
 {
     TempDir folder;
+    if (!foldsCase(folder.path())) {
+        check::fail(__FILE__, __LINE__, "TMPDIR must ignore case, as FAT does");
+        return;
+    }
     archives::Writer writer(folder.path(), archives::Existing::Overwrite);
     CHECK(writer.makeRoot());
     CHECK(writer.start("a.txt", 5) == archives::Writer::Start::Write);

@@ -56,6 +56,20 @@ inline bool writeText(const std::string &path, const std::string &contents)
     return std::fclose(file) == 0 && ok;
 }
 
+// Whether names in folder ignore case, as FAT's do. Tests of what 3dsDL
+// does about that need TMPDIR to ignore case too: macOS's does, and CI
+// gives Linux an ext4 folder made with casefold (.github/workflows/ci.yml).
+inline bool foldsCase(const std::string &folder)
+{
+    const std::string probe = folder + "Case-Probe";
+    if (!writeText(probe, "")) {
+        return false;
+    }
+    const bool folds = access((folder + "case-probe").c_str(), F_OK) == 0;
+    std::remove(probe.c_str());
+    return folds;
+}
+
 inline std::string readText(const std::string &path)
 {
     std::string contents;

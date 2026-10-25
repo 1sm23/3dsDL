@@ -8,6 +8,9 @@
 #                                and openssl for the fixture server)
 #   make -C tests scripts        the build scripts' version rules
 #   make -C tests SAN=           build without sanitizers
+#
+# TMPDIR has to ignore case, as the SD card's FAT does: macOS's does, and
+# on Linux an ext4 folder made with casefold does, as CI sets up.
 
 CC       ?= cc
 CXX      ?= c++

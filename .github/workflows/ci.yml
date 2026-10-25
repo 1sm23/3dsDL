@@ -22,6 +22,19 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libcurl4-openssl-dev zlib1g-dev libarchive-dev
 
+      # FAT ignores case and the archive tests check what 3dsDL does about
+      # it, so they run in a folder that ignores case too, as macOS's do.
+      - name: A temporary folder that ignores case, like the SD card
+        run: |
+          truncate -s 2G "$RUNNER_TEMP/casefold.img"
+          mkfs.ext4 -q -O casefold "$RUNNER_TEMP/casefold.img"
+          sudo mkdir -p /mnt/casefold
+          sudo mount -o loop "$RUNNER_TEMP/casefold.img" /mnt/casefold
+          sudo mkdir /mnt/casefold/tmp
+          sudo chattr +F /mnt/casefold/tmp
+          sudo chown "$(id -u):$(id -g)" /mnt/casefold/tmp
+          echo "TMPDIR=/mnt/casefold/tmp" >> "$GITHUB_ENV"
+
       - name: Unit and integration tests (ASan + UBSan)
         run: make -C tests check
 
