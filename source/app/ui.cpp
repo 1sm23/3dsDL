@@ -2141,11 +2141,12 @@ float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
     return y + 26;
 }
 
-float drawFacts(const std::vector<Fact> &facts, const Rect &area)
+float drawFacts(const std::vector<Fact> &facts, const Rect &area,
+                float minTagWidth)
 {
     constexpr float Row = 20;
     constexpr float Pitch = 26;
-    float tagWidth = 76;
+    float tagWidth = minTagWidth;
     for (const Fact &fact : facts) {
         tagWidth = std::max(tagWidth, textWidth(fact.tag, 0.4f) + 16);
     }

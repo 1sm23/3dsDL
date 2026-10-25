@@ -278,9 +278,10 @@ struct Fact {
     std::string value;
     u32 fill = color::Tag;
 };
-// Tag rows centred in area, the tags as wide as the widest. Returns the y
-// below them.
-float drawFacts(const std::vector<Fact> &facts, const Rect &area = TopPanel);
+// Tag rows centred in area, the tags as wide as the widest and at least
+// minTagWidth. Returns the y below them.
+float drawFacts(const std::vector<Fact> &facts, const Rect &area = TopPanel,
+                float minTagWidth = 76);
 // A large icon centred in area, for a top screen whose bottom screen
 // already shows everything there is to say.
 void drawEmblem(Icon icon, u32 iconColor, const Rect &area = TopPanel);

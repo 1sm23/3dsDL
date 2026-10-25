@@ -511,6 +511,17 @@ TEST("picture: fits, enlarges and blends transparency")
     CHECK_EQ(result.pixels.size(), static_cast<size_t>(64));
     CHECK_EQ(result.pixels[63], static_cast<uint16_t>(0x001f));
 
+    // The size alone, as the top screen works it out before decoding.
+    uint32_t width = 0;
+    uint32_t height = 0;
+    picture::fittedSize(4032, 3024, 160, 132, width, height);
+    CHECK_EQ(width, static_cast<uint32_t>(160));
+    CHECK_EQ(height, static_cast<uint32_t>(120));
+    picture::fittedSize(48, 48, 160, 132, width, height);
+    CHECK_EQ(width, static_cast<uint32_t>(96));
+    picture::fittedSize(0, 10, 160, 132, width, height);
+    CHECK_EQ(width, static_cast<uint32_t>(0));
+
     // Fully transparent pixels show the background.
     const uint8_t clear[4] = {255, 255, 255, 0};
     picture::fit(clear, 4, 1, 1, 1, 1, 0x07e0, result);
@@ -553,5 +564,47 @@ TEST("picture: decodes a BMP file and refuses non-pictures")
     CHECK(writeText(temp.path() + "fake.png", "not a picture"));
     CHECK(!picture::load(temp.path() + "fake.png", 400, 240, 0, result,
                          error));
+    CHECK(!error.empty());
+}
+
+TEST("picture: decodes from memory and fills a box by cutting the edges")
+{
+    // A 4x1 24-bit BMP: blue, green, red, white.
+    std::string bmp(54 + 12, '\0');
+    bmp[0] = 'B';
+    bmp[1] = 'M';
+    putLe32(bmp, 2, static_cast<uint32_t>(bmp.size()));
+    putLe32(bmp, 10, 54);
+    putLe32(bmp, 14, 40);
+    putLe32(bmp, 18, 4);
+    putLe32(bmp, 22, 1);
+    bmp[26] = 1;
+    bmp[28] = 24;
+    putLe32(bmp, 34, 12);
+    bmp[54] = static_cast<char>(255);
+    bmp[58] = static_cast<char>(255);
+    bmp[62] = static_cast<char>(255);
+    bmp[63] = bmp[64] = bmp[65] = static_cast<char>(255);
+    const std::vector<uint8_t> bytes(bmp.begin(), bmp.end());
+
+    picture::Picture result;
+    std::string error;
+    CHECK(picture::decode(bytes, 400, 240, 0, result, error));
+    CHECK_EQ(result.width, static_cast<uint32_t>(400));
+    CHECK_EQ(result.height, static_cast<uint32_t>(100));
+
+    // Filling a square keeps the middle: green, shown 3x3.
+    CHECK(picture::decode(bytes, 3, 3, 0, result, error, true));
+    CHECK_EQ(result.width, static_cast<uint32_t>(3));
+    CHECK_EQ(result.height, static_cast<uint32_t>(3));
+    CHECK_EQ(result.sourceWidth, static_cast<uint32_t>(4));
+    for (const uint16_t pixel : result.pixels) {
+        CHECK_EQ(pixel, static_cast<uint16_t>(0x07e0));
+    }
+    CHECK(picture::decode(bytes, 2, 1, 0, result, error, true));
+    CHECK_EQ(result.pixels[0], static_cast<uint16_t>(0x07e0));
+    CHECK_EQ(result.pixels[1], static_cast<uint16_t>(0xf800));
+
+    CHECK(!picture::decode({1, 2, 3}, 48, 48, 0, result, error, true));
     CHECK(!error.empty());
 }

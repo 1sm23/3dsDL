@@ -29,9 +29,21 @@ bool size(const std::string &path, uint32_t &width, uint32_t &height);
 // Decodes path and fits it inside maxWidth x maxHeight, keeping its shape.
 // Big pictures are shrunk with a box filter; small ones are enlarged by a
 // whole factor so pixel art stays sharp. Transparent parts are drawn over
-// background (RGB565).
+// background (RGB565). With fill set, the edges that do not fit the shape of
+// maxWidth x maxHeight are cut off instead and the rest scaled to exactly
+// that size, as covers are shown.
 bool load(const std::string &path, uint32_t maxWidth, uint32_t maxHeight,
-          uint16_t background, Picture &picture, std::string &error);
+          uint16_t background, Picture &picture, std::string &error,
+          bool fill = false);
+// load for a picture already in memory, such as a song's cover.
+bool decode(const std::vector<uint8_t> &bytes, uint32_t maxWidth,
+            uint32_t maxHeight, uint16_t background, Picture &picture,
+            std::string &error, bool fill = false);
+
+// The size load and fit give a width x height picture inside maxWidth x
+// maxHeight, without decoding it.
+void fittedSize(uint32_t width, uint32_t height, uint32_t maxWidth,
+                uint32_t maxHeight, uint32_t &outWidth, uint32_t &outHeight);
 
 // The scaling step on its own, for decoded 8-bit RGB (channels 3) or RGBA
 // (channels 4) pixels.

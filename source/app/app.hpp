@@ -103,6 +103,9 @@ private:
     void hexViewer(const std::string &path);
     void pictureViewer(const std::vector<std::string> &pictures,
                        size_t index);
+    // folderCover is shown for songs without a cover of their own.
+    void songViewer(const std::vector<std::string> &songs, size_t index,
+                    const std::string &folderCover);
     void archiveViewer(const std::string &path);
     void titleDetails(const std::string &path, filetype::Kind kind);
     void showProperties(const std::vector<std::string> &paths);

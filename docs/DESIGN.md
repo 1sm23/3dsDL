@@ -154,9 +154,10 @@ strip for a red button and a 30 px dark Cancel strip.
 | Install prompt | icon, name, publisher, Title ID, Version, Size | Install, Install and Delete File, Keep File |
 | Installing | icon, name, progress | do not turn off, Cancel |
 | Installed | icon, name, time taken | dialog: Close / Launch |
-| Files | details of the highlighted entry | path, six rows, Back, page counter, Options |
+| Files | details of the highlighted entry; a picture's preview, a song's cover | path, six rows, Back, page counter, Options |
 | File options | the file the choices act on | eight small buttons in two columns |
 | Picture viewer | the picture, nothing else | name, size, position, Previous / Next |
+| Song viewer | title, cover, artist, album, length, track | name, format, position, Previous / Next |
 | Text editor | ruled page with line numbers, current line in blue | the full current line, Edit / New Line / Delete, Close / Save |
 | Hex view | offset, bytes, characters | offset, page buttons |
 | ZIP contents | totals and the selected entry | entries, Extract Here / Extract to New Folder |
