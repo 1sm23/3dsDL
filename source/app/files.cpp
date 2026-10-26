@@ -1,6 +1,7 @@
 #include "app.hpp"
 
 #include "app_util.hpp"
+#include "audio_meta.hpp"
 #include "cia.hpp"
 #include "file_ops.hpp"
 #include "file_types.hpp"
@@ -19,7 +20,6 @@
 #include "ui.hpp"
 #include "units.hpp"
 #include "update.hpp"
-#include "zip.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -36,11 +36,19 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::readArchive;
 using screens::sortDescription;
 using screens::versionRow;
 
 // The background behind pictures, as RGB565: the app's dark blue.
 constexpr uint16_t PictureBackground = 0x0883;
+// Covers sit on white, as title icons do.
+constexpr uint16_t CoverBackground = 0xffff;
+// Previews in Files sit on the panel's colour, so transparent parts show it.
+constexpr uint16_t PreviewBackground = 0xdeb3;
+// The box a picture's preview fits in, on the Files top screen.
+constexpr uint32_t PreviewWidth = 160;
+constexpr uint32_t PreviewHeight = 132;
 
 std::string folderOf(const std::string &path)
 {
@@ -117,9 +125,70 @@ struct Details {
     bool counted = false;
     size_t items = 0;
     int64_t modified = 0; // for folders listed without times
+    audiometa::Info audio; // without its cover, which is in cover
+    std::vector<uint16_t> cover; // 48x48, a song's or its folder's
 };
 
-Details loadDetails(const std::string &path, Kind kind)
+// The picture in a folder that is its cover, from the folder's listing, so
+// finding it asks nothing of the SD card. "" when there is none.
+std::string findCover(const std::string &folder,
+                      const std::vector<fs::Entry> &entries)
+{
+    const fs::Entry *best = nullptr;
+    int bestRank = 0;
+    for (const fs::Entry &entry : entries) {
+        const int rank = entry.folder ? 0 : audiometa::coverRank(entry.name);
+        if (rank > bestRank) {
+            best = &entry;
+            bestRank = rank;
+        }
+    }
+    return best != nullptr ? folder + best->name : "";
+}
+
+// A song's cover, side pixels square: the one inside the file, or else the
+// folder's. Empty when neither can be shown.
+std::vector<uint16_t> coverPixels(const std::vector<uint8_t> &embedded,
+                                  const std::string &folderCover,
+                                  uint32_t side)
+{
+    picture::Picture cover;
+    std::string error;
+    if (!embedded.empty() && picture::decode(embedded, side, side,
+                                             CoverBackground, cover, error,
+                                             true)) {
+        return cover.pixels;
+    }
+    if (!folderCover.empty() &&
+        picture::load(folderCover, side, side, CoverBackground, cover, error,
+                      true)) {
+        return cover.pixels;
+    }
+    return {};
+}
+
+// coverPixels at icon size. The songs of a folder share its cover, so the
+// last one made is kept rather than decoded again for each.
+std::vector<uint16_t> coverIcon(const std::vector<uint8_t> &embedded,
+                                const std::string &folderCover)
+{
+    static std::string lastCover;
+    static std::vector<uint16_t> lastIcon;
+    if (!embedded.empty()) {
+        const std::vector<uint16_t> icon = coverPixels(embedded, "", 48);
+        if (!icon.empty()) {
+            return icon;
+        }
+    }
+    if (folderCover != lastCover) {
+        lastCover = folderCover;
+        lastIcon = coverPixels({}, folderCover, 48);
+    }
+    return lastIcon;
+}
+
+Details loadDetails(const std::string &path, Kind kind,
+                    const std::string &folderCover = "")
 {
     Details details;
     details.modified = fs::modifiedTime(path);
@@ -139,6 +208,11 @@ Details loadDetails(const std::string &path, Kind kind)
         break;
     case Kind::Image:
         picture::size(path, details.width, details.height);
+        break;
+    case Kind::Audio:
+        audiometa::read(path, details.audio, true);
+        details.cover = coverIcon(details.audio.cover, folderCover);
+        details.audio.cover = {};
         break;
     case Kind::Text:
     case Kind::Other:
@@ -181,7 +255,7 @@ KindLook lookOf(Kind kind)
         return {ui::Icon::Picture, ui::color::IconPink};
     case Kind::Text:
         return {ui::Icon::Text, ui::color::IconGrey};
-    case Kind::Zip:
+    case Kind::Archive:
         return {ui::Icon::Zip, ui::color::IconGold};
     case Kind::Audio:
         return {ui::Icon::Music, ui::color::IconPink};
@@ -223,8 +297,85 @@ void drawEntryPanel(const std::vector<uint16_t> &titleIcon, Kind kind,
     }
 }
 
+// A picture decoded for the Files top screen, ready to draw.
+struct Preview {
+    const C2D_Image *image = nullptr; // nullptr until it is ready
+    uint32_t width = 0;
+    uint32_t height = 0;
+};
+
+// A picture's panel: the picture in the icon's place, as large as the
+// panel allows, with its name and facts beside it. Until the preview is
+// ready a frame of its shape holds the place, so nothing moves when it
+// arrives.
+void drawPicturePanel(const fs::Entry &entry, const Details &details,
+                      const std::string &modified, const Preview &preview)
+{
+    ui::drawPanel();
+    const float left = ui::TopPanel.x + 12;
+    const float top = ui::TopPanel.y + 12;
+    uint32_t width = preview.width;
+    uint32_t height = preview.height;
+    if (preview.image == nullptr) {
+        picture::fittedSize(details.width, details.height, PreviewWidth,
+                            PreviewHeight, width, height);
+    }
+    if (width == 0 || height == 0) {
+        width = height = PreviewHeight; // not a picture 3dsDL can read
+    }
+    const ui::Rect frame = {left + (PreviewWidth - width) / 2.0f,
+                            top + (PreviewHeight - height) / 2.0f,
+                            static_cast<float>(width),
+                            static_cast<float>(height)};
+    ui::drawShadow({frame.x, frame.y + 1.5f, frame.w, frame.h}, 3, 2,
+                   ui::color::rgb(0x403810, 0x50));
+    ui::fillRound({frame.x - 1, frame.y - 1, frame.w + 2, frame.h + 2}, 3,
+                  ui::color::rgb(0xB3AA83));
+    if (preview.image != nullptr) {
+        ui::drawImage(*preview.image, frame.x, frame.y);
+    } else {
+        ui::fillRound(frame, 2,
+                      {{0, ui::color::rgb(0xFEFCF5)}, {1, ui::color::rgb(0xE6E2D0)}});
+        if (frame.w >= 34 && frame.h >= 34) {
+            const KindLook look = lookOf(Kind::Image);
+            ui::drawIcon(look.icon, frame.x + (frame.w - 30) / 2,
+                         frame.y + (frame.h - 30) / 2, 30, look.color);
+        }
+    }
+
+    const float x = left + PreviewWidth + 14;
+    const float textWidth = ui::TopPanel.x + ui::TopPanel.w - 12 - x;
+    ui::drawMarquee(entry.name, x, top + 2, 0.62f, ui::color::InkStrong,
+                    textWidth);
+    ui::drawMarquee(details.width > 0
+                        ? std::to_string(details.width) + " x " +
+                              std::to_string(details.height) + " pixels"
+                        : filetype::label(Kind::Image),
+                    x, top + 28, ui::type::Tiny, ui::color::InkSoft, textWidth);
+    std::vector<ui::Fact> facts = {{"Size", sizeText(entry.size)}};
+    if (!modified.empty()) {
+        facts.push_back({"Changed", modified});
+    }
+    // drawFacts keeps 18 pixels from each side and centres the rows.
+    ui::drawFacts(facts, {x - 18, top + 58, textWidth + 36, 26.0f * facts.size() - 6},
+                  56);
+}
+
+// The line under a song's title: who it is by, or else its file name when
+// the title came from its tags.
+std::string songByline(const audiometa::Info &info, const std::string &name)
+{
+    if (!info.artist.empty()) {
+        return info.artist;
+    }
+    if (!info.albumArtist.empty()) {
+        return info.albumArtist;
+    }
+    return info.title.empty() ? filetype::label(Kind::Audio) : name;
+}
+
 void drawEntryTop(const std::string &path, const fs::Entry &entry,
-                  const Details &details)
+                  const Details &details, const Preview &preview = {})
 {
     const Kind kind = kindOf(entry);
     const int64_t time = details.modified > 0 ? details.modified : entry.modified;
@@ -250,6 +401,22 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                                     details.installed,
                                     details.installedVersion)},
                         {"Size", units::bytes(info.fileSize)}});
+        return;
+    }
+    if (kind == Kind::Image) {
+        drawPicturePanel(entry, details, modified, preview);
+        return;
+    }
+    if (kind == Kind::Audio) {
+        const audiometa::Info &info = details.audio;
+        drawEntryPanel(details.cover, kind,
+                       info.title.empty() ? entry.name : info.title,
+                       songByline(info, entry.name),
+                       {{"Album", audiometa::albumText(info)},
+                        {"Length", audiometa::length(info.milliseconds)},
+                        {"Format", audiometa::formatText(info)},
+                        {"Size", sizeText(entry.size)},
+                        {"Changed", modified}});
         return;
     }
     if (details.metaReadable) {
@@ -363,7 +530,7 @@ public:
         stop_ = false;
         finished_ = false;
         readable_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "folder");
         if (thread_ == nullptr) {
             run(this); // no thread to be had: read it all now
         }
@@ -448,7 +615,7 @@ public:
         known_ = std::move(known);
         stop_ = false;
         finished_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "folder size");
         if (thread_ == nullptr) {
             finished_ = true; // sizes stay unknown rather than hold up Files
         }
@@ -541,7 +708,7 @@ public:
         wanted_ = std::move(wanted);
         stop_ = false;
         finished_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "file dates");
         if (thread_ == nullptr) {
             finished_ = true; // dates stay unknown rather than hold up Files
         }
@@ -594,6 +761,97 @@ private:
     std::vector<Dated> dated_;
 };
 
+// Decodes the highlighted picture for the top screen on a worker thread, so
+// moving through a folder of large pictures never waits for one. It starts
+// once the highlight rests, decodes one picture at a time and keeps only the
+// last one.
+class PreviewLoader {
+public:
+    PreviewLoader() = default;
+    ~PreviewLoader() { stop(); }
+    PreviewLoader(const PreviewLoader &) = delete;
+    PreviewLoader &operator=(const PreviewLoader &) = delete;
+
+    // Call every frame with the picture to show, or "" for none.
+    Preview show(const std::string &path)
+    {
+        if (thread_ != nullptr && done_) {
+            finish();
+        }
+        if (path != wanted_) {
+            wanted_ = path;
+            since_ = ui::now();
+        }
+        if (thread_ == nullptr && !path.empty() && path != shown_.path &&
+            ui::now() - since_ >= RestMs) {
+            job_ = Job();
+            job_.path = path;
+            done_ = false;
+            thread_ = tasks::startWorker(run, this, "preview");
+            if (thread_ == nullptr) {
+                shown_ = std::move(job_); // shown without a preview
+            }
+        }
+        if (path.empty() || shown_.path != path || shown_.picture.pixels.empty()) {
+            return {};
+        }
+        if (!uploaded_) {
+            image_ = ui::showPicture(shown_.picture.pixels,
+                                     shown_.picture.width,
+                                     shown_.picture.height);
+            uploaded_ = true;
+        }
+        return {image_, shown_.picture.width, shown_.picture.height};
+    }
+    // Waits for the picture being decoded. Call before anything else uses
+    // the picture texture or decodes; the preview is uploaded again after.
+    void stop()
+    {
+        // A large PNG takes seconds, so a wait for one shows as busy.
+        if (thread_ != nullptr && !done_) {
+            tasks::busy("Files", "", [this]() { finish(); });
+        }
+        finish();
+        uploaded_ = false;
+    }
+
+private:
+    struct Job {
+        std::string path;
+        picture::Picture picture;
+    };
+    static constexpr uint64_t RestMs = 120;
+
+    static void run(void *argument)
+    {
+        PreviewLoader &loader = *static_cast<PreviewLoader *>(argument);
+        std::string error;
+        picture::load(loader.job_.path, PreviewWidth, PreviewHeight,
+                      PreviewBackground, loader.job_.picture, error);
+        loader.done_ = true;
+    }
+    void finish()
+    {
+        if (thread_ == nullptr) {
+            return;
+        }
+        threadJoin(thread_, U64_MAX);
+        threadFree(thread_);
+        thread_ = nullptr;
+        shown_ = std::move(job_);
+        uploaded_ = false;
+    }
+
+    Thread thread_ = nullptr;
+    std::atomic<bool> done_ {false};
+    Job job_;   // the worker's while thread_ runs
+    Job shown_; // the last one decoded, perhaps without pixels
+    std::string wanted_;
+    uint64_t since_ = 0;
+    const C2D_Image *image_ = nullptr;
+    bool uploaded_ = false;
+};
+
 constexpr const char *IndexFile = "sdmc:/3ds/3dsDL/index.bin";
 
 } // namespace
@@ -612,7 +870,7 @@ void App::startIndexLoad()
             }
             app.indexLoaded_ = true;
         },
-        this);
+        this, "index");
     if (indexLoader_ == nullptr) {
         loadingIndex_.reset(); // starts empty instead
     }
@@ -684,6 +942,7 @@ void App::browseFiles()
     // fileIndex_, which keeps them while nothing under them changes.
     FolderSizer sizer;
     bool sizing = false; // sizer was started for this listing
+    PreviewLoader preview; // the highlighted picture, for the top screen
     // Folder sizes from the index, including those loaded from the last run
     // until they are added up again; -1 for those not added up.
     const auto fillSizes = [&](std::vector<fs::Entry> &list) {
@@ -983,13 +1242,20 @@ void App::browseFiles()
                         clipboardFact(clipboard_.size(), clipboardCut_));
                 }
                 ui::drawFacts(facts);
+                preview.show("");
                 return;
             }
             const fs::Entry &entry = entries[index];
             const std::string path = current + entry.name;
             auto found = details.find(path);
             if (found == details.end()) {
-                found = details.emplace(path, loadDetails(path, kindOf(entry)))
+                const Kind kind = kindOf(entry);
+                found = details
+                            .emplace(path, loadDetails(
+                                               path, kind,
+                                               kind == Kind::Audio
+                                                   ? findCover(current, entries)
+                                                   : ""))
                             .first;
                 // The date the card gives now replaces one the index kept.
                 const int64_t modified = found->second.modified;
@@ -999,13 +1265,15 @@ void App::browseFiles()
                                          modified);
                 }
             }
-            drawEntryTop(path, entry, found->second);
+            drawEntryTop(path, entry, found->second,
+                         preview.show(kindOf(entry) == Kind::Image ? path : ""));
         };
 
         const ui::ListResult result = ui::runList(spec, cursor);
         // Whatever comes next has the SD card to itself; the sizes still
         // missing are added up again on the way back. What changed on the
         // card before this point is caught now, before the next action.
+        preview.stop();
         sizer.stop();
         keepSizes();
         sizing = false;
@@ -1147,33 +1415,42 @@ void App::openFile(const std::string &path,
     case Kind::Text:
         textEditor(path);
         return;
-    case Kind::Zip:
-        zipViewer(path);
+    case Kind::Archive:
+        archiveViewer(path);
         return;
-    case Kind::Image: {
-        const std::string folder = folderOf(path);
-        std::vector<std::string> pictures;
-        size_t index = 0;
+    case Kind::Image:
+    case Kind::Audio: {
+        // The folder's other files of the same kind, to step through.
         // Files' own list when it has the whole folder, so a folder of
-        // thousands is not read again just to step through its pictures.
-        std::vector<fs::Entry> entries;
-        if (folderEntries != nullptr) {
-            entries = *folderEntries;
-        } else {
-            entries = fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
-                                      settings_.fileSort == fs::SortOrder::Date);
-            fs::sortEntries(entries, settings_.fileSort,
+        // thousands is not read again for them.
+        const std::string folder = folderOf(path);
+        std::vector<fs::Entry> listed;
+        if (folderEntries == nullptr) {
+            listed = fs::listEntries(folder, nullptr, settings_.showHiddenFiles,
+                                     settings_.fileSort == fs::SortOrder::Date);
+            fs::sortEntries(listed, settings_.fileSort,
                             settings_.fileSortReverse);
+            folderEntries = &listed;
         }
-        for (const fs::Entry &entry : entries) {
-            if (!entry.folder && kindOf(entry) == Kind::Image) {
+        std::vector<std::string> paths;
+        size_t index = 0;
+        for (const fs::Entry &entry : *folderEntries) {
+            if (!entry.folder && kindOf(entry) == kind) {
                 if (folder + entry.name == path) {
-                    index = pictures.size();
+                    index = paths.size();
                 }
-                pictures.push_back(folder + entry.name);
+                paths.push_back(folder + entry.name);
             }
         }
-        pictureViewer(pictures, index);
+        if (paths.empty() || paths[index] != path) {
+            paths = {path}; // hidden from the list, say
+            index = 0;
+        }
+        if (kind == Kind::Image) {
+            pictureViewer(paths, index);
+        } else {
+            songViewer(paths, index, findCover(folder, *folderEntries));
+        }
         return;
     }
     default:
@@ -1380,7 +1657,7 @@ bool App::entryOptions(const std::string &folder,
         add("Edit", Action::Edit);
     } else if (single) {
         add("Open", Action::Open);
-        if (kind == Kind::Zip) {
+        if (kind == Kind::Archive) {
             add("Extract", Action::Extract);
         }
     }
@@ -1420,7 +1697,9 @@ bool App::entryOptions(const std::string &folder,
         entry.name = fileops::name(path);
         entry.folder = isFolder;
         entry.size = lookup.size(path);
-        details = loadDetails(path, kind);
+        details = loadDetails(path, kind,
+                              kind == Kind::Audio ? findCover(folder, entries)
+                                                  : "");
     } else {
         size_t files = 0;
         size_t folders = 0;
@@ -1443,16 +1722,19 @@ bool App::entryOptions(const std::string &folder,
     }
     const std::string title = single ? folderTitle(folder)
                                      : plural(paths.size(), "Marked Item");
+    PreviewLoader preview;
     const int choice = ui::menu(items, [&](int) {
         if (single) {
             ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange);
-            drawEntryTop(path, entry, details);
+            drawEntryTop(path, entry, details,
+                         preview.show(kind == Kind::Image ? path : ""));
             return;
         }
         ui::drawTopChrome(title, ui::Icon::Check, ui::color::Tag);
         ui::drawPanel();
         ui::drawFacts(facts);
     });
+    preview.stop();
     if (choice < 0) {
         return false;
     }
@@ -2417,37 +2699,42 @@ struct StepScroller {
     }
 };
 
-} // namespace
+// What the picture and song viewers show of each file.
+struct Viewer {
+    ui::Icon icon = ui::Icon::File;
+    u32 iconColor = ui::color::IconGrey;
+    std::string noun; // "Picture", as in "Picture 3 of 12"
+    // Reads what the screens show of the file.
+    std::function<void(const std::string &path)> load;
+    // The line of facts on the bottom screen.
+    std::function<std::string(const std::string &path)> facts;
+    std::function<void()> drawTop;
+};
 
-void App::pictureViewer(const std::vector<std::string> &pictures,
-                        size_t index)
+// Shows paths one at a time from index, with Previous and Next, which L and
+// R, the D-pad's sides and a sideways swipe press too.
+void stepThrough(const std::vector<std::string> &paths, size_t index,
+                 const Viewer &viewer)
 {
-    if (pictures.empty()) {
+    if (paths.empty()) {
         return;
     }
     Pad pad;
-    const int previous = pad.add({16, 137, 140, 40}, pictures.size() > 1);
-    const int next = pad.add({164, 137, 140, 40}, pictures.size() > 1);
+    const int previous = pad.add({16, 137, 140, 40}, paths.size() > 1);
+    const int next = pad.add({164, 137, 140, 40}, paths.size() > 1);
     const int back = pad.add(ui::tabRect(ui::Tab::Left));
 
     while (ui::keepRunning()) {
-        const std::string &path = pictures[index];
-        picture::Picture shown;
-        std::string error;
-        picture::Picture loaded;
-        tasks::busy("Pictures", "", [&]() {
-            picture::load(path, 400, 240, PictureBackground, loaded, error);
-        });
-        shown = std::move(loaded);
-        // Uploaded once; drawing it again every frame is cheap.
-        const C2D_Image *image =
-            error.empty()
-                ? ui::showPicture(shown.pixels, shown.width, shown.height)
-                : nullptr;
+        const std::string &path = paths[index];
+        viewer.load(path);
+        const std::string facts = viewer.facts(path);
+        const std::string position = viewer.noun + " " +
+                                     std::to_string(index + 1) + " of " +
+                                     std::to_string(paths.size());
 
         float swipeStart = -1;
         bool moved = false;
-        ui::enterScreen("picture");
+        ui::enterScreen(viewer.noun);
         while (ui::keepRunning() && !moved) {
             const ui::Input input = ui::readInput();
             const int released = pad.update(input);
@@ -2472,56 +2759,34 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
                 }
                 swipeStart = -1;
             }
-            if (step != 0 && pictures.size() > 1) {
-                index = (index + pictures.size() + step) % pictures.size();
+            if (step != 0 && paths.size() > 1) {
+                index = (index + paths.size() + step) % paths.size();
                 moved = true;
             }
 
             ui::beginFrame();
-            ui::fillRound({0, 0, ui::TopWidth, ui::ScreenHeight}, 0,
-                          ui::color::rgb(0x1A1C1E));
-            if (image != nullptr) {
-                ui::drawImage(*image, (ui::TopWidth - shown.width) / 2,
-                              (ui::ScreenHeight - shown.height) / 2);
-            } else {
-                ui::drawWrapped(error.empty() ? "The picture could not be "
-                                                "shown."
-                                              : error,
-                                200, 100, ui::type::Body,
-                                ui::color::rgb(0xFFD36B), 330, 4,
-                                C2D_AlignCenter);
-            }
+            viewer.drawTop();
 
             ui::beginBottom();
             const std::string name = basename(path);
             const float width =
                 26 + std::min(260.0f, ui::textWidth(name, 0.68f));
-            ui::drawIcon(ui::Icon::Picture, 160 - width / 2, 30, 20,
-                         ui::color::IconPink);
+            ui::drawIcon(viewer.icon, 160 - width / 2, 30, 20,
+                         viewer.iconColor);
             ui::drawMarquee(name, 160 - width / 2 + 26, 30, 0.68f,
                             ui::color::Ink, 260);
             const ui::Rect panel = {13, 65, 294, 54};
             ui::drawPanel(panel);
-            std::string facts = sizeText(fs::fileSize(path));
-            if (shown.sourceWidth > 0) {
-                facts = std::to_string(shown.sourceWidth) + " x " +
-                        std::to_string(shown.sourceHeight) + " pixels, " +
-                        facts;
-            }
-            ui::drawText(facts, 160, panel.y + 7, ui::type::Small,
-                         ui::color::Ink, C2D_AlignCenter);
-            ui::drawText("Picture " + std::to_string(index + 1) + " of " +
-                             std::to_string(pictures.size()),
-                         160, panel.y + 28, ui::type::Small,
+            ui::drawMarquee(facts, 160, panel.y + 7, ui::type::Small,
+                            ui::color::Ink, panel.w - 20, C2D_AlignCenter);
+            ui::drawText(position, 160, panel.y + 28, ui::type::Small,
                          ui::color::InkSoft, C2D_AlignCenter);
-            ui::drawButton(pad.rects[previous], "Previous",
-                           pictures.size() > 1 ? ui::Style::Normal
-                                               : ui::Style::Disabled,
+            const ui::Style style =
+                paths.size() > 1 ? ui::Style::Normal : ui::Style::Disabled;
+            ui::drawButton(pad.rects[previous], "Previous", style,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, previous));
-            ui::drawButton(pad.rects[next], "Next",
-                           pictures.size() > 1 ? ui::Style::Normal
-                                               : ui::Style::Disabled,
+            ui::drawButton(pad.rects[next], "Next", style,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, next));
             ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
@@ -2530,16 +2795,146 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
     }
 }
 
-void App::zipViewer(const std::string &path)
+// The song viewer's cover, in pixels square.
+constexpr uint32_t SongCover = 132;
+
+// The song viewer's top screen: the title, then the cover with what the tags
+// say beside it. How it is stored goes on the bottom screen, as a picture's
+// size does.
+void drawSongTop(const std::string &name, const audiometa::Info &info,
+                 const C2D_Image *cover)
 {
-    zip::Archive archive;
+    ui::drawTopChrome(info.title.empty() ? name : info.title,
+                      ui::Icon::Music, ui::color::IconPink);
+    ui::drawPanel();
+    const ui::Rect art = {ui::TopPanel.x + 12, ui::TopPanel.y + 12,
+                          static_cast<float>(SongCover),
+                          static_cast<float>(SongCover)};
+    ui::drawShadow({art.x, art.y + 1.5f, art.w, art.h}, 4, 2,
+                   ui::color::rgb(0x403810, 0x50));
+    ui::fillRound({art.x - 1, art.y - 1, art.w + 2, art.h + 2}, 4,
+                  ui::color::rgb(0xB3AA83));
+    if (cover != nullptr) {
+        ui::drawImage(*cover, art.x, art.y);
+    } else {
+        ui::fillRound(art, 3,
+                      {{0, ui::color::rgb(0xFEFCF5)}, {1, ui::color::rgb(0xE6E2D0)}});
+        ui::drawEmblem(ui::Icon::Music, ui::color::IconPink, art);
+    }
+
+    // The first five there are, in this order.
+    std::vector<ui::Fact> facts;
+    const auto add = [&](const char *tag, const std::string &value) {
+        if (!value.empty() && facts.size() < 5) {
+            facts.push_back({tag, value});
+        }
+    };
+    add("Artist", info.artist.empty() ? info.albumArtist : info.artist);
+    add("Album", audiometa::albumText(info));
+    add("Length", audiometa::length(info.milliseconds));
+    add("Track", audiometa::trackText(info));
+    add("Genre", info.genre);
+    add("Loop", audiometa::loopText(info));
+    if (facts.empty()) {
+        facts.push_back({"Type", filetype::label(Kind::Audio)});
+    }
+    // drawFacts keeps 18 pixels from each side of its area.
+    const float left = art.x + art.w + 14 - 18;
+    const float right = ui::TopPanel.x + ui::TopPanel.w - 12 + 18;
+    ui::drawFacts(facts, {left, ui::TopPanel.y, right - left, ui::TopPanel.h},
+                  56);
+}
+
+} // namespace
+
+void App::pictureViewer(const std::vector<std::string> &pictures,
+                        size_t index)
+{
+    picture::Picture shown;
     std::string error;
-    bool ok = false;
-    tasks::busy("ZIP Archive", "Reading " + basename(path) + "...",
-                [&]() { ok = zip::readArchive(path, archive, error); });
-    if (!ok) {
-        ui::message("Cannot Open the Archive", error, ui::Tone::Error,
-                    basename(path));
+    const C2D_Image *image = nullptr;
+    Viewer viewer;
+    viewer.icon = ui::Icon::Picture;
+    viewer.iconColor = ui::color::IconPink;
+    viewer.noun = "Picture";
+    viewer.load = [&](const std::string &path) {
+        picture::Picture loaded;
+        error.clear();
+        tasks::busy("Pictures", "", [&]() {
+            picture::load(path, 400, 240, PictureBackground, loaded, error);
+        });
+        shown = std::move(loaded);
+        // Uploaded once; drawing it again every frame is cheap.
+        image = error.empty()
+                    ? ui::showPicture(shown.pixels, shown.width, shown.height)
+                    : nullptr;
+    };
+    viewer.facts = [&](const std::string &path) {
+        std::string facts = sizeText(fs::fileSize(path));
+        if (shown.sourceWidth > 0) {
+            facts = std::to_string(shown.sourceWidth) + " x " +
+                    std::to_string(shown.sourceHeight) + " pixels, " + facts;
+        }
+        return facts;
+    };
+    viewer.drawTop = [&]() {
+        ui::fillRound({0, 0, ui::TopWidth, ui::ScreenHeight}, 0,
+                      ui::color::rgb(0x1A1C1E));
+        if (image != nullptr) {
+            ui::drawImage(*image, (ui::TopWidth - shown.width) / 2,
+                          (ui::ScreenHeight - shown.height) / 2);
+        } else {
+            ui::drawWrapped(error.empty() ? "The picture could not be shown."
+                                          : error,
+                            200, 100, ui::type::Body, ui::color::rgb(0xFFD36B),
+                            330, 4, C2D_AlignCenter);
+        }
+    };
+    stepThrough(pictures, index, viewer);
+}
+
+void App::songViewer(const std::vector<std::string> &songs, size_t index,
+                     const std::string &folderCover)
+{
+    audiometa::Info info;
+    std::string name;
+    std::vector<uint16_t> cover;
+    const C2D_Image *coverImage = nullptr;
+    Viewer viewer;
+    viewer.icon = ui::Icon::Music;
+    viewer.iconColor = ui::color::IconPink;
+    viewer.noun = "Song";
+    viewer.load = [&](const std::string &path) {
+        audiometa::Info loaded;
+        std::vector<uint16_t> pixels;
+        tasks::busy("Songs", "", [&]() {
+            audiometa::read(path, loaded, true);
+            pixels = coverPixels(loaded.cover, folderCover, SongCover);
+        });
+        loaded.cover = {};
+        info = std::move(loaded);
+        name = basename(path);
+        cover = std::move(pixels);
+        coverImage = ui::showPicture(cover, SongCover, SongCover);
+    };
+    // The rows in Files already show the size, which would not fit as well.
+    viewer.facts = [&](const std::string &path) {
+        const std::string format = audiometa::formatText(info);
+        return format.empty() ? sizeText(fs::fileSize(path)) : format;
+    };
+    viewer.drawTop = [&]() { drawSongTop(name, info, coverImage); };
+    stepThrough(songs, index, viewer);
+}
+
+void App::archiveViewer(const std::string &path)
+{
+    archives::Listing listing;
+    std::string error;
+    if (!readArchive(path, archives::Scan::Full, listing, error)) {
+        if (!error.empty()) {
+            ui::message("Cannot Open the Archive", error, ui::Tone::Error,
+                        basename(path));
+        }
         return;
     }
 
@@ -2551,7 +2946,7 @@ void App::zipViewer(const std::string &path)
         spec.action = "Extract";
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
-        for (const zip::Entry &entry : archive.entries) {
+        for (const archives::Entry &entry : listing.entries) {
             ui::ListItem item;
             const KindLook look = lookOf(entry.directory
                                              ? Kind::Folder
@@ -2560,7 +2955,7 @@ void App::zipViewer(const std::string &path)
             item.detail = entry.directory ? "" : units::bytes(entry.size);
             item.icon = look.icon;
             item.iconColor = look.color;
-            if (entry.path.empty()) {
+            if (entry.path.empty() || !entry.supported) {
                 item.labelColor = ui::color::Bad;
             }
             spec.items.push_back(item);
@@ -2570,13 +2965,17 @@ void App::zipViewer(const std::string &path)
                               ui::color::IconGold);
             ui::drawPanel();
             std::vector<ui::Fact> facts = {
-                {"Holds", plural(archive.fileCount, "file")},
-                {"Extracted", units::bytes(archive.totalSize)}};
-            if (index >= 0 && index < static_cast<int>(archive.entries.size())) {
-                const zip::Entry &entry = archive.entries[index];
+                {"Format", listing.format},
+                {"Holds", plural(listing.fileCount, "file")},
+                {"Extracted", units::bytes(listing.totalSize)}};
+            if (index >= 0 && index < static_cast<int>(listing.entries.size())) {
+                const archives::Entry &entry = listing.entries[index];
                 facts.push_back({"Selected", entry.name});
                 if (entry.path.empty()) {
                     facts.push_back({"Skipped", "Path leaves the folder",
+                                     ui::color::Bad});
+                } else if (!entry.supported) {
+                    facts.push_back({"Skipped", "Encrypted, a link or unknown",
                                      ui::color::Bad});
                 }
             }
@@ -2585,7 +2984,7 @@ void App::zipViewer(const std::string &path)
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
             offerExtraction(path, folderOf(path), "",
-                            "Extract " + basename(path) + "?");
+                            "Extract " + basename(path) + "?", &listing);
             return;
         }
         if (result.key != KEY_A) {

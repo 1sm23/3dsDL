@@ -8,6 +8,9 @@
 #                                and openssl for the fixture server)
 #   make -C tests scripts        the build scripts' version rules
 #   make -C tests SAN=           build without sanitizers
+#
+# TMPDIR has to ignore case, as the SD card's FAT does: macOS's does, and
+# on Linux an ext4 folder made with casefold does, as CI sets up.
 
 CC       ?= cc
 CXX      ?= c++
@@ -22,9 +25,17 @@ SAN      ?= -fsanitize=address,undefined -fno-sanitize-recover=undefined \
             -fno-omit-frame-pointer
 WARN     := -Wall -Wextra
 CPPFLAGS := -I$(CORE) -I$(NET) -I$(QUIRC) -I$(STB)
+LDLIBS   := -lcurl -larchive -lz -lm
+
+# Homebrew keeps libarchive out of the compiler's paths on macOS.
+ARCHIVE_PREFIX := $(shell brew --prefix libarchive 2>/dev/null)
+ifneq ($(ARCHIVE_PREFIX),)
+CPPFLAGS += -I$(ARCHIVE_PREFIX)/include
+LDLIBS   := -L$(ARCHIVE_PREFIX)/lib $(LDLIBS)
+endif
+
 CXXFLAGS := -std=c++17 -g -O1 $(WARN) -Werror $(SAN) $(CPPFLAGS)
 CFLAGS   := -std=gnu99 -g -O1 $(WARN) $(SAN) $(CPPFLAGS)
-LDLIBS   := -lcurl -lz -lm
 
 CORE_SRC        := $(wildcard $(CORE)/*.cpp)
 NET_SRC         := $(wildcard $(NET)/*.cpp)
@@ -48,7 +59,7 @@ integration: $(BUILD)/integration_tests
 scripts:
 	./version_test.sh
 
-# quirc is vendored unmodified, so its upstream warnings are not ours to fix.
+# quirc is vendored, so its upstream warnings are not ours to fix.
 # quirc_resize() calls memcpy(dst, NULL, 0) on first use, which UBSan's
 # nonnull check reports; that one check is relaxed for quirc only.
 $(BUILD)/quirc/%.o: $(QUIRC)/%.c $(HEADERS)

@@ -97,6 +97,26 @@ TEST("crash log: without registers only the stack says where")
     CHECK(written.find("stack: 00104000\n") != std::string::npos);
 }
 
+TEST("crash log: the last log lines follow the stack")
+{
+    crashlog::Record record;
+    record.version = "0.8.3";
+    record.what = "abort";
+    record.thread = "titles";
+    record.stack[0] = 0x00104000;
+    record.stackCount = 1;
+    const char *lines[] = {"2026-10-26 14:03:20 I screen id=titles",
+                           "2026-10-26 14:03:22 T titles.step step=extdata"};
+    record.log = lines;
+    record.logCount = 2;
+    char text[512];
+    const std::string written(text, crashlog::format(record, text, sizeof(text)));
+    CHECK(written.find("thread: titles\n") != std::string::npos);
+    CHECK(written.find("stack: 00104000\nlog: 2026-10-26 14:03:20 I screen "
+                       "id=titles\nlog: 2026-10-26 14:03:22 T titles.step "
+                       "step=extdata\n") != std::string::npos);
+}
+
 TEST("crash log: a small buffer keeps whole lines")
 {
     crashlog::Record record;

@@ -1,12 +1,16 @@
 #pragma once
 
+#include "archive_writer.hpp"
+
 #include <cstdint>
 #include <string>
 #include <vector>
 
-// A small ZIP reader for the opt-in "extract after download" feature. It
-// handles stored and deflated entries, ZIP64 sizes and UTF-8 names, refuses
-// paths that would escape the target folder, and checks every CRC.
+// 3dsDL's own ZIP reader, the fast path for ZIP archives. It knows every
+// entry from the central directory, extracts stored and deflated entries
+// in the order they are stored through one read buffer, handles ZIP64
+// sizes and UTF-8 names, refuses paths that would escape the target folder,
+// and checks every CRC.
 namespace zip {
 
 struct Entry {
@@ -30,36 +34,13 @@ struct Archive {
 bool readArchive(const std::string &zipPath, Archive &archive,
                  std::string &error);
 
-// "a\\b/../c" style names become "" (rejected); normal names come back with
-// '/' separators and each component made safe for FAT.
-std::string safeRelativePath(const std::string &name);
+bool encrypted(const Entry &entry);
+// Stored or deflated and not encrypted: what this reader extracts.
+bool readable(const Entry &entry);
 
-// Relative paths of files in archive that already exist in folder.
-std::vector<std::string> existingFiles(const Archive &archive,
-                                       const std::string &folder);
-
-class Observer {
-public:
-    virtual ~Observer() = default;
-    virtual bool cancelRequested() = 0;
-    virtual void onProgress(uint64_t done, uint64_t total,
-                            const std::string &current) = 0;
-};
-
-enum class Existing { Overwrite, Skip };
-
-struct Result {
-    bool ok = false;
-    bool cancelled = false;
-    unsigned extracted = 0;
-    unsigned skippedExisting = 0;
-    unsigned skippedUnsafe = 0;      // paths that tried to leave the folder
-    unsigned skippedUnsupported = 0; // encrypted or unknown compression
-    std::string message;
-};
-
-Result extract(const std::string &zipPath, const Archive &archive,
-               const std::string &folder, Existing existing,
-               Observer &observer);
+archives::Result extract(const std::string &zipPath, const Archive &archive,
+                        const std::string &folder,
+                        const archives::Options &options,
+                        archives::Observer &observer);
 
 } // namespace zip

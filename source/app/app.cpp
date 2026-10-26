@@ -6,6 +6,7 @@
 #include "fs_util.hpp"
 #include "installer.hpp"
 #include "i18n.hpp"
+#include "logging.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "platform.hpp"
@@ -21,7 +22,6 @@
 #include "units.hpp"
 #include "updater.hpp"
 #include "url.hpp"
-#include "zip.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -35,6 +35,7 @@ using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
 using screens::plural;
+using screens::readArchive;
 
 using http::CaBundle;
 using http::SocketBufferSize;
@@ -175,6 +176,9 @@ App::App()
         pollUpdate();
         pollLibrary();
         pollIndex();
+        if (logging::takeWritten()) {
+            sdChanged(logging::Path);
+        }
     });
     // Back from the HOME Menu or sleep, other software may have written to
     // the SD card.
@@ -293,6 +297,7 @@ App::Action App::home()
     spec.drawTop = [&]() {
         // The answer to the update check can arrive while this is open.
         spec.controls[0].badge = updateAvailable_ ? "New" : "";
+        ui::nameScreen("Home");
         ui::drawTopBackground();
         ui::drawStatusBar();
         ui::drawDots(41);
@@ -647,88 +652,161 @@ void App::finishDownload(const std::string &address, const std::string &folder,
         return;
     }
     if (settings_.offerZipExtraction &&
-        text::endsWithNoCase(saved.path, ".zip")) {
+        filetype::fromName(basename(saved.path)) ==
+            filetype::Kind::Archive) {
         offerExtraction(saved.path, folder, summary);
         return;
     }
     ui::message("Download complete", summary, ui::Tone::Success);
 }
 
-void App::offerExtraction(const std::string &zipPath, const std::string &folder,
-                          const std::string &summary, const std::string &title)
+void App::offerExtraction(const std::string &path, const std::string &folder,
+                          const std::string &summary, const std::string &title,
+                          const archives::Listing *known)
 {
-    zip::Archive archive;
+    archives::Listing read;
     std::string error;
-    if (!zip::readArchive(zipPath, archive, error)) {
+    if (known == nullptr &&
+        !readArchive(path, archives::Scan::Quick, read, error)) {
+        if (error.empty()) {
+            // Stopped: the download still finished.
+            if (!summary.empty()) {
+                ui::message("Download complete", summary, ui::Tone::Success);
+            }
+            return;
+        }
         ui::message(summary.empty() ? "Cannot extract" : "Download complete",
                     summary.empty() ? error : summary,
                     summary.empty() ? ui::Tone::Error : ui::Tone::Success,
                     summary.empty() ? "" : "It was not extracted: " + error);
         return;
     }
+    const archives::Listing &listing = known != nullptr ? *known : read;
 
+    // One thing at the top of the archive already makes its own folder, so
+    // another around it would only add a level.
+    const bool single = !listing.top.empty();
     const std::string ownFolder =
-        folder + naming::safeFilename(naming::stem(basename(zipPath))) + "/";
+        folder + naming::safeFilename(naming::archiveStem(basename(path))) + "/";
+    std::string holds = listing.format;
+    if (listing.complete) {
+        holds += ", " + plural(listing.fileCount, "file") + ", " +
+                 units::bytes(listing.totalSize);
+    } else {
+        holds += ", " + units::bytes(listing.archiveSize);
+    }
+    const std::string places =
+        single ? "Into: " + folder + listing.top +
+                     (listing.topIsFolder ? "/" : "")
+               : "Here: " + folder + "\nNew Folder: " + ownFolder;
 
     ui::Dialog dialog;
     dialog.header = "extract";
     dialog.title = title;
     dialog.tone = ui::Tone::Success;
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
-    dialog.body.push_back({plural(archive.fileCount, "file") + ", " +
-                               units::bytes(archive.totalSize) + "\nHere: " +
-                               folder + "\nNew Folder: " + ownFolder,
-                           ui::color::Text, 0.46f, 5});
-    dialog.buttons = {"Here", "New Folder", "Not Now"};
-    dialog.cancelButton = 2;
+    dialog.body.push_back({holds + "\n" + places, ui::color::Text, 0.46f, 5});
+    if (single) {
+        dialog.buttons = {"Extract", "Not Now"};
+        dialog.cancelButton = 1;
+    } else {
+        dialog.buttons = {"Here", "New Folder", "Not Now"};
+        dialog.cancelButton = 2;
+    }
     const int choice = ui::choose(dialog);
-    if (choice != 0 && choice != 1) {
+    if (choice < 0 || choice == dialog.cancelButton) {
         return;
     }
-    const std::string target = choice == 0 ? folder : ownFolder;
+    const std::string target = single || choice == 0 ? folder : ownFolder;
+    // Where the files land, for the messages after.
+    const std::string landed = single && listing.topIsFolder
+                                   ? folder + listing.top + "/"
+                                   : target;
 
+    archives::Options options;
+    // Without a full listing the archive's own size is the least it needs.
+    const uint64_t needed =
+        listing.complete
+            ? archives::spaceNeeded(listing, platform::sdClusterSize())
+            : listing.archiveSize;
     const int64_t available = platform::sdFreeBytes();
-    if (available >= 0 &&
-        static_cast<uint64_t>(available) < archive.totalSize) {
+    if (available >= 0 && static_cast<uint64_t>(available) < needed) {
         ui::message("Not enough free space",
-                    "Extracting needs " + units::bytes(archive.totalSize) +
-                        ", but only " +
+                    "Extracting needs " +
+                        std::string(listing.complete ? "" : "at least ") +
+                        units::bytes(needed) + ", but only " +
                         units::bytes(static_cast<uint64_t>(available)) +
                         " is free.",
                     ui::Tone::Error);
         return;
     }
-
-    zip::Existing existing = zip::Existing::Skip;
-    const std::vector<std::string> clashes =
-        zip::existingFiles(archive, target);
-    if (!clashes.empty()) {
-        ui::Dialog question;
-        question.header = "extract";
-        question.title = plural(clashes.size(), "file") + " already exist. Replace them?";
-        question.tone = ui::Tone::Warning;
-        question.body.push_back({"For example " + clashes.front() + " in " +
-                                     target,
-                                 ui::color::Text, 0.46f, 3});
-        question.buttons = {"Overwrite", "Skip Them", "Cancel"};
-        question.dangerous = 0;
-        question.initial = 1;
-        question.cancelButton = 2;
-        const int answer = ui::choose(question);
-        if (answer != 0 && answer != 1) {
-            return;
+    if (listing.complete) {
+        std::vector<std::string> clashes;
+        if (fs::directoryExists(target)) {
+            // One listing per folder, so stopping is safe at any point.
+            struct Checking : archives::Observer {
+                tasks::Busy &busy;
+                explicit Checking(tasks::Busy &busy) : busy(busy) {}
+                bool cancelRequested() override { return busy.cancel.load(); }
+                void onProgress(const archives::Progress &progress) override
+                {
+                    busy.done = progress.files;
+                }
+            };
+            bool checked = false;
+            if (!tasks::busy(
+                    "Archive", "Checking " + target + "...",
+                    [&](tasks::Busy &busy) {
+                        busy.total = listing.fileCount;
+                        Checking observer(busy);
+                        checked = archives::existingFiles(listing, target,
+                                                          clashes, &observer);
+                    },
+                    true) ||
+                !checked) {
+                return;
+            }
         }
-        existing = answer == 0 ? zip::Existing::Overwrite
-                               : zip::Existing::Skip;
+        if (!clashes.empty()) {
+            ui::Dialog question;
+            question.header = "extract";
+            question.title = clashes.size() == 1
+                                 ? "1 file already exists. Replace it?"
+                                 : plural(clashes.size(), "file") +
+                                       " already exist. Replace them?";
+            question.tone = ui::Tone::Warning;
+            question.body.push_back({"For example " + clashes.front() +
+                                         " in " + target,
+                                     ui::color::Text, 0.46f, 3});
+            question.buttons = {"Overwrite", "Skip Them", "Cancel"};
+            question.dangerous = 0;
+            question.initial = 1;
+            question.cancelButton = 2;
+            const int answer = ui::choose(question);
+            if (answer != 0 && answer != 1) {
+                return;
+            }
+            options.existing = answer == 0 ? archives::Existing::Overwrite
+                                           : archives::Existing::Skip;
+        }
     }
 
-    const zip::Result result = tasks::extract(zipPath, archive, target,
-                                              existing, settings_.keepAwake);
+    const uint64_t started = osGetTime();
+    const archives::Result result = tasks::extract(path, listing, target,
+                                                   options,
+                                                   settings_.keepAwake);
+    const uint64_t seconds = (osGetTime() - started) / 1000;
+    if (options.existing == archives::Existing::Overwrite) {
+        // Files replaced at the same size would keep their old dates.
+        fileIndex_.rewritten(landed);
+    }
+    sdChanged(target);
     if (!ui::keepRunning()) {
         return;
     }
     const std::string extracted =
-        plural(result.extracted, "file") + " extracted into " + target + ".";
+        plural(result.extracted, "file") + " extracted into " + landed +
+        (seconds > 0 ? " in " + units::duration(seconds) : "") + ".";
     if (result.cancelled) {
         ui::message("Extraction stopped", extracted, ui::Tone::Warning);
         return;
@@ -740,8 +818,8 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
     }
 
     std::string notes;
-    if (result.skippedExisting > 0) {
-        notes += plural(result.skippedExisting, "existing file") +
+    if (!result.skippedExisting.empty()) {
+        notes += plural(result.skippedExisting.size(), "existing file") +
                  " left alone. ";
     }
     if (result.skippedUnsafe > 0) {
@@ -750,21 +828,58 @@ void App::offerExtraction(const std::string &zipPath, const std::string &folder,
     }
     if (result.skippedUnsupported > 0) {
         notes += plural(result.skippedUnsupported, "entry") +
-                 " skipped (encrypted or unsupported compression). ";
+                 " skipped (encrypted, a link or unknown compression). ";
     }
 
+    // Without a full listing nothing could be asked before, so what was
+    // already there can be replaced now.
+    const bool offerReplace =
+        !listing.complete && !result.skippedExisting.empty();
     ui::Dialog done;
     done.header = "done";
     done.title = "The archive has been extracted.";
     done.tone = ui::Tone::Success;
     done.body.push_back({extracted, ui::color::Text, 0.5f, 3});
     done.body.push_back({notes, ui::color::Muted, 0.44f, 4});
-    done.buttons = {"Done", "Delete ZIP"};
-    done.dangerous = 1;
+    done.buttons = {"Done", "Delete Archive"};
+    if (offerReplace) {
+        done.buttons.insert(done.buttons.begin() + 1, "Replace Them");
+    }
+    const int deleteButton = static_cast<int>(done.buttons.size()) - 1;
+    done.dangerous = deleteButton;
     done.cancelButton = 0;
-    if (ui::choose(done) == 1 && !fs::removeFile(zipPath)) {
-        ui::message("Could not delete the archive", zipPath,
-                    ui::Tone::Error);
+    const int picked = ui::choose(done);
+    if (picked == deleteButton) {
+        if (fs::removeFile(path)) {
+            sdChanged(path);
+        } else {
+            ui::message("Could not delete the archive", path,
+                        ui::Tone::Error);
+        }
+        return;
+    }
+    if (picked != 1 || !offerReplace) {
+        return;
+    }
+    options.existing = archives::Existing::Overwrite;
+    options.only = result.skippedExisting;
+    const archives::Result replaced = tasks::extract(path, listing, target,
+                                                     options,
+                                                     settings_.keepAwake);
+    fileIndex_.rewritten(landed);
+    sdChanged(target);
+    if (!ui::keepRunning()) {
+        return;
+    }
+    const std::string count =
+        plural(replaced.extracted, "file") + " replaced in " + landed + ".";
+    if (replaced.cancelled) {
+        ui::message("Replacing stopped", count, ui::Tone::Warning);
+    } else if (!replaced.ok) {
+        ui::message("Replacing failed", replaced.message, ui::Tone::Error,
+                    count);
+    } else {
+        ui::message("Files replaced", count, ui::Tone::Success);
     }
 }
 

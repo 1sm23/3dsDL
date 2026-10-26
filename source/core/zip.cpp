@@ -1,7 +1,5 @@
 #include "zip.hpp"
 
-#include "fs_util.hpp"
-#include "naming.hpp"
 #include "text.hpp"
 
 #include <zlib.h>
@@ -12,6 +10,7 @@
 #include <cstring>
 #include <memory>
 #include <sys/types.h>
+#include <unordered_set>
 
 namespace zip {
 namespace {
@@ -28,7 +27,7 @@ constexpr size_t CentralHeaderSize = 46;
 constexpr size_t LocalHeaderSize = 30;
 constexpr uint64_t MaxCentralDirectorySize = 16 * 1024 * 1024;
 constexpr size_t MaxEntries = 100000;
-constexpr size_t ChunkSize = 64 * 1024;
+constexpr size_t ChunkSize = 256 * 1024;
 
 constexpr uint16_t FlagEncrypted = 1u << 0;
 constexpr uint16_t MethodStored = 0;
@@ -193,40 +192,96 @@ void applyZip64(Entry &entry, const unsigned char *extra, size_t length,
     }
 }
 
-std::string parentOf(const std::string &path)
-{
-    const size_t slash = path.find_last_of('/');
-    return slash == std::string::npos ? "" : path.substr(0, slash + 1);
-}
-
-std::string writeError(const std::string &path)
-{
-    if (errno == ENOSPC) {
-        return "The SD card is full.";
+// Reads the archive front to back through one buffer. Entries are taken in
+// the order they are stored, so a small file's header and data usually come
+// out of a read that has already been done.
+class Reader {
+public:
+    explicit Reader(FILE *file)
+        : file_(file), buffer_(new unsigned char[ChunkSize])
+    {
     }
-    return "Could not write " + path + " (" + std::strerror(errno) + ").";
-}
 
-// Streams one entry's data into output, checking size and CRC.
-bool copyEntry(FILE *archive, const Entry &entry, FILE *output,
-               uint64_t &done, uint64_t total, Observer &observer,
-               bool &cancelled, std::string &error)
+    void seek(uint64_t offset)
+    {
+        if (offset >= base_ && offset <= base_ + filled_) {
+            cursor_ = static_cast<size_t>(offset - base_);
+            return;
+        }
+        base_ = offset;
+        filled_ = cursor_ = 0;
+    }
+
+    // Points data at up to max of the bytes that come next. Returns how
+    // many, or 0 at the end of the file or on an error.
+    size_t take(const unsigned char *&data, size_t max)
+    {
+        if (cursor_ == filled_ && !refill()) {
+            return 0;
+        }
+        const size_t count = std::min(max, filled_ - cursor_);
+        data = buffer_.get() + cursor_;
+        cursor_ += count;
+        return count;
+    }
+
+    bool read(unsigned char *out, size_t size)
+    {
+        while (size > 0) {
+            const unsigned char *data = nullptr;
+            const size_t count = take(data, size);
+            if (count == 0) {
+                return false;
+            }
+            std::memcpy(out, data, count);
+            out += count;
+            size -= count;
+        }
+        return true;
+    }
+
+    uint64_t position() const { return base_ + cursor_; }
+
+private:
+    bool refill()
+    {
+        base_ += filled_;
+        filled_ = cursor_ = 0;
+        if (filePosition_ != base_) {
+            if (!zip::seek(file_, base_)) {
+                return false;
+            }
+            filePosition_ = base_;
+        }
+        filled_ = std::fread(buffer_.get(), 1, ChunkSize, file_);
+        filePosition_ += filled_;
+        return filled_ > 0;
+    }
+
+    FILE *file_;
+    std::unique_ptr<unsigned char[]> buffer_;
+    uint64_t base_ = 0;    // where the buffer starts in the file
+    size_t filled_ = 0;
+    size_t cursor_ = 0;
+    uint64_t filePosition_ = UINT64_MAX;
+};
+
+// Streams one entry's data into writer, checking size and CRC.
+bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
+               unsigned char *inflated, archives::Progress &progress,
+               archives::Observer &observer, bool &cancelled,
+               std::string &error)
 {
     unsigned char header[LocalHeaderSize];
-    if (!readAt(archive, entry.localHeaderOffset, header, sizeof(header)) ||
+    reader.seek(entry.localHeaderOffset);
+    if (!reader.read(header, sizeof(header)) ||
         read32(header) != LocalHeaderSignature) {
-        error = entry.name + " is damaged (bad local header).";
+        error = entry.path + " is damaged (bad local header).";
         return false;
     }
-    const uint64_t dataOffset = entry.localHeaderOffset + LocalHeaderSize +
-                                read16(header + 26) + read16(header + 28);
-    if (!seek(archive, dataOffset)) {
-        error = entry.name + " is damaged (bad data offset).";
-        return false;
-    }
+    reader.seek(entry.localHeaderOffset + LocalHeaderSize + read16(header + 26) +
+                read16(header + 28));
 
-    std::vector<unsigned char> input(ChunkSize);
-    std::vector<unsigned char> buffer(ChunkSize);
     uint64_t remainingInput = entry.compressedSize;
     uint64_t produced = 0;
     uLong crc = crc32(0L, Z_NULL, 0);
@@ -234,16 +289,17 @@ bool copyEntry(FILE *archive, const Entry &entry, FILE *output,
     const auto emit = [&](const unsigned char *data, size_t size) {
         produced += size;
         if (produced > entry.size) {
-            error = entry.name + " is larger than the archive says.";
+            error = entry.path + " is larger than the archive says.";
             return false;
         }
         crc = crc32(crc, data, static_cast<uInt>(size));
-        if (std::fwrite(data, 1, size, output) != size) {
-            error = writeError(entry.path);
+        if (!writer.write(data, size)) {
+            error = writer.error();
             return false;
         }
-        done += size;
-        observer.onProgress(done, total, entry.path);
+        progress.bytes += size;
+        progress.archiveBytes = reader.position();
+        observer.onProgress(progress);
         if (observer.cancelRequested()) {
             cancelled = true;
             return false;
@@ -253,61 +309,62 @@ bool copyEntry(FILE *archive, const Entry &entry, FILE *output,
 
     if (entry.method == MethodStored) {
         if (entry.compressedSize != entry.size) {
-            error = entry.name + " is damaged (size mismatch).";
+            error = entry.path + " is damaged (size mismatch).";
             return false;
         }
         while (remainingInput > 0) {
-            const size_t want = static_cast<size_t>(
-                std::min<uint64_t>(remainingInput, input.size()));
-            if (std::fread(input.data(), 1, want, archive) != want) {
-                error = entry.name + " is truncated.";
+            const unsigned char *data = nullptr;
+            const size_t count = reader.take(
+                data, static_cast<size_t>(
+                          std::min<uint64_t>(remainingInput, ChunkSize)));
+            if (count == 0) {
+                error = entry.path + " is truncated.";
                 return false;
             }
-            remainingInput -= want;
-            if (!emit(input.data(), want)) {
+            remainingInput -= count;
+            if (!emit(data, count)) {
                 return false;
             }
         }
     } else {
         z_stream stream {};
         if (inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
-            error = "Not enough memory to decompress " + entry.name + ".";
+            error = "Not enough memory to decompress " + entry.path + ".";
             return false;
         }
         bool finished = false;
         bool ok = true;
         while (ok && !finished) {
             if (stream.avail_in == 0) {
-                if (remainingInput == 0) {
-                    error = entry.name + " is truncated.";
+                const unsigned char *data = nullptr;
+                const size_t count =
+                    remainingInput == 0
+                        ? 0
+                        : reader.take(data, static_cast<size_t>(std::min<uint64_t>(
+                                                remainingInput, ChunkSize)));
+                if (count == 0) {
+                    error = entry.path + " is truncated.";
                     ok = false;
                     break;
                 }
-                const size_t want = static_cast<size_t>(
-                    std::min<uint64_t>(remainingInput, input.size()));
-                if (std::fread(input.data(), 1, want, archive) != want) {
-                    error = entry.name + " is truncated.";
-                    ok = false;
-                    break;
-                }
-                remainingInput -= want;
-                stream.next_in = input.data();
-                stream.avail_in = static_cast<uInt>(want);
+                remainingInput -= count;
+                stream.next_in = const_cast<unsigned char *>(data);
+                stream.avail_in = static_cast<uInt>(count);
             }
 
-            stream.next_out = buffer.data();
-            stream.avail_out = static_cast<uInt>(buffer.size());
+            stream.next_out = inflated;
+            stream.avail_out = static_cast<uInt>(ChunkSize);
             const int status = inflate(&stream, Z_NO_FLUSH);
             if (status != Z_OK && status != Z_STREAM_END &&
                 status != Z_BUF_ERROR) {
-                error = entry.name + " is damaged (" +
+                error = entry.path + " is damaged (" +
                         (stream.msg != nullptr ? stream.msg : "inflate error") +
                         ").";
                 ok = false;
                 break;
             }
-            const size_t size = buffer.size() - stream.avail_out;
-            if (size > 0 && !emit(buffer.data(), size)) {
+            const size_t size = ChunkSize - stream.avail_out;
+            if (size > 0 && !emit(inflated, size)) {
                 ok = false;
                 break;
             }
@@ -320,11 +377,11 @@ bool copyEntry(FILE *archive, const Entry &entry, FILE *output,
     }
 
     if (produced != entry.size) {
-        error = entry.name + " is smaller than the archive says.";
+        error = entry.path + " is smaller than the archive says.";
         return false;
     }
     if (static_cast<uint32_t>(crc) != entry.crc) {
-        error = entry.name + " is damaged (checksum mismatch).";
+        error = entry.path + " is damaged (checksum mismatch).";
         return false;
     }
     return true;
@@ -392,7 +449,7 @@ bool readArchive(const std::string &zipPath, Archive &archive,
         entry.name = text::sanitizeUtf8(raw);
         entry.directory = !raw.empty() &&
                           (raw.back() == '/' || raw.back() == '\\');
-        entry.path = safeRelativePath(entry.name);
+        entry.path = archives::safeRelativePath(entry.name);
 
         if (!entry.directory) {
             archive.totalSize += entry.size;
@@ -404,149 +461,115 @@ bool readArchive(const std::string &zipPath, Archive &archive,
     return true;
 }
 
-std::string safeRelativePath(const std::string &name)
+bool encrypted(const Entry &entry)
 {
-    std::string normalised = name;
-    for (char &character : normalised) {
-        if (character == '\\') {
-            character = '/';
-        }
-    }
-    if (normalised.empty() || normalised[0] == '/') {
-        return "";
-    }
-
-    std::string output;
-    size_t start = 0;
-    bool first = true;
-    while (start <= normalised.size()) {
-        const size_t slash = normalised.find('/', start);
-        const size_t end = slash == std::string::npos ? normalised.size()
-                                                      : slash;
-        const std::string component = normalised.substr(start, end - start);
-
-        if (component == "..") {
-            return "";
-        }
-        if (first && component.find(':') != std::string::npos) {
-            return "";
-        }
-        if (!component.empty() && component != ".") {
-            if (!output.empty()) {
-                output += '/';
-            }
-            output += naming::safeFilename(component);
-            first = false;
-        }
-
-        if (slash == std::string::npos) {
-            break;
-        }
-        start = slash + 1;
-    }
-    return output;
+    return (entry.flags & FlagEncrypted) != 0;
 }
 
-std::vector<std::string> existingFiles(const Archive &archive,
-                                       const std::string &folder)
+bool readable(const Entry &entry)
 {
-    std::vector<std::string> existing;
-    for (const Entry &entry : archive.entries) {
-        if (!entry.directory && !entry.path.empty() &&
-            fs::fileExists(folder + entry.path)) {
-            existing.push_back(entry.path);
-        }
-    }
-    return existing;
+    return !encrypted(entry) &&
+           (entry.method == MethodStored || entry.method == MethodDeflated);
 }
 
-Result extract(const std::string &zipPath, const Archive &archive,
-               const std::string &folder, Existing existing,
-               Observer &observer)
+archives::Result extract(const std::string &zipPath, const Archive &archive,
+                        const std::string &folder,
+                        const archives::Options &options,
+                        archives::Observer &observer)
 {
-    Result result;
+    archives::Result result;
     File file(std::fopen(zipPath.c_str(), "rb"));
     if (!file) {
         result.message = "Could not open the archive.";
         return result;
     }
-    if (!fs::makeDirectories(folder)) {
-        result.message = "Could not create " + folder + ".";
+    // Reader keeps its own buffer, so stdio's would only copy twice.
+    std::setvbuf(file.get(), nullptr, _IONBF, 0);
+
+    archives::Writer writer(folder, options.existing);
+    if (!writer.makeRoot()) {
+        result.message = writer.error();
         return result;
     }
+    const std::unordered_set<std::string> only(options.only.begin(),
+                                               options.only.end());
 
-    uint64_t done = 0;
+    std::vector<const Entry *> order;
+    order.reserve(archive.entries.size());
     for (const Entry &entry : archive.entries) {
+        order.push_back(&entry);
+    }
+    std::stable_sort(order.begin(), order.end(),
+                     [](const Entry *a, const Entry *b) {
+                         return a->localHeaderOffset < b->localHeaderOffset;
+                     });
+
+    Reader reader(file.get());
+    std::unique_ptr<unsigned char[]> inflated(new unsigned char[ChunkSize]);
+    archives::Progress progress;
+    for (const Entry *entry : order) {
         if (observer.cancelRequested()) {
             result.cancelled = true;
             result.message = "Extraction cancelled.";
             return result;
         }
-        if (entry.path.empty()) {
-            if (!entry.directory) {
+        if (archives::macMetadata(entry->path)) {
+            continue;
+        }
+        if (entry->path.empty()) {
+            if (!entry->directory) {
                 ++result.skippedUnsafe;
             }
             continue;
         }
-        if (entry.directory) {
-            if (!fs::makeDirectories(folder + entry.path + "/")) {
-                result.message = "Could not create the folder " + entry.path +
-                                 ".";
+        if (!only.empty() && only.count(entry->path) == 0) {
+            continue;
+        }
+        if (entry->directory) {
+            if (!writer.makeFolder(entry->path)) {
+                result.message = writer.error();
                 return result;
             }
             continue;
         }
-        if ((entry.flags & FlagEncrypted) != 0 ||
-            (entry.method != MethodStored && entry.method != MethodDeflated)) {
+        progress.current = entry->path;
+        if (!readable(*entry)) {
             ++result.skippedUnsupported;
-            done += entry.size;
+            progress.bytes += entry->size;
+            ++progress.files;
             continue;
         }
 
-        const std::string target = folder + entry.path;
-        if (fs::fileExists(target) && existing == Existing::Skip) {
-            ++result.skippedExisting;
-            done += entry.size;
-            observer.onProgress(done, archive.totalSize, entry.path);
+        const archives::Writer::Start start =
+            writer.start(entry->path, static_cast<int64_t>(std::min<uint64_t>(
+                                          entry->size, INT64_MAX)));
+        if (start == archives::Writer::Start::Failed) {
+            result.message = writer.error();
+            return result;
+        }
+        if (start == archives::Writer::Start::Skip) {
+            result.skippedExisting.push_back(entry->path);
+            progress.bytes += entry->size;
+            ++progress.files;
+            observer.onProgress(progress);
             continue;
-        }
-        if (!fs::makeDirectories(folder + parentOf(entry.path))) {
-            result.message = "Could not create the folder for " + entry.path +
-                             ".";
-            return result;
-        }
-
-        const std::string temporary = target + ".3dsdl-tmp";
-        File output(std::fopen(temporary.c_str(), "wb"));
-        if (!output) {
-            result.message = writeError(entry.path);
-            return result;
         }
 
         bool cancelled = false;
         std::string error;
-        const bool copied = copyEntry(file.get(), entry, output.get(), done,
-                                      archive.totalSize, observer, cancelled,
-                                      error);
-        const bool closed = std::fclose(output.release()) == 0;
-        if (!copied || !closed) {
-            fs::removeFile(temporary);
+        if (!copyEntry(reader, *entry, writer, inflated.get(), progress,
+                       observer, cancelled, error) ||
+            !writer.finish()) {
+            writer.abandon();
             result.cancelled = cancelled;
-            result.message = cancelled ? "Extraction cancelled."
-                           : !copied   ? error
-                                       : writeError(entry.path);
-            return result;
-        }
-
-        if (fs::fileExists(target)) {
-            fs::removeFile(target);
-        }
-        if (!fs::renameFile(temporary, target)) {
-            fs::removeFile(temporary);
-            result.message = "Could not save " + entry.path + ".";
+            result.message = cancelled        ? "Extraction cancelled."
+                             : !error.empty() ? error
+                                              : writer.error();
             return result;
         }
         ++result.extracted;
+        ++progress.files;
+        observer.onProgress(progress);
     }
 
     result.ok = true;

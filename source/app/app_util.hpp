@@ -1,5 +1,6 @@
 #pragma once
 
+#include "archives.hpp"
 #include "cia.hpp"
 #include "fs_util.hpp"
 #include "ui.hpp"
@@ -24,6 +25,11 @@ namespace screens {
 
 std::string basename(const std::string &path);
 std::string plural(uint64_t count, const std::string &word);
+// Reads what an archive holds behind a busy screen that can stop it.
+// Returns false when it cannot be read, with error empty when it was
+// stopped.
+bool readArchive(const std::string &path, archives::Scan scan,
+                 archives::Listing &listing, std::string &error);
 // How Files orders a folder, in words: "Name, A to Z", "Oldest First".
 std::string sortDescription(fs::SortOrder order, bool reverse);
 

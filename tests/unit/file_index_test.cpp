@@ -182,6 +182,14 @@ TEST("fileindex: dates count only while the file keeps its size")
     CHECK(!index.date("sdmc:/music/art", -1, modified));
     CHECK(index.date("sdmc:/music/song.mp3", 400, modified));
 
+    // Written over: dates inside go too, beside folders do not.
+    index.storeDate("sdmc:/music/art/cover.png", 9, 1500000000);
+    index.storeDate("sdmc:/music b/x.mp3", 5, 1500000000);
+    index.rewritten("sdmc:/music/");
+    CHECK(!index.date("sdmc:/music/song.mp3", 400, modified));
+    CHECK(!index.date("sdmc:/music/art/cover.png", 9, modified));
+    CHECK(index.date("sdmc:/music b/x.mp3", 5, modified));
+
     // Past the limit, the folder unused longest goes.
     fileindex::Index small(100, 100, 2);
     small.storeDate("sdmc:/a/1", 1, 5);

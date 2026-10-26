@@ -1,5 +1,6 @@
 #include "scanner.hpp"
 
+#include "crash.hpp"
 #include "image.hpp"
 #include "text.hpp"
 #include "ui.hpp"
@@ -73,6 +74,7 @@ public:
 private:
     static void threadMain(void *argument)
     {
+        crash::ThreadName name("camera");
         static_cast<Camera *>(argument)->run();
     }
     void run();

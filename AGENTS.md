@@ -5,7 +5,7 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 ## Build and test
 
 - `scripts/build.sh` builds the .3dsx and CIA in Docker (pinned devkitARM image) into `dist/`. `THREEDSDL_BUILD_JOBS=6` speeds it up. It cleans first, so never run two builds at once.
-- `make -C tests check` runs the host tests (portable code in `source/core` and `source/net`). Keep new logic there, with tests, when it does not need the console.
+- `make -C tests check` runs the host tests (portable code in `source/core` and `source/net`). Keep new logic there, with tests, when it does not need the console. TMPDIR must ignore case, as FAT does: macOS's does, and on Linux CI mounts an ext4 casefold folder.
 - `VERSION` holds the version; releases are a tag push, and CI publishes them.
 
 ## Layout
@@ -26,12 +26,26 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - Never call `C2D_DrawImageAt` in screens (use `ui::drawImage`) and never query AM every frame.
 - Files keeps folder listings, folder totals and file dates in `fileIndex_` (`source/core/file_index`), saved to `sdmc:/3ds/3dsDL/index.bin` between runs. What loads is a first answer only: totals come back unverified and are added up again, listings are read again, and a date counts only while its file keeps its size. Bump `Version` in `file_index.cpp` when the saved form changes. Code in 3dsDL that writes, moves or removes something on the SD card calls `App::sdChanged(path)` afterwards. Writers outside Files are caught by `checkSdIndex` (free space moved), but a rename or same-size write is only caught by `sdChanged`.
 
-## Crash reports
+## Archives
 
-- A crash writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`), then the system's error screen shows as before. Report Issue names the file while it exists.
+- `source/core/archives` reads and extracts: ZIP through 3dsDL's own reader (`zip.cpp`, stored and deflated, in stored order), everything else (7z, RAR, tar and compressed tars, ZIPs packed with bzip2, LZMA, XZ or Zstandard) through libarchive. Both write through `archives::Writer`.
+- On FAT every lookup reads through the whole folder, so per-file calls are what makes thousands of files slow. Writer looks up nothing for a small new file: existing names come from one listing per folder (`FolderNames`), each folder is made once, and the file is just open, a size check on the open file, write and close. Only large files and files being replaced are looked up. Keep it that way.
+
+## Testing in Azahar
+
+- Azahar only takes taps while it has focus. A build with `THREEDSDL_EXTRA_DEFINES=-DTHREEDSDL_SCRIPTED_INPUT` also reads lines appended to `sdmc:/3ds/3dsDL/input.txt` (`tap X Y` in bottom-screen pixels, or `key A`, `key DOWN` and so on), so it can be driven in the background while screenshots come from the window.
+- Azahar runs file Read, Write, SetSize and Close asynchronously, about a frame each, so time there follows the number of calls, not the bytes.
+
+## Logs and crash reports
+
+- `sdmc:/3ds/3dsDL/log.txt` (`source/app/logging`; line format and tests in `source/core/event_log`) records each session: console, memory, screens by name, error dialogs, and every download, install, extraction, file job, busy task, Titles read and update check with its numbers. It moves to `log.old.txt` at 256 KB. Report Issue shows the folder, and the bug form asks for it.
+- Log a job once when it ends (`area.done`, `.stopped`, `.failed`), never per file or per frame. Fields are facts: counts, bytes, `ms`, result codes. Log hosts and file names, never whole URLs. `logging::trace` keeps a step in memory only, for crash.txt; use it for steps that matter when something breaks, like each title Titles reads.
+- A crash on any thread writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`) with the thread's name and the last 20 log lines, adds a line to log.txt, then the system's error screen shows as before. The kernel sends a worker's exception to the main thread's handler; `abort()` is wrapped at link time. Name a new thread with `tasks::startWorker`'s name, or a `crash::ThreadName` first in its entry function.
 - Releases carry `3dsDL.elf`, and `scripts/build.sh` leaves it in `dist/`. `python3 -I scripts/crash.py crash.txt` names the functions and lines; a Luma3DS dump works too, with `--version`.
+- A test build with `-DTHREEDSDL_FAULTS` aborts the Titles read when `sdmc:/3ds/3dsDL/faults.txt` has a `titles-abort` line.
 
 ## Hardware pitfalls
 
 - Using a new libctru service or hardware block needs `resources/3dsDL.rsf` updated in the same change. Azahar does not enforce the RSF, so a missing entry only crashes the CIA on a console.
 - Azahar has no real system font, so text widths there are not the console's.
+- All of the process's socket calls share one network service session, served one request at a time, so a thread waiting inside the service stalls every other thread. The console links `poll()` through `net::pollInSteps` (`-Wl,--wrap=poll`), so it never waits there; keep sockets non-blocking and wait with `poll()`, never in a blocking `recv`, `accept` or `connect`.

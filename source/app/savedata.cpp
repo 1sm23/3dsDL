@@ -50,10 +50,12 @@ std::string fromUtf16(const uint16_t *units)
     while (length < 0x106 && units[length] != 0) {
         ++length;
     }
-    std::string out(length * 3 + 1, '\0');
+    // The last argument is the room for the UTF-8, up to three bytes a unit.
+    std::string out(length * 3, '\0');
     const ssize_t bytes = utf16_to_utf8(reinterpret_cast<uint8_t *>(&out[0]),
-                                        units, length);
-    out.resize(bytes > 0 ? static_cast<size_t>(bytes) : 0);
+                                        units, out.size());
+    out.resize(bytes > 0 ? std::min(static_cast<size_t>(bytes), out.size())
+                         : 0);
     return out;
 }
 

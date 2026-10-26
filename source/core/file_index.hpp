@@ -65,6 +65,9 @@ public:
     // listing, total and date, everything listed or added up inside it, its
     // folder's listing and the totals of every folder above are dropped.
     void changed(const std::string &path);
+    // The same for a folder whose files may have been written over at the
+    // same size, so the dates of everything inside it go too.
+    void rewritten(const std::string &folder);
     // Anything may have changed, such as after another app ran. Listings
     // and dates stay, as they are checked whenever they are used.
     void forgetTotals();

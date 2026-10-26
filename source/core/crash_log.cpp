@@ -139,11 +139,18 @@ size_t format(const Record &record, char *out, size_t size)
         size_t used = 0;
         for (size_t index = start; index < record.stackCount && index < start + 8;
              ++index) {
-            used += static_cast<size_t>(std::snprintf(
+            const int written = std::snprintf(
                 words + used, sizeof(words) - used, used == 0 ? "%08lX" : " %08lX",
-                static_cast<unsigned long>(record.stack[index])));
+                static_cast<unsigned long>(record.stack[index]));
+            if (written < 0 || static_cast<size_t>(written) >= sizeof(words) - used) {
+                break;
+            }
+            used += static_cast<size_t>(written);
         }
         writer.line("stack: %s", words);
+    }
+    for (size_t index = 0; index < record.logCount; ++index) {
+        writer.line("log: %s", record.log[index]);
     }
     return writer.used();
 }

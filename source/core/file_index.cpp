@@ -307,6 +307,24 @@ void Index::changed(const std::string &path)
     dirty_ = true;
 }
 
+void Index::rewritten(const std::string &folder)
+{
+    changed(folder);
+    const std::string key = keyOf(folder);
+    const auto own = dates_.find(key);
+    if (own != dates_.end()) {
+        dated_ -= own->second.entries.size();
+        dates_.erase(own);
+    }
+    const std::string prefix = key.back() == '/' ? key : key + "/";
+    for (auto at = dates_.lower_bound(prefix);
+         at != dates_.end() &&
+         at->first.compare(0, prefix.size(), prefix) == 0;) {
+        dated_ -= at->second.entries.size();
+        at = dates_.erase(at);
+    }
+}
+
 void Index::forgetTotals()
 {
     if (!totals_.empty()) {

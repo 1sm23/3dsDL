@@ -2,6 +2,7 @@
 
 #include "crash.hpp"
 #include "image.hpp"
+#include "logging.hpp"
 #include "platform.hpp"
 #include "sound.hpp"
 #include "text.hpp"
@@ -11,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <ctime>
 
@@ -105,6 +107,8 @@ bool touchLocked = false;
 uint64_t fadeStart = 0;
 bool fading = false;
 std::string lastScreen;
+// The screen just entered, logged by name once its title is drawn.
+std::string screenToLog;
 // That last frame, kept as RGB8 so gradients do not band as it fades. The
 // first screen has none and fades in from the plain background.
 C3D_Tex fromTextures[2];
@@ -1071,12 +1075,122 @@ void enterScreen(const std::string &id)
     if (id != lastScreen) {
         lastScreen = id;
         crash::noteScreen(id);
+        if (!screenToLog.empty()) { // drew no title
+            logging::info("screen", {{"id", screenToLog}});
+        }
+        screenToLog = id;
         fromCapture = frameShown && captureFrom(0, GFX_TOP, 400) &&
                       captureFrom(1, GFX_BOTTOM, 320);
         fadeStart = now();
         fading = true;
     }
 }
+
+#ifdef THREEDSDL_SCRIPTED_INPUT
+// Test builds only (make EXTRA_DEFINES=-DTHREEDSDL_SCRIPTED_INPUT): taps and
+// buttons come from lines appended to sdmc:/3ds/3dsDL/input.txt, so Azahar
+// can be driven without having focus. A line is "tap X Y" in bottom screen
+// pixels or "key NAME" (A, B, X, Y, L, R, START, SELECT, UP, DOWN, LEFT,
+// RIGHT). Each is held for a few frames, then released.
+namespace scripted {
+
+struct Step {
+    u32 key = 0; // KEY_TOUCH for a tap
+    u16 x = 0;
+    u16 y = 0;
+};
+
+std::vector<Step> steps;
+size_t next = 0;
+long offset = 0;
+uint64_t lastRead = 0;
+int frame = -1; // of the current step, -1 when idle
+Step current;
+
+u32 keyNamed(const std::string &name)
+{
+    static const std::pair<const char *, u32> Keys[] = {
+        {"A", KEY_A},         {"B", KEY_B},          {"X", KEY_X},
+        {"Y", KEY_Y},         {"L", KEY_L},          {"R", KEY_R},
+        {"START", KEY_START}, {"SELECT", KEY_SELECT}, {"UP", KEY_DUP},
+        {"DOWN", KEY_DDOWN},  {"LEFT", KEY_DLEFT},   {"RIGHT", KEY_DRIGHT}};
+    for (const auto &key : Keys) {
+        if (name == key.first) {
+            return key.second;
+        }
+    }
+    return 0;
+}
+
+void readNew()
+{
+    FILE *file = std::fopen("sdmc:/3ds/3dsDL/input.txt", "rb");
+    if (file == nullptr) {
+        return;
+    }
+    std::fseek(file, 0, SEEK_END);
+    if (std::ftell(file) < offset) {
+        offset = 0; // the file was started again
+    }
+    std::fseek(file, offset, SEEK_SET);
+    char line[64];
+    while (std::fgets(line, sizeof(line), file) != nullptr) {
+        char word[16] = {};
+        char name[16] = {};
+        unsigned x = 0;
+        unsigned y = 0;
+        Step step;
+        if (std::sscanf(line, "%15s %u %u", word, &x, &y) == 3 &&
+            std::strcmp(word, "tap") == 0) {
+            step.key = KEY_TOUCH;
+            step.x = static_cast<u16>(x);
+            step.y = static_cast<u16>(y);
+        } else if (std::sscanf(line, "%15s %15s", word, name) == 2 &&
+                   std::strcmp(word, "key") == 0) {
+            step.key = keyNamed(name);
+        }
+        if (step.key != 0) {
+            steps.push_back(step);
+        }
+    }
+    offset = std::ftell(file);
+    std::fclose(file);
+}
+
+void apply(Input &input, touchPosition &last)
+{
+    if (frame < 0) {
+        if (now() - lastRead >= 250) {
+            lastRead = now();
+            readNew();
+        }
+        if (next >= steps.size()) {
+            return;
+        }
+        current = steps[next++];
+        frame = 0;
+    }
+    // Held for frames 0-3, released on 4, then a pause before the next.
+    if (frame < 4) {
+        input.held |= current.key;
+        if (frame == 0) {
+            input.down |= current.key;
+            input.repeat |= current.key;
+        }
+        if (current.key == KEY_TOUCH) {
+            last.px = current.x;
+            last.py = current.y;
+        }
+    } else if (frame == 4) {
+        input.up |= current.key;
+    }
+    if (++frame > 10) {
+        frame = -1;
+    }
+}
+
+} // namespace scripted
+#endif
 
 Input readInput()
 {
@@ -1090,6 +1204,9 @@ Input readInput()
     if (input.held & KEY_TOUCH) {
         hidTouchRead(&last);
     }
+#ifdef THREEDSDL_SCRIPTED_INPUT
+    scripted::apply(input, last);
+#endif
     input.touch = last;
     if (touchLocked && !(input.held & KEY_TOUCH) &&
         now() - touchLockStart >= ScreenIn) {
@@ -1721,9 +1838,18 @@ void drawStatusBar()
     }
 }
 
+void nameScreen(const std::string &name)
+{
+    if (!screenToLog.empty()) {
+        logging::info("screen", {{"name", name}});
+        screenToLog.clear();
+    }
+}
+
 void drawTopChrome(const std::string &title, Icon icon, u32 iconColor,
                    const std::string &order)
 {
+    nameScreen(title);
     drawTopBackground();
     drawStatusBar();
     const float textW = textWidth(title, type::Title);
@@ -2047,11 +2173,12 @@ float drawTagRow(float x, float y, float tagWidth, const std::string &tag,
     return y + 26;
 }
 
-float drawFacts(const std::vector<Fact> &facts, const Rect &area)
+float drawFacts(const std::vector<Fact> &facts, const Rect &area,
+                float minTagWidth)
 {
     constexpr float Row = 20;
     constexpr float Pitch = 26;
-    float tagWidth = 76;
+    float tagWidth = minTagWidth;
     for (const Fact &fact : facts) {
         tagWidth = std::max(tagWidth, textWidth(fact.tag, 0.4f) + 16);
     }
@@ -2357,6 +2484,10 @@ int choose(const Dialog &dialog)
     int result = -1;
     if (dialog.tone == Tone::Error) {
         sound::play(sound::Effect::Error);
+        logging::error("error",
+                       {{"header", dialog.header},
+                        {"title", dialog.title},
+                        {"text", dialog.body.empty() ? "" : dialog.body[0].text}});
     }
 
     const auto hit = [&](const touchPosition &touch) {

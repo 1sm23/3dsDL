@@ -32,9 +32,14 @@ CFLAGS    += $(EXTRA_DEFINES)
 CXXFLAGS  := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS   := -g $(ARCH)
 LDFLAGS   := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+# Every poll(), libcurl's included, goes through net::pollInSteps so no
+# thread waits inside the network service (source/net/socket_wait.hpp), and
+# every abort() writes crash.txt first (source/app/crash.cpp).
+LDFLAGS   += -Wl,--wrap=poll -Wl,--wrap=abort
 
 LIBS      := -lcitro2d -lcitro3d -lcurl -lmbedtls -lmbedx509 \
-             -lmbedcrypto -lturbojpeg -lz -lctru -lm
+             -lmbedcrypto -lturbojpeg -larchive -lzstd -llz4 -llzma -lbz2 \
+             -lz -lctru -lm
 LIBDIRS   := $(CTRULIB) $(PORTLIBS)
 
 #---------------------------------------------------------------------------------

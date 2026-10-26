@@ -3,6 +3,7 @@
 #include "cia.hpp"
 #include "installer.hpp"
 #include "fs_util.hpp"
+#include "logging.hpp"
 #include "smdh.hpp"
 #include "tasks.hpp"
 #include "text.hpp"
@@ -11,6 +12,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <functional>
@@ -299,6 +301,7 @@ void readTitles(FS_MediaType media, const std::vector<u64> &ids,
     for (size_t index = 0; index < shown.size() && !stop.load(); ++index) {
         titles::Title title;
         title.id = shown[index];
+        logging::trace("titles.title", {{"id", cia::titleIdText(title.id)}});
         title.place = media == MEDIATYPE_NAND ? titles::Place::SystemMemory
                       : media == MEDIATYPE_GAME_CARD ? titles::Place::GameCard
                                                      : titles::Place::SdCard;
@@ -358,6 +361,7 @@ void loadExtData(Snapshot &out)
         }
         ExtData extData;
         extData.id = ids[index];
+        logging::trace("titles.extdata", {{"id", cia::titleIdText(extData.id)}});
         u32 read = 0;
         smdh::Info info;
         if (R_SUCCEEDED(FSUSER_ReadExtSaveDataIcon(&read, extDataInfo(extData.id),
@@ -417,7 +421,7 @@ void Loader::start()
     done_ = 0;
     total_ = 0;
     running_ = true;
-    thread_ = tasks::startWorker(run, this);
+    thread_ = tasks::startWorker(run, this, "titles");
     if (thread_ == nullptr) {
         run(this); // no thread to be had: read it all now
     }
@@ -481,12 +485,18 @@ void Loader::run(void *argument)
 
 void Loader::work()
 {
+    const uint64_t started = osGetTime();
     const auto fail = [&](const std::string &error) {
+        logging::warn("titles.failed", {{"message", error}});
         LightLock_Lock(&lock_);
         failed_ = true;
         error_ = error;
         LightLock_Unlock(&lock_);
     };
+    const auto step = [](const char *name) {
+        logging::trace("titles.step", {{"step", name}});
+    };
+    step("lists");
     if (!installer::available()) {
         fail(installer::unavailableReason());
         return;
@@ -509,6 +519,10 @@ void Loader::work()
     std::string noCard;
     titleIds(MEDIATYPE_GAME_CARD, card, noCard);
     total_ = sd.size() + nand.size() + card.size();
+    logging::trace("titles.step", {{"step", "titles"},
+                                   {"sd", sd.size()},
+                                   {"nand", nand.size()},
+                                   {"card", card.size()}});
     LightLock_Lock(&lock_);
     room_ = total_;
     LightLock_Unlock(&lock_);
@@ -522,15 +536,36 @@ void Loader::work()
     readTitles(MEDIATYPE_NAND, nand, stop_, done_, emit);
     readTitles(MEDIATYPE_GAME_CARD, card, stop_, done_, emit);
     if (stop_) {
+        step("stopped");
         return;
     }
-    if (!loadTickets(rest, error) || !titlesOnSdCard(rest.onSdCard, error)) {
+    step("tickets");
+    if (!loadTickets(rest, error)) {
         fail(error);
         return;
     }
+    step("sd folders");
+    if (!titlesOnSdCard(rest.onSdCard, error)) {
+        fail(error);
+        return;
+    }
+    step("extra data");
+    if (fault("titles-abort")) {
+        std::abort(); // to try crash.txt from a worker
+    }
     loadExtData(rest);
+    step("unfinished installs");
     loadPending(MEDIATYPE_SD, rest);
     loadPending(MEDIATYPE_NAND, rest);
+    logging::info("titles.read", {{"sd", sd.size()},
+                                  {"nand", nand.size()},
+                                  {"card", card.size()},
+                                  {"sdListed", rest.sdListed},
+                                  {"tickets", rest.tickets.size()},
+                                  {"sdFolders", rest.onSdCard.size()},
+                                  {"extraData", rest.extData.size()},
+                                  {"pending", rest.pending.size()},
+                                  {"ms", osGetTime() - started}});
     LightLock_Lock(&lock_);
     rest_ = std::move(rest);
     restReady_ = true;

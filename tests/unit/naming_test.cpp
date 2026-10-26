@@ -126,3 +126,12 @@ TEST("naming: folders")
     CHECK_EQ(naming::parentFolder("sdmc:/"), std::string("sdmc:/"));
     CHECK_EQ(naming::parentFolder("/tmp/x/"), std::string("/tmp/"));
 }
+
+TEST("naming: an archive's folder name drops .tar too")
+{
+    CHECK_EQ(naming::archiveStem("pack.zip"), std::string("pack"));
+    CHECK_EQ(naming::archiveStem("pack.tar.gz"), std::string("pack"));
+    CHECK_EQ(naming::archiveStem("Pack.TAR.XZ"), std::string("Pack"));
+    CHECK_EQ(naming::archiveStem("pack.tgz"), std::string("pack"));
+    CHECK_EQ(naming::archiveStem("v1.2.7z"), std::string("v1.2"));
+}
