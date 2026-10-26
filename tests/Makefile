@@ -59,7 +59,7 @@ integration: $(BUILD)/integration_tests
 scripts:
 	./version_test.sh
 
-# quirc is vendored unmodified, so its upstream warnings are not ours to fix.
+# quirc is vendored, so its upstream warnings are not ours to fix.
 # quirc_resize() calls memcpy(dst, NULL, 0) on first use, which UBSan's
 # nonnull check reports; that one check is relaxed for quirc only.
 $(BUILD)/quirc/%.o: $(QUIRC)/%.c $(HEADERS)
