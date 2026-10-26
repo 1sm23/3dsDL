@@ -108,7 +108,14 @@ TEST("records: settings round trip and defaults")
     CHECK_EQ(defaults.checkForUpdates, true);
     CHECK_EQ(defaults.sounds, true);
     CHECK_EQ(defaults.language, std::string("en"));
-    CHECK_EQ(parseSettings("language=fr\n").language, std::string("en"));
+    for (const char *language : {"en", "zh", "es", "fr", "pt", "de",
+                                 "ja"}) {
+        Settings localized;
+        localized.language = language;
+        CHECK_EQ(parseSettings(serializeSettings(localized)).language,
+                 std::string(language));
+    }
+    CHECK_EQ(parseSettings("language=fr\n").language, std::string("fr"));
     CHECK_EQ(defaults.maxConnections, MaxDownloadConnections);
 
     CHECK_EQ(defaults.timeZoneSet, false);
@@ -139,6 +146,9 @@ TEST("records: language setting defaults and round trips")
              std::string("zh"));
     CHECK_EQ(parseSettings("language=unsupported\n").language,
              std::string("en"));
+    settings.language = "ja";
+    CHECK_EQ(parseSettings(serializeSettings(settings)).language,
+             std::string("ja"));
 }
 
 TEST("records: history round trip, ordering and limit")

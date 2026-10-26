@@ -12,6 +12,11 @@ namespace {
 const std::vector<Language> Supported = {
     {"en", "English"},
     {"zh", "简体中文"},
+    {"es", "Español"},
+    {"fr", "Français"},
+    {"pt", "Português"},
+    {"de", "Deutsch"},
+    {"ja", "日本語"},
 };
 
 struct Entry {

@@ -1,278 +1,623 @@
 {
   "common.on": {
     "en": "On",
-    "zh": "开"
+    "zh": "开",
+    "es": "Activado",
+    "fr": "Activé",
+    "pt": "Ligado",
+    "de": "Ein",
+    "ja": "オン"
   },
   "common.off": {
     "en": "Off",
-    "zh": "关"
+    "zh": "关",
+    "es": "Desactivado",
+    "fr": "Désactivé",
+    "pt": "Desligado",
+    "de": "Aus",
+    "ja": "オフ"
   },
   "common.unavailable": {
     "en": "Unavailable",
-    "zh": "不可用"
+    "zh": "不可用",
+    "es": "No disponible",
+    "fr": "Indisponible",
+    "pt": "Indisponível",
+    "de": "Nicht verfügbar",
+    "ja": "利用不可"
   },
   "common.back": {
     "en": "Back",
-    "zh": "返回"
+    "zh": "返回",
+    "es": "Atrás",
+    "fr": "Retour",
+    "pt": "Voltar",
+    "de": "Zurück",
+    "ja": "戻る"
   },
   "settings.about.title": {
     "en": "About",
-    "zh": "关于"
+    "zh": "关于",
+    "es": "Acerca de",
+    "fr": "À propos",
+    "pt": "Sobre",
+    "de": "Info",
+    "ja": "このアプリについて"
   },
   "settings.updates.title": {
     "en": "Updates",
-    "zh": "更新"
+    "zh": "更新",
+    "es": "Actualizaciones",
+    "fr": "Mises à jour",
+    "pt": "Atualizações",
+    "de": "Updates",
+    "ja": "更新"
   },
   "settings.folder.title": {
     "en": "Download Folder",
-    "zh": "下载目录"
+    "zh": "下载目录",
+    "es": "Carpeta de descargas",
+    "fr": "Dossier de téléchargement",
+    "pt": "Pasta de downloads",
+    "de": "Download-Ordner",
+    "ja": "ダウンロード先"
   },
   "settings.clock.title": {
     "en": "Console Clock",
-    "zh": "主机时钟"
+    "zh": "主机时钟",
+    "es": "Reloj de la consola",
+    "fr": "Horloge de la console",
+    "pt": "Relógio da consola",
+    "de": "Konsolenuhr",
+    "ja": "本体の時計"
   },
   "settings.report_issue": {
     "en": "Report Issue",
-    "zh": "反馈问题"
+    "zh": "反馈问题",
+    "es": "Informar de un problema",
+    "fr": "Signaler un problème",
+    "pt": "Comunicar um problema",
+    "de": "Problem melden",
+    "ja": "問題を報告"
   },
   "settings.title": {
     "en": "Settings",
-    "zh": "设置"
+    "zh": "设置",
+    "es": "Configuración",
+    "fr": "Paramètres",
+    "pt": "Configurações",
+    "de": "Einstellungen",
+    "ja": "設定"
   },
   "settings.downloads.title": {
     "en": "Downloads",
-    "zh": "下载"
+    "zh": "下载",
+    "es": "Descargas",
+    "fr": "Téléchargements",
+    "pt": "Downloads",
+    "de": "Downloads",
+    "ja": "ダウンロード"
   },
   "settings.downloads.resume": {
     "en": "Resume Downloads",
-    "zh": "断点续传"
+    "zh": "断点续传",
+    "es": "Reanudar descargas",
+    "fr": "Reprendre les téléchargements",
+    "pt": "Retomar downloads",
+    "de": "Downloads fortsetzen",
+    "ja": "ダウンロードを再開"
   },
   "settings.downloads.resume.short": {
     "en": "Resume Downloads",
-    "zh": "断点续传"
+    "zh": "断点续传",
+    "es": "Reanudar descargas",
+    "fr": "Reprise des téléchargements",
+    "pt": "Retomar downloads",
+    "de": "Downloads fortsetzen",
+    "ja": "ダウンロードを再開"
   },
   "settings.downloads.awake": {
     "en": "Stay Awake",
-    "zh": "保持唤醒"
+    "zh": "保持唤醒",
+    "es": "Mantener activa la consola",
+    "fr": "Garder la console éveillée",
+    "pt": "Manter a consola ativa",
+    "de": "Konsole wach halten",
+    "ja": "スリープを防止"
   },
   "settings.downloads.awake.short": {
     "en": "Stay Awake",
-    "zh": "保持唤醒"
+    "zh": "保持唤醒",
+    "es": "Mantener activa la consola",
+    "fr": "Garder la console éveillée",
+    "pt": "Manter a consola ativa",
+    "de": "Konsole wach halten",
+    "ja": "スリープを防止"
   },
   "settings.downloads.zip": {
     "en": "Ask to Extract ZIPs",
-    "zh": "询问是否解压 ZIP"
+    "zh": "询问是否解压 ZIP",
+    "es": "Preguntar al extraer ZIP",
+    "fr": "Demander avant d’extraire les ZIP",
+    "pt": "Perguntar antes de extrair ZIP",
+    "de": "Vor dem Entpacken von ZIPs fragen",
+    "ja": "ZIPの展開前に確認"
   },
   "settings.downloads.zip.short": {
     "en": "Extract ZIP Files",
-    "zh": "解压 ZIP 文件"
+    "zh": "解压 ZIP 文件",
+    "es": "Extraer archivos ZIP",
+    "fr": "Extraire les fichiers ZIP",
+    "pt": "Extrair ficheiros ZIP",
+    "de": "ZIP-Dateien entpacken",
+    "ja": "ZIPファイルを展開"
   },
   "settings.downloads.cia": {
     "en": "After a CIA Downloads",
-    "zh": "CIA 下载完成后"
+    "zh": "CIA 下载完成后",
+    "es": "Al terminar una descarga CIA",
+    "fr": "Après le téléchargement d’un CIA",
+    "pt": "Após a transferência de um CIA",
+    "de": "Nach einem CIA-Download",
+    "ja": "CIAのダウンロード後"
   },
   "settings.downloads.cia.ask_each": {
     "en": "Ask Each Time",
-    "zh": "每次询问"
+    "zh": "每次询问",
+    "es": "Preguntar cada vez",
+    "fr": "Demander à chaque fois",
+    "pt": "Perguntar sempre",
+    "de": "Jedes Mal fragen",
+    "ja": "毎回確認"
   },
   "settings.downloads.cia.install_delete": {
     "en": "Install and Delete File",
-    "zh": "安装并删除文件"
+    "zh": "安装并删除文件",
+    "es": "Instalar y eliminar el archivo",
+    "fr": "Installer et supprimer le fichier",
+    "pt": "Instalar e eliminar o ficheiro",
+    "de": "Installieren und Datei löschen",
+    "ja": "インストールしてファイルを削除"
   },
   "settings.downloads.cia.keep": {
     "en": "Only Keep the File",
-    "zh": "仅保留文件"
+    "zh": "仅保留文件",
+    "es": "Conservar solo el archivo",
+    "fr": "Conserver uniquement le fichier",
+    "pt": "Manter apenas o ficheiro",
+    "de": "Nur die Datei behalten",
+    "ja": "ファイルを保存するだけ"
   },
   "settings.downloads.resume.help": {
     "en": "When a download is interrupted, keep what arrived and continue from there next time. 3dsDL only resumes when the server confirms the file has not changed.",
-    "zh": "下载中断时保留已接收内容，下次继续下载。只有服务器确认文件未改变时，3dsDL 才会继续传输。"
+    "zh": "下载中断时保留已接收内容，下次继续下载。只有服务器确认文件未改变时，3dsDL 才会继续传输。",
+    "es": "Si una descarga se interrumpe, conserva lo recibido y continúa desde ahí la próxima vez. 3dsDL solo reanuda la descarga si el servidor confirma que el archivo no ha cambiado.",
+    "fr": "Si un téléchargement est interrompu, les données reçues sont conservées et le téléchargement reprend ensuite. 3dsDL ne reprend que si le serveur confirme que le fichier n’a pas changé.",
+    "pt": "Se uma transferência for interrompida, os dados recebidos são guardados para continuar mais tarde. O 3dsDL só retoma se o servidor confirmar que o ficheiro não mudou.",
+    "de": "Wird ein Download unterbrochen, bleiben die bereits empfangenen Daten erhalten und der Download wird später fortgesetzt. 3dsDL setzt nur fort, wenn der Server bestätigt, dass sich die Datei nicht geändert hat.",
+    "ja": "ダウンロードが中断されても受信済みのデータを保存し、次回そこから再開します。サーバーがファイルの未変更を確認した場合のみ再開します。"
   },
   "settings.downloads.awake.help": {
     "en": "Pause Sleep Mode while a download or install runs. Closing the system would otherwise turn Wi-Fi off and stop the transfer.",
-    "zh": "下载或安装时暂停休眠模式，否则合上主机可能关闭 Wi-Fi 并中断传输。"
+    "zh": "下载或安装时暂停休眠模式，否则合上主机可能关闭 Wi-Fi 并中断传输。",
+    "es": "Evita que la consola entre en modo de espera durante una descarga o instalación. De lo contrario, al cerrar la consola se desactivaría el Wi-Fi y se interrumpiría la transferencia.",
+    "fr": "Empêche la console de se mettre en veille pendant un téléchargement ou une installation. Sinon, fermer la console couperait le Wi-Fi et interromprait le transfert.",
+    "pt": "Impede a consola de entrar em suspensão durante uma transferência ou instalação. Caso contrário, fechar a consola desligaria o Wi-Fi e interromperia a transferência.",
+    "de": "Verhindert den Ruhemodus während eines Downloads oder einer Installation. Sonst würde das Schließen der Konsole das WLAN abschalten und die Übertragung stoppen.",
+    "ja": "ダウンロードやインストール中に本体がスリープしないようにします。スリープするとWi-Fiが切れて転送が止まります。"
   },
   "settings.downloads.zip.help": {
     "en": "After a ZIP file finishes downloading, ask whether to extract it. Nothing is ever extracted without asking.",
-    "zh": "ZIP 文件下载完成后询问是否解压。未经确认不会自动解压。"
+    "zh": "ZIP 文件下载完成后询问是否解压。未经确认不会自动解压。",
+    "es": "Cuando termine de descargarse un archivo ZIP, pregunta si quieres extraerlo. Nunca se extrae nada sin confirmación.",
+    "fr": "À la fin du téléchargement d’un fichier ZIP, demande s’il faut l’extraire. Aucun fichier n’est extrait sans confirmation.",
+    "pt": "Quando um ficheiro ZIP terminar de ser transferido, pergunta se o deve extrair. Nada é extraído sem confirmação.",
+    "de": "Nach dem Download einer ZIP-Datei wird gefragt, ob sie entpackt werden soll. Ohne Bestätigung wird nichts entpackt.",
+    "ja": "ZIPファイルのダウンロード後に展開するか確認します。確認なしで展開することはありません。"
   },
   "settings.downloads.cia.help": {
     "en": "Choose what 3dsDL does when a CIA finishes downloading. Ask Each Time shows the icon and version before anything is installed.",
-    "zh": "选择 CIA 下载完成后的操作。每次询问会在安装前显示图标和版本。"
+    "zh": "选择 CIA 下载完成后的操作。每次询问会在安装前显示图标和版本。",
+    "es": "Elige qué hace 3dsDL cuando termina de descargarse un CIA. «Preguntar cada vez» muestra el icono y la versión antes de instalarlo.",
+    "fr": "Choisissez ce que fait 3dsDL à la fin du téléchargement d’un CIA. « Demander à chaque fois » affiche l’icône et la version avant toute installation.",
+    "pt": "Escolhe o que o 3dsDL faz quando termina de transferir um CIA. «Perguntar sempre» mostra o ícone e a versão antes da instalação.",
+    "de": "Lege fest, was 3dsDL nach einem CIA-Download tun soll. Bei „Jedes Mal fragen“ werden vor der Installation Symbol und Version angezeigt.",
+    "ja": "CIAのダウンロード後に行う操作を選びます。「毎回確認」では、インストール前にアイコンとバージョンを表示します。"
   },
   "settings.about.help": {
     "en": "Version, credits and where 3dsDL keeps its files.",
-    "zh": "版本、致谢以及 3dsDL 保存文件的位置。"
+    "zh": "版本、致谢以及 3dsDL 保存文件的位置。",
+    "es": "Versión, créditos y ubicación de los archivos de 3dsDL.",
+    "fr": "Version, crédits et emplacement des fichiers de 3dsDL.",
+    "pt": "Versão, créditos e localização dos ficheiros do 3dsDL.",
+    "de": "Version, Mitwirkende und Speicherort der 3dsDL-Dateien.",
+    "ja": "バージョン、クレジット、3dsDLのファイル保存先です。"
   },
   "settings.updates.help": {
     "en": "Check for a newer 3dsDL and install it.",
-    "zh": "检查并安装新版 3dsDL。"
+    "zh": "检查并安装新版 3dsDL。",
+    "es": "Busca una versión más reciente de 3dsDL e instálala.",
+    "fr": "Rechercher et installer une version plus récente de 3dsDL.",
+    "pt": "Procurar e instalar uma versão mais recente do 3dsDL.",
+    "de": "Nach einer neueren 3dsDL-Version suchen und sie installieren.",
+    "ja": "3dsDLの新しいバージョンを確認してインストールします。"
   },
   "settings.downloads.help": {
     "en": "Resuming, Sleep Mode, ZIP files and what happens after a CIA downloads.",
-    "zh": "断点续传、休眠模式、ZIP 文件以及 CIA 下载完成后的操作。"
+    "zh": "断点续传、休眠模式、ZIP 文件以及 CIA 下载完成后的操作。",
+    "es": "Reanudación, modo de espera, archivos ZIP y qué hacer después de descargar un CIA.",
+    "fr": "Reprise, veille, fichiers ZIP et actions après le téléchargement d’un CIA.",
+    "pt": "Retoma de transferências, suspensão, ficheiros ZIP e ações após transferir um CIA.",
+    "de": "Fortsetzen, Ruhemodus, ZIP-Dateien und Aktionen nach einem CIA-Download.",
+    "ja": "ダウンロードの再開、スリープ、ZIPファイル、CIAのダウンロード後の動作です。"
   },
   "settings.folder.help": {
     "en": "The folder new downloads are saved to.",
-    "zh": "新下载文件保存到的目录。"
+    "zh": "新下载文件保存到的目录。",
+    "es": "La carpeta donde se guardan las nuevas descargas.",
+    "fr": "Le dossier où sont enregistrés les nouveaux téléchargements.",
+    "pt": "A pasta onde são guardados os novos downloads.",
+    "de": "Der Ordner für neue Downloads.",
+    "ja": "新しいダウンロードを保存するフォルダーです。"
   },
   "settings.clock.help": {
     "en": "Compare the console's clock with the time online and set it. Secure downloads fail when the date is wrong.",
-    "zh": "将主机时钟与网络时间比较并设置。日期错误会导致安全下载失败。"
+    "zh": "将主机时钟与网络时间比较并设置。日期错误会导致安全下载失败。",
+    "es": "Compara el reloj de la consola con la hora de Internet y ajústalo. Si la fecha es incorrecta, las descargas seguras fallarán.",
+    "fr": "Comparez l’horloge de la console à l’heure en ligne et réglez-la. Une date incorrecte fait échouer les téléchargements sécurisés.",
+    "pt": "Compara o relógio da consola com a hora online e acerta-o. Uma data incorreta impede transferências seguras.",
+    "de": "Vergleiche die Konsolenuhr mit der Internetzeit und stelle sie ein. Bei falschem Datum schlagen sichere Downloads fehl.",
+    "ja": "本体の時計をインターネット時刻と比較して設定します。日付が違うと安全なダウンロードに失敗します。"
   },
   "settings.other.title": {
     "en": "Other Settings",
-    "zh": "其他设置"
+    "zh": "其他设置",
+    "es": "Otros ajustes",
+    "fr": "Autres paramètres",
+    "pt": "Outras definições",
+    "de": "Weitere Einstellungen",
+    "ja": "その他の設定"
   },
   "settings.other.help": {
     "en": "Language, file sorting, hidden files, sounds, and download history.",
-    "zh": "语言、文件排序、隐藏文件、音效和下载记录。"
+    "zh": "语言、文件排序、隐藏文件、音效和下载记录。",
+    "es": "Idioma, orden de archivos, archivos ocultos, sonidos e historial de descargas.",
+    "fr": "Langue, tri des fichiers, fichiers cachés, sons et historique des téléchargements.",
+    "pt": "Idioma, ordenação de ficheiros, ficheiros ocultos, sons e histórico de downloads.",
+    "de": "Sprache, Dateisortierung, versteckte Dateien, Töne und Download-Verlauf.",
+    "ja": "言語、ファイルの並べ替え、隠しファイル、サウンド、ダウンロード履歴を設定します。"
   },
   "settings.language.title": {
     "en": "Language",
-    "zh": "语言"
+    "zh": "语言",
+    "es": "Idioma",
+    "fr": "Langue",
+    "pt": "Idioma",
+    "de": "Sprache",
+    "ja": "言語"
   },
   "settings.language.help": {
     "en": "Choose the language used for the 3dsDL interface.",
-    "zh": "选择 3dsDL 界面使用的语言。"
+    "zh": "选择 3dsDL 界面使用的语言。",
+    "es": "Elige el idioma de la interfaz de 3dsDL.",
+    "fr": "Choisissez la langue de l’interface de 3dsDL.",
+    "pt": "Escolhe o idioma da interface do 3dsDL.",
+    "de": "Wähle die Sprache der 3dsDL-Oberfläche.",
+    "ja": "3dsDLの表示言語を選びます。"
   },
   "settings.sort.title": {
     "en": "Sort Files",
-    "zh": "文件排序"
+    "zh": "文件排序",
+    "es": "Ordenar archivos",
+    "fr": "Trier les fichiers",
+    "pt": "Ordenar ficheiros",
+    "de": "Dateien sortieren",
+    "ja": "ファイルの並べ替え"
   },
   "settings.sort.help": {
     "en": "Folders always come first. Choose how files are sorted.",
-    "zh": "文件夹始终排在前面。选择文件的排序方式。"
+    "zh": "文件夹始终排在前面。选择文件的排序方式。",
+    "es": "Las carpetas siempre aparecen primero. Elige cómo ordenar los archivos.",
+    "fr": "Les dossiers apparaissent toujours en premier. Choisissez comment trier les fichiers.",
+    "pt": "As pastas aparecem sempre primeiro. Escolhe como ordenar os ficheiros.",
+    "de": "Ordner stehen immer zuerst. Lege fest, wie Dateien sortiert werden.",
+    "ja": "フォルダーは常に先に表示されます。ファイルの並べ替え方法を選びます。"
   },
   "settings.sort.name": {
     "en": "Name",
-    "zh": "名称"
+    "zh": "名称",
+    "es": "Nombre",
+    "fr": "Nom",
+    "pt": "Nome",
+    "de": "Name",
+    "ja": "名前"
   },
   "settings.sort.size": {
     "en": "Size, Largest First",
-    "zh": "大小，最大优先"
+    "zh": "大小，最大优先",
+    "es": "Tamaño, de mayor a menor",
+    "fr": "Taille, du plus grand au plus petit",
+    "pt": "Tamanho, do maior para o menor",
+    "de": "Größe, absteigend",
+    "ja": "サイズ、大きい順"
   },
   "settings.sort.date": {
     "en": "Date, Newest First",
-    "zh": "日期，最新优先"
+    "zh": "日期，最新优先",
+    "es": "Fecha, más recientes primero",
+    "fr": "Date, du plus récent au plus ancien",
+    "pt": "Data, mais recentes primeiro",
+    "de": "Datum, neueste zuerst",
+    "ja": "日付、新しい順"
   },
   "settings.sort.type": {
     "en": "Type",
-    "zh": "类型"
+    "zh": "类型",
+    "es": "Tipo",
+    "fr": "Type",
+    "pt": "Tipo",
+    "de": "Typ",
+    "ja": "種類"
   },
   "settings.hidden.title": {
     "en": "Show Hidden Files",
-    "zh": "显示隐藏文件"
+    "zh": "显示隐藏文件",
+    "es": "Mostrar archivos ocultos",
+    "fr": "Afficher les fichiers cachés",
+    "pt": "Mostrar ficheiros ocultos",
+    "de": "Versteckte Dateien anzeigen",
+    "ja": "隠しファイルを表示"
   },
   "settings.hidden.help": {
     "en": "Show files and folders whose names start with a dot.",
-    "zh": "显示名称以点开头的文件和文件夹。"
+    "zh": "显示名称以点开头的文件和文件夹。",
+    "es": "Muestra los archivos y carpetas cuyos nombres empiezan por un punto.",
+    "fr": "Affiche les fichiers et dossiers dont le nom commence par un point.",
+    "pt": "Mostra ficheiros e pastas cujos nomes começam por um ponto.",
+    "de": "Zeigt Dateien und Ordner an, deren Name mit einem Punkt beginnt.",
+    "ja": "名前がドットで始まるファイルやフォルダーを表示します。"
   },
   "settings.sounds.title": {
     "en": "Sounds",
-    "zh": "音效"
+    "zh": "音效",
+    "es": "Sonidos",
+    "fr": "Sons",
+    "pt": "Sons",
+    "de": "Töne",
+    "ja": "サウンド"
   },
   "settings.sounds.help": {
     "en": "Soft sounds when moving, choosing and going back, as in the system menus.",
-    "zh": "移动、选择和返回时播放轻柔的系统菜单风格音效。"
+    "zh": "移动、选择和返回时播放轻柔的系统菜单风格音效。",
+    "es": "Sonidos suaves al desplazarse, seleccionar y volver, como en los menús del sistema.",
+    "fr": "Sons discrets lors des déplacements, sélections et retours, comme dans les menus système.",
+    "pt": "Sons suaves ao navegar, escolher e voltar, como nos menus do sistema.",
+    "de": "Dezente Töne beim Bewegen, Auswählen und Zurückgehen, wie in den Systemmenüs.",
+    "ja": "システムメニューのように、移動・選択・戻る操作で控えめな音を鳴らします。"
   },
   "settings.sounds.unavailable_help": {
     "en": "Sounds need the DSP firmware dump, sdmc:/3ds/dspfirm.cdc. Make it with DSP1, then start 3dsDL again.",
-    "zh": "音效需要 DSP 固件文件 sdmc:/3ds/dspfirm.cdc。请使用 DSP1 生成该文件，然后重新启动 3dsDL。"
+    "zh": "音效需要 DSP 固件文件 sdmc:/3ds/dspfirm.cdc。请使用 DSP1 生成该文件，然后重新启动 3dsDL。",
+    "es": "Los sonidos necesitan el volcado del firmware DSP en sdmc:/3ds/dspfirm.cdc. Créalo con DSP1 y reinicia 3dsDL.",
+    "fr": "Les sons nécessitent le fichier du micrologiciel DSP sdmc:/3ds/dspfirm.cdc. Créez-le avec DSP1, puis relancez 3dsDL.",
+    "pt": "Os sons precisam do ficheiro de firmware DSP sdmc:/3ds/dspfirm.cdc. Cria-o com o DSP1 e reinicia o 3dsDL.",
+    "de": "Für Töne wird die DSP-Firmware-Datei sdmc:/3ds/dspfirm.cdc benötigt. Erstelle sie mit DSP1 und starte 3dsDL neu.",
+    "ja": "サウンドにはDSPファームウェアのダンプ sdmc:/3ds/dspfirm.cdc が必要です。DSP1で作成し、3dsDLを再起動してください。"
   },
   "settings.history.title": {
     "en": "Clear Download History",
-    "zh": "清除下载记录"
+    "zh": "清除下载记录",
+    "es": "Borrar historial de descargas",
+    "fr": "Effacer l’historique des téléchargements",
+    "pt": "Limpar histórico de downloads",
+    "de": "Download-Verlauf löschen",
+    "ja": "ダウンロード履歴を消去"
   },
   "settings.history.help": {
     "en": "Removes the list of past downloads and any partial downloads kept for resuming. Downloaded files stay.",
-    "zh": "删除过往下载记录以及为断点续传保留的未完成文件。已下载完成的文件不会删除。"
+    "zh": "删除过往下载记录以及为断点续传保留的未完成文件。已下载完成的文件不会删除。",
+    "es": "Elimina el historial y las descargas parciales guardadas para reanudar. Los archivos descargados no se borran.",
+    "fr": "Supprime l’historique et les téléchargements partiels conservés pour une reprise. Les fichiers téléchargés restent en place.",
+    "pt": "Remove o histórico e os ficheiros parciais guardados para retomar. Os ficheiros transferidos permanecem.",
+    "de": "Entfernt den Verlauf und gespeicherte Teildownloads. Heruntergeladene Dateien bleiben erhalten.",
+    "ja": "履歴と再開用の一時ダウンロードを削除します。ダウンロード済みのファイルは残ります。"
   },
   "settings.history.empty_title": {
     "en": "History Is Empty",
-    "zh": "下载记录为空"
+    "zh": "下载记录为空",
+    "es": "El historial está vacío",
+    "fr": "L’historique est vide",
+    "pt": "O histórico está vazio",
+    "de": "Der Verlauf ist leer",
+    "ja": "履歴は空です"
   },
   "settings.history.empty": {
     "en": "There is nothing to clear.",
-    "zh": "没有可清除的内容。"
+    "zh": "没有可清除的内容。",
+    "es": "No hay nada que borrar.",
+    "fr": "Rien à effacer.",
+    "pt": "Não há nada para limpar.",
+    "de": "Es gibt nichts zu löschen.",
+    "ja": "消去する項目はありません。"
   },
   "settings.cia.ask": {
     "en": "Ask",
-    "zh": "每次询问"
+    "zh": "每次询问",
+    "es": "Preguntar",
+    "fr": "Demander",
+    "pt": "Perguntar",
+    "de": "Fragen",
+    "ja": "確認する"
   },
   "settings.cia.install": {
     "en": "Install",
-    "zh": "安装"
+    "zh": "安装",
+    "es": "Instalar",
+    "fr": "Installer",
+    "pt": "Instalar",
+    "de": "Installieren",
+    "ja": "インストール"
   },
   "settings.cia.install_delete": {
     "en": "Install, Delete",
-    "zh": "安装后删除文件"
+    "zh": "安装后删除文件",
+    "es": "Instalar y eliminar",
+    "fr": "Installer et supprimer",
+    "pt": "Instalar e eliminar",
+    "de": "Installieren und löschen",
+    "ja": "インストールして削除"
   },
   "settings.cia.keep": {
     "en": "Keep File",
-    "zh": "仅保留文件"
+    "zh": "仅保留文件",
+    "es": "Conservar archivo",
+    "fr": "Conserver le fichier",
+    "pt": "Manter ficheiro",
+    "de": "Datei behalten",
+    "ja": "ファイルを保持"
   },
   "settings.downloads.connections": {
     "en": "Max Connections",
-    "zh": "最大连接数"
+    "zh": "最大连接数",
+    "es": "Máximo de conexiones",
+    "fr": "Nombre maximal de connexions",
+    "pt": "Máximo de ligações",
+    "de": "Maximale Verbindungen",
+    "ja": "最大接続数"
   },
   "settings.sounds.unavailable_title": {
     "en": "Sounds Unavailable",
-    "zh": "音效不可用"
+    "zh": "音效不可用",
+    "es": "Sonidos no disponibles",
+    "fr": "Sons indisponibles",
+    "pt": "Sons indisponíveis",
+    "de": "Töne nicht verfügbar",
+    "ja": "サウンドを利用できません"
   },
   "settings.facts.new": {
     "en": "New",
-    "zh": "新版"
+    "zh": "新版",
+    "es": "Nueva",
+    "fr": "Nouveau",
+    "pt": "Nova",
+    "de": "Neu",
+    "ja": "新しいバージョン"
   },
   "settings.facts.installed": {
     "en": "Installed",
-    "zh": "已安装"
+    "zh": "已安装",
+    "es": "Instalada",
+    "fr": "Installée",
+    "pt": "Instalada",
+    "de": "Installiert",
+    "ja": "インストール済み"
   },
   "settings.facts.startup": {
     "en": "At Startup",
-    "zh": "启动时"
+    "zh": "启动时",
+    "es": "Al iniciar",
+    "fr": "Au démarrage",
+    "pt": "Ao iniciar",
+    "de": "Beim Start",
+    "ja": "起動時"
   },
   "settings.facts.check": {
     "en": "Check",
-    "zh": "检查"
+    "zh": "检查",
+    "es": "Buscar",
+    "fr": "Vérifier",
+    "pt": "Verificar",
+    "de": "Prüfen",
+    "ja": "確認する"
   },
   "settings.facts.dont_check": {
     "en": "Don't Check",
-    "zh": "不检查"
+    "zh": "不检查",
+    "es": "No buscar",
+    "fr": "Ne pas vérifier",
+    "pt": "Não verificar",
+    "de": "Nicht prüfen",
+    "ja": "確認しない"
   },
   "settings.facts.extract": {
     "en": "Ask to Extract",
-    "zh": "询问解压"
+    "zh": "询问解压",
+    "es": "Preguntar al extraer",
+    "fr": "Demander avant extraction",
+    "pt": "Perguntar ao extrair",
+    "de": "Vor dem Entpacken fragen",
+    "ja": "展開前に確認"
   },
   "settings.facts.cia": {
     "en": "After a CIA",
-    "zh": "CIA 下载后"
+    "zh": "CIA 下载后",
+    "es": "Después de un CIA",
+    "fr": "Après un CIA",
+    "pt": "Após um CIA",
+    "de": "Nach einem CIA",
+    "ja": "CIAの後"
   },
   "settings.facts.destination": {
     "en": "Saves to",
-    "zh": "保存至"
+    "zh": "保存至",
+    "es": "Guardar en",
+    "fr": "Enregistrer dans",
+    "pt": "Guardar em",
+    "de": "Speichern unter",
+    "ja": "保存先"
   },
   "settings.facts.console": {
     "en": "Console",
-    "zh": "主机"
+    "zh": "主机",
+    "es": "Consola",
+    "fr": "Console",
+    "pt": "Consola",
+    "de": "Konsole",
+    "ja": "本体"
   },
   "settings.facts.timezone": {
     "en": "Time Zone",
-    "zh": "时区"
+    "zh": "时区",
+    "es": "Zona horaria",
+    "fr": "Fuseau horaire",
+    "pt": "Fuso horário",
+    "de": "Zeitzone",
+    "ja": "タイムゾーン"
   },
   "settings.facts.hidden": {
     "en": "Hidden Files",
-    "zh": "隐藏文件"
+    "zh": "隐藏文件",
+    "es": "Archivos ocultos",
+    "fr": "Fichiers cachés",
+    "pt": "Ficheiros ocultos",
+    "de": "Versteckte Dateien",
+    "ja": "隠しファイル"
   },
   "settings.facts.history": {
     "en": "History",
-    "zh": "下载记录"
+    "zh": "下载记录",
+    "es": "Historial",
+    "fr": "Historique",
+    "pt": "Histórico",
+    "de": "Verlauf",
+    "ja": "履歴"
   },
   "settings.facts.version": {
     "en": "Version",
-    "zh": "版本"
+    "zh": "版本",
+    "es": "Versión",
+    "fr": "Version",
+    "pt": "Versão",
+    "de": "Version",
+    "ja": "バージョン"
   },
   "settings.facts.storage": {
     "en": "Settings in",
-    "zh": "设置位置"
+    "zh": "设置位置",
+    "es": "Ajustes en",
+    "fr": "Paramètres dans",
+    "pt": "Definições em",
+    "de": "Einstellungen in",
+    "ja": "設定の保存先"
   }
 }
