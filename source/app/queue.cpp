@@ -2,9 +2,11 @@
 
 #include "app_util.hpp"
 #include "cia.hpp"
+#include "crash.hpp"
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "logging.hpp"
 #include "mdns.hpp"
 #include "mdns_responder.hpp"
 #include "naming.hpp"
@@ -203,6 +205,7 @@ struct ReceiveJob {
 
 void receiveMain(void *argument)
 {
+    crash::ThreadName name("receive");
     ReceiveJob &job = *static_cast<ReceiveJob *>(argument);
     while (!job.stop.load()) {
         net::Received received;
@@ -216,6 +219,7 @@ void receiveMain(void *argument)
 
 void mdnsMain(void *argument)
 {
+    crash::ThreadName name("mdns");
     ReceiveJob &job = *static_cast<ReceiveJob *>(argument);
     job.mdns.claim();
     job.named.store(true);
@@ -705,6 +709,9 @@ void App::receiveScreen()
 
         net::Received received;
         if (job.take(received)) {
+            logging::info("receive.got", {{"links", received.links.size()},
+                                          {"cias", received.install.size()},
+                                          {"fbi", received.replySocket >= 0}});
             if (!received.install.empty()) {
                 ui::Dialog dialog;
                 dialog.header = "Receive";

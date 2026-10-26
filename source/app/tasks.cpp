@@ -1,6 +1,9 @@
 #include "tasks.hpp"
 
 #include "app_util.hpp"
+#include "cia.hpp"
+#include "crash.hpp"
+#include "logging.hpp"
 #include "sound.hpp"
 #include "ui.hpp"
 #include "units.hpp"
@@ -62,17 +65,36 @@ int workerPriority()
 // On a New 3DS the worker gets the third core, which nothing else uses, so
 // TLS and inflating never wait for drawing. Elsewhere, or when the system
 // refuses, it shares the app core with the main thread.
-Thread startWorkerThread(ThreadFunc entry, void *argument)
+struct Named {
+    ThreadFunc entry;
+    void *argument;
+    const char *name;
+};
+
+void runNamed(void *argument)
 {
+    const Named named = *static_cast<Named *>(argument);
+    delete static_cast<Named *>(argument);
+    crash::ThreadName name(named.name);
+    named.entry(named.argument);
+}
+
+Thread startWorkerThread(ThreadFunc entry, void *argument, const char *name)
+{
+    Named *named = new Named {entry, argument, name};
     bool isNew3ds = false;
     if (R_SUCCEEDED(APT_CheckNew3DS(&isNew3ds)) && isNew3ds) {
-        if (Thread thread = threadCreate(entry, argument, WorkerStackSize,
+        if (Thread thread = threadCreate(runNamed, named, WorkerStackSize,
                                          workerPriority(), 2, false)) {
             return thread;
         }
     }
-    return threadCreate(entry, argument, WorkerStackSize, workerPriority(),
-                        -2, false);
+    Thread thread = threadCreate(runNamed, named, WorkerStackSize,
+                                 workerPriority(), -2, false);
+    if (thread == nullptr) {
+        delete named;
+    }
+    return thread;
 }
 
 bool confirmStop(const std::string &what)
@@ -91,6 +113,16 @@ bool wantsCancel(const ui::Input &input)
 {
     return (input.down & KEY_B) != 0 ||
            input.tapped(ui::ProgressCancelButton);
+}
+
+// "done", "stopped" or "failed" after an event's area, failures as warnings
+// (the error the user sees is logged on its own).
+void logOutcome(const std::string &area, bool ok, bool cancelled,
+                eventlog::Fields fields)
+{
+    logging::log(ok || cancelled ? eventlog::Level::Info : eventlog::Level::Warn,
+                 area + (ok ? ".done" : cancelled ? ".stopped" : ".failed"),
+                 fields);
 }
 
 std::string capitalised(std::string value)
@@ -297,9 +329,9 @@ void runBusy(void *argument)
 
 } // namespace
 
-Thread startWorker(ThreadFunc entry, void *argument)
+Thread startWorker(ThreadFunc entry, void *argument, const char *name)
 {
-    return startWorkerThread(entry, argument);
+    return startWorkerThread(entry, argument, name);
 }
 
 void busy(const std::string &header, const std::string &title,
@@ -313,10 +345,19 @@ bool busy(const std::string &header, const std::string &title,
 {
     BusyJob job;
     job.work = &work;
-    Thread thread = startWorkerThread(runBusy, &job);
+    const uint64_t started = osGetTime();
+    const auto logged = [&]() {
+        const bool stopped = job.busy.cancel.load();
+        logOutcome("task", !stopped, stopped,
+                   {{"header", header},
+                    {"title", title},
+                    {"ms", osGetTime() - started}});
+        return !stopped;
+    };
+    Thread thread = startWorkerThread(runBusy, &job, "busy");
     if (thread == nullptr) {
         work(job.busy);
-        return !job.busy.cancel.load();
+        return logged();
     }
     bool pressed = false;
     while (!job.finished) {
@@ -369,7 +410,7 @@ bool busy(const std::string &header, const std::string &title,
     }
     threadJoin(thread, U64_MAX);
     threadFree(thread);
-    return !job.busy.cancel.load();
+    return logged();
 }
 
 net::Result download(const net::Request &request, bool keepAwake,
@@ -379,7 +420,7 @@ net::Result download(const net::Request &request, bool keepAwake,
     job.request = &request;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorkerThread(runDownload, &job);
+    Thread thread = startWorkerThread(runDownload, &job, "download");
     if (thread == nullptr) {
         job.result.message = "Could not start the download thread.";
         return job.result;
@@ -438,6 +479,20 @@ net::Result download(const net::Request &request, bool keepAwake,
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
+    const net::Result &result = job.result;
+    logOutcome("download", result.outcome == net::Outcome::Completed,
+               result.outcome == net::Outcome::Cancelled,
+               {{"host", host},
+                {"file", result.filename},
+                {"bytes", result.bytes},
+                {"transferred", result.transferred},
+                {"ms", static_cast<uint64_t>(result.seconds * 1000)},
+                {"connections", result.connections},
+                {"resumed", result.resumed},
+                {"install", direct},
+                {"http", result.httpStatus},
+                {"curl", result.curlCode},
+                {"message", result.message}});
     return job.result;
 }
 
@@ -472,13 +527,14 @@ archives::Result extract(const std::string &path,
     const uint64_t totalWork = totalBytes + totalFiles * FileWeight;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorkerThread(runExtract, &job);
+    Thread thread = startWorkerThread(runExtract, &job, "extract");
     if (thread == nullptr) {
         job.result.message = "Could not start the extraction thread.";
         return job.result;
     }
 
     const std::string name = path.substr(path.find_last_of('/') + 1);
+    const uint64_t started = osGetTime();
     units::RateMeter speed;
     units::RateMeter work;
     supervise(job, thread, "extracting", [&]() {
@@ -540,6 +596,16 @@ archives::Result extract(const std::string &path,
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
+    const archives::Result &result = job.result;
+    logOutcome("extract", result.ok, result.cancelled,
+               {{"format", listing.format},
+                {"files", result.extracted},
+                {"bytes", listing.totalSize},
+                {"ms", osGetTime() - started},
+                {"existing", result.skippedExisting.size()},
+                {"unsafe", result.skippedUnsafe},
+                {"unsupported", result.skippedUnsupported},
+                {"message", result.message}});
     return job.result;
 }
 
@@ -552,7 +618,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
     job.titleId = titleId;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorkerThread(runInstall, &job);
+    Thread thread = startWorkerThread(runInstall, &job, "install");
     if (thread == nullptr) {
         job.result.message = "Could not start the install thread.";
         return job.result;
@@ -593,6 +659,15 @@ installer::Result install(const std::string &path, uint64_t titleId,
     if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
         job.result.message = "Interrupted when 3dsDL closed.";
     }
+    const installer::Result &result = job.result;
+    logOutcome("install", result.outcome == installer::Outcome::Installed,
+               result.outcome == installer::Outcome::Cancelled,
+               {{"title", cia::titleIdText(titleId)},
+                {"bytes", result.bytes},
+                {"ms", static_cast<uint64_t>(result.seconds * 1000)},
+                {"code", eventlog::hex(static_cast<uint32_t>(result.code))},
+                {"olderOrSame", result.versionRefused},
+                {"message", result.message}});
     return job.result;
 }
 
@@ -607,13 +682,14 @@ fileops::Result fileOperation(
     job.total = total;
 
     StayAwake awake(keepAwake);
-    Thread thread = startWorkerThread(runFileJob, &job);
+    Thread thread = startWorkerThread(runFileJob, &job, "files");
     if (thread == nullptr) {
         job.result.status = fileops::Status::Failed;
         job.result.message = "Could not start the worker thread.";
         return job.result;
     }
 
+    const uint64_t started = osGetTime();
     units::RateMeter meter;
     supervise(job, thread, header, [&]() {
         ui::ProgressView view;
@@ -646,6 +722,13 @@ fileops::Result fileOperation(
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
+    logOutcome("files", job.result.status == fileops::Status::Ok,
+               job.result.status == fileops::Status::Cancelled,
+               {{"action", header},
+                {"files", job.result.files},
+                {"bytes", countsFiles ? 0 : job.done},
+                {"ms", osGetTime() - started},
+                {"message", job.result.message}});
     return job.result;
 }
 

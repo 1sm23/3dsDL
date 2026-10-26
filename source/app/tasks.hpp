@@ -45,8 +45,9 @@ fileops::Result fileOperation(
 
 // Starts entry on a worker thread the way every job here runs: on the New
 // 3DS's third core when there is one, otherwise just below the main thread.
-// Returns nullptr when no thread could be made.
-Thread startWorker(ThreadFunc entry, void *argument);
+// name, a literal, is the thread's in crash.txt. Returns nullptr when no
+// thread could be made.
+Thread startWorker(ThreadFunc entry, void *argument, const char *name);
 
 // Runs a short job that cannot be cancelled while showing a "please wait"
 // screen.

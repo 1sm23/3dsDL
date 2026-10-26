@@ -145,6 +145,9 @@ size_t format(const Record &record, char *out, size_t size)
         }
         writer.line("stack: %s", words);
     }
+    for (size_t index = 0; index < record.logCount; ++index) {
+        writer.line("log: %s", record.log[index]);
+    }
     return writer.used();
 }
 

@@ -2,6 +2,7 @@
 
 #include "crash.hpp"
 #include "image.hpp"
+#include "logging.hpp"
 #include "platform.hpp"
 #include "sound.hpp"
 #include "text.hpp"
@@ -106,6 +107,8 @@ bool touchLocked = false;
 uint64_t fadeStart = 0;
 bool fading = false;
 std::string lastScreen;
+// The screen just entered, logged by name once its title is drawn.
+std::string screenToLog;
 // That last frame, kept as RGB8 so gradients do not band as it fades. The
 // first screen has none and fades in from the plain background.
 C3D_Tex fromTextures[2];
@@ -1056,6 +1059,10 @@ void enterScreen(const std::string &id)
     if (id != lastScreen) {
         lastScreen = id;
         crash::noteScreen(id);
+        if (!screenToLog.empty()) { // drew no title
+            logging::info("screen", {{"id", screenToLog}});
+        }
+        screenToLog = id;
         fromCapture = frameShown && captureFrom(0, GFX_TOP, 400) &&
                       captureFrom(1, GFX_BOTTOM, 320);
         fadeStart = now();
@@ -1815,9 +1822,18 @@ void drawStatusBar()
     }
 }
 
+void nameScreen(const std::string &name)
+{
+    if (!screenToLog.empty()) {
+        logging::info("screen", {{"name", name}});
+        screenToLog.clear();
+    }
+}
+
 void drawTopChrome(const std::string &title, Icon icon, u32 iconColor,
                    const std::string &order)
 {
+    nameScreen(title);
     drawTopBackground();
     drawStatusBar();
     const float textW = textWidth(title, type::Title);
@@ -2452,6 +2468,10 @@ int choose(const Dialog &dialog)
     int result = -1;
     if (dialog.tone == Tone::Error) {
         sound::play(sound::Effect::Error);
+        logging::error("error",
+                       {{"header", dialog.header},
+                        {"title", dialog.title},
+                        {"text", dialog.body.empty() ? "" : dialog.body[0].text}});
     }
 
     const auto hit = [&](const touchPosition &touch) {

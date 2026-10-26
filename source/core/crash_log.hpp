@@ -32,7 +32,7 @@ struct Record {
     bool cia = false;
     int64_t time = 0;        // the console's clock, seconds since 1970
     const char *what = "";   // "data abort", "terminate"
-    const char *thread = ""; // "main" or "worker"
+    const char *thread = ""; // "main", or the worker's name
     const char *screens[ScreenCount] = {};
     size_t screenCount = 0;
     uint32_t freeBytes = 0; // left in the application's memory region
@@ -49,6 +49,9 @@ struct Record {
     // addresses among them make the backtrace.
     uint32_t stack[StackCount] = {};
     size_t stackCount = 0;
+    // The last lines of log.txt, trace lines among them, oldest first.
+    const char *const *log = nullptr;
+    size_t logCount = 0;
 };
 
 // "data abort" for ERRF_ExceptionType's numbers.

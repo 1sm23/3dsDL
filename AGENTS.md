@@ -36,10 +36,13 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - Azahar only takes taps while it has focus. A build with `THREEDSDL_EXTRA_DEFINES=-DTHREEDSDL_SCRIPTED_INPUT` also reads lines appended to `sdmc:/3ds/3dsDL/input.txt` (`tap X Y` in bottom-screen pixels, or `key A`, `key DOWN` and so on), so it can be driven in the background while screenshots come from the window.
 - Azahar runs file Read, Write, SetSize and Close asynchronously, about a frame each, so time there follows the number of calls, not the bytes.
 
-## Crash reports
+## Logs and crash reports
 
-- A crash writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`), then the system's error screen shows as before. Report Issue names the file while it exists.
+- `sdmc:/3ds/3dsDL/log.txt` (`source/app/logging`; line format and tests in `source/core/event_log`) records each session: console, memory, screens by name, error dialogs, and every download, install, extraction, file job, busy task, Titles read and update check with its numbers. It moves to `log.old.txt` at 256 KB. Report Issue shows the folder, and the bug form asks for it.
+- Log a job once when it ends (`area.done`, `.stopped`, `.failed`), never per file or per frame. Fields are facts: counts, bytes, `ms`, result codes. Log hosts and file names, never whole URLs. `logging::trace` keeps a step in memory only, for crash.txt; use it for steps that matter when something breaks, like each title Titles reads.
+- A crash on any thread writes `sdmc:/3ds/3dsDL/crash.txt` (`source/app/crash.cpp`; format and tests in `source/core/crash_log`) with the thread's name and the last 20 log lines, adds a line to log.txt, then the system's error screen shows as before. The kernel sends a worker's exception to the main thread's handler; `abort()` is wrapped at link time. Name a new thread with `tasks::startWorker`'s name, or a `crash::ThreadName` first in its entry function.
 - Releases carry `3dsDL.elf`, and `scripts/build.sh` leaves it in `dist/`. `python3 -I scripts/crash.py crash.txt` names the functions and lines; a Luma3DS dump works too, with `--version`.
+- A test build with `-DTHREEDSDL_FAULTS` aborts the Titles read when `sdmc:/3ds/3dsDL/faults.txt` has a `titles-abort` line.
 
 ## Hardware pitfalls
 

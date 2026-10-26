@@ -38,12 +38,15 @@ def fail(message):
 
 
 def read_crash_log(data):
-    """crash.txt: "key: value" lines; screen and stack repeat."""
-    report = {"kind": "crash.txt", "screens": [], "stack": [], "registers": {}}
+    """crash.txt: "key: value" lines; screen, stack and log repeat."""
+    report = {"kind": "crash.txt", "screens": [], "stack": [], "registers": {},
+              "log": []}
     for line in data.decode("utf-8", "replace").splitlines():
         key, _, value = line.partition(": ")
         if key == "screen":
             report["screens"].append(value)
+        elif key == "log":
+            report["log"].append(value)
         elif key == "stack":
             report["stack"] += [int(word, 16) for word in value.split()]
         elif key in LUMA_REGISTERS or key == "fsr":
@@ -314,6 +317,10 @@ def main():
             show(f"#{number}", address, places)
     elif not registers:
         print("No return addresses on the stack.")
+    if report.get("log"):
+        print("\nLast log lines:")
+        for line in report["log"]:
+            print("  " + line)
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ public:
     SaveSearch()
     {
         LightLock_Init(&lock_);
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "saves");
     }
     ~SaveSearch()
     {

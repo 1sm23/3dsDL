@@ -1,7 +1,9 @@
 #include "updater.hpp"
 
 #include "app_util.hpp"
+#include "crash.hpp"
 #include "fetch.hpp"
+#include "logging.hpp"
 
 #include <3ds.h>
 
@@ -97,12 +99,21 @@ Status check(const std::atomic<bool> *stop = nullptr)
 
 void finish(const Status &status)
 {
+    if (status.state == State::Failed) {
+        logging::warn("update.failed", {{"message", status.message},
+                                        {"certificate", status.certificateProblem}});
+    } else {
+        logging::info("update.checked",
+                      {{"newest", status.release.version},
+                       {"available", status.state == State::Available}});
+    }
     publish(status);
     finished.fetch_add(1);
 }
 
 void threadMain(void *)
 {
+    crash::ThreadName name("update check");
     finish(check());
     running.store(false);
 }

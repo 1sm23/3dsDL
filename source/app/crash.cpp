@@ -1,12 +1,14 @@
 #include "crash.hpp"
 
 #include "crash_log.hpp"
+#include "logging.hpp"
 
 #include <3ds.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <exception>
 
@@ -16,17 +18,41 @@ namespace {
 
 // The handler's own stack, since the crashed thread's may be what broke.
 alignas(8) uint8_t handlerStack[0x4000];
-char text[4096];
+char text[8192];
 crashlog::ScreenTrail trail;
+const char *logLines[eventlog::RecentCount];
 u32 *mainTls = nullptr;
 bool runningAsCia = false;
 uint32_t codeStart = 0;
 uint32_t codeEnd = 0;
 std::atomic_flag handling = ATOMIC_FLAG_INIT;
 
+// Named threads by their TLS, in fixed storage for the handler to read.
+struct NamedThread {
+    std::atomic<u32 *> tls {nullptr};
+    char name[24] = {};
+};
+constexpr int NameSlots = 16;
+NamedThread named[NameSlots];
+u32 *const Claimed = reinterpret_cast<u32 *>(1); // being named
+
 u32 *threadTls()
 {
     return static_cast<u32 *>(getThreadLocalStorage());
+}
+
+const char *threadName()
+{
+    u32 *const tls = threadTls();
+    if (tls == mainTls) {
+        return "main";
+    }
+    for (const NamedThread &thread : named) {
+        if (thread.tls.load() == tls) {
+            return thread.name;
+        }
+    }
+    return "worker";
 }
 
 // Clears the handler (TLS + 0x40) here and on the main thread, so a crash
@@ -57,7 +83,7 @@ void describe(crashlog::Record &record, const char *what, uint32_t sp)
     record.cia = runningAsCia;
     record.time = std::time(nullptr);
     record.what = what;
-    record.thread = threadTls() == mainTls ? "main" : "worker";
+    record.thread = threadName();
     record.screenCount = trail.newestFirst(record.screens);
     record.freeBytes = osGetMemRegionFree(MEMREGION_APPLICATION);
     uint32_t start = 0;
@@ -68,11 +94,14 @@ void describe(crashlog::Record &record, const char *what, uint32_t sp)
             reinterpret_cast<const uint32_t *>(sp), bytes / 4, codeStart,
             codeEnd, record.stack, crashlog::StackCount);
     }
+    record.log = logLines;
+    record.logCount = logging::recent(logLines);
 }
 
-// Straight through FS, as stdio would allocate.
+// Straight through FS, as stdio would allocate. log.txt gets a line too.
 void save(const crashlog::Record &record)
 {
+    logging::crashed(record.what, record.thread);
     const size_t length = crashlog::format(record, text, sizeof(text));
     Handle file = 0;
     if (R_FAILED(FSUSER_OpenFileDirectly(
@@ -140,9 +169,53 @@ void install(bool cia)
     std::set_terminate(onTerminate);
 }
 
+ThreadName::ThreadName(const char *name)
+{
+    for (int slot = 0; slot < NameSlots; ++slot) {
+        u32 *empty = nullptr;
+        if (named[slot].tls.compare_exchange_strong(empty, Claimed)) {
+            std::strncpy(named[slot].name, name, sizeof(named[slot].name) - 1);
+            named[slot].name[sizeof(named[slot].name) - 1] = '\0';
+            named[slot].tls.store(threadTls());
+            slot_ = slot;
+            return;
+        }
+    }
+}
+
+ThreadName::~ThreadName()
+{
+    if (slot_ >= 0) {
+        named[slot_].tls.store(nullptr);
+    }
+}
+
 void noteScreen(const std::string &id)
 {
     trail.note(id.c_str());
 }
 
 } // namespace crash
+
+extern "C" {
+
+[[noreturn]] void __real_abort();
+
+// Every abort() (failed asserts, libraries giving up, std::terminate) comes
+// here first, on any thread: the link wraps it (-Wl,--wrap=abort), since a
+// SIGABRT handler would only cover the thread that set it. Then 3dsDL ends
+// as abort() does, without an error screen.
+[[noreturn]] void __wrap_abort()
+{
+    if (!crash::handling.test_and_set()) {
+        crash::uninstall();
+        uint32_t sp = 0;
+        asm volatile("mov %0, sp" : "=r"(sp));
+        crashlog::Record record;
+        crash::describe(record, "abort", sp);
+        crash::save(record);
+    }
+    __real_abort();
+}
+
+} // extern "C"

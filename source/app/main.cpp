@@ -1,6 +1,7 @@
 #include "app.hpp"
 #include "crash.hpp"
 #include "installer.hpp"
+#include "logging.hpp"
 #include "sound.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
@@ -123,6 +124,7 @@ int main(int argc, char **argv)
     osSetSpeedupEnable(true);
     gfxInitDefault();
     gfxSet3D(false);
+    logging::start(updater::runningAsCia()); // after gfx, for linear memory
 
     if (!ui::init()) {
         gfxExit();
@@ -141,6 +143,7 @@ int main(int argc, char **argv)
             status = 1;
         }
     }
+    logging::finish();
 
     ui::shutdown();
     gfxExit();

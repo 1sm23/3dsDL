@@ -216,6 +216,9 @@ const C2D_Image *showPicture(const std::vector<uint16_t> &pixels,
 
 // Wi-Fi, connection, date, time and battery along the top of the top screen.
 void drawStatusBar();
+// Names the screen just entered in log.txt, once. drawTopChrome names it by
+// its title; a screen without one calls this while drawing.
+void nameScreen(const std::string &name);
 // Top screen background, status bar, icon and title, and the dotted line.
 // order is how the list on the bottom screen is sorted ("Largest First"),
 // set into the right end of the dotted line, over the panel's corner.

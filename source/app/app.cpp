@@ -5,6 +5,7 @@
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
+#include "logging.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "platform.hpp"
@@ -173,6 +174,9 @@ App::App()
         pollUpdate();
         pollLibrary();
         pollIndex();
+        if (logging::takeWritten()) {
+            sdChanged(logging::Path);
+        }
     });
     // Back from the HOME Menu or sleep, other software may have written to
     // the SD card.
@@ -291,6 +295,7 @@ App::Action App::home()
     spec.drawTop = [&]() {
         // The answer to the update check can arrive while this is open.
         spec.controls[0].badge = updateAvailable_ ? "New" : "";
+        ui::nameScreen("Home");
         ui::drawTopBackground();
         ui::drawStatusBar();
         ui::drawDots(41);

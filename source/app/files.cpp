@@ -530,7 +530,7 @@ public:
         stop_ = false;
         finished_ = false;
         readable_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "folder");
         if (thread_ == nullptr) {
             run(this); // no thread to be had: read it all now
         }
@@ -615,7 +615,7 @@ public:
         known_ = std::move(known);
         stop_ = false;
         finished_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "folder size");
         if (thread_ == nullptr) {
             finished_ = true; // sizes stay unknown rather than hold up Files
         }
@@ -708,7 +708,7 @@ public:
         wanted_ = std::move(wanted);
         stop_ = false;
         finished_ = false;
-        thread_ = tasks::startWorker(run, this);
+        thread_ = tasks::startWorker(run, this, "file dates");
         if (thread_ == nullptr) {
             finished_ = true; // dates stay unknown rather than hold up Files
         }
@@ -787,7 +787,7 @@ public:
             job_ = Job();
             job_.path = path;
             done_ = false;
-            thread_ = tasks::startWorker(run, this);
+            thread_ = tasks::startWorker(run, this, "preview");
             if (thread_ == nullptr) {
                 shown_ = std::move(job_); // shown without a preview
             }
@@ -870,7 +870,7 @@ void App::startIndexLoad()
             }
             app.indexLoaded_ = true;
         },
-        this);
+        this, "index");
     if (indexLoader_ == nullptr) {
         loadingIndex_.reset(); // starts empty instead
     }
