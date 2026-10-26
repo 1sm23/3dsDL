@@ -21,3 +21,6 @@ assets/music/film-mix.wav
 # Written by npm run score, not used by the film (only sfx.wav is).
 assets/music/music.wav
 assets/music/soundtrack.wav
+
+# Parody videos stay on this machine.
+parodies/
