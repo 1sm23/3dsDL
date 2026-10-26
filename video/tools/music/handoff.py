@@ -55,10 +55,11 @@ def pulse(path, lo=0.44, hi=0.52):
 
 
 def load(path, tempo):
-    tmp = tempfile.mktemp(suffix=".wav")
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", path, "-af", f"atempo={tempo:.6f}",
-                    "-ar", str(SR), "-ac", "2", tmp], check=True)
-    return sf.read(tmp, dtype="float32")[0]
+    with tempfile.TemporaryDirectory() as folder:
+        tmp = f"{folder}/stretched.wav"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", path, "-af", f"atempo={tempo:.6f}",
+                        "-ar", str(SR), "-ac", "2", tmp], check=True)
+        return sf.read(tmp, dtype="float32")[0]
 
 
 def sweep(x, kind, f0, f1, t0, t1, at):
