@@ -114,8 +114,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.status(int(parts[1]))
         if parts == ["empty"]:
             self.send_response(200)
-            if "cd" in query:
-                self.send_header("Content-Disposition", query["cd"])
+            self.disposition(query)
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
@@ -130,6 +129,12 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return
         self.status(404)
+
+    def disposition(self, query):
+        # Line breaks would let a request add headers of its own.
+        if "cd" in query:
+            value = query["cd"].replace("\r", "").replace("\n", "")
+            self.send_header("Content-Disposition", value)
 
     def json_body(self, value):
         body = json.dumps(value).encode()
@@ -230,8 +235,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("ETag", etag)
         if query.get("lm", "1") != "0":
             self.send_header("Last-Modified", LAST_MODIFIED)
-        if "cd" in query:
-            self.send_header("Content-Disposition", query["cd"])
+        self.disposition(query)
         self.end_headers()
 
         limit = None
@@ -299,6 +303,7 @@ def main():
     http_server = QuietServer(("127.0.0.1", 0), Handler)
     https_server = QuietServer(("127.0.0.1", 0), Handler)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.load_cert_chain(args.cert, args.key)
     https_server.socket = context.wrap_socket(https_server.socket,
                                               server_side=True)
