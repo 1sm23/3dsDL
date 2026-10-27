@@ -1440,6 +1440,7 @@ std::string webDictionary()
 {
     std::string result = "const I18N = {";
     const char *keys[] = {
+        "{0} selected",
         "  ·  {0} of {1}",
         " ({0} bytes)",
         " ({0} of {1})",

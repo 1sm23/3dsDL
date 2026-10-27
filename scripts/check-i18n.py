@@ -61,9 +61,37 @@ else:
     js_literal = r'''(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')'''
     called = {ast.literal_eval(m[1]) for m in re.finditer(
         r'\b(?:tr|heading|waiting)\(\s*(' + js_literal + ')', script)}
-    for match in re.finditer(r'\btr\([^?\n]+\?\s*(' + js_literal +
-                             r')\s*:\s*(' + js_literal + ')', script):
-        called.update(ast.literal_eval(s) for s in match.groups())
+    # Restrict conditional keys to the first argument of tr(). A later
+    # conditional may choose HTML attributes or other non-message values.
+    for call in re.finditer(r'\btr\(', script):
+        start = call.end()
+        depth = 0
+        quote = None
+        escaped = False
+        end = start
+        for end in range(start, len(script)):
+            char = script[end]
+            if quote:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+            elif char in "\"'":
+                quote = char
+            elif char in "([":
+                depth += 1
+            elif char in ")]":
+                if depth == 0:
+                    break
+                depth -= 1
+            elif char == "," and depth == 0:
+                break
+        conditional = re.search(r'\?\s*(' + js_literal + r')\s*:\s*(' +
+                                js_literal + r')\s*$', script[start:end])
+        if conditional:
+            called.update(ast.literal_eval(s) for s in conditional.groups())
     for key in sorted(called - web_keys):
         errors.append(f"Receive dictionary missing JavaScript message: {key!r}")
 used.update(json.loads(m[1]) for m in re.finditer(
