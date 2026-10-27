@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "i18n.hpp"
 
 #include "app_util.hpp"
 #include "file_ops.hpp"
@@ -36,7 +37,7 @@ std::string nowName()
 
 const char *kindTitle(savedata::Kind kind)
 {
-    return kind == savedata::Kind::Save ? "Save Data" : "Extra Data";
+    return kind == savedata::Kind::Save ? i18n::c("Save Data") : i18n::c("Extra Data");
 }
 
 ui::Icon kindIcon(savedata::Kind kind)
@@ -174,8 +175,8 @@ void App::saveTitlesScreen()
     int cursor = 0;
     while (ui::keepRunning() && !quit_) {
         ui::ListSpec spec;
-        spec.title = "Save Data";
-        spec.emptyText = "No save data.";
+        spec.title = i18n::c("Save Data");
+        spec.emptyText = i18n::c("No save data.");
         bool rebuild = true; // once more on each return to the list
         spec.update = [&]() {
             if (seen != libraryGeneration_) {
@@ -225,7 +226,7 @@ void App::saveTitlesScreen()
                    search.busy();
         };
         spec.drawTop = [&](int highlighted) {
-            ui::drawTopChrome("Save Data", ui::Icon::Chip, ui::color::IconTeal);
+            ui::drawTopChrome(i18n::c("Save Data"), ui::Icon::Chip, ui::color::IconTeal);
             ui::drawPanel();
             if (highlighted < 0 || highlighted >= static_cast<int>(withSaves.size())) {
                 ui::drawEmblem(ui::Icon::Chip, ui::color::IconTeal);
@@ -239,9 +240,9 @@ void App::saveTitlesScreen()
                             0.62f, ui::color::InkStrong, 280);
             ui::drawMarquee(title.publisher, left + 60, top + 30, ui::type::Small,
                             ui::color::InkSoft, 280);
-            const float y = ui::drawTagRow(left, top + 60, 96, "Title ID",
+            const float y = ui::drawTagRow(left, top + 60, 96, i18n::c("Title ID"),
                                            cia::titleIdText(title.id));
-            ui::drawTagRow(left, y, 96, "Backups in",
+            ui::drawTagRow(left, y, 96, i18n::c("Backups in"),
                            savedata::saveOf(title, library::mediaOf(title)).folder);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
@@ -261,15 +262,15 @@ void App::saveTitlesScreen()
 void App::saveDataScreen(const savedata::Target &target,
                          const std::vector<uint16_t> &icon)
 {
-    const std::string what = target.kind == savedata::Kind::Save ? "save data"
-                                                                  : "extra data";
+    const std::string what = target.kind == savedata::Kind::Save ? i18n::c("save data")
+                                                                  : i18n::c("extra data");
     int cursor = 0;
     while (ui::keepRunning() && !quit_) {
         const std::vector<std::string> names = savedata::backups(target);
         ui::ListSpec spec;
         spec.title = target.name.empty() ? kindTitle(target.kind) : target.name;
         ui::ListItem fresh;
-        fresh.label = "New Backup";
+        fresh.label = i18n::c("New Backup");
         fresh.icon = ui::Icon::Download;
         fresh.iconColor = ui::color::IconGreen;
         fresh.labelColor = ui::color::Accent;
@@ -281,7 +282,7 @@ void App::saveDataScreen(const savedata::Target &target,
             item.iconColor = kindColor(target.kind);
             spec.items.push_back(item);
         }
-        spec.action = "Browse";
+        spec.action = i18n::c("Browse");
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
         spec.drawTop = [&](int) {
@@ -296,7 +297,7 @@ void App::saveDataScreen(const savedata::Target &target,
                             left + 60, top + 2, 0.62f, ui::color::InkStrong, 280);
             ui::drawText(plural(names.size(), "backup"), left + 60, top + 30,
                          ui::type::Small, ui::color::InkSoft);
-            ui::drawTagRow(left, top + 60, 76, "Folder", target.folder);
+            ui::drawTagRow(left, top + 60, 76, i18n::c("Folder"), target.folder);
         };
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
@@ -311,7 +312,7 @@ void App::saveDataScreen(const savedata::Target &target,
             std::string typed;
             const std::string suggested = nowName();
             if (!platform::keyboard(platform::KeyboardKind::Name,
-                                    "Backup name (up to 20 characters)",
+                                    i18n::c("Backup name (up to 20 characters)"),
                                     suggested, typed)) {
                 continue;
             }
@@ -323,10 +324,10 @@ void App::saveDataScreen(const savedata::Target &target,
             }
             if (std::find(names.begin(), names.end(), name) != names.end()) {
                 ui::Dialog dialog;
-                dialog.header = "Backup";
-                dialog.title = "Replace the backup " + name + "?";
+                dialog.header = i18n::c("Backup");
+                dialog.title = i18n::t("Replace the backup {0}?", {name});
                 dialog.tone = ui::Tone::Warning;
-                dialog.buttons = {"Replace", "Cancel"};
+                dialog.buttons = {i18n::c("Replace"), i18n::c("Cancel")};
                 dialog.dangerous = 0;
                 dialog.initial = 1;
                 dialog.cancelButton = 1;
@@ -336,42 +337,39 @@ void App::saveDataScreen(const savedata::Target &target,
             }
             savedata::Progress progress;
             savedata::Result outcome;
-            tasks::busy("Backup", "Backing up the " + what + "...",
+            tasks::busy(i18n::c("Backup"), i18n::t("Backing up the {0}...", {what}),
                         [&]() { outcome = savedata::backup(target, name, progress); });
             if (outcome.ok) {
-                ui::message("Backed Up",
-                            plural(outcome.files, "file") + " saved as " + name +
-                                ".",
+                ui::message(i18n::c("Backed Up"),
+                            i18n::t("{0} saved as {1}.", {plural(outcome.files, "file"), name}),
                             ui::Tone::Success,
                             outcome.skipped > 0
-                                ? plural(outcome.skipped, "file") +
-                                      " the system was using were left out."
+                                ? i18n::t("{0} the system was using were left out.", {plural(outcome.skipped, "file")})
                                 : target.folder + name);
             } else {
-                ui::message("Not Backed Up", outcome.message, ui::Tone::Error);
+                ui::message(i18n::c("Not Backed Up"), outcome.message, ui::Tone::Error);
             }
             continue;
         }
 
         const std::string name = names[result.index - 1];
         const int choice = ui::menu(
-            {{"Restore", true, true}, {"Delete Backup", true, true}},
+            {{i18n::c("Restore"), true, true}, {i18n::c("Delete Backup"), true, true}},
             [&](int) {
                 ui::drawTopChrome(name, kindIcon(target.kind), kindColor(target.kind));
                 ui::drawPanel();
-                ui::drawFacts({{"Title", target.name.empty()
+                ui::drawFacts({{i18n::c("Title"), target.name.empty()
                                              ? kindTitle(target.kind)
                                              : target.name},
-                               {"Folder", target.folder + name + "/"}});
+                               {i18n::c("Folder"), target.folder + name + "/"}});
             });
         if (choice == 0) {
             // No body, so the backup's facts stay on the top screen.
             ui::Dialog dialog;
-            dialog.header = "Restore";
-            dialog.title = "Replace the " + what + " on the console with " +
-                           name + "?";
+            dialog.header = i18n::c("Restore");
+            dialog.title = i18n::t("Replace the {0} on the console with {1}?", {what, name});
             dialog.tone = ui::Tone::Warning;
-            dialog.buttons = {"Restore", "Cancel"};
+            dialog.buttons = {i18n::c("Restore"), i18n::c("Cancel")};
             dialog.dangerous = 0;
             dialog.initial = 1;
             dialog.cancelButton = 1;
@@ -381,17 +379,17 @@ void App::saveDataScreen(const savedata::Target &target,
             savedata::Progress progress;
             savedata::Result safety;
             savedata::Result outcome;
-            const std::string safetyName = nowName() + " Before Restore";
-            tasks::busy("Restore", "Backing up what is there now...", [&]() {
+            const std::string safetyName = i18n::t("{0} Before Restore", {nowName()});
+            tasks::busy(i18n::c("Restore"), i18n::c("Backing up what is there now..."), [&]() {
                 safety = savedata::backup(target, safetyName, progress);
             });
             if (!safety.ok) {
                 ui::Dialog warn;
-                warn.header = "Restore";
-                warn.title = "What is there now could not be backed up.";
+                warn.header = i18n::c("Restore");
+                warn.title = i18n::c("What is there now could not be backed up.");
                 warn.tone = ui::Tone::Warning;
                 warn.body.push_back({safety.message, ui::color::Text, 0.5f, 3});
-                warn.buttons = {"Restore Anyway", "Cancel"};
+                warn.buttons = {i18n::c("Restore Anyway"), i18n::c("Cancel")};
                 warn.dangerous = 0;
                 warn.initial = 1;
                 warn.cancelButton = 1;
@@ -399,29 +397,26 @@ void App::saveDataScreen(const savedata::Target &target,
                     continue;
                 }
             }
-            tasks::busy("Restore", "Restoring " + name + "...", [&]() {
+            tasks::busy(i18n::c("Restore"), i18n::t("Restoring {0}...", {name}), [&]() {
                 outcome = savedata::restore(target, name, progress);
             });
             if (outcome.ok) {
-                ui::message("Restored",
-                            plural(outcome.files, "file") + " restored from " +
-                                name + ".",
+                ui::message(i18n::c("Restored"),
+                            i18n::t("{0} restored from {1}.", {plural(outcome.files, "file"), name}),
                             ui::Tone::Success,
-                            safety.ok ? "The earlier " + what + " is kept as " +
-                                            safetyName + "."
+                            safety.ok ? i18n::t("The earlier {0} is kept as {1}.", {what, safetyName})
                                       : "");
             } else {
-                ui::message("Not Restored", outcome.message, ui::Tone::Error,
-                            safety.ok ? "The earlier " + what + " is kept as " +
-                                            safetyName + "."
+                ui::message(i18n::c("Not Restored"), outcome.message, ui::Tone::Error,
+                            safety.ok ? i18n::t("The earlier {0} is kept as {1}.", {what, safetyName})
                                       : "");
             }
         } else if (choice == 1) {
             ui::Dialog dialog;
-            dialog.header = "Delete";
-            dialog.title = "Delete the backup " + name + "?";
+            dialog.header = i18n::c("Delete");
+            dialog.title = i18n::t("Delete the backup {0}?", {name});
             dialog.tone = ui::Tone::Warning;
-            dialog.buttons = {"Delete", "Cancel"};
+            dialog.buttons = {i18n::c("Delete"), i18n::c("Cancel")};
             dialog.dangerous = 0;
             dialog.initial = 1;
             dialog.cancelButton = 1;
@@ -431,7 +426,7 @@ void App::saveDataScreen(const savedata::Target &target,
                 const fileops::Result removed =
                     fileops::remove(target.folder + name, quiet, done, 0);
                 if (removed.status != fileops::Status::Ok) {
-                    ui::message("Not Deleted", removed.message, ui::Tone::Error);
+                    ui::message(i18n::c("Not Deleted"), removed.message, ui::Tone::Error);
                 }
             }
         }
@@ -444,7 +439,7 @@ void App::dataBrowser(const savedata::Target &target)
         target.kind == savedata::Kind::Save ? "save" : "extdata";
     std::string error;
     if (!savedata::mount(target, device, error)) {
-        ui::message("Cannot Open", error, ui::Tone::Error);
+        ui::message(i18n::c("Cannot Open"), error, ui::Tone::Error);
         return;
     }
     const std::string root = device + ":/";
@@ -458,8 +453,8 @@ void App::dataBrowser(const savedata::Target &target)
         spec.title = target.name + "  " + folder.substr(root.size() - 1);
         spec.heading = spec.title;
         spec.tapToSelect = true;
-        spec.back = folder == root ? "Close" : "Back";
-        spec.emptyText = readable ? "This folder is empty." : "This folder cannot be read.";
+        spec.back = folder == root ? i18n::c("Close") : i18n::c("Back");
+        spec.emptyText = readable ? i18n::c("This folder is empty.") : i18n::c("This folder cannot be read.");
         for (const fs::Entry &entry : entries) {
             ui::ListItem item;
             item.label = entry.name;
@@ -470,7 +465,7 @@ void App::dataBrowser(const savedata::Target &target)
             }
             spec.items.push_back(item);
         }
-        spec.action = "Copy All";
+        spec.action = i18n::c("Copy All");
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
         spec.drawTop = [&](int highlighted) {
@@ -482,13 +477,13 @@ void App::dataBrowser(const savedata::Target &target)
             ui::drawMarquee(target.name, left, y, 0.62f, ui::color::InkStrong,
                             ui::TopPanel.w - 36);
             y += 32;
-            y = ui::drawTagRow(left, y, 76, "Folder", folder.substr(root.size() - 1));
+            y = ui::drawTagRow(left, y, 76, i18n::c("Folder"), folder.substr(root.size() - 1));
             if (highlighted >= 0 && highlighted < static_cast<int>(entries.size())) {
                 const fs::Entry &entry = entries[highlighted];
-                y = ui::drawTagRow(left, y, 76, entry.folder ? "Folder" : "File",
+                y = ui::drawTagRow(left, y, 76, entry.folder ? i18n::c("Folder") : i18n::c("File"),
                                    entry.name);
                 if (!entry.folder && entry.size >= 0) {
-                    ui::drawTagRow(left, y, 76, "Size",
+                    ui::drawTagRow(left, y, 76, i18n::c("Size"),
                                    units::bytes(static_cast<uint64_t>(entry.size)));
                 }
             }
@@ -523,15 +518,15 @@ void App::dataBrowser(const savedata::Target &target)
             }
             const std::string file = folder + entry.name;
             const int choice = ui::menu(
-                {{"View as Hex", false, true}, {"Copy to SD Card", false, true}},
+                {{i18n::c("View as Hex"), false, true}, {i18n::c("Copy to SD Card"), false, true}},
                 [&](int) {
                     ui::drawTopChrome(entry.name, ui::Icon::File, ui::color::IconGrey);
                     ui::drawPanel();
                     std::vector<ui::Fact> facts = {
-                        {"Folder", folder.substr(root.size() - 1)}};
+                        {i18n::c("Folder"), folder.substr(root.size() - 1)}};
                     if (entry.size >= 0) {
                         facts.push_back(
-                            {"Size", units::bytes(static_cast<uint64_t>(entry.size))});
+                            {i18n::c("Size"), units::bytes(static_cast<uint64_t>(entry.size))});
                     }
                     ui::drawFacts(facts);
                 });
@@ -560,7 +555,7 @@ void App::dataBrowser(const savedata::Target &target)
         if (!into.empty()) {
             destination = naming::unusedPath(destination, into, taken) + "/";
             if (!fs::makeDirectories(destination)) {
-                ui::message("Not Copied", "Could not create " + destination + ".",
+                ui::message(i18n::c("Not Copied"), i18n::t("Could not create {0}.", {destination}),
                             ui::Tone::Error);
                 continue;
             }
@@ -571,7 +566,7 @@ void App::dataBrowser(const savedata::Target &target)
         }
         std::string last;
         const fileops::Result copied = tasks::fileOperation(
-            "Copy", "Copying to the SD card", destination, total, false,
+            i18n::c("Copy"), i18n::c("Copying to the SD card"), destination, total, false,
             [&](fileops::Observer &observer) {
                 uint64_t done = 0;
                 fileops::Result outcome;
@@ -587,11 +582,11 @@ void App::dataBrowser(const savedata::Target &target)
             },
             settings_.keepAwake);
         if (copied.status == fileops::Status::Ok) {
-            ui::message("Copied",
-                        "Copied to " + (into.empty() ? last : destination) + ".",
+            ui::message(i18n::c("Copied"),
+                        i18n::t("Copied to {0}.", {(into.empty() ? last : destination)}),
                         ui::Tone::Success);
         } else if (copied.status == fileops::Status::Failed) {
-            ui::message("Not Copied", copied.message, ui::Tone::Error);
+            ui::message(i18n::c("Not Copied"), copied.message, ui::Tone::Error);
         }
     }
     savedata::unmount(device);

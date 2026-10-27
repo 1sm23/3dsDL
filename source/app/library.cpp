@@ -1,4 +1,5 @@
 #include "library.hpp"
+#include "i18n.hpp"
 
 #include "cia.hpp"
 #include "installer.hpp"
@@ -137,8 +138,7 @@ bool titleIds(FS_MediaType media, std::vector<u64> &ids, std::string &error)
     // Without the SD card's title database AM still answers, with no
     // titles at all, rather than failing (faketik learnt this too).
     if (media == MEDIATYPE_SD && !sdDatabaseAvailable()) {
-        error = "The console cannot read the list of software on the SD "
-                "card right now, so 3dsDL cannot tell what is installed.";
+        error = i18n::c("The console cannot read the list of software on the SD card right now, so 3dsDL cannot tell what is installed.");
         return false;
     }
     if (media == MEDIATYPE_SD && fault("sd-list-empty")) {
@@ -159,9 +159,7 @@ bool titleIds(FS_MediaType media, std::vector<u64> &ids, std::string &error)
     }
     if (R_FAILED(code)) {
         ids.clear();
-        error = std::string("Could not read the software installed ") +
-                (media == MEDIATYPE_NAND ? "in system memory" : "on the SD card") +
-                ". " + installer::describe(code);
+        error = i18n::t("Could not read the software installed {0}. {1}", {(media == MEDIATYPE_NAND ? i18n::c("in system memory") : i18n::c("on the SD card")), installer::describe(code)});
         return false;
     }
     return true;
@@ -184,7 +182,7 @@ bool ticketIds(std::vector<u64> &ids, std::string &error)
     }
     if (R_FAILED(code)) {
         ids.clear();
-        error = "Could not read the tickets. " + installer::describe(code);
+        error = i18n::t("Could not read the tickets. {0}", {installer::describe(code)});
         return false;
     }
     // A title can hold several tickets; deleting its ID removes them all, so
@@ -203,7 +201,7 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
 {
     out.clear();
     if (fault("folder-scan-error")) {
-        error = "Could not read sdmc:/Nintendo 3DS/ (test fault).";
+        error = i18n::c("Could not read sdmc:/Nintendo 3DS/ (test fault).");
         return false;
     }
     const std::string root = "sdmc:/Nintendo 3DS/";
@@ -220,7 +218,7 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
             }
         }
         if (!ok) {
-            error = "Could not read " + path + ".";
+            error = i18n::t("Could not read {0}.", {path});
         }
         return ok;
     };
@@ -261,7 +259,7 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
                     const std::vector<fs::Entry> files =
                         fs::listEntries(content, &ok, true, false);
                     if (!ok) {
-                        error = "Could not read " + content + ".";
+                        error = i18n::t("Could not read {0}.", {content});
                         return false;
                     }
                     for (const fs::Entry &file : files) {
@@ -597,20 +595,20 @@ uint64_t runningTitle()
 bool deleteTitle(const titles::Title &title, bool withTicket, std::string &error)
 {
     if (!titles::isShown(title.id)) {
-        error = "System titles are never removed.";
+        error = i18n::c("System titles are never removed.");
         return false;
     }
     if (title.id == runningTitle()) {
-        error = "3dsDL cannot delete itself while it is running.";
+        error = i18n::c("3dsDL cannot delete itself while it is running.");
         return false;
     }
     if (title.place == titles::Place::GameCard) {
-        error = "Software on a game card cannot be deleted.";
+        error = i18n::c("Software on a game card cannot be deleted.");
         return false;
     }
     const ::Result code = AM_DeleteTitle(mediaOf(title), title.id);
     if (R_FAILED(code)) {
-        error = "It could not be deleted. " + installer::describe(code);
+        error = i18n::t("It could not be deleted. {0}", {installer::describe(code)});
         return false;
     }
     if (withTicket) {
@@ -684,8 +682,7 @@ bool checkUnusedTickets(std::vector<uint64_t> &unused, std::string &error)
         // above cannot be trusted, and nothing is deleted.
         if (installedAnywhere(id)) {
             unused.clear();
-            error = cia::titleIdText(id) + " is installed but was not listed, "
-                    "so the installed software could not be read reliably.";
+            error = i18n::t("{0} is installed but was not listed, so the installed software could not be read reliably.", {cia::titleIdText(id)});
             logTickets("check: stopped, " + cia::titleIdText(id) +
                        " is installed but was not listed");
             return false;
@@ -712,7 +709,7 @@ bool installTicketData(const std::string &data, std::string &error)
     Handle ticket = 0;
     ::Result code = AMNET_InstallTicketBegin(&ticket);
     if (R_FAILED(code)) {
-        error = "The ticket install could not start. " + installer::describe(code);
+        error = i18n::t("The ticket install could not start. {0}", {installer::describe(code)});
         return false;
     }
     u32 written = 0;
@@ -720,12 +717,12 @@ bool installTicketData(const std::string &data, std::string &error)
                         static_cast<u32>(data.size()), 0);
     if (R_FAILED(code)) {
         AMNET_InstallTicketAbort(ticket);
-        error = "The ticket could not be installed. " + installer::describe(code);
+        error = i18n::t("The ticket could not be installed. {0}", {installer::describe(code)});
         return false;
     }
     code = AMNET_InstallTicketFinish(ticket);
     if (R_FAILED(code)) {
-        error = "The ticket could not be installed. " + installer::describe(code);
+        error = i18n::t("The ticket could not be installed. {0}", {installer::describe(code)});
         return false;
     }
     return true;
@@ -736,25 +733,25 @@ bool installTicketData(const std::string &data, std::string &error)
 bool deleteTicket(uint64_t titleId, std::string &error)
 {
     if (!titles::isShown(titleId)) {
-        error = "System tickets are never removed.";
+        error = i18n::c("System tickets are never removed.");
         return false;
     }
     if (titleId == runningTitle()) {
-        error = "3dsDL needs its own ticket to start.";
+        error = i18n::c("3dsDL needs its own ticket to start.");
         return false;
     }
     // Saved first, so a deleted ticket can always be put back. No copy, no
     // delete.
-    std::string backup = "nothing (test fault)";
+    std::string backup = i18n::c("nothing (test fault)");
     if (!fault("skip-backup") &&
         !exportTicket(titleId, DeletedTicketsFolder, backup, error)) {
-        error = "The ticket was kept, as it could not be saved first. " + error;
+        error = i18n::t("The ticket was kept, as it could not be saved first. {0}", {error});
         logTickets("kept " + cia::titleIdText(titleId) + ": no backup");
         return false;
     }
     const ::Result code = AM_DeleteTicket(titleId);
     if (R_FAILED(code)) {
-        error = "The ticket could not be deleted. " + installer::describe(code);
+        error = i18n::t("The ticket could not be deleted. {0}", {installer::describe(code)});
         return false;
     }
     logTickets("deleted " + cia::titleIdText(titleId) + ", saved as " + backup);
@@ -797,8 +794,7 @@ bool deleteExtData(uint64_t extDataId, std::string &error)
 {
     const ::Result code = FSUSER_DeleteExtSaveData(extDataInfo(extDataId));
     if (R_FAILED(code)) {
-        error = "The extra data could not be deleted. " +
-                installer::describe(code);
+        error = i18n::t("The extra data could not be deleted. {0}", {installer::describe(code)});
         return false;
     }
     return true;
@@ -807,13 +803,12 @@ bool deleteExtData(uint64_t extDataId, std::string &error)
 bool deletePending(const PendingTitle &pending, std::string &error)
 {
     if (!titles::isShown(pending.id)) {
-        error = "System installs are never removed.";
+        error = i18n::c("System installs are never removed.");
         return false;
     }
     const ::Result code = AM_DeletePendingTitle(pending.media, pending.id);
     if (R_FAILED(code)) {
-        error = "The unfinished install could not be removed. " +
-                installer::describe(code);
+        error = i18n::t("The unfinished install could not be removed. {0}", {installer::describe(code)});
         return false;
     }
     return true;
@@ -826,19 +821,18 @@ bool installTicket(const std::string &path, uint64_t &titleId,
     if (!titlemeta::read(path, filetype::Kind::Ticket, meta, error) ||
         !meta.hasTitleId) {
         if (error.empty()) {
-            error = "This is not a ticket file.";
+            error = i18n::c("This is not a ticket file.");
         }
         return false;
     }
     titleId = meta.titleId;
     if (!titles::isShown(titleId)) {
-        error = "This ticket is for a system title, which 3dsDL does not "
-                "install.";
+        error = i18n::c("This ticket is for a system title, which 3dsDL does not install.");
         return false;
     }
     std::string data;
     if (!fs::readFile(path, data) || data.empty() || data.size() > 1024 * 1024) {
-        error = "The ticket file could not be read.";
+        error = i18n::c("The ticket file could not be read.");
         return false;
     }
     // FBI replaces a ticket that is already installed by deleting it first.
@@ -848,8 +842,7 @@ bool installTicket(const std::string &path, uint64_t &titleId,
     std::string why;
     const bool backedUp = exportTicket(titleId, ReplacedTicketsFolder, saved, why);
     if (!backedUp && hasTicket(titleId)) {
-        error = "The ticket there now could not be saved first, so nothing "
-                "was changed. " + why;
+        error = i18n::t("The ticket there now could not be saved first, so nothing was changed. {0}", {why});
         return false;
     }
     AM_DeleteTicket(titleId);
@@ -871,8 +864,7 @@ bool exportTicket(uint64_t titleId, const std::string &folder,
     u32 count = 0;
     ::Result code = AMNET_GetTitleTicketIds(&count, ticketIds, 8, titleId, false);
     if (R_FAILED(code) || count == 0) {
-        error = "The console did not give out this ticket. " +
-                (R_FAILED(code) ? installer::describe(code) : std::string());
+        error = i18n::t("The console did not give out this ticket. {0}", {(R_FAILED(code) ? installer::describe(code) : std::string())});
         return false;
     }
     std::vector<uint8_t> buffer(64 * 1024);
@@ -881,8 +873,7 @@ bool exportTicket(uint64_t titleId, const std::string &folder,
                                      static_cast<u32>(buffer.size()), titleId,
                                      ticketIds[0]);
     if (R_FAILED(code) || size == 0 || size > buffer.size()) {
-        error = "The console did not give out this ticket. " +
-                (R_FAILED(code) ? installer::describe(code) : std::string());
+        error = i18n::t("The console did not give out this ticket. {0}", {(R_FAILED(code) ? installer::describe(code) : std::string())});
         return false;
     }
     // Only keep it when it reads back as this title's ticket.
@@ -897,18 +888,17 @@ bool exportTicket(uint64_t titleId, const std::string &folder,
     std::string why;
     if (!titlemeta::read(reader, size, filetype::Kind::Ticket, meta, why) ||
         !meta.hasTitleId || meta.titleId != titleId) {
-        error = "The console gave back something that is not this title's "
-                "ticket.";
+        error = i18n::c("The console gave back something that is not this title's ticket.");
         return false;
     }
     if (!fs::makeDirectories(folder)) {
-        error = "Could not create " + folder + ".";
+        error = i18n::t("Could not create {0}.", {folder});
         return false;
     }
     path = folder + cia::titleIdText(titleId) + ".tik";
     if (!fs::writeFile(path, std::string(reinterpret_cast<const char *>(buffer.data()),
                                          size))) {
-        error = "Could not write " + path + ".";
+        error = i18n::t("Could not write {0}.", {path});
         return false;
     }
     return true;

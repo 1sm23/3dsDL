@@ -73,7 +73,7 @@ private:
                     bool deleteAfter, const std::string &address,
                     bool quiet = false, bool *alreadyInstalled = nullptr);
     void markInstalled(const std::string &address, const std::string &path,
-                       const std::string &message);
+                       const std::string &message, bool installed = true);
 
     // Files, in files.cpp. Paths of entries never end with '/'; folders
     // being browsed always do.

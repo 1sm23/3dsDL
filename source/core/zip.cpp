@@ -1,4 +1,5 @@
 #include "zip.hpp"
+#include "i18n.hpp"
 
 #include "text.hpp"
 
@@ -99,7 +100,7 @@ bool findDirectory(FILE *file, Directory &directory, std::string &error)
 {
     uint64_t length = 0;
     if (!fileLength(file, length) || length < EndRecordSize) {
-        error = "The file is too small to be a ZIP archive.";
+        error = i18n::c("The file is too small to be a ZIP archive.");
         return false;
     }
 
@@ -107,7 +108,7 @@ bool findDirectory(FILE *file, Directory &directory, std::string &error)
                                                EndRecordSize + MaxCommentSize);
     std::vector<unsigned char> tail(static_cast<size_t>(window));
     if (!readAt(file, length - window, tail.data(), tail.size())) {
-        error = "Could not read the end of the archive.";
+        error = i18n::c("Could not read the end of the archive.");
         return false;
     }
 
@@ -120,7 +121,7 @@ bool findDirectory(FILE *file, Directory &directory, std::string &error)
         }
     }
     if (found == std::string::npos) {
-        error = "This is not a ZIP archive, or it is incomplete.";
+        error = i18n::c("This is not a ZIP archive, or it is incomplete.");
         return false;
     }
 
@@ -137,13 +138,13 @@ bool findDirectory(FILE *file, Directory &directory, std::string &error)
             !readAt(file, endOffset - sizeof(locator), locator,
                     sizeof(locator)) ||
             read32(locator) != Zip64LocatorSignature) {
-            error = "The archive's ZIP64 directory is missing.";
+            error = i18n::c("The archive's ZIP64 directory is missing.");
             return false;
         }
         unsigned char record[56];
         if (!readAt(file, read64(locator + 8), record, sizeof(record)) ||
             read32(record) != Zip64EndSignature) {
-            error = "The archive's ZIP64 directory is damaged.";
+            error = i18n::c("The archive's ZIP64 directory is damaged.");
             return false;
         }
         directory.entries = read64(record + 32);
@@ -154,7 +155,7 @@ bool findDirectory(FILE *file, Directory &directory, std::string &error)
     if (directory.entries > MaxEntries ||
         directory.size > MaxCentralDirectorySize ||
         directory.offset + directory.size > length) {
-        error = "The archive's directory is damaged or too large.";
+        error = i18n::c("The archive's directory is damaged or too large.");
         return false;
     }
     return true;
@@ -276,7 +277,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
     reader.seek(entry.localHeaderOffset);
     if (!reader.read(header, sizeof(header)) ||
         read32(header) != LocalHeaderSignature) {
-        error = entry.path + " is damaged (bad local header).";
+        error = i18n::t("{0} is damaged (bad local header).", {entry.path});
         return false;
     }
     reader.seek(entry.localHeaderOffset + LocalHeaderSize + read16(header + 26) +
@@ -289,7 +290,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
     const auto emit = [&](const unsigned char *data, size_t size) {
         produced += size;
         if (produced > entry.size) {
-            error = entry.path + " is larger than the archive says.";
+            error = i18n::t("{0} is larger than the archive says.", {entry.path});
             return false;
         }
         crc = crc32(crc, data, static_cast<uInt>(size));
@@ -309,7 +310,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
 
     if (entry.method == MethodStored) {
         if (entry.compressedSize != entry.size) {
-            error = entry.path + " is damaged (size mismatch).";
+            error = i18n::t("{0} is damaged (size mismatch).", {entry.path});
             return false;
         }
         while (remainingInput > 0) {
@@ -318,7 +319,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
                 data, static_cast<size_t>(
                           std::min<uint64_t>(remainingInput, ChunkSize)));
             if (count == 0) {
-                error = entry.path + " is truncated.";
+                error = i18n::t("{0} is truncated.", {entry.path});
                 return false;
             }
             remainingInput -= count;
@@ -329,7 +330,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
     } else {
         z_stream stream {};
         if (inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
-            error = "Not enough memory to decompress " + entry.path + ".";
+            error = i18n::t("Not enough memory to decompress {0}.", {entry.path});
             return false;
         }
         bool finished = false;
@@ -343,7 +344,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
                         : reader.take(data, static_cast<size_t>(std::min<uint64_t>(
                                                 remainingInput, ChunkSize)));
                 if (count == 0) {
-                    error = entry.path + " is truncated.";
+                    error = i18n::t("{0} is truncated.", {entry.path});
                     ok = false;
                     break;
                 }
@@ -357,9 +358,7 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
             const int status = inflate(&stream, Z_NO_FLUSH);
             if (status != Z_OK && status != Z_STREAM_END &&
                 status != Z_BUF_ERROR) {
-                error = entry.path + " is damaged (" +
-                        (stream.msg != nullptr ? stream.msg : "inflate error") +
-                        ").";
+                error = i18n::t("{0} is damaged ({1}).", {entry.path, (stream.msg != nullptr ? stream.msg : i18n::c("inflate error"))});
                 ok = false;
                 break;
             }
@@ -377,11 +376,11 @@ bool copyEntry(Reader &reader, const Entry &entry, archives::Writer &writer,
     }
 
     if (produced != entry.size) {
-        error = entry.path + " is smaller than the archive says.";
+        error = i18n::t("{0} is smaller than the archive says.", {entry.path});
         return false;
     }
     if (static_cast<uint32_t>(crc) != entry.crc) {
-        error = entry.path + " is damaged (checksum mismatch).";
+        error = i18n::t("{0} is damaged (checksum mismatch).", {entry.path});
         return false;
     }
     return true;
@@ -395,7 +394,7 @@ bool readArchive(const std::string &zipPath, Archive &archive,
     archive = Archive();
     File file(std::fopen(zipPath.c_str(), "rb"));
     if (!file) {
-        error = "Could not open the archive.";
+        error = i18n::c("Could not open the archive.");
         return false;
     }
 
@@ -407,7 +406,7 @@ bool readArchive(const std::string &zipPath, Archive &archive,
     std::vector<unsigned char> data(static_cast<size_t>(directory.size));
     if (!data.empty() &&
         !readAt(file.get(), directory.offset, data.data(), data.size())) {
-        error = "Could not read the archive's directory.";
+        error = i18n::c("Could not read the archive's directory.");
         return false;
     }
 
@@ -415,7 +414,7 @@ bool readArchive(const std::string &zipPath, Archive &archive,
     for (uint64_t index = 0; index < directory.entries; ++index) {
         if (position + CentralHeaderSize > data.size() ||
             read32(&data[position]) != CentralHeaderSignature) {
-            error = "The archive's directory is damaged.";
+            error = i18n::c("The archive's directory is damaged.");
             return false;
         }
         const unsigned char *header = &data[position];
@@ -425,7 +424,7 @@ bool readArchive(const std::string &zipPath, Archive &archive,
         const size_t next = position + CentralHeaderSize + nameLength +
                             extraLength + commentLength;
         if (next > data.size()) {
-            error = "The archive's directory is damaged.";
+            error = i18n::c("The archive's directory is damaged.");
             return false;
         }
 
@@ -480,7 +479,7 @@ archives::Result extract(const std::string &zipPath, const Archive &archive,
     archives::Result result;
     File file(std::fopen(zipPath.c_str(), "rb"));
     if (!file) {
-        result.message = "Could not open the archive.";
+        result.message = i18n::c("Could not open the archive.");
         return result;
     }
     // Reader keeps its own buffer, so stdio's would only copy twice.
@@ -510,7 +509,7 @@ archives::Result extract(const std::string &zipPath, const Archive &archive,
     for (const Entry *entry : order) {
         if (observer.cancelRequested()) {
             result.cancelled = true;
-            result.message = "Extraction cancelled.";
+            result.message = i18n::c("Extraction cancelled.");
             return result;
         }
         if (archives::macMetadata(entry->path)) {
@@ -562,7 +561,7 @@ archives::Result extract(const std::string &zipPath, const Archive &archive,
             !writer.finish()) {
             writer.abandon();
             result.cancelled = cancelled;
-            result.message = cancelled        ? "Extraction cancelled."
+            result.message = cancelled        ? i18n::c("Extraction cancelled.")
                              : !error.empty() ? error
                                               : writer.error();
             return result;

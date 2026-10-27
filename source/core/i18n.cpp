@@ -4,6 +4,7 @@
 #include "json.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <utility>
 
 namespace i18n {
@@ -25,7 +26,8 @@ struct Entry {
 };
 
 std::vector<Entry> catalog;
-std::string currentLanguage = "en";
+std::atomic<size_t> currentLanguage {0};
+const std::vector<std::string> LanguageCodes = {"en", "zh", "es", "fr", "pt", "de", "ja"};
 
 const json::Value *field(const json::Value &object, const std::string &key)
 {
@@ -106,12 +108,13 @@ bool init(const std::string &path)
 
 void setLanguage(const std::string &code)
 {
-    currentLanguage = findLanguage(code) == nullptr ? "en" : code;
+    const auto found = std::find(LanguageCodes.begin(), LanguageCodes.end(), code);
+    currentLanguage = found == LanguageCodes.end() ? 0 : found - LanguageCodes.begin();
 }
 
 const std::string &language()
 {
-    return currentLanguage;
+    return LanguageCodes[currentLanguage.load()];
 }
 
 std::string languageName(const std::string &code)
@@ -128,7 +131,7 @@ std::string t(const std::string &key)
             return candidate.key < value;
         });
     if (entry != catalog.end() && entry->key == key) {
-        if (const std::string *value = translated(*entry, currentLanguage)) {
+        if (const std::string *value = translated(*entry, language())) {
             return *value;
         }
         if (const std::string *value = translated(*entry, "en")) {
@@ -138,20 +141,54 @@ std::string t(const std::string &key)
     return key;
 }
 
+const char *c(const char *key)
+{
+    const auto entry = std::lower_bound(
+        catalog.begin(), catalog.end(), key,
+        [](const Entry &candidate, const char *value) {
+            return candidate.key < value;
+        });
+    if (entry != catalog.end() && entry->key == key) {
+        if (const std::string *value = translated(*entry, language())) {
+            return value->c_str();
+        }
+        if (const std::string *value = translated(*entry, "en")) {
+            return value->c_str();
+        }
+    }
+    return key;
+}
+
 std::string t(const std::string &key,
               std::initializer_list<std::string> args)
 {
-    std::string result = t(key);
-    size_t index = 0;
-    for (const std::string &argument : args) {
-        const std::string token = "{" + std::to_string(index++) + "}";
-        size_t position = 0;
-        while ((position = result.find(token, position)) != std::string::npos) {
-            result.replace(position, token.size(), argument);
-            position += argument.size();
+    const std::string format = t(key);
+    std::string result;
+    for (size_t position = 0; position < format.size();) {
+        if (format[position] == '{') {
+            size_t end = position + 1;
+            size_t index = 0;
+            while (end < format.size() && format[end] >= '0' && format[end] <= '9') {
+                index = std::min(index * 10 + static_cast<size_t>(format[end] - '0'), args.size());
+                ++end;
+            }
+            if (end > position + 1 && end < format.size() && format[end] == '}' && index < args.size()) {
+                result += *(args.begin() + index);
+                position = end + 1;
+                continue;
+            }
         }
+        result += format[position++];
     }
     return result;
+}
+
+std::string count(uint64_t value, const std::string &word,
+                  const std::string &formatted)
+{
+    const bool singular = value == 1 || (language() == "fr" && value == 0);
+    const std::string noun = singular ? word : word == "entry" ? "entries" : word + "s";
+    return t("{0} " + noun, {formatted});
 }
 
 } // namespace i18n

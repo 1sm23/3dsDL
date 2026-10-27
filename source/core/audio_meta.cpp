@@ -1,4 +1,5 @@
 #include "audio_meta.hpp"
+#include "i18n.hpp"
 
 #include "text.hpp"
 
@@ -1721,7 +1722,7 @@ std::string formatText(const Info &info)
     };
     add(info.encoding);
     if (info.bits > 0) {
-        add(std::to_string(info.bits) + "-bit");
+        add(i18n::t("{0}-bit", {std::to_string(info.bits)}));
     } else if (info.kilobits > 0) {
         add(std::to_string(info.kilobits) + " kbps");
     }
@@ -1729,9 +1730,9 @@ std::string formatText(const Info &info)
         add(rateText(info.sampleRate));
     }
     if (info.channels == 1) {
-        add("mono");
+        add(i18n::t("mono"));
     } else if (info.channels > 2) {
-        add(std::to_string(info.channels) + " channels");
+        add(i18n::t("{0} channels", {std::to_string(info.channels)}));
     }
     return out;
 }
@@ -1742,15 +1743,15 @@ std::string trackText(const Info &info)
     if (info.track > 0) {
         out = std::to_string(info.track);
         if (info.tracks >= info.track) {
-            out += " of " + std::to_string(info.tracks);
+            out = i18n::t("{0} of {1}", {out, std::to_string(info.tracks)});
         }
     }
     if (info.disc > 0 && (info.discs > 1 || info.disc > 1)) {
-        out += out.empty() ? "Disc " : ", disc ";
-        out += std::to_string(info.disc);
-        if (info.discs >= info.disc) {
-            out += " of " + std::to_string(info.discs);
-        }
+        const std::string disc = info.discs >= info.disc
+            ? i18n::t("{0} of {1}", {std::to_string(info.disc), std::to_string(info.discs)})
+            : std::to_string(info.disc);
+        out = out.empty() ? i18n::t("Disc {0}", {disc})
+                          : i18n::t("{0}, disc {1}", {out, disc});
     }
     return out;
 }
@@ -1770,8 +1771,7 @@ std::string loopText(const Info &info)
         return "";
     }
     const bool fractions = info.loopEnd < ShortSound;
-    return clockText(info.loopStart, fractions) + " to " +
-           clockText(info.loopEnd, fractions);
+    return i18n::t("{0} to {1}", {clockText(info.loopStart, fractions), clockText(info.loopEnd, fractions)});
 }
 
 int coverRank(const std::string &name)

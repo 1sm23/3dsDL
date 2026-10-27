@@ -4,6 +4,7 @@
 #include "i18n.hpp"
 #include "logging.hpp"
 #include "sound.hpp"
+#include "storage.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
 
@@ -24,9 +25,9 @@ constexpr size_t SocBufferSize = 0x100000;
 std::string failure(const char *operation, Result result)
 {
     char buffer[96];
-    std::snprintf(buffer, sizeof(buffer), "%s failed (0x%08lX).", operation,
+    std::snprintf(buffer, sizeof(buffer), "0x%08lX",
                   static_cast<unsigned long>(result));
-    return buffer;
+    return i18n::t("{0} failed ({1}).", {operation, buffer});
 }
 
 struct Services {
@@ -41,20 +42,22 @@ struct Services {
     {
         socBuffer = static_cast<u32 *>(memalign(0x1000, SocBufferSize));
         if (socBuffer == nullptr) {
-            error = "Could not allocate the network buffer.";
+            error = i18n::c("Could not allocate the network buffer.");
             return false;
         }
 
         Result result = romfsInit();
         if (R_FAILED(result)) {
-            error = failure("Opening the app's files", result);
+            error = failure(i18n::c("Opening the app's files"), result);
             return false;
         }
         romfs = true;
+        i18n::init("romfs:/i18n.json");
+        i18n::setLanguage(storage::loadSettings().language);
 
         result = socInit(socBuffer, SocBufferSize);
         if (R_FAILED(result)) {
-            error = failure("Starting the network service", result);
+            error = failure(i18n::c("Starting the network service"), result);
             return false;
         }
         soc = true;
@@ -65,7 +68,7 @@ struct Services {
         // whatever happened to be on the stack.
         result = sslcInit(0);
         if (R_FAILED(result)) {
-            error = failure("Starting the secure random source", result);
+            error = failure(i18n::c("Starting the secure random source"), result);
             return false;
         }
         sslc = true;
@@ -81,8 +84,7 @@ struct Services {
 
         const CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
         if (code != CURLE_OK) {
-            error = std::string("Starting libcurl failed: ") +
-                    curl_easy_strerror(code);
+            error = i18n::t("Starting libcurl failed: {0}", {curl_easy_strerror(code)});
             return false;
         }
         curl = true;
@@ -137,11 +139,10 @@ int main(int argc, char **argv)
         Services services;
         std::string error;
         if (services.start(error)) {
-            i18n::init("romfs:/i18n.json");
             App app;
             app.run();
         } else {
-            ui::message("Startup failed", error, ui::Tone::Error);
+            ui::message(i18n::c("Startup failed"), error, ui::Tone::Error);
             status = 1;
         }
     }

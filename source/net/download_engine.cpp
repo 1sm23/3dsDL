@@ -1,4 +1,5 @@
 #include "download_engine.hpp"
+#include "i18n.hpp"
 
 #include "fs_util.hpp"
 #include "naming.hpp"
@@ -207,8 +208,8 @@ bool flush(Transfer &transfer, Connection &connection)
         if (transfer.failure.empty()) {
             transfer.noSpace = errno == ENOSPC;
             transfer.failure = errno == ENOSPC
-                ? "The SD card is full."
-                : "Could not write to the SD card (" + errnoText() + ").";
+                ? i18n::c("The SD card is full.")
+                : i18n::t("Could not write to the SD card ({0}).", {errnoText()});
         }
         return false;
     }
@@ -283,9 +284,7 @@ bool begin(Transfer &transfer, Connection &lead)
     transfer.observer->onPhase(Phase::Downloading);
 
     if (transfer.total > request.maxFileSize) {
-        transfer.failure = "The file is " + units::bytes(transfer.total) +
-                           ", but the SD card's FAT32 format cannot store "
-                           "files of 4 GiB or more.";
+        transfer.failure = i18n::t("The file is {0}, but the SD card's FAT32 format cannot store files of 4 GiB or more.", {units::bytes(transfer.total)});
         return false;
     }
     if (request.freeSpace && transfer.total > transfer.fileBytes) {
@@ -293,10 +292,7 @@ bool begin(Transfer &transfer, Connection &lead)
         const uint64_t needed = transfer.total - transfer.fileBytes;
         if (available >= 0 && static_cast<uint64_t>(available) < needed) {
             transfer.noSpace = true;
-            transfer.failure = "Not enough free space on the SD card: " +
-                               units::bytes(needed) + " needed, " +
-                               units::bytes(static_cast<uint64_t>(available)) +
-                               " free.";
+            transfer.failure = i18n::t("Not enough free space on the SD card: {0} needed, {1} free.", {units::bytes(needed), units::bytes(static_cast<uint64_t>(available))});
             return false;
         }
     }
@@ -719,7 +715,7 @@ void schedule(Transfer &transfer)
             return;
         }
         if (!open(transfer, *piece, false)) {
-            transfer.failure = "Could not start the HTTPS client.";
+            transfer.failure = i18n::c("Could not start the HTTPS client.");
             transfer.stopped = true;
             transfer.code = CURLE_FAILED_INIT;
             return;
@@ -825,15 +821,14 @@ Result download(const Request &request, Observer &observer)
     Result result;
     const std::string address = text::trim(request.url);
     if (!url::isHttpUrl(address)) {
-        result.message = "Only http:// and https:// links can be downloaded.";
+        result.message = i18n::c("Only http:// and https:// links can be downloaded.");
         return result;
     }
 
     Request normalised = request;
     normalised.folder = naming::normaliseFolder(request.folder);
     if (!fs::directoryExists(normalised.folder)) {
-        result.message = "The folder " + normalised.folder +
-                         " does not exist.";
+        result.message = i18n::t("The folder {0} does not exist.", {normalised.folder});
         return result;
     }
     const PartialPaths paths = partialPaths(normalised.folder, address);
@@ -871,8 +866,7 @@ Result download(const Request &request, Observer &observer)
         transfer.file = std::fopen(paths.data.c_str(),
                                    transfer.resuming ? "r+b" : "w+b");
         if (transfer.file == nullptr) {
-            result.message = "Could not create a file in " +
-                             normalised.folder + " (" + errnoText() + ").";
+            result.message = i18n::t("Could not create a file in {0} ({1}).", {normalised.folder, errnoText()});
             return result;
         }
         // Each connection buffers its own writes for its own place in the
@@ -909,7 +903,7 @@ Result download(const Request &request, Observer &observer)
             if (!transfer.resuming) {
                 fs::removeFile(paths.data);
             }
-            result.message = "Could not start the HTTPS client.";
+            result.message = i18n::c("Could not start the HTTPS client.");
             return result;
         }
         if (first != nullptr) {
@@ -949,7 +943,7 @@ Result download(const Request &request, Observer &observer)
                 fs::removeFile(paths.info);
             }
             result.outcome = Outcome::Cancelled;
-            result.message = "Download cancelled.";
+            result.message = i18n::c("Download cancelled.");
             return result;
         }
 
@@ -987,7 +981,7 @@ Result download(const Request &request, Observer &observer)
         if (!transfer.failure.empty()) {
             result.message = transfer.failure;
         } else if (!closed) {
-            result.message = "Could not finish writing to the SD card.";
+            result.message = i18n::c("Could not finish writing to the SD card.");
         } else {
             result.message =
                 describeFailure(code, result.httpStatus, result.detail);
@@ -1013,8 +1007,7 @@ Result download(const Request &request, Observer &observer)
     }
 
     result.outcome = Outcome::Failed;
-    result.message = "The server kept rejecting the request to continue the "
-                     "download.";
+    result.message = i18n::c("The server kept rejecting the request to continue the download.");
     return result;
 }
 
@@ -1059,91 +1052,71 @@ std::string describeFailure(int curlCode, long httpStatus,
     case CURLE_OK:
         return "";
     case CURLE_UNSUPPORTED_PROTOCOL:
-        return "Only http:// and https:// links are supported, and the "
-               "server redirected somewhere else.";
+        return i18n::c("Only http:// and https:// links are supported, and the server redirected somewhere else.");
     case CURLE_URL_MALFORMAT:
-        return "That link is not a valid URL.";
+        return i18n::c("That link is not a valid URL.");
     case CURLE_COULDNT_RESOLVE_HOST:
-        return "Could not find the server. Check the Wi-Fi connection and "
-               "the link.";
+        return i18n::c("Could not find the server. Check the Wi-Fi connection and the link.");
     case CURLE_COULDNT_CONNECT:
-        return "Could not connect to the server. Check the Wi-Fi connection.";
+        return i18n::c("Could not connect to the server. Check the Wi-Fi connection.");
     case CURLE_OPERATION_TIMEDOUT:
-        return "The connection timed out because the server stopped "
-               "responding.";
+        return i18n::c("The connection timed out because the server stopped responding.");
     case CURLE_PEER_FAILED_VERIFICATION:
         // mbedTLS (on the console) and OpenSSL (in tests) word these
         // differently, so both spellings are recognised.
         if (mentions("BADCERT_FUTURE") || mentions("not yet valid")) {
-            return "The server's certificate is not valid yet according to "
-                   "the console's clock, so the console's date is probably "
-                   "behind. Check the clock and try again.";
+            return i18n::c("The server's certificate is not valid yet according to the console's clock, so the console's date is probably behind. Check the clock and try again.");
         }
         if (mentions("BADCERT_EXPIRED") || mentions("expired")) {
-            return "The server's certificate has expired according to the "
-                   "console's clock. Check that the console's date is "
-                   "right; if it is, the site's certificate really has "
-                   "expired.";
+            return i18n::c("The server's certificate has expired according to the console's clock. Check that the console's date is right; if it is, the site's certificate really has expired.");
         }
         if (mentions("CN_MISMATCH") || mentions("subject name") ||
             mentions("does not match")) {
-            return "The server's certificate is for a different site than "
-                   "the link.";
+            return i18n::c("The server's certificate is for a different site than the link.");
         }
         if (mentions("NOT_TRUSTED") || mentions("self-signed") ||
             mentions("self signed") || mentions("local issuer")) {
-            return "The server's certificate is not signed by an authority "
-                   "3dsDL trusts.";
+            return i18n::c("The server's certificate is not signed by an authority 3dsDL trusts.");
         }
-        return "The server's certificate could not be verified. If the "
-               "console's date and time are wrong, fix them with Check "
-               "clock and try again.";
+        return i18n::c("The server's certificate could not be verified. If the console's date and time are wrong, fix them with Check clock and try again.");
     case CURLE_SSL_CONNECT_ERROR:
-        return "The secure connection to the server failed.";
+        return i18n::c("The secure connection to the server failed.");
     case CURLE_SSL_CACERT_BADFILE:
-        return "3dsDL could not load its certificate store.";
+        return i18n::c("3dsDL could not load its certificate store.");
     case CURLE_TOO_MANY_REDIRECTS:
-        return "The link redirected too many times.";
+        return i18n::c("The link redirected too many times.");
     case CURLE_FILESIZE_EXCEEDED:
-        return "The file is too large for the SD card's FAT32 format "
-               "(4 GiB or more).";
+        return i18n::c("The file is too large for the SD card's FAT32 format (4 GiB or more).");
     case CURLE_PARTIAL_FILE:
     case CURLE_RECV_ERROR:
     case CURLE_SEND_ERROR:
     case CURLE_GOT_NOTHING:
-        return "The connection dropped before the download finished.";
+        return i18n::c("The connection dropped before the download finished.");
     case CURLE_WRITE_ERROR:
-        return "Could not write to the SD card.";
+        return i18n::c("Could not write to the SD card.");
     case CURLE_RANGE_ERROR:
-        return "The server refused to continue the earlier download.";
+        return i18n::c("The server refused to continue the earlier download.");
     case CURLE_HTTP_RETURNED_ERROR:
         switch (httpStatus) {
         case 401:
         case 403:
-            return "The server refused access (HTTP " +
-                   std::to_string(httpStatus) +
-                   "). The link may need a login or may have expired.";
+            return i18n::t("The server refused access (HTTP {0}). The link may need a login or may have expired.", {std::to_string(httpStatus)});
         case 404:
         case 410:
-            return "The file was not found on the server (HTTP " +
-                   std::to_string(httpStatus) + ").";
+            return i18n::t("The file was not found on the server (HTTP {0}).", {std::to_string(httpStatus)});
         case 429:
-            return "The server is limiting requests (HTTP 429). Try again "
-                   "later.";
+            return i18n::c("The server is limiting requests (HTTP 429). Try again later.");
         default:
             break;
         }
         if (httpStatus >= 500) {
-            return "The server had an error (HTTP " +
-                   std::to_string(httpStatus) + "). Try again later.";
+            return i18n::t("The server had an error (HTTP {0}). Try again later.", {std::to_string(httpStatus)});
         }
-        return "The server answered with HTTP " + std::to_string(httpStatus) +
-               ".";
+        return i18n::t("The server answered with HTTP {0}.", {std::to_string(httpStatus)});
     default:
         break;
     }
-    return std::string("The download failed: ") +
-           curl_easy_strerror(static_cast<CURLcode>(curlCode)) + ".";
+    return i18n::t("The download failed: {0}.", {curl_easy_strerror(static_cast<CURLcode>(curlCode))});
 }
 
 } // namespace net

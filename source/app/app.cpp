@@ -117,24 +117,22 @@ bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
     const time_t seconds = static_cast<time_t>(platform::now());
     std::tm parts {};
     gmtime_r(&seconds, &parts); // the console clock is already local time
-    const std::string backup = saves::backupName(parts) + " Before Reinstall";
+    const std::string backup = i18n::t("{0} Before Reinstall", {saves::backupName(parts)});
     savedata::Progress progress;
     savedata::Result saved;
-    tasks::busy("install", "Backing up the save of " + name + "...",
+    tasks::busy("install", i18n::t("Backing up the save of {0}...", {name}),
                 [&]() { saved = savedata::backup(target, backup, progress); });
     if (saved.ok) {
-        note = "The save was backed up first, as " + backup +
-               " in Titles, Save Data.";
+        note = i18n::t("The save was backed up first, as {0} in Titles, Save Data.", {backup});
         return true;
     }
     ui::Dialog dialog;
-    dialog.header = "install";
-    dialog.title = "The save of " + name + " could not be backed up. "
-                   "Replacing may lose it.";
+    dialog.header = i18n::c("install");
+    dialog.title = i18n::t("The save of {0} could not be backed up. Replacing may lose it.", {name});
     dialog.tone = ui::Tone::Warning;
     dialog.icon = ui::showIcon(info.smdh.icon);
     dialog.body.push_back({saved.message, ui::color::Text, 0.48f, 3});
-    dialog.buttons = {"Continue Anyway", "Cancel"};
+    dialog.buttons = {i18n::c("Continue Anyway"), i18n::c("Cancel")};
     dialog.dangerous = 0;
     dialog.initial = 1;
     dialog.cancelButton = 1;
@@ -218,7 +216,7 @@ void App::run()
         case Action::EnterUrl: {
             std::string link;
             if (platform::keyboard(platform::KeyboardKind::Url,
-                                   "Direct http:// or https:// file link",
+                                   i18n::c("Direct http:// or https:// file link"),
                                    "https://", link)) {
                 startDownload(link, settings_.destination);
             }
@@ -274,30 +272,30 @@ App::Action App::home()
         spec.controls.push_back(control);
     };
     // 30 tall, so the icons get their full 20 px.
-    add({16, 6, 140, 30}, "Settings", ui::Icon::Gear, ui::color::IconGrey,
+    add({16, 6, 140, 30}, i18n::c("Settings"), ui::Icon::Gear, ui::color::IconGrey,
         false);
-    add({164, 6, 140, 30}, "Queue", ui::Icon::Download, ui::color::IconGreen,
+    add({164, 6, 140, 30}, i18n::c("Queue"), ui::Icon::Download, ui::color::IconGreen,
         false);
     if (!queue_.empty()) {
         spec.controls.back().badge = std::to_string(queue_.size());
     }
     // Three across: getting links in on top, finding things below.
-    add({16, 42, 92, 78}, "Scan QR Code", ui::Icon::Scan, ui::color::IconBlue,
+    add({16, 42, 92, 78}, i18n::c("Scan QR Code"), ui::Icon::Scan, ui::color::IconBlue,
         true);
-    add({114, 42, 92, 78}, "Enter URL", ui::Icon::Globe, ui::color::IconTeal,
+    add({114, 42, 92, 78}, i18n::c("Enter URL"), ui::Icon::Globe, ui::color::IconTeal,
         true);
-    add({212, 42, 92, 78}, "Receive", ui::Icon::Chip, ui::color::IconPink,
+    add({212, 42, 92, 78}, i18n::c("Receive"), ui::Icon::Chip, ui::color::IconPink,
         true);
-    add({16, 127, 92, 76}, "History", ui::Icon::History, ui::color::IconRed,
+    add({16, 127, 92, 76}, i18n::c("History"), ui::Icon::History, ui::color::IconRed,
         true);
-    add({114, 127, 92, 76}, "Files", ui::Icon::Folder, ui::color::IconOrange,
+    add({114, 127, 92, 76}, i18n::c("Files"), ui::Icon::Folder, ui::color::IconOrange,
         true);
-    add({212, 127, 92, 76}, "Titles", ui::Icon::GameCard, ui::color::IconGold,
+    add({212, 127, 92, 76}, i18n::c("Titles"), ui::Icon::GameCard, ui::color::IconGold,
         true);
     spec.drawTop = [&]() {
         // The answer to the update check can arrive while this is open.
-        spec.controls[0].badge = updateAvailable_ ? "New" : "";
-        ui::nameScreen("Home");
+        spec.controls[0].badge = updateAvailable_ ? i18n::c("New") : "";
+        ui::nameScreen(i18n::c("Home"));
         ui::drawTopBackground();
         ui::drawStatusBar();
         ui::drawDots(41);
@@ -347,9 +345,8 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         return Start::Cancelled;
     }
     if (!url::isHttpUrl(link)) {
-        ui::message("Not a download link",
-                    "3dsDL can only download direct http:// or https:// "
-                    "links.",
+        ui::message(i18n::c("Not a download link"),
+                    i18n::c("3dsDL can only download direct http:// or https:// links."),
                     ui::Tone::Error, link);
         return Start::Cancelled;
     }
@@ -362,17 +359,17 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         return Start::Cancelled;
     }
     if (!fs::makeDirectories(folder)) {
-        ui::message("Folder unavailable", "Could not create " + folder + ".",
+        ui::message(i18n::c("Folder unavailable"), i18n::t("Could not create {0}.", {folder}),
                     ui::Tone::Error);
         return Start::Done;
     }
 
     if (platform::wifiStatus() == platform::Wifi::Disconnected) {
         ui::Dialog dialog;
-        dialog.header = "Download";
-        dialog.title = "The system is not connected to the internet.";
+        dialog.header = i18n::c("Download");
+        dialog.title = i18n::c("The system is not connected to the internet.");
         dialog.tone = ui::Tone::Warning;
-        dialog.buttons = {"Try Anyway", "Cancel"};
+        dialog.buttons = {i18n::c("Try Anyway"), i18n::c("Cancel")};
         dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) != 0) {
@@ -399,7 +396,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
             if (result.resumable) {
                 HistoryEntry entry =
                     newEntry(link, folder, HistoryStatus::Failed);
-                entry.message = "Interrupted when 3dsDL closed.";
+                entry.message = i18n::c("Interrupted when 3dsDL closed.");
                 entry.name = result.filename;
                 entry.resumable = true;
                 entry.bytes = result.bytes;
@@ -429,18 +426,16 @@ App::Start App::startDownload(const std::string &address, std::string folder)
         record(entry);
 
         ui::Dialog dialog;
-        dialog.header = "Download";
-        dialog.title = "The download could not be completed.";
+        dialog.header = i18n::c("Download");
+        dialog.title = i18n::c("The download could not be completed.");
         dialog.tone = ui::Tone::Error;
         dialog.body.push_back({result.message, ui::color::Text, 0.5f, 4});
         if (result.resumable) {
-            dialog.body.push_back({units::bytes(result.bytes) +
-                                       " arrived and is kept for Retry.",
+            dialog.body.push_back({i18n::t("{0} arrived and is kept for Retry.", {units::bytes(result.bytes)}),
                                    ui::color::Success, 0.46f, 2});
         }
         if (result.certificateProblem) {
-            dialog.body.push_back({"The console's clock says " +
-                                       units::dateTime(platform::now()) + ".",
+            dialog.body.push_back({i18n::t("The console's clock says {0}.", {units::dateTime(platform::now())}),
                                    ui::color::Warning, 0.46f, 1});
         }
         if (!result.detail.empty() && result.detail != result.message &&
@@ -454,7 +449,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
                                          : result.filename;
         if (result.noSpace && installer::available() &&
             text::endsWithNoCase(fileName, ".cia")) {
-            dialog.buttons = {"Install Directly", "Close"};
+            dialog.buttons = {i18n::c("Install Directly"), i18n::c("Close")};
             dialog.cancelButton = 1;
             if (ui::choose(dialog) == 0) {
                 installDirectly(link);
@@ -462,10 +457,10 @@ App::Start App::startDownload(const std::string &address, std::string folder)
             return Start::Done;
         }
         if (result.certificateProblem) {
-            dialog.buttons = {"Check Clock", "Retry", "Close"};
+            dialog.buttons = {i18n::c("Check Clock"), i18n::c("Retry"), i18n::c("Close")};
             dialog.cancelButton = 2;
         } else {
-            dialog.buttons = {"Retry", "Close"};
+            dialog.buttons = {i18n::c("Retry"), i18n::c("Close")};
             dialog.cancelButton = 1;
         }
         const int retryButton = result.certificateProblem ? 1 : 0;
@@ -506,27 +501,27 @@ App::Confirm App::confirmDownload(const std::string &address,
         // Download is the big button the ring starts on, so A downloads;
         // the folder is on the top screen.
         ui::ScreenSpec spec;
-        spec.back = "Cancel";
+        spec.back = i18n::c("Cancel");
         // Plain and large, like Install on the install prompt.
         ui::Control download;
         download.rect = {26, 38, 268, 40};
-        download.label = "Download";
+        download.label = i18n::c("Download");
         spec.controls.push_back(download);
         ui::Control queue;
         queue.rect = {46, 90, 228, 34};
-        queue.label = "Add to Queue";
+        queue.label = i18n::c("Add to Queue");
         queue.icon = ui::Icon::Download;
         queue.iconColor = ui::color::IconGreen;
         queue.scale = ui::type::Body + 0.06f;
         spec.controls.push_back(queue);
         ui::Control change = queue;
         change.rect = {46, 136, 228, 34};
-        change.label = "Change Folder";
+        change.label = i18n::c("Change Folder");
         change.icon = ui::Icon::Folder;
         change.iconColor = ui::color::IconOrange;
         spec.controls.push_back(change);
         spec.drawTop = [&]() {
-            ui::drawTopChrome("Download", ui::Icon::Download,
+            ui::drawTopChrome(i18n::c("Download"), ui::Icon::Download,
                               ui::color::IconGreen);
             ui::drawPanel();
             const float left = ui::TopPanel.x + 18;
@@ -537,22 +532,22 @@ App::Confirm App::confirmDownload(const std::string &address,
                                                             : name,
                             left + 40, ui::TopPanel.y + 10, 0.62f,
                             ui::color::InkStrong, 300);
-            ui::drawText("from " + url::host(address), left + 40,
+            ui::drawText(i18n::t("from {0}", {url::host(address)}), left + 40,
                          ui::TopPanel.y + 36, ui::type::Small,
                          ui::color::InkSoft);
             float y = ui::drawWrapped(address, left, ui::TopPanel.y + 58,
                                       ui::type::Tiny, ui::color::InkSoft,
                                       ui::TopPanel.w - 36, 2) + 4;
-            y = ui::drawTagRow(left, y, 74, "Save to", folder);
+            y = ui::drawTagRow(left, y, 74, i18n::c("Save to"), folder);
             if (partial > 0) {
-                ui::drawTagRow(left, y, 74, "Resume",
-                               units::bytes(partial) + " is already here",
+                ui::drawTagRow(left, y, 74, i18n::c("Resume"),
+                               i18n::t("{0} is already here", {units::bytes(partial)}),
                                ui::color::Good);
             } else if (secure) {
-                ui::drawTagRow(left, y, 74, "HTTPS", "Encrypted",
+                ui::drawTagRow(left, y, 74, "HTTPS", i18n::c("Encrypted"),
                                ui::color::Good);
             } else {
-                ui::drawTagRow(left, y, 74, "HTTP", "Not encrypted",
+                ui::drawTagRow(left, y, 74, "HTTP", i18n::c("Not encrypted"),
                                ui::color::rgb(0xD2603A));
             }
         };
@@ -586,16 +581,14 @@ void App::finishDownload(const std::string &address, const std::string &folder,
             naming::unusedPath(folder, result.filename, fs::fileExists));
 
         ui::Dialog dialog;
-        dialog.header = "Download";
-        dialog.title = "A file with this name already exists.";
+        dialog.header = i18n::c("Download");
+        dialog.title = i18n::c("A file with this name already exists.");
         dialog.tone = ui::Tone::Warning;
-        dialog.body.push_back({result.filename + " is already in " + folder +
-                                   ".",
+        dialog.body.push_back({i18n::t("{0} is already in {1}.", {result.filename, folder}),
                                ui::color::Text, 0.56f, 2});
-        dialog.body.push_back({"Keep Both saves the new file as " + suggestion +
-                                   ".",
+        dialog.body.push_back({i18n::t("Keep Both saves the new file as {0}.", {suggestion}),
                                ui::color::Muted, 0.46f, 3});
-        dialog.buttons = {"Keep Both", "Replace", "Cancel"};
+        dialog.buttons = {i18n::c("Keep Both"), i18n::c("Replace"), i18n::c("Cancel")};
         dialog.dangerous = 1;
         dialog.cancelButton = 2;
 
@@ -604,7 +597,7 @@ void App::finishDownload(const std::string &address, const std::string &folder,
             fs::removeFile(result.partPath);
             HistoryEntry entry =
                 newEntry(address, folder, HistoryStatus::Cancelled);
-            entry.message = "Kept the existing " + result.filename + ".";
+            entry.message = i18n::t("Kept the existing {0}.", {result.filename});
             record(entry);
             return;
         }
@@ -624,8 +617,7 @@ void App::finishDownload(const std::string &address, const std::string &folder,
         speed = units::rate(static_cast<double>(result.transferred) /
                             result.seconds);
         if (result.connections > 1) {
-            speed += " over " + std::to_string(result.connections) +
-                     " connections";
+            speed += i18n::t(" over {0} connections", {std::to_string(result.connections)});
         }
     }
 
@@ -633,20 +625,19 @@ void App::finishDownload(const std::string &address, const std::string &folder,
     entry.path = saved.path;
     entry.name = result.filename;
     entry.message = !saved.ok       ? saved.message
-                  : speed.empty() ? "Saved"
-                                  : "Saved at " + speed;
+                  : speed.empty() ? i18n::c("Saved")
+                                  : i18n::t("Saved at {0}", {speed});
     record(entry);
 
     if (!saved.ok) {
-        ui::message("Could not save the file", saved.message,
+        ui::message(i18n::c("Could not save the file"), saved.message,
                     ui::Tone::Error);
         return;
     }
 
     const std::string summary = saved.usedFallbackName
         ? saved.message
-        : "Saved as " + saved.path + " (" + units::bytes(result.bytes) +
-              (speed.empty() ? "" : ", " + speed) + ").";
+        : i18n::t("Saved as {0} ({1}{2}).", {saved.path, units::bytes(result.bytes), (speed.empty() ? "" : ", " + speed)});
     if (cia::isCiaFile(saved.path)) {
         offerInstall(saved.path, address, summary);
         return;
@@ -657,7 +648,7 @@ void App::finishDownload(const std::string &address, const std::string &folder,
         offerExtraction(saved.path, folder, summary);
         return;
     }
-    ui::message("Download complete", summary, ui::Tone::Success);
+    ui::message(i18n::c("Download complete"), summary, ui::Tone::Success);
 }
 
 void App::offerExtraction(const std::string &path, const std::string &folder,
@@ -671,14 +662,14 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         if (error.empty()) {
             // Stopped: the download still finished.
             if (!summary.empty()) {
-                ui::message("Download complete", summary, ui::Tone::Success);
+                ui::message(i18n::c("Download complete"), summary, ui::Tone::Success);
             }
             return;
         }
-        ui::message(summary.empty() ? "Cannot extract" : "Download complete",
+        ui::message(summary.empty() ? i18n::c("Cannot extract") : i18n::c("Download complete"),
                     summary.empty() ? error : summary,
                     summary.empty() ? ui::Tone::Error : ui::Tone::Success,
-                    summary.empty() ? "" : "It was not extracted: " + error);
+                    summary.empty() ? "" : i18n::t("It was not extracted: {0}", {error}));
         return;
     }
     const archives::Listing &listing = known != nullptr ? *known : read;
@@ -696,21 +687,20 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         holds += ", " + units::bytes(listing.archiveSize);
     }
     const std::string places =
-        single ? "Into: " + folder + listing.top +
-                     (listing.topIsFolder ? "/" : "")
-               : "Here: " + folder + "\nNew Folder: " + ownFolder;
+        single ? i18n::t("Into: {0}{1}{2}", {folder, listing.top, (listing.topIsFolder ? "/" : "")})
+               : i18n::t("Here: {0}\nNew Folder: {1}", {folder, ownFolder});
 
     ui::Dialog dialog;
-    dialog.header = "extract";
+    dialog.header = i18n::c("extract");
     dialog.title = title;
     dialog.tone = ui::Tone::Success;
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
     dialog.body.push_back({holds + "\n" + places, ui::color::Text, 0.46f, 5});
     if (single) {
-        dialog.buttons = {"Extract", "Not Now"};
+        dialog.buttons = {i18n::c("Extract"), i18n::c("Not Now")};
         dialog.cancelButton = 1;
     } else {
-        dialog.buttons = {"Here", "New Folder", "Not Now"};
+        dialog.buttons = {i18n::c("Here"), i18n::c("New Folder"), i18n::c("Not Now")};
         dialog.cancelButton = 2;
     }
     const int choice = ui::choose(dialog);
@@ -731,12 +721,8 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
             : listing.archiveSize;
     const int64_t available = platform::sdFreeBytes();
     if (available >= 0 && static_cast<uint64_t>(available) < needed) {
-        ui::message("Not enough free space",
-                    "Extracting needs " +
-                        std::string(listing.complete ? "" : "at least ") +
-                        units::bytes(needed) + ", but only " +
-                        units::bytes(static_cast<uint64_t>(available)) +
-                        " is free.",
+        ui::message(i18n::c("Not enough free space"),
+                    i18n::t("Extracting needs {0}{1}, but only {2} is free.", {std::string(listing.complete ? "" : i18n::c("at least ")), units::bytes(needed), units::bytes(static_cast<uint64_t>(available))}),
                     ui::Tone::Error);
         return;
     }
@@ -755,7 +741,7 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
             };
             bool checked = false;
             if (!tasks::busy(
-                    "Archive", "Checking " + target + "...",
+                    i18n::c("Archive"), i18n::t("Checking {0}...", {target}),
                     [&](tasks::Busy &busy) {
                         busy.total = listing.fileCount;
                         Checking observer(busy);
@@ -769,16 +755,14 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         }
         if (!clashes.empty()) {
             ui::Dialog question;
-            question.header = "extract";
+            question.header = i18n::c("extract");
             question.title = clashes.size() == 1
-                                 ? "1 file already exists. Replace it?"
-                                 : plural(clashes.size(), "file") +
-                                       " already exist. Replace them?";
+                                 ? i18n::c("1 file already exists. Replace it?")
+                                 : i18n::t("{0} already exist. Replace them?", {plural(clashes.size(), "file")});
             question.tone = ui::Tone::Warning;
-            question.body.push_back({"For example " + clashes.front() +
-                                         " in " + target,
+            question.body.push_back({i18n::t("For example {0} in {1}", {clashes.front(), target}),
                                      ui::color::Text, 0.46f, 3});
-            question.buttons = {"Overwrite", "Skip Them", "Cancel"};
+            question.buttons = {i18n::c("Overwrite"), i18n::c("Skip Them"), i18n::c("Cancel")};
             question.dangerous = 0;
             question.initial = 1;
             question.cancelButton = 2;
@@ -805,30 +789,26 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         return;
     }
     const std::string extracted =
-        plural(result.extracted, "file") + " extracted into " + landed +
-        (seconds > 0 ? " in " + units::duration(seconds) : "") + ".";
+        i18n::t("{0} extracted into {1}{2}.", {plural(result.extracted, "file"), landed, (seconds > 0 ? i18n::t(" in {0}", {units::duration(seconds)}) : "")});
     if (result.cancelled) {
-        ui::message("Extraction stopped", extracted, ui::Tone::Warning);
+        ui::message(i18n::c("Extraction stopped"), extracted, ui::Tone::Warning);
         return;
     }
     if (!result.ok) {
-        ui::message("Extraction failed", result.message, ui::Tone::Error,
+        ui::message(i18n::c("Extraction failed"), result.message, ui::Tone::Error,
                     extracted);
         return;
     }
 
     std::string notes;
     if (!result.skippedExisting.empty()) {
-        notes += plural(result.skippedExisting.size(), "existing file") +
-                 " left alone. ";
+        notes += i18n::t("{0} left alone. ", {plural(result.skippedExisting.size(), "existing file")});
     }
     if (result.skippedUnsafe > 0) {
-        notes += plural(result.skippedUnsafe, "entry") +
-                 " skipped because the path would leave the folder. ";
+        notes += i18n::t("{0} skipped because the path would leave the folder. ", {plural(result.skippedUnsafe, "entry")});
     }
     if (result.skippedUnsupported > 0) {
-        notes += plural(result.skippedUnsupported, "entry") +
-                 " skipped (encrypted, a link or unknown compression). ";
+        notes += i18n::t("{0} skipped (encrypted, a link or unknown compression). ", {plural(result.skippedUnsupported, "entry")});
     }
 
     // Without a full listing nothing could be asked before, so what was
@@ -836,14 +816,14 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
     const bool offerReplace =
         !listing.complete && !result.skippedExisting.empty();
     ui::Dialog done;
-    done.header = "done";
-    done.title = "The archive has been extracted.";
+    done.header = i18n::c("done");
+    done.title = i18n::c("The archive has been extracted.");
     done.tone = ui::Tone::Success;
     done.body.push_back({extracted, ui::color::Text, 0.5f, 3});
     done.body.push_back({notes, ui::color::Muted, 0.44f, 4});
-    done.buttons = {"Done", "Delete Archive"};
+    done.buttons = {i18n::c("Done"), i18n::c("Delete Archive")};
     if (offerReplace) {
-        done.buttons.insert(done.buttons.begin() + 1, "Replace Them");
+        done.buttons.insert(done.buttons.begin() + 1, i18n::c("Replace Them"));
     }
     const int deleteButton = static_cast<int>(done.buttons.size()) - 1;
     done.dangerous = deleteButton;
@@ -853,7 +833,7 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         if (fs::removeFile(path)) {
             sdChanged(path);
         } else {
-            ui::message("Could not delete the archive", path,
+            ui::message(i18n::c("Could not delete the archive"), path,
                         ui::Tone::Error);
         }
         return;
@@ -872,14 +852,14 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         return;
     }
     const std::string count =
-        plural(replaced.extracted, "file") + " replaced in " + landed + ".";
+        i18n::t("{0} replaced in {1}.", {plural(replaced.extracted, "file"), landed});
     if (replaced.cancelled) {
-        ui::message("Replacing stopped", count, ui::Tone::Warning);
+        ui::message(i18n::c("Replacing stopped"), count, ui::Tone::Warning);
     } else if (!replaced.ok) {
-        ui::message("Replacing failed", replaced.message, ui::Tone::Error,
+        ui::message(i18n::c("Replacing failed"), replaced.message, ui::Tone::Error,
                     count);
     } else {
-        ui::message("Files replaced", count, ui::Tone::Success);
+        ui::message(i18n::c("Files replaced"), count, ui::Tone::Success);
     }
 }
 
@@ -891,43 +871,43 @@ void App::offerInstall(const std::string &path, const std::string &address,
     cia::Info info;
     std::string error;
     if (!cia::readInfo(path, info, error)) {
-        ui::message("Download complete", summary, ui::Tone::Success,
-                    "It looks like a CIA but cannot be installed: " + error);
+        ui::message(i18n::c("Download complete"), summary, ui::Tone::Success,
+                    i18n::t("It looks like a CIA but cannot be installed: {0}", {error}));
         return;
     }
     if (!installer::available()) {
-        ui::message("Download complete", summary, ui::Tone::Success,
+        ui::message(i18n::c("Download complete"), summary, ui::Tone::Success,
                     installer::unavailableReason());
         return;
     }
 
     CiaAction action = settings_.afterCiaDownload;
     if (action == CiaAction::Keep) {
-        ui::message("Download complete", summary, ui::Tone::Success);
+        ui::message(i18n::c("Download complete"), summary, ui::Tone::Success);
         return;
     }
     if (action == CiaAction::Ask) {
         ui::ScreenSpec spec;
-        spec.back = "Keep File";
+        spec.back = i18n::c("Keep File");
         ui::Control install;
         // The top screen already says what this is and whether it is
         // installed, so the buttons stand alone, centred.
         install.rect = {26, 59, 268, 38};
-        install.label = "Install";
+        install.label = i18n::c("Install");
         spec.controls.push_back(install);
         ui::Control both = install;
         both.rect = {26, 110, 268, 38};
-        both.label = "Install and Delete File";
+        both.label = i18n::c("Install and Delete File");
         both.scale = ui::type::Body + 0.06f;
         spec.controls.push_back(both);
         spec.drawTop = [&]() {
-            screens::drawCiaTop(info, "Download Complete", ui::Icon::Download,
+            screens::drawCiaTop(info, i18n::c("Download Complete"), ui::Icon::Download,
                                 ui::color::IconGreen);
         };
         int focus = 0;
         const ui::ScreenResult result = ui::runScreen(spec, focus);
         if (result.choice != 0 && result.choice != 1) {
-            ui::message("File Kept", summary, ui::Tone::Success);
+            ui::message(i18n::c("File Kept"), summary, ui::Tone::Success);
             return;
         }
         action = result.choice == 0 ? CiaAction::Install
@@ -945,14 +925,13 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     }
     const std::string name = ciaName(info);
     if (!installer::available()) {
-        ui::message("Cannot install", installer::unavailableReason(),
+        ui::message(i18n::c("Cannot install"), installer::unavailableReason(),
                     ui::Tone::Error);
         return false;
     }
     if (cia::isSystemTitle(info.titleId)) {
-        ui::message("Not installed",
-                    "3dsDL does not install system titles. A broken one can "
-                    "stop the console from starting.",
+        ui::message(i18n::c("Not installed"),
+                    i18n::c("3dsDL does not install system titles. A broken one can stop the console from starting."),
                     ui::Tone::Error, cia::titleIdText(info.titleId));
         return false;
     }
@@ -961,11 +940,11 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     APT_CheckNew3DS(&isNew3ds);
     if (cia::isNew3dsOnly(info.titleId) && !isNew3ds) {
         ui::Dialog dialog;
-        dialog.header = "install";
-        dialog.title = name + " only starts on New Nintendo 3DS systems.";
+        dialog.header = i18n::c("install");
+        dialog.title = i18n::t("{0} only starts on New Nintendo 3DS systems.", {name});
         dialog.tone = ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
-        dialog.buttons = {"Install Anyway", "Cancel"};
+        dialog.buttons = {i18n::c("Install Anyway"), i18n::c("Cancel")};
         dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) != 0) {
@@ -984,19 +963,17 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     const auto confirmReplace = [&](const std::string &title,
                                     bool sameVersion = false) {
         ui::Dialog dialog;
-        dialog.header = "install";
+        dialog.header = i18n::c("install");
         dialog.title = title;
         dialog.tone = sameVersion ? ui::Tone::Info : ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
-        dialog.body.push_back({"Installed: " + screens::titleVersion(info.titleId, installed) +
-                                   "\nThis file: " +
-                                   screens::titleVersion(info.titleId, info.version),
+        dialog.body.push_back({i18n::t("Installed: {0}\nThis file: {1}", {screens::titleVersion(info.titleId, installed), screens::titleVersion(info.titleId, info.version)}),
                                ui::color::Text, 0.48f, 2});
         if (sameVersion) {
-            dialog.buttons = {"Reinstall", "Keep Installed"};
+            dialog.buttons = {i18n::c("Reinstall"), i18n::c("Keep Installed")};
             dialog.initial = 0;
         } else {
-            dialog.buttons = {"Replace", "Cancel"};
+            dialog.buttons = {i18n::c("Replace"), i18n::c("Cancel")};
             dialog.dangerous = 0;
             dialog.initial = 1;
         }
@@ -1013,20 +990,17 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         // AM answers 0xC8E083FC to the same version, after the whole file.
         bool reinstall = false;
         if (isRunning) {
-            ui::message("Already Installed",
-                        name + " " + screens::titleVersion(info.titleId, installed) +
-                            " is running now, so it cannot be installed "
-                            "again.",
+            ui::message(i18n::c("Already Installed"),
+                        i18n::t("{0} {1} is running now, so it cannot be installed again.", {name, screens::titleVersion(info.titleId, installed)}),
                         ui::Tone::Info);
         } else {
-            reinstall = confirmReplace("This version of " + name +
-                                           " is already installed",
+            reinstall = confirmReplace(i18n::t("This version of {0} is already installed", {name}),
                                        true);
         }
         if (!reinstall) {
             // The file stays even after Install and Delete: nothing went in.
             if (!address.empty()) {
-                markInstalled(address, path, "Already installed");
+                markInstalled(address, path, i18n::c("Already installed"));
             }
             if (alreadyInstalled != nullptr) {
                 *alreadyInstalled = true;
@@ -1036,16 +1010,12 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         removeFirst = true;
     } else if (isInstalled && installed > info.version) {
         if (isRunning) {
-            ui::message("Newer Version Running",
-                        name + " " + screens::titleVersion(info.titleId, installed) +
-                            " is installed and running now, so it cannot "
-                            "be replaced by this older " +
-                            screens::titleVersion(info.titleId, info.version) + ".",
+            ui::message(i18n::c("Newer Version Running"),
+                        i18n::t("{0} {1} is installed and running now, so it cannot be replaced by this older {2}.", {name, screens::titleVersion(info.titleId, installed), screens::titleVersion(info.titleId, info.version)}),
                         ui::Tone::Info);
             return false;
         }
-        if (!confirmReplace("A newer version of " + name +
-                            " is installed")) {
+        if (!confirmReplace(i18n::t("A newer version of {0} is installed", {name}))) {
             return false;
         }
         removeFirst = true;
@@ -1055,12 +1025,8 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         const int64_t needed = installer::requiredSpace(path, info.titleId);
         const int64_t free = platform::sdFreeBytes();
         if (needed > 0 && free >= 0 && needed > free) {
-            ui::message("Not enough space",
-                        name + " needs " +
-                            units::bytes(static_cast<uint64_t>(needed)) +
-                            " on the SD card and " +
-                            units::bytes(static_cast<uint64_t>(free)) +
-                            " is free.",
+            ui::message(i18n::c("Not enough space"),
+                        i18n::t("{0} needs {1} on the SD card and {2} is free.", {name, units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}),
                         ui::Tone::Error);
             return false;
         }
@@ -1079,7 +1045,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         if (removeFirst) {
             std::string error;
             if (!installer::removeTitle(info.titleId, error)) {
-                ui::message("Could not replace " + name, error,
+                ui::message(i18n::t("Could not replace {0}", {name}), error,
                             ui::Tone::Error);
                 return false;
             }
@@ -1090,7 +1056,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
             result.versionRefused && isInstalled && !removeFirst &&
             !isRunning &&
             ui::keepRunning() &&
-            confirmReplace(name + " is already installed")) {
+            confirmReplace(i18n::t("{0} is already installed", {name}))) {
             removeFirst = true;
             continue;
         }
@@ -1102,15 +1068,15 @@ bool App::installCia(const std::string &path, const cia::Info &info,
 
     if (result.outcome == installer::Outcome::Cancelled) {
         if (ui::keepRunning()) {
-            ui::message("Install cancelled", result.message);
+            ui::message(i18n::c("Install cancelled"), result.message);
         }
         return false;
     }
     if (result.outcome != installer::Outcome::Installed) {
         if (!address.empty()) {
-            markInstalled(address, path, "Install failed: " + result.message);
+            markInstalled(address, path, i18n::t("Install failed: {0}", {result.message}), false);
         }
-        ui::message("Install failed", result.message, ui::Tone::Error,
+        ui::message(i18n::c("Install failed"), result.message, ui::Tone::Error,
                     name);
         return false;
     }
@@ -1119,7 +1085,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     if (info.seed != cia::Seed::NotNeeded) {
         std::string seedMessage;
         bool added = false;
-        tasks::busy("installing", "Getting the seed " + name + " needs...",
+        tasks::busy("installing", i18n::t("Getting the seed {0} needs...", {name}),
                     [&](tasks::Busy &busy) {
                         added = installer::installSeed(
                             info.titleId, seedMessage, &busy.cancel);
@@ -1137,16 +1103,16 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     if (!saveNote.empty()) {
         notes.push_back({saveNote, ui::color::Muted, 0.42f, 3});
     }
-    std::string where = "The CIA file is still at " + path + ".";
+    std::string where = i18n::t("The CIA file is still at {0}.", {path});
     if (deleteAfter) {
-        where = fs::removeFile(path) ? "The CIA file was deleted."
-                                     : "The CIA file could not be deleted.";
+        where = fs::removeFile(path) ? i18n::c("The CIA file was deleted.")
+                                     : i18n::c("The CIA file could not be deleted.");
         sdChanged(path);
     }
     notes.push_back({where, ui::color::Muted, 0.42f, 2});
     if (!address.empty()) {
         markInstalled(address, path,
-                      deleteAfter ? "Installed, file deleted" : "Installed");
+                      deleteAfter ? i18n::c("Installed, file deleted") : i18n::c("Installed"));
     }
 
     if (quiet) {
@@ -1163,8 +1129,8 @@ bool App::installCia(const std::string &path, const cia::Info &info,
          installer::installedVersion(launchId, unused));
 
     ui::Dialog dialog;
-    dialog.header = "Installation Complete";
-    dialog.title = name + " has been installed.";
+    dialog.header = i18n::c("Installation Complete");
+    dialog.title = i18n::t("{0} has been installed.", {name});
     dialog.tone = ui::Tone::Success;
     dialog.icon = ui::showIcon(info.smdh.icon);
     dialog.body.push_back({name, ui::color::Text, 0.5f, 1});
@@ -1173,33 +1139,33 @@ bool App::installCia(const std::string &path, const cia::Info &info,
              screens::titleVersion(info.titleId, info.version) + ", " +
              units::bytes(result.bytes) +
              (result.seconds > 0.5
-                  ? ", installed in " + units::duration(static_cast<int64_t>(
-                                            result.seconds + 0.5))
+                  ? i18n::t(", installed in {0}", {units::duration(static_cast<int64_t>(
+                                            result.seconds + 0.5))})
                   : ""),
          ui::color::Muted, 0.46f, 2});
     dialog.body.insert(dialog.body.end(), notes.begin(), notes.end());
     if (canLaunch) {
-        dialog.buttons = {"Close", "Launch"};
+        dialog.buttons = {i18n::c("Close"), i18n::c("Launch")};
         dialog.initial = 1;
         dialog.cancelButton = 0;
     } else {
-        dialog.buttons = {"Close"};
+        dialog.buttons = {i18n::c("Close")};
     }
     if (ui::choose(dialog) == 1 && canLaunch) {
         std::string error;
         if (!installer::launch(launchId, error)) {
-            ui::message("Could Not Launch", error, ui::Tone::Error);
+            ui::message(i18n::c("Could Not Launch"), error, ui::Tone::Error);
         }
     }
     return true;
 }
 
 void App::markInstalled(const std::string &address, const std::string &path,
-                        const std::string &message)
+                        const std::string &message, bool installed)
 {
     for (HistoryEntry &entry : history_) {
         if (entry.url == address && entry.path == path) {
-            if (message.compare(0, 9, "Installed") == 0) {
+            if (installed) {
                 entry.status = HistoryStatus::Installed;
             }
             entry.message = message;
@@ -1226,15 +1192,15 @@ bool App::chooseFolder(std::string &folder)
     while (ui::keepRunning()) {
         std::vector<std::string> paths = {"", ""};
         ui::ListSpec spec;
-        spec.title = "Download Folder";
+        spec.title = i18n::c("Download Folder");
         ui::ListItem browse;
-        browse.label = "Browse the SD Card...";
+        browse.label = i18n::c("Browse the SD Card...");
         browse.labelColor = ui::color::Accent;
         browse.icon = ui::Icon::Folder;
         browse.iconColor = ui::color::IconOrange;
         spec.items.push_back(browse);
         ui::ListItem type;
-        type.label = "Type a Folder...";
+        type.label = i18n::c("Type a Folder...");
         type.labelColor = ui::color::Accent;
         type.icon = ui::Icon::Text;
         spec.items.push_back(type);
@@ -1245,14 +1211,14 @@ bool App::chooseFolder(std::string &folder)
             item.label = label;
             item.detail = path;
             if (!fs::directoryExists(path)) {
-                item.badge = "New";
+                item.badge = i18n::c("New");
                 item.badgeColor = ui::color::Tag;
             }
             spec.items.push_back(item);
             paths.push_back(path);
         };
         for (const Preset &preset : Presets) {
-            addFolder(preset.label, preset.path);
+            addFolder(i18n::c(preset.label), preset.path);
         }
         for (const HistoryEntry &entry : history_) {
             if (paths.size() >= 2 + std::size(Presets) + MaxRecentFolders) {
@@ -1261,17 +1227,17 @@ bool App::chooseFolder(std::string &folder)
             if (std::find(paths.begin(), paths.end(), entry.folder) ==
                     paths.end() &&
                 fs::directoryExists(entry.folder)) {
-                addFolder("Recent", entry.folder);
+                addFolder(i18n::c("Recent"), entry.folder);
             }
         }
 
         spec.drawTop = [&](int index) {
-            ui::drawTopChrome("Download Folder", ui::Icon::Folder,
+            ui::drawTopChrome(i18n::c("Download Folder"), ui::Icon::Folder,
                               ui::color::IconOrange);
             ui::drawPanel();
-            std::vector<ui::Fact> facts = {{"Now", folder}};
+            std::vector<ui::Fact> facts = {{i18n::c("Now"), folder}};
             if (index >= 2) {
-                facts.push_back({"Selected", paths[index], ui::color::Good});
+                facts.push_back({i18n::c("Selected"), paths[index], ui::color::Good});
             }
             ui::drawFacts(facts);
         };
@@ -1297,7 +1263,7 @@ bool App::chooseFolder(std::string &folder)
         }
         const std::string &path = paths[result.index];
         if (!fs::makeDirectories(path)) {
-            ui::message("Folder Unavailable", "Could not create " + path + ".",
+            ui::message(i18n::c("Folder Unavailable"), i18n::t("Could not create {0}.", {path}),
                         ui::Tone::Error);
             continue;
         }
@@ -1319,16 +1285,16 @@ bool App::browseFolders(std::string &folder)
         const bool atRoot = naming::parentFolder(current) == current;
 
         ui::ListSpec spec;
-        spec.title = "Choose a Folder";
+        spec.title = i18n::c("Choose a Folder");
         spec.heading = current;
         spec.tapToSelect = true;
-        spec.back = atRoot ? "Cancel" : "Back";
-        spec.action = "Use This";
+        spec.back = atRoot ? i18n::c("Cancel") : i18n::c("Back");
+        spec.action = i18n::c("Use This");
         spec.actionKey = "Y";
         spec.actionKeys = KEY_Y;
         spec.extraKeys = KEY_X;
         ui::ListItem make;
-        make.label = "New Folder...";
+        make.label = i18n::c("New Folder...");
         make.labelColor = ui::color::Accent;
         make.icon = ui::Icon::Folder;
         make.iconColor = ui::color::IconGreen;
@@ -1341,12 +1307,12 @@ bool App::browseFolders(std::string &folder)
             spec.items.push_back(item);
         }
         spec.drawTop = [&](int index) {
-            ui::drawTopChrome("Choose a Folder", ui::Icon::Folder,
+            ui::drawTopChrome(i18n::c("Choose a Folder"), ui::Icon::Folder,
                               ui::color::IconOrange);
             ui::drawPanel();
-            std::vector<ui::Fact> facts = {{"Browsing", current}};
+            std::vector<ui::Fact> facts = {{i18n::c("Browsing"), current}};
             if (index >= 1) {
-                facts.push_back({"Open", current + names[index - 1] + "/"});
+                facts.push_back({i18n::c("Open"), current + names[index - 1] + "/"});
             }
             ui::drawFacts(facts);
         };
@@ -1370,14 +1336,14 @@ bool App::browseFolders(std::string &folder)
         if (result.key == KEY_X || (result.key == KEY_A && result.index == 0)) {
             std::string name;
             if (platform::keyboard(platform::KeyboardKind::Name,
-                                   "New folder name", "", name)) {
+                                   i18n::c("New folder name"), "", name)) {
                 const std::string created =
                     current + naming::safeFilename(text::trim(name)) + "/";
                 if (fs::makeDirectories(created)) {
                     current = created;
                     cursor = 0;
                 } else {
-                    ui::message("Could Not Create the Folder", created,
+                    ui::message(i18n::c("Could Not Create the Folder"), created,
                                 ui::Tone::Error);
                 }
             }
@@ -1395,7 +1361,7 @@ bool App::typeFolder(std::string &folder)
 {
     std::string typed;
     if (!platform::keyboard(platform::KeyboardKind::Path,
-                            "Folder, for example sdmc:/downloads/", folder,
+                            i18n::c("Folder, for example sdmc:/downloads/"), folder,
                             typed)) {
         return false;
     }
@@ -1403,9 +1369,8 @@ bool App::typeFolder(std::string &folder)
     typed = naming::normaliseFolder(typed);
     if (!naming::isSdPath(typed) || typed.find("/../") != std::string::npos ||
         typed.find("/./") != std::string::npos) {
-        ui::message("Not an SD card folder",
-                    "Folders must start with sdmc:/ and cannot contain . or "
-                    ".. parts.",
+        ui::message(i18n::c("Not an SD card folder"),
+                    i18n::c("Folders must start with sdmc:/ and cannot contain . or .. parts."),
                     ui::Tone::Error, typed);
         return false;
     }
@@ -1413,16 +1378,16 @@ bool App::typeFolder(std::string &folder)
 
     if (!fs::directoryExists(typed)) {
         ui::Dialog dialog;
-        dialog.header = "new folder";
-        dialog.title = "Create this folder?";
+        dialog.header = i18n::c("new folder");
+        dialog.title = i18n::c("Create this folder?");
         dialog.body.push_back({typed, ui::color::Text, 0.52f, 3});
-        dialog.buttons = {"Create", "Cancel"};
+        dialog.buttons = {i18n::c("Create"), i18n::c("Cancel")};
         dialog.cancelButton = 1;
         if (ui::choose(dialog) != 0) {
             return false;
         }
         if (!fs::makeDirectories(typed)) {
-            ui::message("Could not create the folder", typed,
+            ui::message(i18n::c("Could not create the folder"), typed,
                         ui::Tone::Error);
             return false;
         }
@@ -1436,11 +1401,10 @@ bool App::typeFolder(std::string &folder)
 bool App::confirmClearHistory()
 {
     ui::Dialog dialog;
-    dialog.header = "history";
-    dialog.title = "Clear the download history and delete partial "
-                   "downloads?";
+    dialog.header = i18n::c("history");
+    dialog.title = i18n::c("Clear the download history and delete partial downloads?");
     dialog.tone = ui::Tone::Warning;
-    dialog.buttons = {"Clear", "Cancel"};
+    dialog.buttons = {i18n::c("Clear"), i18n::c("Cancel")};
     dialog.dangerous = 0;
     dialog.initial = 1;
     dialog.cancelButton = 1;
@@ -1465,27 +1429,27 @@ void App::historyScreen()
         const bool canResume =
             entry.resumable && net::partialSize(entry.folder, entry.url) > 0;
         if (canResume) {
-            label = "Resume";
+            label = i18n::c("Resume");
             fill = ui::color::Tag;
             return;
         }
         switch (entry.status) {
         case HistoryStatus::Installed:
-            label = "Installed";
+            label = i18n::c("Installed");
             fill = ui::color::Good;
             return;
         case HistoryStatus::Saved:
-            label = "Saved";
+            label = i18n::c("Saved");
             fill = ui::color::Neutral;
             return;
         case HistoryStatus::Failed:
-            label = "Failed";
+            label = i18n::c("Failed");
             fill = ui::color::Bad;
             return;
         case HistoryStatus::Cancelled:
             break;
         }
-        label = "Stopped";
+        label = i18n::c("Stopped");
         fill = ui::color::Neutral;
     };
     // The highlighted download in full, on the top screen.
@@ -1505,7 +1469,7 @@ void App::historyScreen()
                                   ui::type::Tiny, ui::color::InkSoft, 330, 2) +
                   4;
         const std::string where =
-            entry.status == HistoryStatus::Saved ? "Saved as " + entry.path
+            entry.status == HistoryStatus::Saved ? i18n::t("Saved as {0}", {entry.path})
             : entry.status == HistoryStatus::Installed
                 ? entry.message + ": " + entry.path
                 : entry.message;
@@ -1514,23 +1478,22 @@ void App::historyScreen()
         const uint64_t partial =
             entry.resumable ? net::partialSize(entry.folder, entry.url) : 0;
         if (partial > 0 && y < ui::TopPanel.y + ui::TopPanel.h - 24) {
-            ui::drawTagRow(left, y, 86, "Can resume",
-                           units::bytes(partial) + " in " + entry.folder,
+            ui::drawTagRow(left, y, 86, i18n::c("Can resume"),
+                           i18n::t("{0} in {1}", {units::bytes(partial), entry.folder}),
                            ui::color::Good);
         }
     };
 
     while (ui::keepRunning()) {
         ui::ListSpec spec;
-        spec.title = "Recent Downloads";
-        spec.emptyText = "No downloads yet.";
+        spec.title = i18n::c("Recent Downloads");
+        spec.emptyText = i18n::c("No downloads yet.");
         if (!history_.empty()) {
-            spec.action = "Clear";
+            spec.action = i18n::c("Clear");
             spec.actionKey = "X";
             spec.actionKeys = KEY_X;
         }
-        spec.hint = history_.empty() ? "" : std::to_string(history_.size()) +
-                                                " saved";
+        spec.hint = history_.empty() ? "" : i18n::t("{0} saved", {std::to_string(history_.size())});
         for (const HistoryEntry &entry : history_) {
             ui::ListItem item;
             item.label = entryName(entry);
@@ -1538,10 +1501,10 @@ void App::historyScreen()
             spec.items.push_back(item);
         }
         spec.drawTop = [&](int index) {
-            ui::drawTopChrome("History", ui::Icon::History, ui::color::IconRed);
+            ui::drawTopChrome(i18n::c("History"), ui::Icon::History, ui::color::IconRed);
             if (index < 0) {
                 ui::drawPanel();
-                ui::drawFacts({{"Saves to", settings_.destination}});
+                ui::drawFacts({{i18n::c("Saves to"), settings_.destination}});
                 return;
             }
             drawEntry(history_[index]);
@@ -1572,15 +1535,15 @@ void App::historyScreen()
         std::vector<ui::MenuItem> items;
         std::vector<Action> actions;
         if (installable) {
-            items.push_back({"Install"});
+            items.push_back({i18n::c("Install")});
             actions.push_back(Action::Install);
         }
-        items.push_back({canResume ? "Resume Download" : "Download Again"});
+        items.push_back({canResume ? i18n::c("Resume Download") : i18n::c("Download Again")});
         actions.push_back(Action::Download);
-        items.push_back({"Remove from History", true});
+        items.push_back({i18n::c("Remove from History"), true});
         actions.push_back(Action::Remove);
         const int choice = ui::menu(items, [&](int) {
-            ui::drawTopChrome("History", ui::Icon::History, ui::color::IconRed);
+            ui::drawTopChrome(i18n::c("History"), ui::Icon::History, ui::color::IconRed);
             drawEntry(entry);
         });
         if (choice < 0) {
@@ -1653,9 +1616,8 @@ void App::persistSettings()
     const bool saved = storage::saveSettings(settings_);
     sdChanged(storage::DataFolder);
     if (!saved) {
-        ui::message("Settings not saved",
-                    "The change works for now, but could not be written to "
-                    "the SD card.",
+        ui::message(i18n::c("Settings not saved"),
+                    i18n::c("The change works for now, but could not be written to the SD card."),
                     ui::Tone::Warning);
     }
 }
@@ -1968,10 +1930,10 @@ bool App::chooseTimeZone(int64_t utcNowSeconds)
 
     const u64 openedAt = osGetTime();
     ui::ListSpec spec;
-    spec.title = "Time Zone";
+    spec.title = i18n::c("Time Zone");
     for (const tz::Zone &zone : zones) {
         ui::ListItem item;
-        item.label = zone.places;
+        item.label = i18n::c(zone.places);
         item.badge = tz::formatOffset(zone.offsetMinutes);
         item.badgeColor = ui::color::Tag;
         if (settings_.timeZoneSet &&
@@ -1982,17 +1944,17 @@ bool App::chooseTimeZone(int64_t utcNowSeconds)
         spec.items.push_back(item);
     }
     spec.drawTop = [&](int index) {
-        ui::drawTopChrome("Time Zone", ui::Icon::Clock, ui::color::IconBlue);
+        ui::drawTopChrome(i18n::c("Time Zone"), ui::Icon::Clock, ui::color::IconBlue);
         ui::drawPanel();
         if (index < 0) {
             return;
         }
         const tz::Zone &zone = zones[index];
         std::vector<ui::Fact> facts = {
-            {"Offset", tz::formatOffset(zone.offsetMinutes)}};
+            {i18n::c("Offset"), tz::formatOffset(zone.offsetMinutes)}};
         if (utcNowSeconds >= 0) {
             facts.push_back(
-                {"Time there",
+                {i18n::c("Time there"),
                  units::dateTime(utcNowSeconds + zone.offsetMinutes * 60 +
                                  static_cast<int64_t>(
                                      (osGetTime() - openedAt) / 1000))});
@@ -2014,8 +1976,8 @@ bool App::clockScreen()
 {
     while (ui::keepRunning()) {
         ntp::Result network;
-        if (!tasks::busy("Console Clock",
-                         "Asking a time server for the current time...",
+        if (!tasks::busy(i18n::c("Console Clock"),
+                         i18n::c("Asking a time server for the current time..."),
                          [&](tasks::Busy &busy) {
                              network = ntp::queryAny(ntp::defaultServers(), 123,
                                                      2500, &busy.cancel);
@@ -2030,14 +1992,13 @@ bool App::clockScreen()
 
         if (!network.ok) {
             ui::Dialog dialog;
-            dialog.header = "Console Clock";
-            dialog.title = "The time could not be checked online.";
+            dialog.header = i18n::c("Console Clock");
+            dialog.title = i18n::c("The time could not be checked online.");
             dialog.tone = ui::Tone::Error;
             dialog.body.push_back({network.error, ui::color::Text, 0.5f, 3});
-            dialog.body.push_back({"Check Wi-Fi. Some networks block time "
-                                   "servers (UDP port 123).",
+            dialog.body.push_back({i18n::c("Check Wi-Fi. Some networks block time servers (UDP port 123)."),
                                    ui::color::Muted, 0.44f, 3});
-            dialog.buttons = {"Try Again", "Back"};
+            dialog.buttons = {i18n::c("Try Again"), i18n::c("Back")};
             dialog.cancelButton = 1;
             if (ui::choose(dialog) != 0) {
                 return false;
@@ -2070,33 +2031,33 @@ bool App::clockScreen()
             const int zone = tz::zoneIndex(offset);
 
             ui::ScreenSpec spec;
-            spec.back = "Back";
+            spec.back = i18n::c("Back");
             // The two buttons centred above the tabs.
             ui::Control set;
             set.rect = {26, 52, 268, 40};
-            set.label = "Set the Clock";
+            set.label = i18n::c("Set the Clock");
             spec.controls.push_back(set);
             ui::Control change = set;
             change.rect = {26, 106, 268, 40};
-            change.label = "Change Time Zone";
+            change.label = i18n::c("Change Time Zone");
             spec.controls.push_back(change);
             spec.drawTop = [&]() {
-                ui::drawTopChrome("Console Clock", ui::Icon::Clock,
+                ui::drawTopChrome(i18n::c("Console Clock"), ui::Icon::Clock,
                                   ui::color::IconBlue);
                 ui::drawPanel();
                 ui::drawFacts(
-                    {{"This console", units::dateTime(platform::now())},
-                     {"Internet time",
+                    {{i18n::c("This console"), units::dateTime(platform::now())},
+                     {i18n::c("Internet time"),
                       units::dateTime((utcNowMs() + offset * 60000LL) / 1000),
                       ui::color::Good},
-                     {"Time zone",
+                     {i18n::c("Time zone"),
                       tz::formatOffset(offset) +
                           (zone >= 0 ? std::string(", ") +
-                                           tz::zones()[zone].places
+                                           i18n::c(tz::zones()[zone].places)
                                      : std::string()),
                       ui::color::Neutral},
-                     {"Clock",
-                      wrong ? tz::describeDrift(console, correct) : "Right",
+                     {i18n::c("Clock"),
+                      wrong ? tz::describeDrift(console, correct) : i18n::c("Right"),
                       wrong ? ui::color::Bad : ui::color::Good}});
             };
             int focus = wrong ? 0 : 1;
@@ -2112,14 +2073,12 @@ bool App::clockScreen()
             std::string error;
             const int64_t targetMs = utcNowMs() + offset * 60000LL;
             if (!platform::setConsoleClock(targetMs, error)) {
-                ui::message("Could not set the clock", error,
+                ui::message(i18n::c("Could not set the clock"), error,
                             ui::Tone::Error);
                 continue;
             }
-            ui::message("Clock set",
-                        "The console clock now reads " +
-                            units::dateTime(targetMs / 1000) + " (" +
-                            tz::formatOffset(offset) + ").",
+            ui::message(i18n::c("Clock set"),
+                        i18n::t("The console clock now reads {0} ({1}).", {units::dateTime(targetMs / 1000), tz::formatOffset(offset)}),
                         ui::Tone::Success);
             return true;
         }
@@ -2131,29 +2090,26 @@ void App::aboutScreen()
 {
     // Who and what on the top screen, the credits on the bottom one.
     ui::ScreenSpec spec;
-    spec.back = "Back";
-    spec.action = "Report Issue";
+    spec.back = i18n::c("Back");
+    spec.action = i18n::c("Report Issue");
     spec.actionKey = "X";
     spec.actionKeys = KEY_X;
     spec.drawTop = []() {
-        ui::drawTopChrome("About 3dsDL", ui::Icon::AppMark, ui::color::Accent);
+        ui::drawTopChrome(i18n::c("About 3dsDL"), ui::Icon::AppMark, ui::color::Accent);
         ui::drawPanel();
         const float left = ui::TopPanel.x + 18;
         // The icon and name over one tag row, centred in the panel.
         const float top = ui::TopPanel.y + (ui::TopPanel.h - 84) / 2;
         ui::drawIcon(ui::Icon::AppMark, left, top, 48, ui::color::Accent);
         ui::drawText("3dsDL", left + 60, top + 2, 0.62f, ui::color::InkStrong);
-        ui::drawText("Version " APP_VERSION, left + 60, top + 30,
+        ui::drawText(i18n::t("Version {0}", {APP_VERSION}), left + 60, top + 30,
                      ui::type::Small, ui::color::InkSoft);
-        ui::drawTagRow(left, top + 64, 96, "Settings in", storage::DataFolder);
+        ui::drawTagRow(left, top + 64, 96, i18n::c("Settings in"), storage::DataFolder);
     };
     spec.drawBottom = []() {
         const ui::Rect panel = {13, 12, 294, 186};
         ui::drawPanel(panel);
-        ui::drawPanelText("Free software under the GPLv3. Built on libcurl, "
-                          "Mbed TLS, quirc and Citro2D, and grew out of "
-                          "Multidownload by hax0kartik. CIA installing "
-                          "follows FBI by Steveice10 (MIT).",
+        ui::drawPanelText(i18n::c("Free software under the GPLv3. Built on libcurl, Mbed TLS, quirc and Citro2D, and grew out of Multidownload by hax0kartik. CIA installing follows FBI by Steveice10 (MIT)."),
                           panel, ui::type::Small, ui::color::Ink, 7);
     };
     int focus = 0; // nothing to focus: B and X do it all

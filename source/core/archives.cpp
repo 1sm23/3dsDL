@@ -1,4 +1,5 @@
 #include "archives.hpp"
+#include "i18n.hpp"
 
 #include "text.hpp"
 
@@ -39,15 +40,15 @@ using Handle = std::unique_ptr<struct archive, Closer>;
 std::string describe(struct archive *handle)
 {
     if (archive_errno(handle) == ENOMEM) {
-        return "Not enough memory to read this archive.";
+        return i18n::c("Not enough memory to read this archive.");
     }
     const char *message = archive_error_string(handle);
     if (message == nullptr || *message == '\0') {
-        return "This archive cannot be read.";
+        return i18n::c("This archive cannot be read.");
     }
     std::string text = message;
     if (text.find("Unrecognized archive format") != std::string::npos) {
-        return "This is not an archive 3dsDL can read.";
+        return i18n::c("This is not an archive 3dsDL can read.");
     }
     if (text.back() != '.') {
         text += '.';
@@ -95,7 +96,7 @@ std::string formatName(struct archive *handle)
         name = "ZIP";
         break;
     default:
-        name = "Archive";
+        name = i18n::c("Archive");
         break;
     }
     switch (archive_filter_code(handle, 0)) {
@@ -345,7 +346,7 @@ Result extractOther(const std::string &path, const std::string &folder,
     const auto stop = [&]() {
         writer.abandon();
         result.cancelled = true;
-        result.message = "Extraction cancelled.";
+        result.message = i18n::c("Extraction cancelled.");
         return result;
     };
 
@@ -429,14 +430,14 @@ Result extractOther(const std::string &path, const std::string &folder,
                     unsupported = true;
                     break;
                 }
-                result.message = entry.path + " is damaged. " + describe(raw);
+                result.message = i18n::t("{0} is damaged. {1}", {entry.path, describe(raw)});
                 return result;
             }
             const uint64_t at = static_cast<uint64_t>(offset);
             if (at < writer.written() ||
                 (size >= 0 && at + length > static_cast<uint64_t>(size))) {
                 writer.abandon();
-                result.message = entry.path + " is damaged.";
+                result.message = i18n::t("{0} is damaged.", {entry.path});
                 return result;
             }
             const uint64_t hole = at - writer.written();
@@ -543,7 +544,7 @@ bool read(const std::string &path, Scan scan, Listing &listing,
     listing = Listing();
     struct stat info {};
     if (stat(path.c_str(), &info) != 0) {
-        error = "Could not open the archive.";
+        error = i18n::c("Could not open the archive.");
         return false;
     }
     listing.archiveSize = static_cast<uint64_t>(info.st_size);

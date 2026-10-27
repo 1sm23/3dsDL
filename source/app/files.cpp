@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "i18n.hpp"
 
 #include "app_util.hpp"
 #include "audio_meta.hpp"
@@ -63,7 +64,7 @@ Kind kindOf(const fs::Entry &entry)
 // The top screen's title for a folder, as Files shows it.
 std::string folderTitle(const std::string &folder)
 {
-    return naming::parentFolder(folder) == folder ? "SD Card"
+    return naming::parentFolder(folder) == folder ? i18n::c("SD Card")
                                                   : fileops::name(folder);
 }
 
@@ -83,7 +84,7 @@ bool confirm(const std::string &header, const std::string &title,
     if (!body.empty()) {
         dialog.body.push_back({body, ui::color::Text, 0.48f, 5});
     }
-    dialog.buttons = {yes, "Cancel"};
+    dialog.buttons = {yes, i18n::c("Cancel")};
     dialog.dangerous = dangerous ? 0 : -1;
     dialog.initial = dangerous ? 1 : 0;
     dialog.cancelButton = 1;
@@ -94,7 +95,7 @@ std::string contentsText(const fileops::Totals &totals)
 {
     std::string text = plural(totals.files, "file");
     if (totals.folders > 0) {
-        text += " in " + plural(totals.folders, "folder");
+        text += i18n::t(" in {0}", {plural(totals.folders, "folder")});
     }
     return text;
 }
@@ -106,7 +107,7 @@ std::string totalsText(const fileops::Totals &totals)
 
 ui::Fact clipboardFact(size_t count, bool cut)
 {
-    return {"Clipboard", plural(count, "item") + (cut ? ", cut" : ", copied")};
+    return {i18n::c("Clipboard"), plural(count, "item") + (cut ? i18n::c(", cut") : i18n::c(", copied"))};
 }
 
 // What the top screen shows about an entry, worked out once because it
@@ -348,13 +349,12 @@ void drawPicturePanel(const fs::Entry &entry, const Details &details,
     ui::drawMarquee(entry.name, x, top + 2, 0.62f, ui::color::InkStrong,
                     textWidth);
     ui::drawMarquee(details.width > 0
-                        ? std::to_string(details.width) + " x " +
-                              std::to_string(details.height) + " pixels"
+                        ? i18n::t("{0} x {1} pixels", {std::to_string(details.width), std::to_string(details.height)})
                         : filetype::label(Kind::Image),
                     x, top + 28, ui::type::Tiny, ui::color::InkSoft, textWidth);
-    std::vector<ui::Fact> facts = {{"Size", sizeText(entry.size)}};
+    std::vector<ui::Fact> facts = {{i18n::c("Size"), sizeText(entry.size)}};
     if (!modified.empty()) {
-        facts.push_back({"Changed", modified});
+        facts.push_back({i18n::c("Changed"), modified});
     }
     // drawFacts keeps 18 pixels from each side and centres the rows.
     ui::drawFacts(facts, {x - 18, top + 58, textWidth + 36, 26.0f * facts.size() - 6},
@@ -383,10 +383,10 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
 
     if (kind == Kind::Folder) {
         drawEntryPanel({}, kind, entry.name, path + "/",
-                       {{"Type", "Folder"},
-                        {"Contains", plural(details.items, "item")},
-                        {"Size", sizeText(entry.size)}, // once added up
-                        {"Changed", modified}});
+                       {{i18n::c("Type"), i18n::c("Folder")},
+                        {i18n::c("Contains"), plural(details.items, "item")},
+                        {i18n::c("Size"), sizeText(entry.size)}, // once added up
+                        {i18n::c("Changed"), modified}});
         return;
     }
     if (kind == Kind::Cia && details.ciaReadable) {
@@ -394,13 +394,12 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
         drawEntryPanel(info.smdh.icon, kind, ciaName(info),
                        info.smdh.publisher.empty() ? entry.name
                                                    : info.smdh.publisher,
-                       {{"Type", std::string("CIA, ") +
-                                     cia::kindName(cia::kind(info.titleId))},
-                        {"Version",
+                       {{i18n::c("Type"), i18n::t("CIA, {0}", {cia::kindName(cia::kind(info.titleId))})},
+                        {i18n::c("Version"),
                          versionRow(info.titleId, info.version,
                                     details.installed,
                                     details.installedVersion)},
-                        {"Size", units::bytes(info.fileSize)}});
+                        {i18n::c("Size"), units::bytes(info.fileSize)}});
         return;
     }
     if (kind == Kind::Image) {
@@ -412,11 +411,11 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
         drawEntryPanel(details.cover, kind,
                        info.title.empty() ? entry.name : info.title,
                        songByline(info, entry.name),
-                       {{"Album", audiometa::albumText(info)},
-                        {"Length", audiometa::length(info.milliseconds)},
-                        {"Format", audiometa::formatText(info)},
-                        {"Size", sizeText(entry.size)},
-                        {"Changed", modified}});
+                       {{i18n::c("Album"), audiometa::albumText(info)},
+                        {i18n::c("Length"), audiometa::length(info.milliseconds)},
+                        {i18n::c("Format"), audiometa::formatText(info)},
+                        {i18n::c("Size"), sizeText(entry.size)},
+                        {i18n::c("Changed"), modified}});
         return;
     }
     if (details.metaReadable) {
@@ -425,13 +424,13 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
                        meta.name.empty() ? entry.name : meta.name,
                        meta.publisher.empty() ? filetype::label(kind)
                                               : meta.publisher,
-                       {{"Type", filetype::label(kind)},
-                        {"Title ID", meta.hasTitleId
+                       {{i18n::c("Type"), filetype::label(kind)},
+                        {i18n::c("Title ID"), meta.hasTitleId
                                          ? cia::titleIdText(meta.titleId)
                                          : ""},
-                        {"Code", meta.productCode},
-                        {"Note", meta.note},
-                        {"Size", sizeText(entry.size)}});
+                        {i18n::c("Code"), meta.productCode},
+                        {i18n::c("Note"), meta.note},
+                        {i18n::c("Size"), sizeText(entry.size)}});
         return;
     }
     if (!details.head.empty()) {
@@ -453,14 +452,12 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
         return;
     }
     drawEntryPanel({}, kind, entry.name, filetype::label(kind),
-                   {{"Picture", details.width > 0
-                                    ? std::to_string(details.width) + " x " +
-                                          std::to_string(details.height) +
-                                          " pixels"
+                   {{i18n::c("Picture"), details.width > 0
+                                    ? i18n::t("{0} x {1} pixels", {std::to_string(details.width), std::to_string(details.height)})
                                     : ""},
-                    {"Size", sizeText(entry.size)},
-                    {"Changed", modified},
-                    {"Problem", details.error}});
+                    {i18n::c("Size"), sizeText(entry.size)},
+                    {i18n::c("Changed"), modified},
+                    {i18n::c("Problem"), details.error}});
 }
 
 // --- Text editor helpers -------------------------------------------------------
@@ -809,7 +806,7 @@ public:
     {
         // A large PNG takes seconds, so a wait for one shows as busy.
         if (thread_ != nullptr && !done_) {
-            tasks::busy("Files", "", [this]() { finish(); });
+            tasks::busy(i18n::c("Files"), "", [this]() { finish(); });
         }
         finish();
         uploaded_ = false;
@@ -1054,22 +1051,22 @@ void App::browseFiles()
         spec.title = current;
         spec.heading = current;
         spec.tapToSelect = true;
-        spec.emptyText = "This folder is empty.";
-        spec.back = atRoot ? "Close" : "Back";
-        spec.action = "Options";
+        spec.emptyText = i18n::c("This folder is empty.");
+        spec.back = atRoot ? i18n::c("Close") : i18n::c("Back");
+        spec.action = i18n::c("Options");
         spec.actionKey = "Y";
         spec.actionKeys = KEY_Y;
         spec.longPressKey = KEY_Y;
         spec.extraKeys = KEY_SELECT | KEY_START;
-        spec.headingAction = "Sort";
+        spec.headingAction = i18n::c("Sort");
         // X sorts, as on the Software lists.
         spec.headingActionKey = "X";
         spec.headingActionKeys = KEY_X;
         const auto hint = [&]() {
-            return !marked.empty() ? std::to_string(marked.size()) + " marked"
+            return !marked.empty() ? i18n::t("{0} marked", {std::to_string(marked.size())})
                  : !clipboard_.empty()
                      ? std::to_string(clipboard_.size()) +
-                           (clipboardCut_ ? " to move" : " to paste")
+                           (clipboardCut_ ? i18n::c(" to move") : i18n::c(" to paste"))
                      : "";
         };
         spec.hint = hint();
@@ -1088,7 +1085,7 @@ void App::browseFiles()
                                                        : ui::color::InkButton;
                 item.marked = markedSet.count(current + entry.name) > 0;
                 if (item.marked) {
-                    item.badge = "Marked";
+                    item.badge = i18n::c("Marked");
                     item.badgeColor = ui::color::Tag;
                 }
                 spec.items.push_back(item);
@@ -1193,7 +1190,7 @@ void App::browseFiles()
                                                 entries);
                     }
                     if (!reader.readable()) {
-                        spec.emptyText = "The SD card could not be read.";
+                        spec.emptyText = i18n::c("The SD card could not be read.");
                     }
                 }
                 if (replacing) {
@@ -1225,16 +1222,16 @@ void App::browseFiles()
 
         spec.drawTop = [&](int index) {
             const std::string title =
-                atRoot ? "SD Card" : fileops::name(current);
+                atRoot ? i18n::c("SD Card") : fileops::name(current);
             ui::drawTopChrome(title, ui::Icon::Folder, ui::color::IconOrange,
                               sortDescription(settings_.fileSort,
                                               settings_.fileSortReverse));
             if (index < 0 || index >= static_cast<int>(entries.size())) {
                 ui::drawPanel();
-                std::vector<ui::Fact> facts = {{"Path", current}};
+                std::vector<ui::Fact> facts = {{i18n::c("Path"), current}};
                 if (!complete) {
-                    facts.push_back({"Reading",
-                                     plural(entries.size(), "item") + " so far",
+                    facts.push_back({i18n::c("Reading"),
+                                     i18n::t("{0} so far", {plural(entries.size(), "item")}),
                                      ui::color::Badge});
                 }
                 if (!clipboard_.empty()) {
@@ -1474,12 +1471,12 @@ void App::ciaOptions(const std::string &path)
     std::string error;
     if (!cia::readInfo(path, info, error)) {
         ui::Dialog dialog;
-        dialog.header = "CIA Installer";
-        dialog.title = "This CIA cannot be installed.";
+        dialog.header = i18n::c("CIA Installer");
+        dialog.title = i18n::c("This CIA cannot be installed.");
         dialog.tone = ui::Tone::Warning;
         dialog.body.push_back({basename(path), ui::color::Text, 0.5f, 2});
         dialog.body.push_back({error, ui::color::Warning, 0.48f, 3});
-        dialog.buttons = {"Open as Hex", "Close"};
+        dialog.buttons = {i18n::c("Open as Hex"), i18n::c("Close")};
         dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) == 0) {
@@ -1489,7 +1486,7 @@ void App::ciaOptions(const std::string &path)
     }
 
     ui::ScreenSpec spec;
-    spec.back = "Back";
+    spec.back = i18n::c("Back");
     const auto add = [&](ui::Rect rect, const char *label, float scale,
                          u32 labelColor) {
         ui::Control control;
@@ -1500,16 +1497,16 @@ void App::ciaOptions(const std::string &path)
         control.enabled = installer::available() || labelColor != 0;
         spec.controls.push_back(control);
     };
-    add({26, 42, 268, 38}, "Install", ui::type::Button, 0);
-    add({26, 90, 268, 38}, "Install and Delete File", ui::type::Body + 0.06f, 0);
-    add({26, 140, 268, 26}, "Delete File", ui::type::Small + 0.06f,
+    add({26, 42, 268, 38}, i18n::c("Install"), ui::type::Button, 0);
+    add({26, 90, 268, 38}, i18n::c("Install and Delete File"), ui::type::Body + 0.06f, 0);
+    add({26, 140, 268, 26}, i18n::c("Delete File"), ui::type::Small + 0.06f,
         ui::color::Bad);
-    spec.drawTop = [&]() { screens::drawCiaTop(info, "CIA Installer"); };
+    spec.drawTop = [&]() { screens::drawCiaTop(info, i18n::c("CIA Installer")); };
     // The top screen shows whether it is installed; only say why the
     // install buttons are off.
     if (!installer::available()) {
         spec.drawBottom = []() {
-            ui::drawMarquee("Installing is not available.", 160, 12,
+            ui::drawMarquee(i18n::c("Installing is not available."), 160, 12,
                             ui::type::Body, ui::color::Ink, 300,
                             C2D_AlignCenter);
         };
@@ -1528,7 +1525,7 @@ void App::ciaOptions(const std::string &path)
 void App::showChecksum(const std::string &path)
 {
     std::string hash;
-    if (!tasks::busy("SHA-256", "Reading " + basename(path) + "...",
+    if (!tasks::busy("SHA-256", i18n::t("Reading {0}...", {basename(path)}),
                      [&](tasks::Busy &busy) {
                          busy.bytes = true;
                          busy.total = static_cast<uint64_t>(
@@ -1539,7 +1536,7 @@ void App::showChecksum(const std::string &path)
         return;
     }
     if (hash.empty()) {
-        ui::message("No Checksum", "The file could not be read.",
+        ui::message(i18n::c("No Checksum"), i18n::c("The file could not be read."),
                     ui::Tone::Error, path);
         return;
     }
@@ -1560,17 +1557,16 @@ void App::showChecksum(const std::string &path)
         const std::string expected = update::checksumFor(listing, name);
         if (!expected.empty()) {
             matches = expected == hash;
-            verdict = matches ? "It matches " + entry.name + "."
-                              : "It does not match " + entry.name +
-                                    ", which expects " + expected + ".";
+            verdict = matches ? i18n::t("It matches {0}.", {entry.name})
+                              : i18n::t("It does not match {0}, which expects {1}.", {entry.name, expected});
             break;
         }
     }
     ui::Dialog dialog;
     dialog.header = "SHA-256";
-    dialog.title = verdict.empty() ? "SHA-256 of " + name
-                   : matches       ? name + " is intact."
-                                   : name + " does not match its checksum.";
+    dialog.title = verdict.empty() ? i18n::t("SHA-256 of {0}", {name})
+                   : matches       ? i18n::t("{0} is intact.", {name})
+                                   : i18n::t("{0} does not match its checksum.", {name});
     dialog.tone = verdict.empty() ? ui::Tone::Info
                   : matches       ? ui::Tone::Success
                                   : ui::Tone::Error;
@@ -1581,7 +1577,7 @@ void App::showChecksum(const std::string &path)
                                matches ? ui::color::Good : ui::color::Bad,
                                0.44f, 3});
     }
-    dialog.buttons = {"Close"};
+    dialog.buttons = {i18n::c("Close")};
     ui::choose(dialog);
 }
 
@@ -1649,44 +1645,44 @@ bool App::entryOptions(const std::string &folder,
         single && std::find(marked.begin(), marked.end(), path) != marked.end();
 
     if (single && kind == Kind::Cia) {
-        add("Install", Action::Install);
-        add("Install and Delete", Action::InstallDelete);
+        add(i18n::c("Install"), Action::Install);
+        add(i18n::c("Install and Delete"), Action::InstallDelete);
     } else if (single && kind == Kind::Ticket) {
-        add("Install Ticket", Action::InstallTicket);
+        add(i18n::c("Install Ticket"), Action::InstallTicket);
     } else if (single && kind == Kind::Text) {
-        add("Edit", Action::Edit);
+        add(i18n::c("Edit"), Action::Edit);
     } else if (single) {
-        add("Open", Action::Open);
+        add(i18n::c("Open"), Action::Open);
         if (kind == Kind::Archive) {
-            add("Extract", Action::Extract);
+            add(i18n::c("Extract"), Action::Extract);
         }
     }
     if ((!single || isFolder) && !cias.empty()) {
-        add("Install " + plural(cias.size(), "CIA"), Action::InstallAll);
-        add("Install and Delete", Action::InstallDeleteAll);
+        add(i18n::t("Install {0}", {plural(cias.size(), "CIA")}), Action::InstallAll);
+        add(i18n::c("Install and Delete"), Action::InstallDeleteAll);
     }
     if (single && !isFolder && kind != Kind::Text && kind != Kind::Cia) {
-        add("Open as Text", Action::ViewText);
+        add(i18n::c("Open as Text"), Action::ViewText);
     }
     if (single && !isFolder) {
-        add("Open as Hex", Action::ViewHex);
+        add(i18n::c("Open as Hex"), Action::ViewHex);
     }
     if (single) {
-        add("Rename", Action::Rename);
+        add(i18n::c("Rename"), Action::Rename);
     }
-    add("Copy", Action::Copy);
-    add("Cut", Action::Cut);
-    add("Delete", Action::Delete, true);
-    add("Properties", Action::Properties);
+    add(i18n::c("Copy"), Action::Copy);
+    add(i18n::c("Cut"), Action::Cut);
+    add(i18n::c("Delete"), Action::Delete, true);
+    add(i18n::c("Properties"), Action::Properties);
     if (single && !isFolder) {
         add("SHA-256", Action::Checksum);
     }
     if (single) {
-        add(isMarked ? "Unmark" : "Mark", Action::Mark);
+        add(isMarked ? i18n::c("Unmark") : i18n::c("Mark"), Action::Mark);
     } else {
-        add("Clear Marks", Action::ClearMarks);
+        add(i18n::c("Clear Marks"), Action::ClearMarks);
     }
-    add("This Folder...", Action::Folder);
+    add(i18n::c("This Folder..."), Action::Folder);
 
     // The top screen shows what the options act on: the entry as Files
     // shows it, or what the marked items add up to without walking folders.
@@ -1713,11 +1709,11 @@ bool App::entryOptions(const std::string &folder,
             }
         }
         if (files > 0) {
-            facts.push_back({"Files", std::to_string(files) + ", " +
+            facts.push_back({i18n::c("Files"), std::to_string(files) + ", " +
                                           units::bytes(bytes)});
         }
         if (folders > 0) {
-            facts.push_back({"Folders", std::to_string(folders)});
+            facts.push_back({i18n::c("Folders"), std::to_string(folders)});
         }
     }
     const std::string title = single ? folderTitle(folder)
@@ -1761,7 +1757,7 @@ bool App::entryOptions(const std::string &folder,
         return true;
     case Action::Extract:
         offerExtraction(path, folderOf(path), "",
-                        "Extract " + basename(path) + "?");
+                        i18n::t("Extract {0}?", {basename(path)}));
         return true;
     case Action::Edit:
     case Action::ViewText:
@@ -1776,10 +1772,8 @@ bool App::entryOptions(const std::string &folder,
     case Action::Cut:
         clipboard_ = paths;
         clipboardCut_ = actions[choice] == Action::Cut;
-        ui::message(clipboardCut_ ? "Ready to Move" : "Ready to Copy",
-                    std::string("Open a folder and choose ") +
-                        (clipboardCut_ ? "Move Here" : "Paste Here") +
-                        " in Options.");
+        ui::message(clipboardCut_ ? i18n::c("Ready to Move") : i18n::c("Ready to Copy"),
+                    i18n::t("Open a folder and choose {0} in Options.", {(clipboardCut_ ? i18n::c("Move Here") : i18n::c("Paste Here"))}));
         return true;
     case Action::Delete:
         return deleteEntries(paths);
@@ -1830,21 +1824,21 @@ bool App::folderOptions(const std::string &folder,
     };
 
     // Sort first, so SELECT and A reach it from any folder.
-    add("Sort...", Action::Sort);
+    add(i18n::c("Sort..."), Action::Sort);
     if (!clipboard_.empty()) {
-        add(clipboardCut_ ? "Move Here" : "Paste Here", Action::Paste);
-        add("Forget Clipboard", Action::ClearClipboard);
+        add(clipboardCut_ ? i18n::c("Move Here") : i18n::c("Paste Here"), Action::Paste);
+        add(i18n::c("Forget Clipboard"), Action::ClearClipboard);
     }
-    add("New Folder", Action::NewFolder);
-    add("New File", Action::NewFile);
-    add(std::string("Hidden: ") + (settings_.showHiddenFiles ? "On" : "Off"),
+    add(i18n::c("New Folder"), Action::NewFolder);
+    add(i18n::c("New File"), Action::NewFile);
+    add(i18n::t("Hidden: {0}", {(settings_.showHiddenFiles ? i18n::c("On") : i18n::c("Off"))}),
         Action::Hidden);
     // These act on every entry, so they wait until the folder is read.
     if (!entries.empty()) {
-        add("Mark All", Action::MarkAll, complete);
+        add(i18n::c("Mark All"), Action::MarkAll, complete);
     }
     if (!marked.empty()) {
-        add("Clear Marks", Action::ClearMarks);
+        add(i18n::c("Clear Marks"), Action::ClearMarks);
     }
     size_t cias = 0;
     for (const fs::Entry &entry : entries) {
@@ -1853,23 +1847,22 @@ bool App::folderOptions(const std::string &folder,
         }
     }
     if (cias > 0) {
-        add("Install All CIAs", Action::InstallAll, complete);
+        add(i18n::c("Install All CIAs"), Action::InstallAll, complete);
     }
-    add("Properties", Action::Properties);
+    add(i18n::c("Properties"), Action::Properties);
 
     const std::string name = folderTitle(folder);
     std::vector<ui::Fact> facts = {
-        {"Path", folder},
-        {"Sorted", sortDescription(settings_.fileSort, settings_.fileSortReverse)}};
-    facts.push_back(complete ? ui::Fact {"Contains", plural(entries.size(), "item")}
-                             : ui::Fact {"Reading", plural(entries.size(), "item") +
-                                                        " so far",
+        {i18n::c("Path"), folder},
+        {i18n::c("Sorted"), sortDescription(settings_.fileSort, settings_.fileSortReverse)}};
+    facts.push_back(complete ? ui::Fact {i18n::c("Contains"), plural(entries.size(), "item")}
+                             : ui::Fact {i18n::c("Reading"), i18n::t("{0} so far", {plural(entries.size(), "item")}),
                                          ui::color::Badge});
     if (cias > 0) {
         facts.push_back({"CIAs", std::to_string(cias)});
     }
     if (!marked.empty()) {
-        facts.push_back({"Marked", plural(marked.size(), "item")});
+        facts.push_back({i18n::c("Marked"), plural(marked.size(), "item")});
     }
     if (!clipboard_.empty()) {
         facts.push_back(clipboardFact(clipboard_.size(), clipboardCut_));
@@ -1915,10 +1908,10 @@ bool App::folderOptions(const std::string &folder,
             }
         }
         ui::Dialog dialog;
-        dialog.header = "install";
-        dialog.title = "Install " + plural(paths.size(), "CIA") + "?";
-        dialog.body.push_back({"From " + folder, ui::color::Muted, 0.46f, 2});
-        dialog.buttons = {"Install", "Install and Delete", "Cancel"};
+        dialog.header = i18n::c("install");
+        dialog.title = i18n::t("Install {0}?", {plural(paths.size(), "CIA")});
+        dialog.body.push_back({i18n::t("From {0}", {folder}), ui::color::Muted, 0.46f, 2});
+        dialog.buttons = {i18n::c("Install"), i18n::c("Install and Delete"), i18n::c("Cancel")};
         dialog.cancelButton = 2;
         const int answer = ui::choose(dialog);
         if (answer == 0 || answer == 1) {
@@ -1944,13 +1937,13 @@ bool App::sortScreen(const std::string &folder)
     const fs::SortOrder startOrder = settings_.fileSort;
     const bool startReverse = settings_.fileSortReverse;
     // In the order people reach for them; SortOrder's values differ.
-    static const struct {
+    const struct {
         fs::SortOrder order;
         const char *label;
-    } Orders[] = {{fs::SortOrder::Name, "Name"},
-                  {fs::SortOrder::Date, "Date"},
-                  {fs::SortOrder::Size, "Size"},
-                  {fs::SortOrder::Type, "Type"}};
+    } Orders[] = {{fs::SortOrder::Name, i18n::c("Name")},
+                  {fs::SortOrder::Date, i18n::c("Date")},
+                  {fs::SortOrder::Size, i18n::c("Size")},
+                  {fs::SortOrder::Type, i18n::c("Type")}};
     int focus = 0;
     for (int index = 0; index < 4; ++index) {
         if (Orders[index].order == settings_.fileSort) {
@@ -1961,7 +1954,7 @@ bool App::sortScreen(const std::string &folder)
     // both be set; Back leaves.
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
-        spec.back = "Back";
+        spec.back = i18n::c("Back");
         for (int index = 0; index < 4; ++index) {
             ui::Control control;
             control.rect = {index % 2 == 0 ? 26.0f : 164.0f,
@@ -1974,18 +1967,18 @@ bool App::sortScreen(const std::string &folder)
         }
         ui::Control reverse;
         reverse.rect = {26, 139, 268, 40};
-        reverse.label = "Reverse Order";
+        reverse.label = i18n::c("Reverse Order");
         reverse.style = settings_.fileSortReverse ? ui::Style::Chosen
                                                   : ui::Style::Normal;
         spec.controls.push_back(reverse);
         spec.drawTop = [&]() {
-            ui::drawTopChrome("Sort", ui::Icon::Folder, ui::color::IconOrange);
+            ui::drawTopChrome(i18n::c("Sort"), ui::Icon::Folder, ui::color::IconOrange);
             ui::drawPanel();
             std::vector<ui::Fact> facts = {
-                {"Order", sortDescription(settings_.fileSort,
+                {i18n::c("Order"), sortDescription(settings_.fileSort,
                                           settings_.fileSortReverse)}};
             if (!folder.empty()) {
-                facts.push_back({"Folder", folder});
+                facts.push_back({i18n::c("Folder"), folder});
             }
             ui::drawFacts(facts);
         };
@@ -2011,7 +2004,7 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
         cia::Info info;
         std::string error;
         if (!cia::readInfo(paths.front(), info, error)) {
-            ui::message("Cannot install", error, ui::Tone::Error,
+            ui::message(i18n::c("Cannot install"), error, ui::Tone::Error,
                         basename(paths.front()));
             return;
         }
@@ -2040,22 +2033,18 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     for (const std::string &name : failed) {
         list += (list.empty() ? "" : ", ") + name;
     }
-    ui::message(failed.empty() ? "All installed" : "Some were not installed",
-                "Installed " + std::to_string(installed) + " of " +
-                    plural(paths.size(), "CIA") + "." +
-                    (kept > 0 ? " " + std::to_string(kept) +
-                                    (kept == 1 ? " was" : " were") +
-                                    " already installed."
-                              : ""),
+    ui::message(failed.empty() ? i18n::c("All installed") : i18n::c("Some were not installed"),
+                i18n::t("Installed {0} of {1}.{2}", {std::to_string(installed), plural(paths.size(), "CIA"), (kept > 0 ? i18n::t(kept == 1 ? " {0} was already installed." : " {0} were already installed.", {std::to_string(kept)})
+                              : "")}),
                 failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
-                failed.empty() ? "" : "Not installed: " + list);
+                failed.empty() ? "" : i18n::t("Not installed: {0}", {list}));
 }
 
 bool App::renameEntry(const std::string &path)
 {
     const std::string oldName = fileops::name(path);
     std::string typed;
-    if (!platform::keyboard(platform::KeyboardKind::Name, "New name", oldName,
+    if (!platform::keyboard(platform::KeyboardKind::Name, i18n::c("New name"), oldName,
                             typed)) {
         return false;
     }
@@ -2065,7 +2054,7 @@ bool App::renameEntry(const std::string &path)
         return false;
     }
     if (!fileops::validName(newName, error)) {
-        ui::message("Cannot use that name", error, ui::Tone::Error, newName);
+        ui::message(i18n::c("Cannot use that name"), error, ui::Tone::Error, newName);
         return false;
     }
     const std::string folder = folderOf(path);
@@ -2075,13 +2064,13 @@ bool App::renameEntry(const std::string &path)
         const std::string spare = folder + ".3dsdl-rename-" + oldName;
         if (!fileops::move(path, spare, error) ||
             !fileops::move(spare, target, error)) {
-            ui::message("Could not rename", error, ui::Tone::Error);
+            ui::message(i18n::c("Could not rename"), error, ui::Tone::Error);
             return true;
         }
         return true;
     }
     if (!fileops::move(path, target, error)) {
-        ui::message("Could not rename", error, ui::Tone::Error);
+        ui::message(i18n::c("Could not rename"), error, ui::Tone::Error);
         return false;
     }
     return true;
@@ -2090,7 +2079,7 @@ bool App::renameEntry(const std::string &path)
 bool App::deleteEntries(const std::vector<std::string> &paths)
 {
     fileops::Totals totals;
-    if (!tasks::busy("delete", "Counting what will be deleted...",
+    if (!tasks::busy(i18n::c("delete"), i18n::c("Counting what will be deleted..."),
                      [&](tasks::Busy &busy) {
                          fileops::Lookup lookup;
                          for (const std::string &path : paths) {
@@ -2112,12 +2101,12 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
     const std::string body = totals.folders > 0 || !single
                                  ? totalsText(totals)
                                  : units::bytes(totals.bytes);
-    if (!confirm("delete", "Delete " + what + "?", body, "Delete", true)) {
+    if (!confirm(i18n::c("delete"), i18n::t("Delete {0}?", {what}), body, i18n::c("Delete"), true)) {
         return false;
     }
 
     const fileops::Result result = tasks::fileOperation(
-        "deleting", what, folderOf(paths.front()), totals.files, true,
+        i18n::c("deleting"), what, folderOf(paths.front()), totals.files, true,
         [&](fileops::Observer &observer) {
             fileops::Result all;
             uint64_t done = 0;
@@ -2143,13 +2132,12 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
                                     }),
                      clipboard_.end());
     if (result.status == fileops::Status::Failed) {
-        ui::message("Delete stopped", result.message, ui::Tone::Error,
-                    plural(result.files, "file") + " deleted before that.");
+        ui::message(i18n::c("Delete stopped"), result.message, ui::Tone::Error,
+                    i18n::t("{0} deleted before that.", {plural(result.files, "file")}));
     } else if (result.status == fileops::Status::Cancelled &&
                ui::keepRunning()) {
-        ui::message("Delete stopped",
-                    plural(result.files, "file") + " deleted before you "
-                                                   "stopped it.",
+        ui::message(i18n::c("Delete stopped"),
+                    i18n::t("{0} deleted before you stopped it.", {plural(result.files, "file")}),
                     ui::Tone::Warning);
     }
     return true;
@@ -2173,14 +2161,14 @@ bool App::pasteInto(const std::string &folder)
 
     for (const std::string &source : clipboard_) {
         if (!lookup.exists(source)) {
-            problems.push_back(fileops::name(source) + " no longer exists.");
+            problems.push_back(i18n::t("{0} no longer exists.", {fileops::name(source)}));
             continue;
         }
         const std::string name = fileops::name(source);
         Step step {source, folder + name, false};
         const bool folderSource = lookup.isFolder(source);
         if (folderSource && fileops::isInside(step.destination, source)) {
-            problems.push_back(name + " cannot go inside itself.");
+            problems.push_back(i18n::t("{0} cannot go inside itself.", {name}));
             continue;
         }
         if (clipboardCut_ && step.destination == source) {
@@ -2192,10 +2180,10 @@ bool App::pasteInto(const std::string &folder)
                 step.destination = naming::unusedPath(folder, name, exists);
             } else {
                 ui::Dialog dialog;
-                dialog.header = "paste";
-                dialog.title = name + " is already here.";
+                dialog.header = i18n::c("paste");
+                dialog.title = i18n::t("{0} is already here.", {name});
                 dialog.tone = ui::Tone::Warning;
-                dialog.buttons = {"Keep Both", "Replace", "Skip"};
+                dialog.buttons = {i18n::c("Keep Both"), i18n::c("Replace"), i18n::c("Skip")};
                 dialog.dangerous = 1;
                 dialog.cancelButton = 2;
                 const int answer = ui::choose(dialog);
@@ -2209,7 +2197,7 @@ bool App::pasteInto(const std::string &folder)
             }
         }
         if (step.destination.empty()) {
-            problems.push_back("No free name was found for " + name + ".");
+            problems.push_back(i18n::t("No free name was found for {0}.", {name}));
             continue;
         }
         lookup.claim(step.destination, folderSource);
@@ -2218,7 +2206,7 @@ bool App::pasteInto(const std::string &folder)
 
     uint64_t bytes = 0;
     if (!clipboardCut_ && !steps.empty()) {
-        if (!tasks::busy("paste", "Measuring what will be copied...",
+        if (!tasks::busy(i18n::c("paste"), i18n::c("Measuring what will be copied..."),
                          [&](tasks::Busy &busy) {
                              for (const Step &step : steps) {
                                  bytes += fileops::measure(step.source,
@@ -2232,10 +2220,8 @@ bool App::pasteInto(const std::string &folder)
         }
         const int64_t free = platform::sdFreeBytes();
         if (free >= 0 && static_cast<uint64_t>(free) < bytes) {
-            ui::message("Not enough space",
-                        "Copying needs " + units::bytes(bytes) + " and " +
-                            units::bytes(static_cast<uint64_t>(free)) +
-                            " is free.",
+            ui::message(i18n::c("Not enough space"),
+                        i18n::t("Copying needs {0} and {1} is free.", {units::bytes(bytes), units::bytes(static_cast<uint64_t>(free))}),
                         ui::Tone::Error);
             return false;
         }
@@ -2245,7 +2231,7 @@ bool App::pasteInto(const std::string &folder)
     if (!steps.empty()) {
         const bool cut = clipboardCut_;
         result = tasks::fileOperation(
-            cut ? "moving" : "copying", plural(steps.size(), "item"), folder,
+            cut ? i18n::c("moving") : i18n::c("copying"), plural(steps.size(), "item"), folder,
             bytes, false,
             [&](fileops::Observer &observer) {
                 fileops::Result all;
@@ -2302,14 +2288,14 @@ bool App::pasteInto(const std::string &folder)
     if (result.status == fileops::Status::Failed) {
         problems.insert(problems.begin(), result.message);
     } else if (result.status == fileops::Status::Cancelled) {
-        problems.insert(problems.begin(), "Stopped before it finished.");
+        problems.insert(problems.begin(), i18n::c("Stopped before it finished."));
     }
     if (!problems.empty() && ui::keepRunning()) {
         std::string list;
         for (const std::string &problem : problems) {
             list += (list.empty() ? "" : " ") + problem;
         }
-        ui::message("Not everything was pasted", list, ui::Tone::Warning);
+        ui::message(i18n::c("Not everything was pasted"), list, ui::Tone::Warning);
     }
     return true;
 }
@@ -2317,23 +2303,23 @@ bool App::pasteInto(const std::string &folder)
 bool App::createFolder(const std::string &folder)
 {
     std::string typed;
-    if (!platform::keyboard(platform::KeyboardKind::Name, "New folder name",
+    if (!platform::keyboard(platform::KeyboardKind::Name, i18n::c("New folder name"),
                             "", typed)) {
         return false;
     }
     const std::string name = text::trim(typed);
     std::string error;
     if (!fileops::validName(name, error)) {
-        ui::message("Cannot use that name", error, ui::Tone::Error, name);
+        ui::message(i18n::c("Cannot use that name"), error, ui::Tone::Error, name);
         return false;
     }
     if (fileops::exists(folder + name)) {
-        ui::message("Already exists", name + " is already in this folder.",
+        ui::message(i18n::c("Already exists"), i18n::t("{0} is already in this folder.", {name}),
                     ui::Tone::Error);
         return false;
     }
     if (!fs::makeDirectories(folder + name + "/")) {
-        ui::message("Could not create the folder", folder + name,
+        ui::message(i18n::c("Could not create the folder"), folder + name,
                     ui::Tone::Error);
         return false;
     }
@@ -2344,23 +2330,23 @@ bool App::createFile(const std::string &folder)
 {
     std::string typed;
     if (!platform::keyboard(platform::KeyboardKind::Name,
-                            "New file name", "new.txt", typed)) {
+                            i18n::c("New file name"), "new.txt", typed)) {
         return false;
     }
     const std::string name = text::trim(typed);
     std::string error;
     if (!fileops::validName(name, error)) {
-        ui::message("Cannot use that name", error, ui::Tone::Error, name);
+        ui::message(i18n::c("Cannot use that name"), error, ui::Tone::Error, name);
         return false;
     }
     const std::string path = folder + name;
     if (fileops::exists(path)) {
-        ui::message("Already exists", name + " is already in this folder.",
+        ui::message(i18n::c("Already exists"), i18n::t("{0} is already in this folder.", {name}),
                     ui::Tone::Error);
         return false;
     }
     if (!fs::writeFile(path, "")) {
-        ui::message("Could not create the file", path, ui::Tone::Error);
+        ui::message(i18n::c("Could not create the file"), path, ui::Tone::Error);
         return false;
     }
     textEditor(path);
@@ -2381,7 +2367,7 @@ void App::showProperties(const std::vector<std::string> &paths)
     };
     if (single && !folder) {
         totals = fileops::measure(paths.front());
-    } else if (!tasks::busy("properties", "Adding up sizes...",
+    } else if (!tasks::busy(i18n::c("properties"), i18n::c("Adding up sizes..."),
                             [&](tasks::Busy &busy) {
                                 busy.bytes = true;
                                 fileops::Lookup lookup;
@@ -2410,21 +2396,21 @@ void App::showProperties(const std::vector<std::string> &paths)
     const int64_t modified = single ? fileops::modifiedTime(path) : 0;
     std::vector<std::pair<std::string, std::string>> tags;
     if (folder || !single) {
-        tags.push_back({"Contains", contentsText(totals)});
+        tags.push_back({i18n::c("Contains"), contentsText(totals)});
     } else {
-        tags.push_back({"Type", filetype::label(filetype::fromName(basename(path)))});
+        tags.push_back({i18n::c("Type"), filetype::label(filetype::fromName(basename(path)))});
     }
-    tags.push_back({"Size", units::bytes(totals.bytes)});
+    tags.push_back({i18n::c("Size"), units::bytes(totals.bytes)});
     if (totals.bytes >= 1024) {
-        tags.push_back({"Bytes", units::grouped(totals.bytes)});
+        tags.push_back({i18n::c("Bytes"), units::grouped(totals.bytes)});
     }
     if (modified > 0) {
-        tags.push_back({"Changed", units::dateTime(modified)});
+        tags.push_back({i18n::c("Changed"), units::dateTime(modified)});
     }
 
     ui::Dialog dialog;
     dialog.title = units::bytes(totals.bytes);
-    dialog.buttons = {"OK"};
+    dialog.buttons = {i18n::c("OK")};
     dialog.drawTop = [&]() {
         if (single) {
             ui::drawTopChrome(folderTitle(parent), ui::Icon::Folder,
@@ -2453,23 +2439,22 @@ void App::showProperties(const std::vector<std::string> &paths)
 void App::installTicketFile(const std::string &path)
 {
     if (!installer::available()) {
-        ui::message("Cannot Install", installer::unavailableReason(),
+        ui::message(i18n::c("Cannot Install"), installer::unavailableReason(),
                     ui::Tone::Error);
         return;
     }
     uint64_t titleId = 0;
     std::string error;
     bool installed = false;
-    tasks::busy("Tickets", "Installing the ticket...", [&]() {
+    tasks::busy(i18n::c("Tickets"), i18n::c("Installing the ticket..."), [&]() {
         installed = library::installTicket(path, titleId, error);
     });
     if (installed) {
-        ui::message("Ticket Installed",
-                    "The ticket for " + cia::titleIdText(titleId) +
-                        " is installed.",
+        ui::message(i18n::c("Ticket Installed"),
+                    i18n::t("The ticket for {0} is installed.", {cia::titleIdText(titleId)}),
                     ui::Tone::Success);
     } else {
-        ui::message("Ticket Not Installed", error, ui::Tone::Error);
+        ui::message(i18n::c("Ticket Not Installed"), error, ui::Tone::Error);
     }
 }
 
@@ -2492,8 +2477,7 @@ bool startHomebrew(const std::string &path, std::string &error)
     // waits forever, since Luma never registers it there.
     Handle loader = 0;
     if (R_FAILED(svcConnectToPort(&loader, "hb:ldr"))) {
-        error = "Starting homebrew needs Luma3DS, and its homebrew loader "
-                "did not answer.";
+        error = i18n::c("Starting homebrew needs Luma3DS, and its homebrew loader did not answer.");
         return false;
     }
     // Under the Homebrew Launcher this app is the loader's own title, which
@@ -2505,10 +2489,7 @@ bool startHomebrew(const std::string &path, std::string &error)
     if (!envIsHomebrew() &&
         (title == 0 || !installer::installedVersion(title, version))) {
         svcCloseHandle(loader);
-        error = "Luma3DS starts homebrew in place of " +
-                cia::titleIdText(title) +
-                ", which is not installed. Open the Homebrew Launcher "
-                "and start it from there.";
+        error = i18n::t("Luma3DS starts homebrew in place of {0}, which is not installed. Open the Homebrew Launcher and start it from there.", {cia::titleIdText(title)});
         return false;
     }
     // The loader takes the path inside the SD card, without "sdmc:".
@@ -2539,7 +2520,7 @@ bool startHomebrew(const std::string &path, std::string &error)
     }
     svcCloseHandle(loader);
     if (R_FAILED(code)) {
-        error = "The homebrew loader did not take " + basename(path) + ".";
+        error = i18n::t("The homebrew loader did not take {0}.", {basename(path)});
         return false;
     }
     if (envIsHomebrew()) {
@@ -2562,21 +2543,21 @@ void App::titleDetails(const std::string &path, Kind kind)
     const std::string folder = folderTitle(folderOf(path));
 
     ui::ScreenSpec spec;
-    spec.back = "Back";
+    spec.back = i18n::c("Back");
     const bool ticket = kind == Kind::Ticket && details.metaReadable;
     const bool homebrew = kind == Kind::Homebrew;
     // One or two buttons, centred in the space above the tabs.
     const bool pair = ticket || homebrew;
     ui::Control hex;
     hex.rect = {46, pair ? 109.0f : 87.0f, 228, 34};
-    hex.label = "Open as Hex";
+    hex.label = i18n::c("Open as Hex");
     hex.icon = ui::Icon::Hex;
     hex.scale = ui::type::Body + 0.06f;
     spec.controls.push_back(hex);
     if (ticket) {
         ui::Control install = hex;
         install.rect = {46, 65, 228, 34};
-        install.label = "Install Ticket";
+        install.label = i18n::c("Install Ticket");
         install.icon = ui::Icon::Lock;
         install.iconColor = ui::color::IconGreen;
         spec.controls.push_back(install);
@@ -2584,7 +2565,7 @@ void App::titleDetails(const std::string &path, Kind kind)
     if (homebrew) {
         ui::Control start = hex;
         start.rect = {46, 65, 228, 34};
-        start.label = "Start";
+        start.label = i18n::c("Start");
         start.icon = ui::Icon::App;
         start.iconColor = ui::color::IconGreen;
         spec.controls.push_back(start);
@@ -2604,7 +2585,7 @@ void App::titleDetails(const std::string &path, Kind kind)
         if (startHomebrew(path, error)) {
             quit_ = true;
         } else {
-            ui::message("Cannot Start", error, ui::Tone::Error);
+            ui::message(i18n::c("Cannot Start"), error, ui::Tone::Error);
         }
     }
 }
@@ -2728,9 +2709,7 @@ void stepThrough(const std::vector<std::string> &paths, size_t index,
         const std::string &path = paths[index];
         viewer.load(path);
         const std::string facts = viewer.facts(path);
-        const std::string position = viewer.noun + " " +
-                                     std::to_string(index + 1) + " of " +
-                                     std::to_string(paths.size());
+        const std::string position = i18n::t("{0} {1} of {2}", {viewer.noun, std::to_string(index + 1), std::to_string(paths.size())});
 
         float swipeStart = -1;
         bool moved = false;
@@ -2783,13 +2762,13 @@ void stepThrough(const std::vector<std::string> &paths, size_t index,
                          ui::color::InkSoft, C2D_AlignCenter);
             const ui::Style style =
                 paths.size() > 1 ? ui::Style::Normal : ui::Style::Disabled;
-            ui::drawButton(pad.rects[previous], "Previous", style,
+            ui::drawButton(pad.rects[previous], i18n::c("Previous"), style,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, previous));
-            ui::drawButton(pad.rects[next], "Next", style,
+            ui::drawButton(pad.rects[next], i18n::c("Next"), style,
                            ui::type::Small + 0.02f, ui::Icon::None, 0,
                            pad.isDown(input, next));
-            ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
+            ui::drawTab(ui::Tab::Left, i18n::c("Back"), "B", pad.isDown(input, back));
             ui::endFrame();
         }
     }
@@ -2829,14 +2808,14 @@ void drawSongTop(const std::string &name, const audiometa::Info &info,
             facts.push_back({tag, value});
         }
     };
-    add("Artist", info.artist.empty() ? info.albumArtist : info.artist);
-    add("Album", audiometa::albumText(info));
-    add("Length", audiometa::length(info.milliseconds));
-    add("Track", audiometa::trackText(info));
-    add("Genre", info.genre);
-    add("Loop", audiometa::loopText(info));
+    add(i18n::c("Artist"), info.artist.empty() ? info.albumArtist : info.artist);
+    add(i18n::c("Album"), audiometa::albumText(info));
+    add(i18n::c("Length"), audiometa::length(info.milliseconds));
+    add(i18n::c("Track"), audiometa::trackText(info));
+    add(i18n::c("Genre"), info.genre);
+    add(i18n::c("Loop"), audiometa::loopText(info));
     if (facts.empty()) {
-        facts.push_back({"Type", filetype::label(Kind::Audio)});
+        facts.push_back({i18n::c("Type"), filetype::label(Kind::Audio)});
     }
     // drawFacts keeps 18 pixels from each side of its area.
     const float left = art.x + art.w + 14 - 18;
@@ -2856,11 +2835,11 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
     Viewer viewer;
     viewer.icon = ui::Icon::Picture;
     viewer.iconColor = ui::color::IconPink;
-    viewer.noun = "Picture";
+    viewer.noun = i18n::c("Picture");
     viewer.load = [&](const std::string &path) {
         picture::Picture loaded;
         error.clear();
-        tasks::busy("Pictures", "", [&]() {
+        tasks::busy(i18n::c("Pictures"), "", [&]() {
             picture::load(path, 400, 240, PictureBackground, loaded, error);
         });
         shown = std::move(loaded);
@@ -2872,8 +2851,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
     viewer.facts = [&](const std::string &path) {
         std::string facts = sizeText(fs::fileSize(path));
         if (shown.sourceWidth > 0) {
-            facts = std::to_string(shown.sourceWidth) + " x " +
-                    std::to_string(shown.sourceHeight) + " pixels, " + facts;
+            facts = i18n::t("{0} x {1} pixels, {2}", {std::to_string(shown.sourceWidth), std::to_string(shown.sourceHeight), facts});
         }
         return facts;
     };
@@ -2884,7 +2862,7 @@ void App::pictureViewer(const std::vector<std::string> &pictures,
             ui::drawImage(*image, (ui::TopWidth - shown.width) / 2,
                           (ui::ScreenHeight - shown.height) / 2);
         } else {
-            ui::drawWrapped(error.empty() ? "The picture could not be shown."
+            ui::drawWrapped(error.empty() ? i18n::c("The picture could not be shown.")
                                           : error,
                             200, 100, ui::type::Body, ui::color::rgb(0xFFD36B),
                             330, 4, C2D_AlignCenter);
@@ -2903,11 +2881,11 @@ void App::songViewer(const std::vector<std::string> &songs, size_t index,
     Viewer viewer;
     viewer.icon = ui::Icon::Music;
     viewer.iconColor = ui::color::IconPink;
-    viewer.noun = "Song";
+    viewer.noun = i18n::c("Song");
     viewer.load = [&](const std::string &path) {
         audiometa::Info loaded;
         std::vector<uint16_t> pixels;
-        tasks::busy("Songs", "", [&]() {
+        tasks::busy(i18n::c("Songs"), "", [&]() {
             audiometa::read(path, loaded, true);
             pixels = coverPixels(loaded.cover, folderCover, SongCover);
         });
@@ -2932,7 +2910,7 @@ void App::archiveViewer(const std::string &path)
     std::string error;
     if (!readArchive(path, archives::Scan::Full, listing, error)) {
         if (!error.empty()) {
-            ui::message("Cannot Open the Archive", error, ui::Tone::Error,
+            ui::message(i18n::c("Cannot Open the Archive"), error, ui::Tone::Error,
                         basename(path));
         }
         return;
@@ -2942,8 +2920,8 @@ void App::archiveViewer(const std::string &path)
     while (ui::keepRunning()) {
         ui::ListSpec spec;
         spec.title = basename(path);
-        spec.emptyText = "This archive is empty.";
-        spec.action = "Extract";
+        spec.emptyText = i18n::c("This archive is empty.");
+        spec.action = i18n::c("Extract");
         spec.actionKey = "X";
         spec.actionKeys = KEY_X;
         for (const archives::Entry &entry : listing.entries) {
@@ -2965,17 +2943,17 @@ void App::archiveViewer(const std::string &path)
                               ui::color::IconGold);
             ui::drawPanel();
             std::vector<ui::Fact> facts = {
-                {"Format", listing.format},
-                {"Holds", plural(listing.fileCount, "file")},
-                {"Extracted", units::bytes(listing.totalSize)}};
+                {i18n::c("Format"), listing.format},
+                {i18n::c("Holds"), plural(listing.fileCount, "file")},
+                {i18n::c("Extracted"), units::bytes(listing.totalSize)}};
             if (index >= 0 && index < static_cast<int>(listing.entries.size())) {
                 const archives::Entry &entry = listing.entries[index];
-                facts.push_back({"Selected", entry.name});
+                facts.push_back({i18n::c("Selected"), entry.name});
                 if (entry.path.empty()) {
-                    facts.push_back({"Skipped", "Path leaves the folder",
+                    facts.push_back({i18n::c("Skipped"), i18n::c("Path leaves the folder"),
                                      ui::color::Bad});
                 } else if (!entry.supported) {
-                    facts.push_back({"Skipped", "Encrypted, a link or unknown",
+                    facts.push_back({i18n::c("Skipped"), i18n::c("Encrypted, a link or unknown"),
                                      ui::color::Bad});
                 }
             }
@@ -2984,7 +2962,7 @@ void App::archiveViewer(const std::string &path)
         const ui::ListResult result = ui::runList(spec, cursor);
         if (result.key == KEY_X) {
             offerExtraction(path, folderOf(path), "",
-                            "Extract " + basename(path) + "?", &listing);
+                            i18n::t("Extract {0}?", {basename(path)}), &listing);
             return;
         }
         if (result.key != KEY_A) {
@@ -3003,7 +2981,7 @@ void App::hexViewer(const std::string &path)
     const uint64_t size = fileSize > 0 ? static_cast<uint64_t>(fileSize) : 0;
     std::FILE *file = std::fopen(path.c_str(), "rb");
     if (file == nullptr) {
-        ui::message("Cannot Open the File", path, ui::Tone::Error);
+        ui::message(i18n::c("Cannot Open the File"), path, ui::Tone::Error);
         return;
     }
 
@@ -3106,24 +3084,23 @@ void App::hexViewer(const std::string &path)
         const ui::Rect panel = {13, 47, 294, 28};
         ui::drawPanel(panel);
         char where[96];
-        std::snprintf(where, sizeof(where), "Offset 0x%llX of %s",
-                      static_cast<unsigned long long>(top),
-                      units::bytes(size).c_str());
-        ui::drawText(where, 160, panel.y + 6, ui::type::Small, ui::color::Ink,
+        std::snprintf(where, sizeof(where), "%llX",
+                      static_cast<unsigned long long>(top));
+        ui::drawText(i18n::t("Offset 0x{0} of {1}", {where, units::bytes(size)}), 160, panel.y + 6, ui::type::Small, ui::color::Ink,
                      C2D_AlignCenter);
-        ui::drawButton(pad.rects[pageUp], "Page Up", ui::Style::Normal,
+        ui::drawButton(pad.rects[pageUp], i18n::c("Page Up"), ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, pageUp));
-        ui::drawButton(pad.rects[pageDown], "Page Down", ui::Style::Normal,
+        ui::drawButton(pad.rects[pageDown], i18n::c("Page Down"), ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, pageDown));
-        ui::drawButton(pad.rects[start], "Go to Start", ui::Style::Normal,
+        ui::drawButton(pad.rects[start], i18n::c("Go to Start"), ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, start));
-        ui::drawButton(pad.rects[end], "Go to End", ui::Style::Normal,
+        ui::drawButton(pad.rects[end], i18n::c("Go to End"), ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
                        pad.isDown(input, end));
-        ui::drawTab(ui::Tab::Left, "Back", "B", pad.isDown(input, back));
+        ui::drawTab(ui::Tab::Left, i18n::c("Back"), "B", pad.isDown(input, back));
         ui::endFrame();
     }
     std::fclose(file);
@@ -3134,13 +3111,13 @@ void App::textEditor(const std::string &path)
     textdoc::Document document;
     switch (textdoc::load(path, document)) {
     case textdoc::Load::Unreadable:
-        ui::message("Cannot Open the File", path, ui::Tone::Error);
+        ui::message(i18n::c("Cannot Open the File"), path, ui::Tone::Error);
         return;
     case textdoc::Load::NotText: {
         ui::Dialog dialog;
         dialog.header = basename(path);
-        dialog.title = "This is not a text file.";
-        dialog.buttons = {"Close", "Open as Hex"};
+        dialog.title = i18n::c("This is not a text file.");
+        dialog.buttons = {i18n::c("Close"), i18n::c("Open as Hex")};
         dialog.initial = 1;
         dialog.cancelButton = 0;
         if (ui::choose(dialog) == 1) {
@@ -3160,10 +3137,9 @@ void App::textEditor(const std::string &path)
     const bool readOnly = document.readOnly;
     std::string readOnlyReason;
     if (document.truncated) {
-        readOnlyReason = "Only the first " +
-                         units::bytes(textdoc::MaxEditableBytes) + " is shown.";
+        readOnlyReason = i18n::t("Only the first {0} is shown.", {units::bytes(textdoc::MaxEditableBytes)});
     } else if (readOnly) {
-        readOnlyReason = "Not UTF-8 text.";
+        readOnlyReason = i18n::c("Not UTF-8 text.");
     }
 
     constexpr float LinePitch = 16;
@@ -3191,8 +3167,7 @@ void App::textEditor(const std::string &path)
             saved = true;
             return true;
         }
-        ui::message("Not Saved", "The file could not be written. The SD card "
-                                 "may be full or read-only.",
+        ui::message(i18n::c("Not Saved"), i18n::c("The file could not be written. The SD card may be full or read-only."),
                     ui::Tone::Error, path);
         return false;
     };
@@ -3200,13 +3175,13 @@ void App::textEditor(const std::string &path)
         std::string typed;
         const std::string initial = inserting ? "" : document.lines[index];
         if (initial.size() > 1900) {
-            ui::message("Line Too Long",
-                        "This line is too long for the keyboard.",
+            ui::message(i18n::c("Line Too Long"),
+                        i18n::c("This line is too long for the keyboard."),
                         ui::Tone::Warning);
             return;
         }
         if (!platform::keyboard(platform::KeyboardKind::Text,
-                                "Line " + std::to_string(index + 1), initial,
+                                i18n::t("Line {0}", {std::to_string(index + 1)}), initial,
                                 typed)) {
             return;
         }
@@ -3279,7 +3254,7 @@ void App::textEditor(const std::string &path)
 
         if (readOnly && (action == edit || action == insert ||
                          action == remove || action == save)) {
-            ui::message("Read-Only", readOnlyReason);
+            ui::message(i18n::c("Read-Only"), readOnlyReason);
             action = -1;
         }
         if (action == edit) {
@@ -3304,9 +3279,9 @@ void App::textEditor(const std::string &path)
             }
             ui::Dialog dialog;
             dialog.header = basename(path);
-            dialog.title = "Save your changes before closing?";
+            dialog.title = i18n::c("Save your changes before closing?");
             dialog.tone = ui::Tone::Warning;
-            dialog.buttons = {"Discard", "Keep Editing", "Save"};
+            dialog.buttons = {i18n::c("Discard"), i18n::c("Keep Editing"), i18n::c("Save")};
             dialog.dangerous = 0;
             dialog.initial = 2;
             dialog.cancelButton = 1;
@@ -3319,9 +3294,9 @@ void App::textEditor(const std::string &path)
         ui::beginFrame();
         const std::string name = basename(path);
         const float nameWidth = std::min(260.0f, ui::textWidth(name, ui::type::Title));
-        const std::string state = dirty      ? "edited"
-                                : saved    ? "saved"
-                                : readOnly ? "read-only"
+        const std::string state = dirty      ? i18n::c("edited")
+                                : saved    ? i18n::c("saved")
+                                : readOnly ? i18n::c("read-only")
                                            : "";
         const float width = 28 + nameWidth +
                             (state.empty() ? 0 : 8 + ui::textWidth(state, ui::type::Small));
@@ -3380,17 +3355,16 @@ void App::textEditor(const std::string &path)
         ui::beginBottom();
         const ui::Rect recess = {13, top, 294, 72};
         ui::drawRecess(recess);
-        ui::drawText("Line " + std::to_string(cursor + 1) + " of " +
-                         std::to_string(count),
+        ui::drawText(i18n::t("Line {0} of {1}", {std::to_string(cursor + 1), std::to_string(count)}),
                      recess.x + 10, recess.y + 5, ui::type::Tiny,
                      ui::color::InkSoft);
         const std::string &current = document.lines[cursor];
-        ui::drawWrapped(current.empty() ? "(empty line)" : current,
+        ui::drawWrapped(current.empty() ? i18n::c("(empty line)") : current,
                         recess.x + 10, recess.y + 24, ui::type::Small,
                         current.empty() ? ui::color::InkSoft
                                         : ui::color::InkStrong,
                         recess.w - 20, 2);
-        const char *const labels[] = {"Edit", "New Line", "Delete"};
+        const char *const labels[] = {i18n::c("Edit"), i18n::c("New Line"), i18n::c("Delete")};
         for (int index = 0; index < 3; ++index) {
             ui::drawButton(pad.rects[index], labels[index],
                            readOnly ? ui::Style::Disabled : ui::Style::Normal,
@@ -3404,9 +3378,9 @@ void App::textEditor(const std::string &path)
             ui::drawText(readOnlyReason, 160, top + 132, ui::type::Tiny,
                          ui::color::InkSoft, C2D_AlignCenter);
         }
-        ui::drawTab(ui::Tab::Left, "Close", "B", pad.isDown(input, close));
+        ui::drawTab(ui::Tab::Left, i18n::c("Close"), "B", pad.isDown(input, close));
         if (!readOnly) {
-            ui::drawTab(ui::Tab::Right, "Save", "START",
+            ui::drawTab(ui::Tab::Right, i18n::c("Save"), "START",
                         pad.isDown(input, save));
         }
         ui::endFrame();

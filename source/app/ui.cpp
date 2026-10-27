@@ -1,4 +1,5 @@
 #include "ui.hpp"
+#include "i18n.hpp"
 
 #include "crash.hpp"
 #include "image.hpp"
@@ -547,6 +548,7 @@ float pulse(float period)
 std::string titleCase(const std::string &value)
 {
     std::string output = value;
+    if (i18n::language() != "en") { return output; }
     bool start = true;
     for (char &character : output) {
         if (start && character >= 'a' && character <= 'z') {
@@ -1791,12 +1793,12 @@ void drawStatusBar()
         fillRound(pill.inset(1), 4,
                   {{0, color::rgb(0xA8DEF7)}, {0.5f, color::rgb(0x63C4F1)},
                    {1, color::rgb(0x2DA8DE)}});
-        drawCentered("Connected", pill, 0.32f, color::rgb(0xFFFFFF));
+        drawCentered(i18n::c("Connected"), pill, 0.32f, color::rgb(0xFFFFFF));
     } else {
         fillRound(pill, 5, color::rgb(0xC8C8C8));
         fillRound(pill.inset(1), 4,
                   {{0, color::rgb(0xEFEFEF)}, {1, color::rgb(0xD6D6D6)}});
-        drawCentered("Not Connected", pill, 0.3f, color::rgb(0x8B8B8B));
+        drawCentered(i18n::c("Not Connected"), pill, 0.3f, color::rgb(0x8B8B8B));
     }
 
     const time_t seconds = static_cast<time_t>(platform::now());
@@ -1806,7 +1808,7 @@ void drawStatusBar()
                                        "Thu", "Fri", "Sat"};
     char clock[40];
     std::snprintf(clock, sizeof(clock), "%d/%d (%s)  %d:%02d",
-                  parts.tm_mon + 1, parts.tm_mday, Days[parts.tm_wday % 7],
+                  parts.tm_mon + 1, parts.tm_mday, i18n::c(Days[parts.tm_wday % 7]),
                   parts.tm_hour, parts.tm_min);
     drawText(clock, 364, 1, 0.4f, color::rgb(0x323232), C2D_AlignRight);
 
@@ -1819,8 +1821,7 @@ void drawStatusBar()
         constexpr float Scale = 0.37f;
         const float left = pill.x + pill.w + 6;
         const float clockLeft = 364 - textWidth(clock, 0.4f);
-        drawFitted("SD " +
-                       units::shortBytes(static_cast<uint64_t>(status.sdFree)),
+        drawFitted(i18n::t("SD {0}", {units::shortBytes(static_cast<uint64_t>(status.sdFree))}),
                    left, 1 + (lineHeight(0.4f) - lineHeight(Scale)) / 2, Scale,
                    status.sdFree < LowSdSpace ? color::Caution : color::InkSoft,
                    clockLeft - 8 - left);
@@ -2469,7 +2470,7 @@ int choose(const Dialog &dialog)
     inDialog = true;
     lockTouch();
     const std::vector<std::string> labels =
-        dialog.buttons.empty() ? std::vector<std::string>{"OK"}
+        dialog.buttons.empty() ? std::vector<std::string>{i18n::c("OK")}
                                : dialog.buttons;
     const int count = static_cast<int>(labels.size());
     // A dangerous choice between two gets the system's red button, with
@@ -2567,11 +2568,8 @@ int choose(const Dialog &dialog)
             wrap(dialog.title, type::Body, message.w, 6);
         const float step = lineHeight(type::Body) * 1.08f;
         float y = message.y + (message.h - step * lines.size()) / 2;
-        for (const std::string &line : lines) {
-            drawText(line, message.x + message.w / 2, y, type::Body,
-                     color::InkDialog, C2D_AlignCenter);
-            y += step;
-        }
+        drawWrapped(dialog.title, message.x + message.w / 2, y, type::Body,
+                    color::InkDialog, message.w, 6, C2D_AlignCenter);
 
         if (redLayout) {
             drawButton(redButton, labels[dialog.dangerous], Style::Danger,
@@ -2619,7 +2617,7 @@ void message(const std::string &title, const std::string &text, Tone tone,
             dialog.body.push_back({detail, color::InkSoft, 0.5f, 3});
         }
     }
-    dialog.buttons = {"OK"};
+    dialog.buttons = {i18n::c("OK")};
     choose(dialog);
 }
 
@@ -2858,7 +2856,7 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
             return showPressed >= 0 && targets[showPressed].choice == choice;
         };
         if (spec.closeBar) {
-            drawTab(Tab::Full, "Close", "START", tabDown(ScreenBack));
+            drawTab(Tab::Full, i18n::c("Close"), "START", tabDown(ScreenBack));
         } else {
             if (!spec.back.empty()) {
                 drawTab(Tab::Left, spec.back, "B", tabDown(ScreenBack));
@@ -2961,7 +2959,7 @@ int chooseOption(const std::string &title,
     const int chosen =
         std::max(0, std::min(current, static_cast<int>(options.size()) - 1));
     ScreenSpec spec;
-    spec.back = "Back";
+    spec.back = i18n::c("Back");
     const float pitch = 39;
     const float height = pitch * options.size() + 8;
     const float top = std::max(22.0f, 24 + (180 - height) / 2);
@@ -3102,8 +3100,7 @@ namespace {
 
 ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
-    enterScreen("list|" + spec.title + "|" + spec.heading + "|" + spec.back +
-                "|" + spec.action);
+    enterScreen("list|" + spec.title + "|" + spec.heading + "|" + spec.back + "|" + spec.action);
     constexpr float RowHeight = 25;
     constexpr float Pitch = 31;
     const bool headed = !spec.heading.empty();
@@ -3523,10 +3520,10 @@ void drawProgress(const ProgressView &view)
         y += lineHeight(type::Body);
     }
     if (view.stopping) {
-        drawButton(ProgressCancelButton, "Stopping...", Style::Disabled,
+        drawButton(ProgressCancelButton, i18n::c("Stopping..."), Style::Disabled,
                    type::Button);
     } else {
-        drawButton(ProgressCancelButton, "Cancel");
+        drawButton(ProgressCancelButton, i18n::c("Cancel"));
         drawFocus(ProgressCancelButton, 9);
     }
     endFrame();
@@ -3579,9 +3576,9 @@ void drawBusy(const BusyView &view)
     const float rowY = view.progress ? box.y + 30
                        : counting    ? box.y + contentHeight / 2 - 12
                                      : box.y + contentHeight / 2;
-    const float width = 30 + 12 + textWidth("Please wait...", type::Body);
+    const float width = 30 + 12 + textWidth(i18n::c("Please wait..."), type::Body);
     drawSpinner(box.x + (box.w - width) / 2 + 15, rowY, 15);
-    drawCentered("Please wait...",
+    drawCentered(i18n::c("Please wait..."),
                  {box.x + (box.w - width) / 2 + 42, rowY - 20, 200, 40},
                  type::Body, color::InkDialog, true);
     if (view.progress) {
@@ -3593,7 +3590,7 @@ void drawBusy(const BusyView &view)
                    color::InkSoft, box.w - 60, C2D_AlignCenter);
     }
     if (view.cancellable) {
-        drawStrip(box, {view.stopping ? "Stopping..." : "Cancel"}, -1,
+        drawStrip(box, {view.stopping ? i18n::c("Stopping...") : i18n::c("Cancel")}, -1,
                   view.pressed ? 0 : -1, false, StripHeight, -1);
     }
     endFrame();
@@ -3641,14 +3638,14 @@ void drawScanner(const C2D_Image *preview, const std::string &statusText,
                                                : color::rgb(0xFFFFFF));
 
     beginBottom();
-    const std::string title = "Scan QR Code";
+    const std::string title = i18n::c("Scan QR Code");
     const float width = 26 + textWidth(title, 0.72f);
     drawIcon(Icon::Scan, 160 - width / 2, 9, 20, color::Accent);
     drawText(title, 160 - width / 2 + 26, 19 - lineHeight(0.72f) / 2 + 1, 0.72f,
              color::Accent);
-    drawButton(ScannerTypeButton, "Type a URL Instead", Style::Normal,
+    drawButton(ScannerTypeButton, i18n::c("Type a URL Instead"), Style::Normal,
                type::Body + 0.06f);
-    drawTab(Tab::Left, "Back", "B");
+    drawTab(Tab::Left, i18n::c("Back"), "B");
     endFrame();
 }
 

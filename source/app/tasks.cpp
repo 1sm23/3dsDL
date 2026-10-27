@@ -1,4 +1,5 @@
 #include "tasks.hpp"
+#include "i18n.hpp"
 
 #include "app_util.hpp"
 #include "cia.hpp"
@@ -100,10 +101,10 @@ Thread startWorkerThread(ThreadFunc entry, void *argument, const char *name)
 bool confirmStop(const std::string &what)
 {
     ui::Dialog dialog;
-    dialog.header = "cancel";
-    dialog.title = "Stop " + what + "?";
+    dialog.header = i18n::c("cancel");
+    dialog.title = i18n::t("Stop {0}?", {what});
     dialog.tone = ui::Tone::Warning;
-    dialog.buttons = {"Keep Going", "Stop"};
+    dialog.buttons = {i18n::c("Keep Going"), i18n::c("Stop")};
     dialog.dangerous = 1;
     dialog.cancelButton = 0;
     return ui::choose(dialog) == 1;
@@ -382,7 +383,7 @@ bool busy(const std::string &header, const std::string &title,
         }
 
         ui::BusyView view;
-        view.header = header;
+        view.header = i18n::t(header);
         view.title = title;
         view.cancellable = cancellable;
         view.stopping = job.busy.cancel.load();
@@ -396,9 +397,8 @@ bool busy(const std::string &header, const std::string &title,
             view.fraction = static_cast<float>(static_cast<double>(done) /
                                                static_cast<double>(total));
             view.amount = job.busy.bytes.load()
-                              ? units::bytes(done) + " of " + units::bytes(total)
-                              : std::to_string(done) + " of " +
-                                    std::to_string(total);
+                              ? i18n::t("{0} of {1}", {units::bytes(done), units::bytes(total)})
+                              : i18n::t("{0} of {1}", {std::to_string(done), std::to_string(total)});
         } else if (job.busy.done.load() > 0) {
             // A running count, when the end is not known.
             const uint64_t done = job.busy.done.load();
@@ -422,40 +422,37 @@ net::Result download(const net::Request &request, bool keepAwake,
     StayAwake awake(keepAwake);
     Thread thread = startWorkerThread(runDownload, &job, "download");
     if (thread == nullptr) {
-        job.result.message = "Could not start the download thread.";
+        job.result.message = i18n::c("Could not start the download thread.");
         return job.result;
     }
 
     const std::string host = url::host(request.url);
     units::RateMeter meter;
-    supervise(job, thread, "this download", [&]() {
+    supervise(job, thread, i18n::c("this download"), [&]() {
         ui::ProgressView view;
         {
             Guard guard(job.lock);
             view.name = job.filename.empty() ? host : job.filename;
-            view.title = job.phase == net::Phase::Connecting ? "Connecting"
+            view.title = job.phase == net::Phase::Connecting ? i18n::c("Connecting")
                        : job.phase == net::Phase::Restarting
-                           ? "Starting Over"
-                       : direct ? "Installing"
-                                : "Downloading";
+                           ? i18n::c("Starting Over")
+                       : direct ? i18n::c("Installing")
+                                : i18n::c("Downloading");
             if (!step.empty()) {
                 view.title += " " + step;
             }
             if (job.connections > 1) {
-                view.tag = std::to_string(job.connections) + " connections";
+                view.tag = i18n::t("{0} connections", {std::to_string(job.connections)});
             }
             if (job.resumedFrom > 0) {
-                view.note = "Continuing from " +
-                            units::bytes(job.resumedFrom) +
-                            " downloaded earlier";
+                view.note = i18n::t("Continuing from {0} downloaded earlier", {units::bytes(job.resumedFrom)});
             }
             meter.sample(osGetTime(), job.received);
             if (job.total > 0) {
                 view.fraction = static_cast<float>(
                     static_cast<double>(job.received) /
                     static_cast<double>(job.total));
-                view.amounts = units::bytes(job.received) + " of " +
-                               units::bytes(job.total);
+                view.amounts = i18n::t("{0} of {1}", {units::bytes(job.received), units::bytes(job.total)});
             } else {
                 view.amounts = units::bytes(job.received);
             }
@@ -465,17 +462,17 @@ net::Result download(const net::Request &request, bool keepAwake,
                     ? meter.secondsLeft(job.total - job.received)
                     : -1;
                 if (left >= 0) {
-                    view.speed += ", " + units::duration(left) + " left";
+                    view.speed += i18n::t(", {0} left", {units::duration(left)});
                 }
             } else if (job.phase == net::Phase::Downloading) {
-                view.speed = "Measuring speed...";
+                view.speed = i18n::c("Measuring speed...");
             }
         }
         view.icon = ui::Icon::Download;
         view.iconColor = ui::color::IconGreen;
-        view.source = "from " + host;
-        view.message = direct ? "Installing as it downloads"
-                              : "Saving to " + request.folder;
+        view.source = i18n::t("from {0}", {host});
+        view.message = direct ? i18n::c("Installing as it downloads")
+                              : i18n::t("Saving to {0}", {request.folder});
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -529,7 +526,7 @@ archives::Result extract(const std::string &path,
     StayAwake awake(keepAwake);
     Thread thread = startWorkerThread(runExtract, &job, "extract");
     if (thread == nullptr) {
-        job.result.message = "Could not start the extraction thread.";
+        job.result.message = i18n::c("Could not start the extraction thread.");
         return job.result;
     }
 
@@ -537,18 +534,18 @@ archives::Result extract(const std::string &path,
     const uint64_t started = osGetTime();
     units::RateMeter speed;
     units::RateMeter work;
-    supervise(job, thread, "extracting", [&]() {
+    supervise(job, thread, i18n::c("extracting"), [&]() {
         archives::Progress progress;
         {
             Guard guard(job.lock);
             progress = job.progress;
         }
         ui::ProgressView view;
-        view.title = "Extracting";
+        view.title = i18n::c("Extracting");
         view.icon = ui::Icon::Zip;
         view.iconColor = ui::color::IconGold;
         view.name = name;
-        view.source = progress.current.empty() ? "Reading the archive..."
+        view.source = progress.current.empty() ? i18n::c("Reading the archive...")
                                                : progress.current;
         const uint64_t now = osGetTime();
         speed.sample(now, progress.bytes);
@@ -560,13 +557,12 @@ archives::Result extract(const std::string &path,
                                      static_cast<double>(totalWork))
                 : -1.0f;
             // Files lead: with thousands of small ones, bytes say little.
-            view.amounts = units::grouped(progress.files) + " of " +
-                           screens::plural(totalFiles, "file");
+            view.amounts = i18n::t("{0} of {1}", {units::grouped(progress.files), screens::plural(totalFiles, "file")});
             if (work.hasRate()) {
                 const int64_t left = work.secondsLeft(
                     totalWork > done ? totalWork - done : 0);
                 if (left >= 0) {
-                    view.speed = units::duration(left) + " left";
+                    view.speed = i18n::t("{0} left", {units::duration(left)});
                 }
             }
             if (speed.hasRate()) {
@@ -579,8 +575,7 @@ archives::Result extract(const std::string &path,
                       static_cast<double>(progress.archiveBytes) /
                       static_cast<double>(listing.archiveSize))
                 : -1.0f;
-            view.amounts = units::bytes(progress.archiveBytes) + " of " +
-                           units::bytes(listing.archiveSize);
+            view.amounts = i18n::t("{0} of {1}", {units::bytes(progress.archiveBytes), units::bytes(listing.archiveSize)});
             view.tag = screens::plural(progress.files, "file");
             if (work.hasRate()) {
                 const int64_t left = work.secondsLeft(
@@ -588,11 +583,11 @@ archives::Result extract(const std::string &path,
                         ? listing.archiveSize - progress.archiveBytes
                         : 0);
                 if (left >= 0) {
-                    view.speed = units::duration(left) + " left";
+                    view.speed = i18n::t("{0} left", {units::duration(left)});
                 }
             }
         }
-        view.message = "Extracting into " + folder;
+        view.message = i18n::t("Extracting into {0}", {folder});
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -620,7 +615,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
     StayAwake awake(keepAwake);
     Thread thread = startWorkerThread(runInstall, &job, "install");
     if (thread == nullptr) {
-        job.result.message = "Could not start the install thread.";
+        job.result.message = i18n::c("Could not start the install thread.");
         return job.result;
     }
 
@@ -634,30 +629,29 @@ installer::Result install(const std::string &path, uint64_t titleId,
                 ? static_cast<float>(static_cast<double>(job.done) /
                                      static_cast<double>(job.total))
                 : -1.0f;
-            view.amounts = units::bytes(job.done) + " of " +
-                           units::bytes(job.total);
+            view.amounts = i18n::t("{0} of {1}", {units::bytes(job.done), units::bytes(job.total)});
             if (meter.hasRate()) {
                 view.speed = units::rate(meter.bytesPerSecond());
                 const int64_t left = job.total > job.done
                     ? meter.secondsLeft(job.total - job.done)
                     : -1;
                 if (left >= 0) {
-                    view.speed += ", " + units::duration(left) + " left";
+                    view.speed += i18n::t(", {0} left", {units::duration(left)});
                 }
             }
         }
-        view.title = "Installing";
+        view.title = i18n::c("Installing");
         view.icon = ui::Icon::Package;
         view.iconColor = ui::color::IconBlue;
         view.name = name;
         view.source = path.substr(path.find_last_of('/') + 1);
         view.titleIcon = icon;
-        view.message = "Do not turn off the power or remove the SD card.";
+        view.message = i18n::c("Do not turn off the power or remove the SD card.");
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
     if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
-        job.result.message = "Interrupted when 3dsDL closed.";
+        job.result.message = i18n::c("Interrupted when 3dsDL closed.");
     }
     const installer::Result &result = job.result;
     logOutcome("install", result.outcome == installer::Outcome::Installed,
@@ -685,7 +679,7 @@ fileops::Result fileOperation(
     Thread thread = startWorkerThread(runFileJob, &job, "files");
     if (thread == nullptr) {
         job.result.status = fileops::Status::Failed;
-        job.result.message = "Could not start the worker thread.";
+        job.result.message = i18n::c("Could not start the worker thread.");
         return job.result;
     }
 
@@ -701,11 +695,9 @@ fileops::Result fileOperation(
                                      static_cast<double>(expected))
                 : -1.0f;
             if (countsFiles) {
-                view.amounts = std::to_string(job.done) + " of " +
-                               std::to_string(expected) + " files";
+                view.amounts = i18n::t("{0} of {1} files", {std::to_string(job.done), std::to_string(expected)});
             } else {
-                view.amounts = units::bytes(job.done) + " of " +
-                               units::bytes(expected);
+                view.amounts = i18n::t("{0} of {1}", {units::bytes(job.done), units::bytes(expected)});
                 meter.sample(osGetTime(), job.done);
                 if (meter.hasRate()) {
                     view.speed = units::rate(meter.bytesPerSecond());
@@ -713,12 +705,12 @@ fileops::Result fileOperation(
             }
             view.source = job.current;
         }
-        view.title = capitalised(header);
-        view.icon = header == "deleting" ? ui::Icon::Trash : ui::Icon::Folder;
-        view.iconColor = header == "deleting" ? ui::color::Bad
+        view.title = i18n::language() == "en" ? capitalised(header) : header;
+        view.icon = header == i18n::c("deleting") ? ui::Icon::Trash : ui::Icon::Folder;
+        view.iconColor = header == i18n::c("deleting") ? ui::color::Bad
                                               : ui::color::IconOrange;
         view.name = title;
-        view.message = "In " + folder;
+        view.message = i18n::t("In {0}", {folder});
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
