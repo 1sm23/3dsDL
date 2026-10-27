@@ -1234,7 +1234,7 @@
   },
   "Extracting needs {0}{1}, but only {2} is free.": {
     "en": "Extracting needs {0}{1}, but only {2} is free.",
-    "zh": "解压需要{0}{1}，但只有{2}是免费的。",
+    "zh": "解压需要{0}{1}，但可用空间仅有 {2}。",
     "es": "La extracción necesita {0}{1}, pero solo {2} es gratuito.",
     "fr": "L'extraction nécessite {0}{1}, mais seul {2} est gratuit.",
     "pt": "A extração precisa de {0}{1}, mas apenas {2} é gratuito.",
@@ -1279,7 +1279,7 @@
   },
   "{0} already exist. Replace them?": {
     "en": "{0} already exist. Replace them?",
-    "zh": "{0} 已经存在。替换他们？",
+    "zh": "已有 {0}。是否覆盖？",
     "es": "{0} ya existen. ¿Reemplazarlos?",
     "fr": "{0} existe déjà. Les remplacer ?",
     "pt": "{0} já existe. Substituí-los?",
@@ -1315,7 +1315,7 @@
   },
   "{0} extracted into {1}{2}.": {
     "en": "{0} extracted into {1}{2}.",
-    "zh": "{0} 解压为 {1}{2}。",
+    "zh": "已将 {0} 解压到 {1}{2}。",
     "es": "{0} extraído en {1}{2}.",
     "fr": "{0} extrait dans {1}{2}.",
     "pt": "{0} extraído em {1}{2}.",
@@ -1351,7 +1351,7 @@
   },
   "{0} left alone. ": {
     "en": "{0} left alone. ",
-    "zh": "{0} 独自一人。 ",
+    "zh": "已保留原有的 {0}。 ",
     "es": "{0} se quedó solo. ",
     "fr": "{0} laissé seul. ",
     "pt": "{0} deixado sozinho. ",
@@ -1432,7 +1432,7 @@
   },
   "{0} replaced in {1}.": {
     "en": "{0} replaced in {1}.",
-    "zh": "{0} 替换为 {1}。",
+    "zh": "已覆盖 {1} 中的 {0}。",
     "es": "{0} reemplazado en {1}.",
     "fr": "{0} remplacé par {1}.",
     "pt": "{0} substituído em {1}.",
@@ -1666,7 +1666,7 @@
   },
   "{0} needs {1} on the SD card and {2} is free.": {
     "en": "{0} needs {1} on the SD card and {2} is free.",
-    "zh": "{0}需要SD卡上的{1}，而{2}是免费的。",
+    "zh": "{0} 需要 SD 卡上有 {1} 空间，目前可用 {2}。",
     "es": "{0} necesita {1} en la tarjeta SD y {2} es gratuito.",
     "fr": "{0} nécessite {1} sur la carte SD et {2} est gratuit.",
     "pt": "{0} precisa de {1} no cartão SD e {2} é gratuito.",
@@ -3394,7 +3394,7 @@
   },
   "No free name was found for {0}.": {
     "en": "No free name was found for {0}.",
-    "zh": "未找到 {0} 的免费名称。",
+    "zh": "无法为 {0} 找到未使用的名称。",
     "es": "No se encontró ningún nombre libre para {0}.",
     "fr": "Aucun nom libre n'a été trouvé pour {0}.",
     "pt": "Nenhum nome livre foi encontrado para {0}.",
@@ -3412,7 +3412,7 @@
   },
   "Copying needs {0} and {1} is free.": {
     "en": "Copying needs {0} and {1} is free.",
-    "zh": "复印需要{0}，{1}是免费的。",
+    "zh": "复制需要 {0} 空间，目前可用 {1}。",
     "es": "La copia necesita {0} y {1} es gratuita.",
     "fr": "La copie des besoins {0} et {1} est gratuite.",
     "pt": "A cópia precisa de {0} e {1} é gratuita.",
@@ -3628,7 +3628,7 @@
   },
   "{0} {1} of {2}": {
     "en": "{0} {1} of {2}",
-    "zh": "{0} {1} {2}",
+    "zh": "{0} {1} / {2}",
     "es": "{0} {1} de {2}",
     "fr": "{0} {1} ou {2}",
     "pt": "{0} {1} de {2}",
@@ -4483,7 +4483,7 @@
   },
   "This ticket is for a system title, which 3dsDL does not install.": {
     "en": "This ticket is for a system title, which 3dsDL does not install.",
-    "zh": "此凭证适用于 3dsDL 不安装的系统软件。",
+    "zh": "此凭证属于系统软件，3dsDL 不会安装。",
     "es": "Este ticket es para un título de sistema que 3dsDL no instala.",
     "fr": "Ce ticket concerne un titre système que 3dsDL n'installe pas.",
     "pt": "Este ticket é para um título de sistema que o 3dsDL não instala.",
@@ -6220,7 +6220,7 @@
   },
   "The update needs {0} on the SD card and {1} is free.": {
     "en": "The update needs {0} on the SD card and {1} is free.",
-    "zh": "更新需要SD卡上的{0}，{1}是免费的。",
+    "zh": "更新需要 SD 卡上有 {0} 空间，目前可用 {1}。",
     "es": "La actualización necesita {0} en la tarjeta SD y {1} es gratuita.",
     "fr": "La mise à jour nécessite {0} sur la carte SD et {1} est gratuite.",
     "pt": "A atualização precisa de {0} no cartão SD e {1} é gratuita.",
@@ -6490,7 +6490,7 @@
   },
   "{0} of {1} files": {
     "en": "{0} of {1} files",
-    "zh": "{1} 文件的 {0}",
+    "zh": "{0} / {1} 个文件",
     "es": "{0} de archivos {1}",
     "fr": "Fichiers {0} ou {1}",
     "pt": "{0} de arquivos {1}",
@@ -6796,7 +6796,7 @@
   },
   "Delete the {0} for {1}{2}": {
     "en": "Delete the {0} for {1}{2}",
-    "zh": "删除 {1}{2} 的 {0}",
+    "zh": "删除 {1} 的{0}{2}",
     "es": "Eliminar el {0} para {1}{2}",
     "fr": "Supprimez le {0} pour {1}{2}",
     "pt": "Exclua o {0} para {1}{2}",
@@ -6814,7 +6814,7 @@
   },
   " and its ticket?": {
     "en": " and its ticket?",
-    "zh": " 以及它的凭证？",
+    "zh": "及其凭证？",
     "es": " y su billete?",
     "fr": " et son billet ?",
     "pt": " e seu ingresso?",
@@ -6832,7 +6832,7 @@
   },
   ", its save data and its ticket?": {
     "en": ", its save data and its ticket?",
-    "zh": "，其存档数据及其凭证？",
+    "zh": "、其存档数据及凭证？",
     "es": ", sus datos guardados y su ticket?",
     "fr": ", ses données de sauvegarde et son ticket ?",
     "pt": ", seus dados salvos e seu ticket?",
@@ -6841,7 +6841,7 @@
   },
   " and its save data?": {
     "en": " and its save data?",
-    "zh": " 及其存档数据？",
+    "zh": "及其存档数据？",
     "es": " y sus datos guardados?",
     "fr": " et ses données de sauvegarde ?",
     "pt": " e seus dados salvos?",
@@ -7039,7 +7039,7 @@
   },
   "{0} of {1} deleted.": {
     "en": "{0} of {1} deleted.",
-    "zh": "{1} 的 {0} 已删除。",
+    "zh": "已删除 {0} / {1}。",
     "es": "{0} de {1} eliminado.",
     "fr": "{0} de {1} supprimé.",
     "pt": "{0} de {1} excluído.",
@@ -7147,7 +7147,7 @@
   },
   "{0} of {1} restored.": {
     "en": "{0} of {1} restored.",
-    "zh": "{1} 的 {0} 已恢复。",
+    "zh": "已恢复 {0} / {1}。",
     "es": "{0} de {1} restaurado.",
     "fr": "{0} de {1} restauré.",
     "pt": "{0} de {1} restaurado.",
@@ -8965,7 +8965,7 @@
   },
   "{0} existing file": {
     "en": "{0} existing file",
-    "zh": "{0} 现有文件",
+    "zh": "{0} 个现有文件",
     "es": "Archivo existente {0}",
     "fr": "Fichier existant {0}",
     "pt": "Arquivo existente {0}",
@@ -8974,7 +8974,7 @@
   },
   "{0} existing files": {
     "en": "{0} existing files",
-    "zh": "{0} 现有文件",
+    "zh": "{0} 个现有文件",
     "es": "{0} archivos existentes",
     "fr": "Fichiers existants {0}",
     "pt": "Arquivos existentes {0}",
@@ -9021,7 +9021,7 @@
     "en": "{0} unfinished install",
     "es": "{0} instalación sin terminar",
     "fr": "Installation inachevée de {0}",
-    "zh": "{0} 未完成安装",
+    "zh": "{0} 项未完成安装",
     "pt": "Instalação inacabada de {0}",
     "de": "{0} nicht abgeschlossene Installation",
     "ja": "{0} インストールが完了していません"
@@ -9030,7 +9030,7 @@
     "en": "{0} unfinished installs",
     "es": "{0} instalaciones sin terminar",
     "fr": "{0} installations inachevées",
-    "zh": "{0} 未完成的安装",
+    "zh": "{0} 项未完成安装",
     "pt": "Instalações inacabadas de {0}",
     "de": "{0} nicht abgeschlossene Installationen",
     "ja": "{0} の未完了のインストール"
@@ -9093,7 +9093,7 @@
     "en": "{0} unused ticket",
     "es": "{0} billete no utilizado",
     "fr": "Billet {0} inutilisé",
-    "zh": "{0} 未使用的凭证",
+    "zh": "{0} 份未使用凭证",
     "pt": "Bilhete não utilizado {0}",
     "de": "{0} ungenutztes Ticket",
     "ja": "{0}未使用チケット"
@@ -9102,7 +9102,7 @@
     "en": "{0} unused tickets",
     "es": "{0} entradas no utilizadas",
     "fr": "Billets {0} inutilisés",
-    "zh": "{0} 未使用的凭证",
+    "zh": "{0} 份未使用凭证",
     "pt": "{0} tickets não utilizados",
     "de": "{0} ungenutzte Tickets",
     "ja": "{0}未使用チケット"
@@ -9111,7 +9111,7 @@
     "en": "{0} deleted ticket",
     "es": "{0} billete eliminado",
     "fr": "{0} ticket supprimé",
-    "zh": "{0} 已删除凭证",
+    "zh": "{0} 份已删除凭证",
     "pt": "{0} ticket excluído",
     "de": "{0} Ticket gelöscht",
     "ja": "{0} がチケットを削除しました"
@@ -9120,7 +9120,7 @@
     "en": "{0} deleted tickets",
     "es": "{0} entradas eliminadas",
     "fr": "{0} tickets supprimés",
-    "zh": "{0} 已删除凭证",
+    "zh": "{0} 份已删除凭证",
     "pt": "{0} tickets excluídos",
     "de": "{0} gelöschte Tickets",
     "ja": "{0} がチケットを削除しました"
@@ -9129,7 +9129,7 @@
     "en": "{0} installed game",
     "es": "{0} juego instalado",
     "fr": "Jeu installé {0}",
-    "zh": "{0}安装游戏",
+    "zh": "{0} 个已安装游戏",
     "pt": "Jogo instalado {0}",
     "de": "{0} installiertes Spiel",
     "ja": "{0} がインストールされたゲーム"
@@ -9138,7 +9138,7 @@
     "en": "{0} installed games",
     "es": "{0} juegos instalados",
     "fr": "{0} jeux installés",
-    "zh": "{0}安装游戏",
+    "zh": "{0} 个已安装游戏",
     "pt": "Jogos instalados {0}",
     "de": "{0} installierte Spiele",
     "ja": "{0} がインストールされているゲーム"
@@ -9147,7 +9147,7 @@
     "en": "{0} Marked Item",
     "es": "{0} Artículo marcado",
     "fr": "Article marqué {0}",
-    "zh": "{0} 标记项目",
+    "zh": "{0} 个已标记项目",
     "pt": "Item marcado {0}",
     "de": "{0} Markierter Artikel",
     "ja": "{0} マークの付いたアイテム"
@@ -9156,7 +9156,7 @@
     "en": "{0} Marked Items",
     "es": "{0} Artículos marcados",
     "fr": "Articles marqués {0}",
-    "zh": "{0} 标记的项目",
+    "zh": "{0} 个已标记项目",
     "pt": "Itens marcados {0}",
     "de": "{0} Markierte Artikel",
     "ja": "{0} マークのあるアイテム"
@@ -9721,7 +9721,7 @@
   },
   "{0} minutes behind": {
     "en": "{0} minutes behind",
-    "zh": "{0} 落后分钟",
+    "zh": "慢 {0} 分钟",
     "es": "{0} minutos detrás",
     "fr": "{0} minutes de retard",
     "pt": "{0} minutos atrás",
@@ -9730,7 +9730,7 @@
   },
   "{0} minutes ahead": {
     "en": "{0} minutes ahead",
-    "zh": "提前 {0} 分钟",
+    "zh": "快 {0} 分钟",
     "es": "{0} minutos por delante",
     "fr": "{0} minutes d'avance",
     "pt": "{0} minutos à frente",
@@ -9739,7 +9739,7 @@
   },
   "{0} hours {1} minutes behind": {
     "en": "{0} hours {1} minutes behind",
-    "zh": "{0} 小时 {1} 分钟",
+    "zh": "慢 {0} 小时 {1} 分钟",
     "es": "{0} horas {1} minutos de retraso",
     "fr": "{0} heures {1} minutes de retard",
     "pt": "{0} horas {1} minutos atrás",
@@ -9748,7 +9748,7 @@
   },
   "{0} hours {1} minutes ahead": {
     "en": "{0} hours {1} minutes ahead",
-    "zh": "提前 {0} 小时 {1} 分钟",
+    "zh": "快 {0} 小时 {1} 分钟",
     "es": "{0} horas {1} minutos por delante",
     "fr": "{0} heures {1} minutes d'avance",
     "pt": "{0} horas {1} minutos adiantados",
@@ -9757,7 +9757,7 @@
   },
   "about {0} days behind": {
     "en": "about {0} days behind",
-    "zh": "大约落后 {0} 天",
+    "zh": "约慢 {0} 天",
     "es": "aproximadamente {0} días de retraso",
     "fr": "environ {0} jours de retard",
     "pt": "cerca de {0} dias atrás",
@@ -9766,7 +9766,7 @@
   },
   "about {0} days ahead": {
     "en": "about {0} days ahead",
-    "zh": "大约提前 {0} 天",
+    "zh": "约快 {0} 天",
     "es": "aproximadamente {0} días por delante",
     "fr": "environ {0} jours à l'avance",
     "pt": "cerca de {0} dias à frente",
@@ -10306,7 +10306,7 @@
   },
   "Replace {0} files?": {
     "en": "Replace {0} files?",
-    "zh": "替换 {0} 文件？",
+    "zh": "覆盖这 {0} 个文件？",
     "es": "¿Reemplazar archivos {0}?",
     "fr": "Remplacer les fichiers {0} ?",
     "pt": "Substituir arquivos {0}?",
@@ -10360,7 +10360,7 @@
   },
   "These need {0} and the SD card has {1} free.": {
     "en": "These need {0} and the SD card has {1} free.",
-    "zh": "这些需要{0}，并且SD卡上有免费的{1}。",
+    "zh": "这些文件需要 {0} 空间，SD 卡上可用 {1}。",
     "es": "Estos necesitan {0} y la tarjeta SD tiene {1} libre.",
     "fr": "Ceux-ci nécessitent {0} et la carte SD contient {1} gratuitement.",
     "pt": "Eles precisam de {0} e o cartão SD tem {1} grátis.",
@@ -10441,7 +10441,7 @@
   },
   "{0} did not finish; Retry is next to each.": {
     "en": "{0} did not finish; Retry is next to each.",
-    "zh": "{0} 没有完成；重试位于每个旁边。",
+    "zh": "有 {0} 项未完成，可点击对应的“重试”。",
     "es": "{0} no terminó; Reintentar está al lado de cada uno.",
     "fr": "{0} n'a ​​pas terminé ; Réessayer est à côté de chacun.",
     "pt": "{0} não terminou; Tentar novamente está ao lado de cada um.",
@@ -10477,7 +10477,7 @@
   },
   "{0} of {1}{2}": {
     "en": "{0} of {1}{2}",
-    "zh": "{0} {1}{2}",
+    "zh": "{0} / {1}{2}",
     "es": "{0} de {1}{2}",
     "fr": "{0} ou {1}{2}",
     "pt": "{0} de {1}{2}",
@@ -10540,7 +10540,7 @@
   },
   "{0} link ready": {
     "en": "{0} link ready",
-    "zh": "{0} 链接就绪",
+    "zh": "已准备好 {0} 个链接",
     "es": "Enlace {0} listo",
     "fr": "Lien {0} prêt",
     "pt": "Link {0} pronto",
@@ -10549,7 +10549,7 @@
   },
   "{0} links ready": {
     "en": "{0} links ready",
-    "zh": "{0} 链接就绪",
+    "zh": "已准备好 {0} 个链接",
     "es": "Enlaces {0} listos",
     "fr": "Liens {0} prêts",
     "pt": "Links {0} prontos",
@@ -10558,7 +10558,7 @@
   },
   "{0} link: {1}": {
     "en": "{0} link: {1}",
-    "zh": "{0} 链接：{1}",
+    "zh": "{0} 个链接：{1}",
     "es": "Enlace {0}: {1}",
     "fr": "Lien {0} : {1}",
     "pt": "Ligação {0}: {1}",
@@ -10567,7 +10567,7 @@
   },
   "{0} links: {1}": {
     "en": "{0} links: {1}",
-    "zh": "{0} 链接：{1}",
+    "zh": "{0} 个链接：{1}",
     "es": "Enlaces {0}: {1}",
     "fr": "Liens {0} : {1}",
     "pt": "Ligações {0}: {1}",
@@ -10594,7 +10594,7 @@
   },
   "The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.": {
     "en": "The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.",
-    "zh": "主机询问 {0} 是否可以查看并更改其 SD 卡上的文件。在 3DS 上选择允许。",
+    "zh": "主机正在询问是否允许 {0} 查看和修改 SD 卡文件。请在 3DS 上选择“允许”。",
     "es": "La consola pregunta si {0} puede ver y cambiar los archivos en su tarjeta SD. Elija Permitir en la 3DS.",
     "fr": "La console demande si {0} peut voir et modifier les fichiers sur sa carte SD. Choisissez Autoriser sur la 3DS.",
     "pt": "O console está perguntando se {0} pode ver e alterar os arquivos em seu cartão SD. Escolha Permitir no 3DS.",
@@ -10612,7 +10612,7 @@
   },
   "The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.": {
     "en": "The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.",
-    "zh": "3DS 选择不让 {0} 查看其文件。要再次询问，请将“接收”保留在主机上，然后再次打开它。",
+    "zh": "3DS 未允许 {0} 访问文件。如需重新请求，请在主机上退出“接收”页面后重新打开。",
     "es": "La 3DS optó por no permitir que {0} vea sus archivos. Para volver a preguntar, deja Recibir en la consola y ábrela nuevamente.",
     "fr": "La 3DS a choisi de ne pas laisser {0} voir ses fichiers. Pour demander à nouveau, laissez Recevoir sur la console et ouvrez-la à nouveau.",
     "pt": "O 3DS optou por não permitir que {0} visse seus arquivos. Para perguntar novamente, deixe Receber no console e abra-o novamente.",
@@ -10657,7 +10657,7 @@
   },
   "{0} free of {1}": {
     "en": "{0} free of {1}",
-    "zh": "{0} 不含 {1}",
+    "zh": "可用 {0} / 总计 {1}",
     "es": "{0} libre de {1}",
     "fr": "{0} gratuit de {1}",
     "pt": "{0} livre de {1}",
@@ -10684,7 +10684,7 @@
   },
   "{0} of {1} shown": {
     "en": "{0} of {1} shown",
-    "zh": "显示 {1} 的 {0}",
+    "zh": "显示 {0} / {1} 项",
     "es": "Se muestra {0} de {1}",
     "fr": "{0} ou {1} illustré",
     "pt": "{0} de {1} mostrado",
@@ -10693,7 +10693,7 @@
   },
   "{0} lines · {1}": {
     "en": "{0} lines · {1}",
-    "zh": "{0} 线·{1}",
+    "zh": "{0} 行 · {1}",
     "es": "Líneas {0} · {1}",
     "fr": "Lignes {0} · {1}",
     "pt": "Linhas {0} · {1}",
@@ -10792,7 +10792,7 @@
   },
   "Paste one or more direct download links. They go to the 3DS, which downloads them one after another.": {
     "en": "Paste one or more direct download links. They go to the 3DS, which downloads them one after another.",
-    "zh": "粘贴一个或多个直接下载链接。他们转到 3DS，3DS 依次下载它们。",
+    "zh": "粘贴一个或多个直链，3DS 将按顺序下载。",
     "es": "Pegue uno o más enlaces de descarga directa. Pasan a la 3DS, que los descarga uno tras otro.",
     "fr": "Collez un ou plusieurs liens de téléchargement direct. Ils passent sur la 3DS qui les télécharge les uns après les autres.",
     "pt": "Cole um ou mais links diretos para download. Eles vão para o 3DS, que os baixa um após o outro.",
@@ -10810,7 +10810,7 @@
   },
   "Only links are sent. Keep 3dsDL on the Receive screen while you send.": {
     "en": "Only links are sent. Keep 3dsDL on the Receive screen while you send.",
-    "zh": "仅发送链接。发送时将 3dsDL 保持在接收屏幕上。",
+    "zh": "发送的是链接。发送时，请让 3dsDL 停留在“接收”页面。",
     "es": "Sólo se envían enlaces. Mantenga 3dsDL en la pantalla Recibir mientras envía.",
     "fr": "Seuls les liens sont envoyés. Gardez 3dsDL sur l'écran de réception pendant que vous envoyez.",
     "pt": "Apenas links são enviados. Mantenha o 3dsDL na tela Receber enquanto envia.",
@@ -11026,7 +11026,7 @@
   },
   "{0} free": {
     "en": "{0} free",
-    "zh": "{0} 免费",
+    "zh": "可用 {0}",
     "es": "{0} gratis",
     "fr": "{0} gratuit",
     "pt": "{0} grátis",
