@@ -2958,6 +2958,27 @@ int chooseOption(const std::string &title,
     // Choosing an option saves it and goes back, so there is no OK.
     const int chosen =
         std::max(0, std::min(current, static_cast<int>(options.size()) - 1));
+    const auto drawTop = [&]() {
+        drawTopChrome(title, icon, iconColor);
+        drawPanel();
+        // The options below show the current one as chosen.
+        drawEmblem(icon, iconColor);
+    };
+    if (options.size() > 4) {
+        ListSpec list;
+        list.title = title;
+        list.back = i18n::c("Back");
+        list.chosenOption = chosen;
+        for (const std::string &option : options) {
+            ListItem item;
+            item.label = option;
+            list.items.push_back(item);
+        }
+        list.drawTop = [&](int) { drawTop(); };
+        int cursor = chosen;
+        const ListResult result = runList(list, cursor);
+        return result.key == KEY_A ? result.index : -1;
+    }
     ScreenSpec spec;
     spec.back = i18n::c("Back");
     const float pitch = 39;
@@ -2972,12 +2993,7 @@ int chooseOption(const std::string &title,
                                                           : Style::Normal;
         spec.controls.push_back(control);
     }
-    spec.drawTop = [&]() {
-        drawTopChrome(title, icon, iconColor);
-        drawPanel();
-        // The options below show the current one as chosen.
-        drawEmblem(icon, iconColor);
-    };
+    spec.drawTop = drawTop;
     // The title is on the top screen already.
     spec.drawBottom = [&]() { drawRecess({18, top, 284, height}); };
     int focus = chosen;
@@ -3101,8 +3117,9 @@ namespace {
 ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
     enterScreen("list|" + spec.title + "|" + spec.heading + "|" + spec.back + "|" + spec.action);
-    constexpr float RowHeight = 25;
-    constexpr float Pitch = 31;
+    const bool options = spec.chosenOption >= 0;
+    const float RowHeight = options ? 30 : 25;
+    const float Pitch = options ? 39 : 31;
     const bool headed = !spec.heading.empty();
     // Under the heading, measured, so its descenders clear the recess with
     // the console's font too.
@@ -3363,6 +3380,16 @@ ListResult runListQuietly(const ListSpec &spec, int &cursor)
             const ListItem &item = spec.items[index];
             const Rect row = {rowLeft, y, rowWidth, RowHeight};
             const bool down = index == held;
+            if (options) {
+                drawButton(row, item.label,
+                           index == spec.chosenOption ? Style::Chosen
+                                                      : Style::Normal,
+                           type::Body + 0.04f, Icon::None, color::IconGrey, down);
+                if (index == cursor && !scroller.dragging()) {
+                    drawFocus(row, 8, 2.5f, 2.5f);
+                }
+                continue;
+            }
             fillRound({row.x - 1, row.y - 1, row.w + 2, row.h + 2.5f}, 9,
                       {{0, color::rgb(0xC3BA92)}, {1, color::rgb(0xA69C6E)}});
             if (item.marked) {
