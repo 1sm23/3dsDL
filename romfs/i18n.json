@@ -11214,6 +11214,12 @@
     "ja": "{0} エントリ"
   },
   "{0} selected": {
-    "en": "{0} selected"
+    "en": "{0} selected",
+    "zh": "已选中 {0} 项",
+    "es": "{0} seleccionados",
+    "fr": "{0} sélectionnés",
+    "pt": "{0} selecionados",
+    "de": "{0} ausgewählt",
+    "ja": "{0} 件選択中"
   }
 }

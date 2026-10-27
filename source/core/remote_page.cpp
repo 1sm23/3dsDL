@@ -1621,9 +1621,6 @@ std::string webDictionary()
         "{0} of {1} shown",
         "{0} of {1}{2}",
         "{0} sent",
-        "{0}Details ({1})",
-        "{0}New Folder",
-        "{0}Retry",
     };
     bool first = true;
     for (const char *key : keys) {
