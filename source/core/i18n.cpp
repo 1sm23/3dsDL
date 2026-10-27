@@ -187,7 +187,8 @@ std::string count(uint64_t value, const std::string &word,
                   const std::string &formatted)
 {
     const bool singular = value == 1 || (language() == "fr" && value == 0);
-    return t("{0} " + word + (singular ? "" : "s"), {formatted});
+    const std::string noun = singular ? word : word == "entry" ? "entries" : word + "s";
+    return t("{0} " + noun, {formatted});
 }
 
 } // namespace i18n

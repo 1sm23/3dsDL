@@ -47,9 +47,9 @@ C3D_Tex previewTextures[2];
 std::string failureText(const char *operation, Result result)
 {
     char buffer[96];
-    std::snprintf(buffer, sizeof(buffer), "%s failed (0x%08lX).", operation,
+    std::snprintf(buffer, sizeof(buffer), "0x%08lX",
                   static_cast<unsigned long>(result));
-    return buffer;
+    return i18n::t("{0} failed ({1}).", {operation, buffer});
 }
 
 bool isTimeout(Result result)

@@ -4,6 +4,7 @@
 #include "i18n.hpp"
 #include "logging.hpp"
 #include "sound.hpp"
+#include "storage.hpp"
 #include "ui.hpp"
 #include "updater.hpp"
 
@@ -24,9 +25,9 @@ constexpr size_t SocBufferSize = 0x100000;
 std::string failure(const char *operation, Result result)
 {
     char buffer[96];
-    std::snprintf(buffer, sizeof(buffer), "%s failed (0x%08lX).", operation,
+    std::snprintf(buffer, sizeof(buffer), "0x%08lX",
                   static_cast<unsigned long>(result));
-    return buffer;
+    return i18n::t("{0} failed ({1}).", {operation, buffer});
 }
 
 struct Services {
@@ -51,6 +52,8 @@ struct Services {
             return false;
         }
         romfs = true;
+        i18n::init("romfs:/i18n.json");
+        i18n::setLanguage(storage::loadSettings().language);
 
         result = socInit(socBuffer, SocBufferSize);
         if (R_FAILED(result)) {
@@ -136,7 +139,6 @@ int main(int argc, char **argv)
         Services services;
         std::string error;
         if (services.start(error)) {
-            i18n::init("romfs:/i18n.json");
             App app;
             app.run();
         } else {

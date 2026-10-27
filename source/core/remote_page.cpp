@@ -1,4 +1,5 @@
 #include "remote.hpp"
+#include "i18n.hpp"
 
 // The page a phone or computer sees on the Receive screen's address: a box
 // for links, which works without JavaScript, and a file manager for the SD
@@ -37,7 +38,7 @@ std::string escapeHtml(const std::string &value)
     return out;
 }
 
-const char *const PageStart = R"PAGE(<!doctype html><html lang="en"><head><meta charset="utf-8">
+const char *const PageStart = R"PAGE(<!doctype html><html lang="@LANG@"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f2ebb2">
 <link rel="icon" type="image/png" href="data:image/png;base64,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"><title>3dsDL</title><style>
@@ -276,61 +277,61 @@ dialog.sheet[open]{animation:sheetin .35s var(--ease)}
 kbd{font:600 11px ui-monospace,monospace;background:#fffdf0;border:1px solid #d6cc8f;border-bottom-width:2px;border-radius:5px;padding:1px 5px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style></head><body><main>
-<header class="head"><div class="brand"><a class="logo" href="https://ankush.one/3dsDL/" target="_blank" rel="noopener" title="3dsDL website"><img id="logo" alt=""><h1>3dsDL</h1></a>
-<nav class="ext" id="ext"><a href="https://ankush.one/3dsDL/" target="_blank" rel="noopener">Website</a><a href="https://github.com/ankushKun/3dsDL" target="_blank" rel="noopener">GitHub</a></nav></div><div class="pill" id="pill" data-state="connecting" role="status" aria-live="polite"><i class="dot"></i><span id="pilltext">Connecting...</span></div></header>
-<nav class="tabs" id="tabs"><span class="ink" id="ink"></span><a href="#links" id="t-links" class="on">Links</a><a href="#files:%2F" id="t-files">Files</a></nav>
-<div class="banner" id="offline" hidden><span class="spin"></span><span>Can't reach the 3DS. Keep 3dsDL open on Receive; this page reconnects by itself.</span></div>
+<header class="head"><div class="brand"><a class="logo" href="https://ankush.one/3dsDL/" target="_blank" rel="noopener" title="@L0@"><img id="logo" alt=""><h1>3dsDL</h1></a>
+<nav class="ext" id="ext"><a href="https://ankush.one/3dsDL/" target="_blank" rel="noopener">@L1@</a><a href="https://github.com/ankushKun/3dsDL" target="_blank" rel="noopener">GitHub</a></nav></div><div class="pill" id="pill" data-state="connecting" role="status" aria-live="polite"><i class="dot"></i><span id="pilltext">@L2@</span></div></header>
+<nav class="tabs" id="tabs"><span class="ink" id="ink"></span><a href="#links" id="t-links" class="on">@L3@</a><a href="#files:%2F" id="t-files">@L4@</a></nav>
+<div class="banner" id="offline" hidden><span class="spin"></span><span>@L5@</span></div>
 <section id="links">
-<p>Paste one or more direct download links. They go to the 3DS, which downloads them one after another.</p>
+<p>@L6@</p>
 )PAGE";
 
 const char *const PageEnd = R"PAGE(<form method="post" action="/send" class="panel" id="sendform">
 <textarea name="links" id="linkbox" placeholder="https://..." autofocus required></textarea>
-<div class="formrow"><span class="count" id="linkcount"></span><button class="btn primary" type="submit" id="sendbtn">Send to 3DS</button></div></form>
+<div class="formrow"><span class="count" id="linkcount"></span><button class="btn primary" type="submit" id="sendbtn">@L7@</button></div></form>
 <ul class="sent" id="sent"></ul>
-<small>Only links are sent. Keep 3dsDL on the Receive screen while you send.</small>
+<small>@L8@</small>
 </section>
 <section id="files" hidden>
 <div id="gate" class="panel gate" hidden></div>
 <div id="browser" hidden>
 <div class="card" id="ccard" hidden></div>
 <div class="storage"><div class="meter" id="meter"><i></i></div><span id="free"></span></div>
-<div class="pathbar"><button class="btn icon-only" id="up" title="Up one folder (Backspace)" aria-label="Up one folder"></button><nav class="crumbs" id="crumbs"></nav></div>
+<div class="pathbar"><button class="btn icon-only" id="up" title="@L9@" aria-label="@L10@"></button><nav class="crumbs" id="crumbs"></nav></div>
 <div class="tools">
-<label class="btn primary" title="Upload files (U)"><span id="ic-upload"></span>Upload<input type="file" id="pick" multiple hidden></label>
-<label class="btn" id="pickdirbtn"><span id="ic-folder"></span>Folder<input type="file" id="pickdir" webkitdirectory multiple hidden></label>
+<label class="btn primary" title="@L11@"><span id="ic-upload"></span>@L12@<input type="file" id="pick" multiple hidden></label>
+<label class="btn" id="pickdirbtn"><span id="ic-folder"></span>@L13@<input type="file" id="pickdir" webkitdirectory multiple hidden></label>
 <button class="btn" id="mkdir"></button>
-<button class="btn icon-only reload" id="reload" title="Refresh" aria-label="Refresh"></button>
+<button class="btn icon-only reload" id="reload" title="@L14@" aria-label="@L15@"></button>
 </div>
 <div class="tools2">
-<label class="search"><span id="ic-search"></span><input type="search" id="filter" placeholder="Filter this folder" autocomplete="off" aria-label="Filter this folder"></label>
-<select id="sort" aria-label="Sort"><option value="name">By name</option><option value="size">By size</option><option value="time">By date</option><option value="type">By type</option></select>
-<label class="check"><input type="checkbox" id="hidden">Hidden</label>
+<label class="search"><span id="ic-search"></span><input type="search" id="filter" placeholder="@L16@" autocomplete="off" aria-label="@L17@"></label>
+<select id="sort" aria-label="@L18@"><option value="name">@L19@</option><option value="size">@L20@</option><option value="time">@L21@</option><option value="type">@L22@</option></select>
+<label class="check"><input type="checkbox" id="hidden">@L23@</label>
 </div>
 <div class="ups panel" id="ups" hidden>
-<div class="uphead"><div><b id="uptitle"></b><span id="upsub"></span></div><div class="upbtns"><button class="btn small toggle" id="uptoggle" aria-expanded="false"></button><button class="btn small" id="upcancel">Cancel All</button><button class="btn small" id="upclear">Clear Finished</button></div><div class="track"><div class="fill" id="upfill"></div></div></div>
+<div class="uphead"><div><b id="uptitle"></b><span id="upsub"></span></div><div class="upbtns"><button class="btn small toggle" id="uptoggle" aria-expanded="false"></button><button class="btn small" id="upcancel">@L24@</button><button class="btn small" id="upclear">@L25@</button></div><div class="track"><div class="fill" id="upfill"></div></div></div>
 <div class="updetail"><ul id="uplist"></ul>
-<label class="check" style="margin-top:10px"><input type="checkbox" id="offer" checked>Offer to install CIAs on the 3DS once they arrive</label></div></div>
+<label class="check" style="margin-top:10px"><input type="checkbox" id="offer" checked>@L26@</label></div></div>
 <div class="listwrap"><div class="loadline" id="loadline"></div>
-<div class="listhead"><input type="checkbox" id="all" aria-label="Select all"><span id="count"></span></div>
+<div class="listhead"><input type="checkbox" id="all" aria-label="@L27@"><span id="count"></span></div>
 <ul class="list" id="list"></ul></div>
-<small class="hint">Drop files or folders anywhere on this page to upload them here. <span class="keys"><kbd>/</kbd> filter, <kbd>Backspace</kbd> up, <kbd>Del</kbd> delete, <kbd>F2</kbd> rename, <kbd>Ctrl</kbd>+<kbd>A</kbd> select all.</span></small>
+<small class="hint">@L28@<span class="keys"><kbd>/</kbd>@L29@<kbd>Backspace</kbd>@L30@<kbd>Del</kbd>@L31@<kbd>F2</kbd>@L32@<kbd>Ctrl</kbd>+<kbd>A</kbd>@L33@</span></small>
 </div>
 </section>
 </main>
 <div class="dock">
-<div class="selbar" id="selbar" hidden><b id="selcount"></b><button class="btn small" id="selinstall">Install on 3DS</button><button class="btn small" id="selmove">Move</button><button class="btn small danger" id="seldel">Delete</button><button class="btn small" id="selnone">Clear</button></div>
+<div class="selbar" id="selbar" hidden><b id="selcount"></b><button class="btn small" id="selinstall">@L34@</button><button class="btn small" id="selmove">@L35@</button><button class="btn small danger" id="seldel">@L36@</button><button class="btn small" id="selnone">@L37@</button></div>
 </div>
-<div class="drop" id="drop" hidden><div><span id="ic-drop"></span><b>Drop to upload</b><span id="dropto"></span></div></div>
+<div class="drop" id="drop" hidden><div><span id="ic-drop"></span><b>@L38@</b><span id="dropto"></span></div></div>
 <div class="toasts" id="toasts"></div>
 <dialog id="dlg"><div class="dbody"><h2 id="dt"></h2><div class="warnbox" id="dw" hidden><span id="ic-warn"></span><span></span></div><p id="dp"></p>
 <input type="text" id="di" autocomplete="off" spellcheck="false"><p class="err" id="de" hidden></p></div><div class="row2" id="db"></div></dialog>
 <dialog id="sheet" class="sheet"></dialog>
-<dialog id="viewer" class="viewer"><button class="close" id="vclose" aria-label="Close"></button><div class="stage"><span class="spin" id="vspin"></span><img id="vimg" alt=""><button class="nav prev" id="vprev" aria-label="Previous"></button><button class="nav next" id="vnext" aria-label="Next"></button></div>
-<div class="bar"><span id="vname"></span><a class="btn small" id="vdl" download>Download</a></div></dialog>
-<dialog id="editor" class="editor"><button class="close" id="eclose" aria-label="Close"></button><div class="dbody"><h2><span id="ename"></span><i class="dirty" title="Not saved"></i></h2>
+<dialog id="viewer" class="viewer"><button class="close" id="vclose" aria-label="@L39@"></button><div class="stage"><span class="spin" id="vspin"></span><img id="vimg" alt=""><button class="nav prev" id="vprev" aria-label="@L40@"></button><button class="nav next" id="vnext" aria-label="@L41@"></button></div>
+<div class="bar"><span id="vname"></span><a class="btn small" id="vdl" download>@L42@</a></div></dialog>
+<dialog id="editor" class="editor"><button class="close" id="eclose" aria-label="@L43@"></button><div class="dbody"><h2><span id="ename"></span><i class="dirty" title="@L44@"></i></h2>
 <textarea id="etext" spellcheck="false"></textarea><p class="err" id="eerr" hidden></p></div>
-<div class="row2"><span class="muted" id="einfo"></span><span><button class="btn" id="ecancel">Close</button> <button class="btn primary" id="esave">Save</button></span></div></dialog>
+<div class="row2"><span class="muted" id="einfo"></span><span><button class="btn" id="ecancel">@L45@</button> <button class="btn primary" id="esave">@L46@</button></span></div></dialog>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -375,7 +376,7 @@ const ICONS = {
 const svg = name => '<svg class="i' + (name === 'more' ? ' fill' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>';
 const FOLDER = '<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h5.6l2.4 2.6h9A2.5 2.5 0 0 1 24 9.1V20a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 20z" fill="#e6b422"/><path d="M2 10h22v10a2.5 2.5 0 0 1-2.5 2.5h-17A2.5 2.5 0 0 1 2 20z" fill="#f7d55c"/></svg>';
 for (const [id, name] of [['ic-upload', 'upload'], ['ic-folder', 'folder'], ['ic-search', 'search'], ['ic-drop', 'upload'], ['ic-warn', 'warn']]) $('#' + id).outerHTML = svg(name);
-$('#mkdir').innerHTML = svg('folderplus') + 'New Folder';
+$('#mkdir').innerHTML = svg('folderplus') + esc(tr("New Folder"));
 $('#logo').src = document.querySelector('link[rel=icon]').href;
 for (const a of document.querySelectorAll('#ext a')) a.insertAdjacentHTML('beforeend', svg('out'));
 $('#reload').innerHTML = svg('refresh');
@@ -402,9 +403,9 @@ function when(t) {
 }
 function duration(s) {
   if (!isFinite(s) || s < 0) return '';
-  if (s < 60) return 'about ' + Math.max(1, Math.round(s)) + ' s';
-  if (s < 3600) return 'about ' + Math.round(s / 60) + ' min';
-  return 'about ' + (s / 3600).toFixed(1) + ' h';
+  if (s < 60) return tr("about {0} s", Math.max(1, Math.round(s)));
+  if (s < 3600) return tr("about {0} min", Math.round(s / 60));
+  return tr("about {0} h", (s / 3600).toFixed(1));
 }
 const KINDS = {cia: 'cia', '3dsx': '3dsx', zip: 'zip', '7z': 'zip', rar: 'zip', png: 'img', jpg: 'img', jpeg: 'img', gif: 'img', bmp: 'img', webp: 'img',
   txt: 'txt', ini: 'txt', cfg: 'txt', json: 'txt', xml: 'txt', log: 'txt', md: 'txt', yml: 'txt', yaml: 'txt', lua: 'txt', nds: 'rom', '3ds': 'rom', cci: 'rom',
@@ -419,11 +420,11 @@ function risk(paths) {
   for (const p of paths) {
     const l = p.toLowerCase();
     if (l === '/boot.firm' || l === '/luma' || l.startsWith('/luma/') || l === '/boot9strap' || l.startsWith('/boot9strap/'))
-      return 'This is part of what starts custom firmware. Changing it can stop the 3DS from starting.';
+      return tr("This is part of what starts custom firmware. Changing it can stop the 3DS from starting.");
     if (l === '/nintendo 3ds' || l.startsWith('/nintendo 3ds/'))
-      return 'This folder holds installed software, saves and extra data. Changing it can break games.';
+      return tr("This folder holds installed software, saves and extra data. Changing it can break games.");
     if (l === '/boot.3dsx' || l === '/3ds/3dsdl' || l.startsWith('/3ds/3dsdl/'))
-      return 'The Homebrew Launcher or 3dsDL itself uses this.';
+      return tr("The Homebrew Launcher or 3dsDL itself uses this.");
   }
   return '';
 }
@@ -464,7 +465,7 @@ async function call(method, url, body, options = {}) {
     const timer = setTimeout(() => stop.abort(), options.timeout || 20000);
     request.signal = stop.signal;
     try { response = await fetch(url, request); } catch (e) {
-      if (n >= tries) { offline(true); throw new Error('Lost the connection to the 3DS.'); }
+      if (n >= tries) { offline(true); throw new Error(tr("Lost the connection to the 3DS.")); }
       await sleep(750 * n);
     } finally { clearTimeout(timer); }
   }
@@ -473,7 +474,7 @@ async function call(method, url, body, options = {}) {
   let json = {};
   try { json = await response.json(); } catch (e) {}
   if (response.status === 403 && json.access) { gate(json.access); throw quiet(); }
-  if (!response.ok) throw new Error(json.error || 'The 3DS answered ' + response.status + '.');
+  if (!response.ok) { const e = new Error(json.error || tr('The 3DS answered {0}.', response.status)); e.notFound = response.status === 404; throw e; }
   return json;
 }
 const api = (method, url, body, priority = 0, options) => run(() => call(method, url, body, options), priority);
@@ -502,7 +503,7 @@ function ask(title, text, o = {}) {
     input.value = o.input || '';
     err.hidden = true;
     row.textContent = '';
-    const labels = o.buttons || ['Cancel', 'OK'], main = labels.length - 1;
+    const labels = o.buttons || [tr("Cancel"), tr("OK")], main = labels.length - 1;
     let done = false;
     const finish = value => { if (done) return; done = true; d.close(); resolve(value); };
     const press = async n => {
@@ -539,9 +540,9 @@ function ask(title, text, o = {}) {
 
 // --- What the console is doing -------------------------------------------------
 const S = {state: 'connecting', text: '', access: 'none', you: '', seq: -1, expect: [], offline: false, timer: 0, files: true};
-const SAYS = {ready: '3DS ready', asking: 'Asking on the 3DS', choosing: 'Waiting for you on the 3DS', installing: 'Installing on the 3DS',
-  downloading: 'Downloading on the 3DS', busy: 'The 3DS is busy', offline: "Can't reach the 3DS", connecting: 'Connecting...'};
-const HEADS = {choosing: 'Over to you on the 3DS', asking: 'The 3DS is asking a question', installing: 'Installing on the 3DS', downloading: 'Downloading on the 3DS', busy: 'The 3DS is busy'};
+const SAYS = {ready: tr("3DS ready"), asking: tr("Asking on the 3DS"), choosing: tr("Waiting for you on the 3DS"), installing: tr("Installing on the 3DS"),
+  downloading: tr("Downloading on the 3DS"), busy: tr("The 3DS is busy"), offline: tr("Can't reach the 3DS"), connecting: tr("Connecting...")};
+const HEADS = {choosing: tr("Over to you on the 3DS"), asking: tr("The 3DS is asking a question"), installing: tr("Installing on the 3DS"), downloading: tr("Downloading on the 3DS"), busy: tr("The 3DS is busy")};
 function showStatus() {
   const p = $('#pill');
   const state = S.offline ? 'offline' : U.current ? 'sending' : S.state;
@@ -561,13 +562,13 @@ function showStatus() {
     }
   } else c.dataset.key = '';
   c.hidden = !show;
-  for (const span of document.querySelectorAll('#sent li.wait span')) span.textContent = S.state === 'ready' ? 'Sent to the 3DS.' : (S.text || SAYS[S.state]);
+  for (const span of document.querySelectorAll('#sent li.wait span')) span.textContent = S.state === 'ready' ? tr("Sent to the 3DS.") : (S.text || SAYS[S.state]);
 }
 function onStatus(j) {
   const before = S.access;
   Object.assign(S, {you: j.you, access: j.access, state: j.state, text: j.text, files: j.files});
   if (S.seq >= 0 && j.resultSeq !== S.seq) {
-    const text = j.result || (j.resultOk ? 'Done on the 3DS.' : 'Not done on the 3DS.');
+    const text = j.result || (j.resultOk ? tr("Done on the 3DS.") : tr("Not done on the 3DS."));
     toast(text, j.resultOk ? 'good' : 'bad');
     const li = S.expect.shift();
     if (li) {
@@ -597,7 +598,7 @@ function offline(on) {
   $('#offline').hidden = !on;
   showStatus();
   if (on) { clearTimeout(S.timer); S.timer = setTimeout(poll, 1500); }
-  else if (onFiles() && !$('#browser').hidden) { toast('Connected to the 3DS again.', 'good'); load(F.cwd, true); }
+  else if (onFiles() && !$('#browser').hidden) { toast(tr("Connected to the 3DS again."), 'good'); load(F.cwd, true); }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
@@ -637,7 +638,7 @@ function linkName(l) { try { return decodeURIComponent(base(new URL(l).pathname)
 $('#sendform').noValidate = true;
 $('#linkbox').addEventListener('input', () => {
   const n = linksIn($('#linkbox').value).length, c = $('#linkcount');
-  c.textContent = n ? n + (n === 1 ? ' link' : ' links') + ' ready' : '';
+  c.textContent = n ? tr(n === 1 ? '{0} link ready' : '{0} links ready', n) : '';
   c.classList.toggle('has', n > 0);
 });
 $('#sendform').addEventListener('submit', async e => {
@@ -647,7 +648,7 @@ $('#sendform').addEventListener('submit', async e => {
     box.classList.remove('shake');
     void box.offsetWidth;
     box.classList.add('shake');
-    toast('There are no http or https links in that.', 'bad');
+    toast(tr("There are no http or https links in that."), 'bad');
     return;
   }
   b.classList.add('busy');
@@ -655,14 +656,14 @@ $('#sendform').addEventListener('submit', async e => {
     const j = await api('POST', '/send', {links: box.value});
     const li = document.createElement('li');
     li.className = 'wait';
-    li.innerHTML = svg('link') + '<div><b></b><span>Sent to the 3DS.</span></div>';
-    li.querySelector('b').textContent = j.count + (j.count === 1 ? ' link: ' : ' links: ') + links.slice(0, 2).map(linkName).join(', ') + (links.length > 2 ? ' and ' + (links.length - 2) + ' more' : '');
+    li.innerHTML = svg('link') + ("<div><b></b><span>" + esc(tr("Sent to the 3DS.")) + "</span></div>");
+    li.querySelector('b').textContent = tr(j.count === 1 ? '{0} link: {1}' : '{0} links: {1}', j.count, links.slice(0, 2).map(linkName).join(', ')) + (links.length > 2 ? tr(' and {0} more', links.length - 2) : '');
     $('#sent').prepend(li);
     S.expect.push(li);
     box.value = '';
     box.dispatchEvent(new Event('input'));
     S.state = 'choosing';
-    S.text = 'Waiting for you to choose Download on the 3DS.';
+    S.text = tr("Waiting for you to choose Download on the 3DS.");
     showStatus();
     poll();
   } catch (err) { fail(err); } finally { b.classList.remove('busy'); }
@@ -680,16 +681,19 @@ function gate(state) {
   const g = $('#gate');
   g.hidden = false;
   g.className = 'panel gate' + (state === 'denied' || state === 'off' ? ' no' : '');
+  const art = '<div class="art">' + svg(state === 'pending' || state === 'denied' || state === 'off' ? 'lock' : 'console') + '</div>';
+  const heading = key => '<h2>' + esc(tr(key)) + '</h2>';
+  const waiting = key => '<div class="waiting"><span class="spin"></span>' + esc(tr(key)) + '</div>';
+  const device = S.you || tr('this device');
   if (state === 'pending') {
-    g.innerHTML = '<div class="art">' + svg('lock') + '</div><h2>Allow this device on the 3DS</h2><p>The console is asking whether <b>' + esc(S.you || 'this device') +
-      '</b> may see and change the files on its SD card. Choose <b>Allow</b> on the 3DS.</p><div class="waiting"><span class="spin"></span>Waiting for the 3DS</div>';
+    g.innerHTML = art + heading('Allow this device on the 3DS') + '<p>' + esc(tr('The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.', device)) + '</p>' + waiting('Waiting for the 3DS');
     poll();
   } else if (state === 'denied') {
-    g.innerHTML = '<div class="art">' + svg('lock') + '</div><h2>Not allowed</h2><p>The 3DS chose not to let ' + esc(S.you || 'this device') + ' see its files. To ask again, leave Receive on the console and open it again.</p>';
+    g.innerHTML = art + heading('Not allowed') + '<p>' + esc(tr('The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.', device)) + '</p>';
   } else if (state === 'off') {
-    g.innerHTML = '<div class="art">' + svg('lock') + '</div><h2>Files are not shared</h2><p>This 3DS only takes links.</p>';
+    g.innerHTML = art + heading('Files are not shared') + '<p>' + esc(tr('This 3DS only takes links.')) + '</p>';
   } else {
-    g.innerHTML = '<div class="art">' + svg('console') + '</div><h2>Connecting to the 3DS</h2><div class="waiting"><span class="spin"></span>One moment</div>';
+    g.innerHTML = art + heading('Connecting to the 3DS') + waiting('One moment');
   }
 }
 function skeleton() {
@@ -750,7 +754,7 @@ async function fillTimes(path, token) {
   } catch (e) {}
   if (token === F.token && $('#sort').value === 'time') render(false);
 }
-const meta = e => [e.dir ? 'Folder' : size(e.size), when(e.time)].filter(Boolean).join(' · ');
+const meta = e => [e.dir ? tr("Folder") : size(e.size), when(e.time)].filter(Boolean).join(' · ');
 function sorted() {
   const by = $('#sort').value, byName = (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'});
   return F.entries.slice().sort((a, b) => a.dir !== b.dir ? (a.dir ? -1 : 1)
@@ -789,8 +793,8 @@ function render(animate) {
     meter.firstChild.style.width = (used * 100).toFixed(1) + '%';
     meter.classList.toggle('full', used > .92);
     meter.hidden = false;
-    $('#free').textContent = size(F.free) + ' free of ' + size(F.total);
-  } else { meter.hidden = true; $('#free').textContent = F.free >= 0 ? size(F.free) + ' free' : ''; }
+    $('#free').textContent = tr('{0} free of {1}', size(F.free), size(F.total));
+  } else { meter.hidden = true; $('#free').textContent = F.free >= 0 ? tr("{0} free", size(F.free)) : ''; }
   const list = shown(), ul = $('#list');
   ul.textContent = '';
   ul.classList.remove('dim');
@@ -799,7 +803,7 @@ function render(animate) {
   if (!list.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.innerHTML = F.entries.length ? svg('search') + '<b>Nothing matches</b><span>Try another word, or clear the filter.</span>' : svg('folder') + '<b>This folder is empty</b><span>Drop files here, or use Upload.</span>';
+    li.innerHTML = F.entries.length ? svg('search') + ("<b>" + esc(tr("Nothing matches")) + "</b><span>" + esc(tr("Try another word, or clear the filter.")) + "</span>") : svg('folder') + ("<b>" + esc(tr("This folder is empty")) + "</b><span>" + esc(tr("Drop files here, or use Upload.")) + "</span>");
     ul.append(li);
   }
   list.forEach((e, n) => {
@@ -808,9 +812,9 @@ function render(animate) {
     li.style.setProperty('--i', Math.min(n, 14));
     li.tabIndex = 0;
     li.dataset.path = path;
-    li.innerHTML = '<input type="checkbox" aria-label="Select ' + esc(e.name) + '"' + (F.sel.has(path) ? ' checked' : '') + '>' + badge(e) +
+    li.innerHTML = '<input type="checkbox" aria-label="' + esc(tr('Select {0}', e.name)) + '"' + (F.sel.has(path) ? ' checked' : '') + '>' + badge(e) +
       '<div class="what"><span class="name">' + marked(e.name) + '</span><span class="meta">' + esc(meta(e)) +
-      '</span></div><button class="more" aria-label="Options for ' + esc(e.name) + '">' + svg('more') + '</button>';
+      '</span></div><button class="more" aria-label="' + esc(tr('Options for {0}', e.name)) + '">' + svg('more') + '</button>';
     li.entry = e;
     ul.append(li);
     if (!e.dir && TITLED.has(ext(e.name))) { if (watcher) watcher.observe(li); else icon(li); }
@@ -822,7 +826,7 @@ function render(animate) {
     if (row) reveal(row);
   }
   const n = F.entries.length;
-  $('#count').textContent = list.length === n ? n + (n === 1 ? ' item' : ' items') : list.length + ' of ' + n + ' shown';
+  $('#count').textContent = list.length === n ? tr(n === 1 ? '{0} item' : '{0} items', n) : tr('{0} of {1} shown', list.length, n);
   selbar();
 }
 // Scrolls a row into the middle of the screen, unless it is in full view
@@ -912,23 +916,23 @@ async function details(li) {
   const e = li.entry, path = li.dataset.path, x = ext(e.name), d = $('#sheet');
   const acts = [];
   const add = (icon, label, fn, cls = '') => acts.push({icon, label, fn, cls});
-  if (e.dir) add('folder', 'Open', () => go(path));
+  if (e.dir) add('folder', tr("Open"), () => go(path));
   else {
-    add('download', 'Download', () => download(path, e));
-    if (PICTURES.has(x)) add('eye', 'View', () => view(path));
-    else if (MEDIA.has(x)) add('eye', 'Open', () => window.open(fileUrl(path), '_blank'));
-    if (TEXT.has(x) && e.size <= 1048576) add('edit', 'Edit', () => edit(path));
-    if (x === 'cia') add('install', 'Install on 3DS', () => install([path]));
+    add('download', tr("Download"), () => download(path, e));
+    if (PICTURES.has(x)) add('eye', tr("View"), () => view(path));
+    else if (MEDIA.has(x)) add('eye', tr("Open"), () => window.open(fileUrl(path), '_blank'));
+    if (TEXT.has(x) && e.size <= 1048576) add('edit', tr("Edit"), () => edit(path));
+    if (x === 'cia') add('install', tr("Install on 3DS"), () => install([path]));
   }
-  add('rename', 'Rename', () => rename(path));
-  add('move', 'Move To...', () => move([path]));
-  add('copy', 'Copy Path', () => copy(path));
-  add('trash', 'Delete', () => remove([path]), ' red');
-  const facts = [[e.dir ? 'Kind' : 'Size', e.dir ? 'Folder' : size(e.size) + (e.size >= 1024 ? ' (' + e.size.toLocaleString() + ' bytes)' : '')], ['Changed', when(e.time) || 'Unknown'], ['Where', parent(path)]];
-  d.innerHTML = '<button class="close" aria-label="Close">' + svg('x') + '</button><div class="top">' + badge(e) + '<div><h2></h2><div class="sub"></div></div></div><dl class="facts">' +
+  add('rename', tr("Rename"), () => rename(path));
+  add('move', tr("Move To..."), () => move([path]));
+  add('copy', tr("Copy Path"), () => copy(path));
+  add('trash', tr("Delete"), () => remove([path]), ' red');
+  const facts = [[e.dir ? tr("Kind") : tr("Size"), e.dir ? tr("Folder") : size(e.size) + (e.size >= 1024 ? tr(" ({0} bytes)", e.size.toLocaleString()) : '')], [tr("Changed"), when(e.time) || tr("Unknown")], [tr("Where"), parent(path)]];
+  d.innerHTML = ("<button class=\"close\" aria-label=\"" + esc(tr("Close")) + "\">") + svg('x') + '</button><div class="top">' + badge(e) + '<div><h2></h2><div class="sub"></div></div></div><dl class="facts">' +
     facts.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl><div class="acts"></div>';
   d.querySelector('h2').textContent = e.name;
-  d.querySelector('.sub').textContent = e.dir ? 'Folder' : (x ? x.toUpperCase() + ' file' : 'File');
+  d.querySelector('.sub').textContent = e.dir ? tr("Folder") : (x ? tr("{0} file", x.toUpperCase()) : tr("File"));
   const box = d.querySelector('.acts');
   for (const a of acts) {
     const b = document.createElement('button');
@@ -948,14 +952,14 @@ async function details(li) {
       const m = await api('GET', '/api/meta?path=' + enc(path));
       for (const s of f.querySelectorAll('.skel')) s.remove();
       const version = m.versionText || '';
-      const rows = [['Title', m.name], ['Publisher', m.publisher], ['Product', m.product], ['Title ID', m.titleId], ['Version', version], ['Note', m.note]].filter(r => r[1]);
+      const rows = [[tr("Title"), m.name], [tr("Publisher"), m.publisher], [tr("Product"), m.product], [tr("Title ID"), m.titleId], [tr("Version"), version], [tr("Note"), m.note]].filter(r => r[1]);
       f.insertAdjacentHTML('afterbegin', rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join(''));
       if (m.name) d.querySelector('.sub').textContent = m.name + (m.publisher ? ' · ' + m.publisher : '');
     } catch (err) { for (const s of f.querySelectorAll('.skel')) s.remove(); }
   }
 }
 function download(path, e) {
-  if (e.size > 64 * 1048576) toast('Downloading ' + e.name + '. The 3DS answers nothing else until it finishes.');
+  if (e.size > 64 * 1048576) toast(tr("Downloading {0}. The 3DS answers nothing else until it finishes.", e.name));
   const a = document.createElement('a');
   a.href = fileUrl(path, true);
   a.download = e.name;
@@ -964,7 +968,7 @@ function download(path, e) {
   a.remove();
 }
 function copy(text) {
-  const done = () => toast('Copied ' + text, 'good');
+  const done = () => toast(tr("Copied {0}", text), 'good');
   const fallback = () => {
     const t = document.createElement('textarea');
     t.value = text;
@@ -979,34 +983,34 @@ function copy(text) {
   else fallback();
 }
 async function rename(path) {
-  const r = await ask('Rename', null, {input: base(path), select: true, buttons: ['Cancel', 'Rename'], warn: risk([path]), action: async name => {
+  const r = await ask(tr("Rename"), null, {input: base(path), select: true, buttons: [tr("Cancel"), tr("Rename")], warn: risk([path]), action: async name => {
     name = name.trim();
     if (!name || name === base(path)) return false;
     await api('POST', '/api/move', {from: path, to: join(parent(path), name)});
     F.fresh.add(join(parent(path), name));
     return name;
   }});
-  if (typeof r === 'string') { toast('Renamed to ' + r, 'good'); load(F.cwd, true); }
+  if (typeof r === 'string') { toast(tr("Renamed to {0}", r), 'good'); load(F.cwd, true); }
 }
 async function move(paths) {
-  const what = paths.length > 1 ? paths.length + ' items' : '"' + base(paths[0]) + '"';
-  const r = await ask('Move ' + what, 'Type the folder to move to, starting with /.', {input: F.cwd, buttons: ['Cancel', 'Move'], warn: risk(paths), action: async to => {
+  const what = paths.length > 1 ? tr("{0} items", paths.length) : '"' + base(paths[0]) + '"';
+  const r = await ask(tr("Move {0}", what), tr("Type the folder to move to, starting with /."), {input: F.cwd, buttons: [tr("Cancel"), tr("Move")], warn: risk(paths), action: async to => {
     const dest = ('/' + to.trim()).replace(/\/+/g, '/').replace(/(.)\/$/, '$1');
-    if (dest === F.cwd) throw new Error('They are already in ' + dest + '.');
+    if (dest === F.cwd) throw new Error(tr("They are already in {0}.", dest));
     for (const p of paths) await api('POST', '/api/move', {from: p, to: join(dest, base(p))});
     return dest;
   }});
-  if (typeof r === 'string') { F.sel.clear(); toast('Moved ' + what + ' to ' + r, 'good'); load(F.cwd, true); }
+  if (typeof r === 'string') { F.sel.clear(); toast(tr("Moved {0} to {1}", what, r), 'good'); load(F.cwd, true); }
 }
 async function remove(paths) {
   const many = paths.length > 1;
-  const ok = await ask('Delete ' + (many ? paths.length + ' items' : '"' + base(paths[0]) + '"') + '?', 'Deleted files and folders cannot be brought back.',
-    {buttons: ['Cancel', 'Delete'], danger: true, warn: risk(paths), action: async () => { for (const p of paths) await api('POST', '/api/delete', {path: p}, 0, {retry: true}); }});
+  const ok = await ask(tr("Delete {0}?", (many ? tr("{0} items", paths.length) : '"' + base(paths[0]) + '"')), tr("Deleted files and folders cannot be brought back."),
+    {buttons: [tr("Cancel"), tr("Delete")], danger: true, warn: risk(paths), action: async () => { for (const p of paths) await api('POST', '/api/delete', {path: p}, 0, {retry: true}); }});
   if (ok !== true) return;
   for (const r of $('#list').querySelectorAll('.row')) if (paths.includes(r.dataset.path)) r.classList.add('gone');
   F.sel.clear();
   selbar();
-  toast(many ? 'Deleted ' + paths.length + ' items' : 'Deleted ' + base(paths[0]), 'good');
+  toast(many ? tr("Deleted {0} items", paths.length) : tr("Deleted {0}", base(paths[0])), 'good');
   setTimeout(() => load(F.cwd, true), 280);
 }
 async function install(paths) {
@@ -1016,16 +1020,16 @@ async function install(paths) {
     await api('POST', '/api/install', {paths: cias.join('\n')});
     S.expect.push(null);
     S.state = 'choosing';
-    S.text = 'Waiting for you to choose Install on the 3DS.';
+    S.text = tr("Waiting for you to choose Install on the 3DS.");
     showStatus();
-    toast('Sent to the 3DS. Choose Install on the console.');
+    toast(tr("Sent to the 3DS. Choose Install on the console."));
     poll();
   } catch (e) { fail(e); }
 }
 $('#mkdir').onclick = async () => {
-  const r = await ask('New Folder', null, {input: '', buttons: ['Cancel', 'Create'], action: async name => {
+  const r = await ask(tr("New Folder"), null, {input: '', buttons: [tr("Cancel"), tr("Create")], action: async name => {
     name = name.trim();
-    if (!name) throw new Error('Type a name for the folder.');
+    if (!name) throw new Error(tr("Type a name for the folder."));
     await api('POST', '/api/folder', {path: join(F.cwd, name)}, 0, {retry: true});
     F.fresh.add(join(F.cwd, name));
   }});
@@ -1046,7 +1050,7 @@ function showPicture() {
   $('#vspin').hidden = false;
   img.onload = img.onerror = () => { img.classList.remove('loading'); $('#vspin').hidden = true; };
   img.src = fileUrl(path);
-  $('#vname').textContent = base(path) + (V.list.length > 1 ? '  ·  ' + (V.at + 1) + ' of ' + V.list.length : '');
+  $('#vname').textContent = base(path) + (V.list.length > 1 ? tr("  ·  {0} of {1}", (V.at + 1), V.list.length) : '');
   $('#vdl').href = fileUrl(path, true);
   $('#vprev').hidden = $('#vnext').hidden = V.list.length < 2;
 }
@@ -1070,7 +1074,7 @@ async function edit(path) {
   let text;
   try {
     const r = await run(() => call('GET', fileUrl(path), undefined, {raw: true}));
-    if (!r.ok) throw new Error('Could not open ' + base(path) + '.');
+    if (!r.ok) throw new Error(tr("Could not open {0}.", base(path)));
     text = await r.text();
   } catch (e) { return fail(e); }
   Object.assign(E, {path, saved: text});
@@ -1085,7 +1089,7 @@ async function edit(path) {
 function editInfo() {
   const t = $('#etext').value;
   $('#editor').classList.toggle('changed', t !== E.saved);
-  $('#einfo').textContent = t.split('\n').length + ' lines · ' + size(new Blob([t]).size) + (t !== E.saved ? ' · not saved' : '');
+  $('#einfo').textContent = tr('{0} lines · {1}', t.split('\n').length, size(new Blob([t]).size)) + (t !== E.saved ? tr(' · not saved') : '');
 }
 $('#etext').addEventListener('input', editInfo);
 async function save() {
@@ -1095,12 +1099,12 @@ async function save() {
     await api('PUT', '/api/file?replace=1&path=' + enc(E.path), text, 0, {retry: true});
     E.saved = text;
     editInfo();
-    toast('Saved ' + base(E.path), 'good');
+    toast(tr("Saved {0}", base(E.path)), 'good');
     load(F.cwd, true);
-  } catch (e) { $('#eerr').textContent = e.message || 'Not saved.'; $('#eerr').hidden = false; } finally { b.classList.remove('busy'); }
+  } catch (e) { $('#eerr').textContent = e.message || tr("Not saved."); $('#eerr').hidden = false; } finally { b.classList.remove('busy'); }
 }
 async function closeEditor() {
-  if ($('#etext').value !== E.saved && await ask('Close without saving?', 'The changes to ' + base(E.path) + ' will be lost.', {buttons: ['Keep Editing', 'Close'], danger: true}) !== 1) return;
+  if ($('#etext').value !== E.saved && await ask(tr("Close without saving?"), tr("The changes to {0} will be lost.", base(E.path)), {buttons: [tr("Keep Editing"), tr("Close")], danger: true}) !== 1) return;
   $('#editor').close();
 }
 $('#esave').onclick = save;
@@ -1119,7 +1123,7 @@ async function plan(files) {
   const dirs = new Map();
   for (const f of files) dirs.set(parent(f.path), null);
   let checked = 0;
-  if (dirs.size > 3) toast('Checking ' + dirs.size + ' folders on the 3DS...');
+  if (dirs.size > 3) toast(tr("Checking {0} folders on the 3DS...", dirs.size));
   for (const d of dirs.keys()) {
     try {
       const j = await api('GET', '/api/list?times=0&path=' + enc(d));
@@ -1127,22 +1131,22 @@ async function plan(files) {
     } catch (e) {
       if (e.quiet) return;
       // A folder that is not there yet is made when its files go up.
-      if (S.offline || !/does not exist/.test(e.message)) return ask('Cannot upload', 'Could not check ' + d + ' on the 3DS: ' + e.message, {buttons: ['OK']});
+      if (S.offline || !e.notFound) return ask(tr("Cannot upload"), tr("Could not check {0} on the 3DS: {1}", d, e.message), {buttons: [tr("OK")]});
       dirs.set(d, new Map());
     }
-    if (++checked % 20 === 0) toast('Checked ' + checked + ' of ' + dirs.size + ' folders...');
+    if (++checked % 20 === 0) toast(tr("Checked {0} of {1} folders...", checked, dirs.size));
   }
   const there = f => dirs.get(parent(f.path)), card = f => there(f).get(base(f.path));
   const blocked = files.find(f => card(f) && card(f).dir);
-  if (blocked) return ask('Cannot upload', 'A folder already has the name ' + blocked.path + '.', {buttons: ['OK']});
+  if (blocked) return ask(tr("Cannot upload"), tr("A folder already has the name {0}.", blocked.path), {buttons: [tr("OK")]});
   const clash = files.filter(f => card(f));
   let skip = new Set();
   if (clash.length) {
     const names = clash.slice(0, 5).map(f => base(f.path)).join('\n') + (clash.length > 5 ? '\n...and ' + (clash.length - 5) + ' more' : '');
     const stop = {done: false};
-    const c = await ask(clash.length === 1 ? 'Replace this file?' : 'Replace ' + clash.length + ' files?',
-      names + '\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.',
-      {buttons: ['Cancel', 'Skip', 'Replace all', 'Replace changed'], warn: risk(clash.map(f => f.path)), action: () => changed(clash, there, stop)});
+    const c = await ask(clash.length === 1 ? tr("Replace this file?") : tr("Replace {0} files?", clash.length),
+      tr("{0}\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.", names),
+      {buttons: [tr("Cancel"), tr("Skip"), tr("Replace all"), tr("Replace changed")], warn: risk(clash.map(f => f.path)), action: () => changed(clash, there, stop)});
     stop.done = true;
     if (c === null || c < 1) return;
     if (c === 1) skip = new Set(clash);
@@ -1150,14 +1154,14 @@ async function plan(files) {
     else for (const f of clash) if (c.has(f)) f.replace = true; else skip.add(f);
   }
   files = files.filter(f => !skip.has(f));
-  if (!files.length) return toast(clash.length ? 'Nothing to send: the SD card already has all of them.' : 'Nothing to send.');
+  if (!files.length) return toast(clash.length ? tr("Nothing to send: the SD card already has all of them.") : tr("Nothing to send."));
   const need = files.reduce((n, f) => n + f.file.size, 0);
-  if (F.free >= 0 && need > F.free) return ask('Not enough space', 'These need ' + size(need) + ' and the SD card has ' + size(F.free) + ' free.', {buttons: ['OK']});
+  if (F.free >= 0 && need > F.free) return ask(tr("Not enough space"), tr("These need {0} and the SD card has {1} free.", size(need), size(F.free)), {buttons: [tr("OK")]});
   const big = files.find(f => f.file.size > 4294967295);
-  if (big) return ask('Too big for the SD card', base(big.path) + " is 4 GiB or more, which the SD card's FAT32 cannot hold.", {buttons: ['OK']});
+  if (big) return ask(tr("Too big for the SD card"), tr("{0} is 4 GiB or more, which the SD card's FAT32 cannot hold.", base(big.path)), {buttons: [tr("OK")]});
   for (const f of files) {
     const li = document.createElement('li');
-    li.innerHTML = '<span class="n"></span><div class="track"><div class="fill"></div></div><span class="s">Waiting</span><div></div>';
+    li.innerHTML = ("<span class=\"n\"></span><div class=\"track\"><div class=\"fill\"></div></div><span class=\"s\">" + esc(tr("Waiting")) + "</span><div></div>");
     li.querySelector('.n').textContent = f.path;
     Object.assign(f, {li, state: 'wait', loaded: 0});
     $('#uplist').prepend(li);
@@ -1201,12 +1205,12 @@ async function changed(clash, there, stop) {
         Promise.all(part.map(f => crcOf(f.file)))]);
       if (stop.done) throw quiet();
       const answered = part.filter(f => base(f.path) in j.hashes);
-      if (!answered.length) throw new Error('The 3DS did not check ' + base(part[0].path) + '.');
+      if (!answered.length) throw new Error(tr("The 3DS did not check {0}.", base(part[0].path)));
       answered.forEach(f => { const h = j.hashes[base(f.path)]; if (!h || h !== mine[part.indexOf(f)]) out.add(f); });
       left = left.slice(answered.length);
       done += answered.length;
       const eta = done > 50 ? duration((performance.now() - t0) / 1e3 / done * (total - done)) : '';
-      $('#dp').textContent = 'Comparing with the SD card: ' + done + ' of ' + total + ' files' + (eta ? ', ' + eta + ' left.' : '...');
+      $('#dp').textContent = tr('Comparing with the SD card: {0} of {1} files', done, total) + (eta ? tr(', {0} left.', eta) : '...');
     }
   }
   return out;
@@ -1217,11 +1221,11 @@ function buttons(f) {
   const b = document.createElement('button');
   b.className = 'btn small';
   if (f.state === 'wait' || f.state === 'up') {
-    b.textContent = 'Cancel';
-    b.onclick = () => { if (f.xhr) f.xhr.abort(); else { f.state = 'off'; status(f, 'Cancelled', 'err'); buttons(f); progress(); } };
+    b.textContent = tr("Cancel");
+    b.onclick = () => { if (f.xhr) f.xhr.abort(); else { f.state = 'off'; status(f, tr("Cancelled"), 'err'); buttons(f); progress(); } };
   } else if (f.state === 'failed' || f.state === 'off') {
-    b.innerHTML = svg('retry') + 'Retry';
-    b.onclick = () => { f.state = 'wait'; f.loaded = 0; status(f, 'Waiting'); f.li.className = ''; f.li.querySelector('.fill').style.width = '0'; buttons(f); run(() => send(f), 1, 'upload'); progress(); };
+    b.innerHTML = svg('retry') + esc(tr("Retry"));
+    b.onclick = () => { f.state = 'wait'; f.loaded = 0; status(f, tr("Waiting")); f.li.className = ''; f.li.querySelector('.fill').style.width = '0'; buttons(f); run(() => send(f), 1, 'upload'); progress(); };
   } else return;
   box.append(b);
 }
@@ -1232,16 +1236,16 @@ function progress() {
   const panel = $('#ups');
   if (!U.items.length) { panel.hidden = true; return; }
   panel.hidden = false;
-  $('#uptoggle').innerHTML = svg('chevron') + 'Details (' + U.items.length + ')';
+  $('#uptoggle').innerHTML = svg('chevron') + esc(tr("Details ({0})", U.items.length));
   if (!left.length) {
     U.current = null;
     U.sent = 0;
     U.ms = 0;
     const failed = U.items.length - live.length;
     panel.classList.add('done');
-    $('#uptitle').textContent = !live.length ? 'Uploads stopped'
-      : live.length === 1 ? 'Upload finished' : 'All ' + live.length + ' uploads finished';
-    $('#upsub').textContent = failed ? failed + ' did not finish; Retry is next to each.' : size(live.reduce((n, f) => n + f.file.size, 0)) + ' sent';
+    $('#uptitle').textContent = !live.length ? tr("Uploads stopped")
+      : live.length === 1 ? tr("Upload finished") : tr("All {0} uploads finished", live.length);
+    $('#upsub').textContent = failed ? tr("{0} did not finish; Retry is next to each.", failed) : tr("{0} sent", size(live.reduce((n, f) => n + f.file.size, 0)));
     $('#upfill').style.width = live.length ? '100%' : '0';
     $('#upcancel').hidden = true;
     $('#upclear').hidden = false;
@@ -1255,10 +1259,10 @@ function progress() {
   const rate = U.ms > 1000 ? U.sent / (U.ms / 1000) : 0, at = live.length - left.length + 1;
   const pct = total ? Math.floor(100 * done / total) : 0;
   const now = U.current || left[0];
-  $('#uptitle').textContent = 'Uploading ' + base(now.path) + (live.length > 1 ? ' (' + Math.min(at, live.length) + ' of ' + live.length + ')' : '');
-  $('#upsub').textContent = [pct + '%', rate ? size(rate) + '/s' : '', rate ? duration((total - done) / rate) + ' left' : ''].filter(Boolean).join(' · ');
+  $('#uptitle').textContent = tr('Uploading {0}', base(now.path)) + (live.length > 1 ? tr(' ({0} of {1})', Math.min(at, live.length), live.length) : '');
+  $('#upsub').textContent = [pct + '%', rate ? size(rate) + '/s' : '', rate ? tr("{0} left", duration((total - done) / rate)) : ''].filter(Boolean).join(' · ');
   $('#upfill').style.width = pct + '%';
-  U.pill = 'Sending to the 3DS · ' + pct + '%';
+  U.pill = tr("Sending to the 3DS · {0}%", pct);
   showStatus();
 }
 async function send(f) {
@@ -1266,12 +1270,12 @@ async function send(f) {
   f.state = 'up';
   U.current = f;
   f.li.classList.add('active');
-  status(f, 'Starting...');
+  status(f, tr("Starting..."));
   buttons(f);
   progress();
   const dir = parent(f.path);
   if (dir !== F.cwd && !U.made.has(dir)) {
-    try { await call('POST', '/api/folder', {path: dir}, {retry: true}); U.made.add(dir); } catch (e) { return finish(f, 'failed', e.message || 'Not allowed', 'err'); }
+    try { await call('POST', '/api/folder', {path: dir}, {retry: true}); U.made.add(dir); } catch (e) { return finish(f, 'failed', e.message || tr("Not allowed"), 'err'); }
   }
   await new Promise(resolve => {
     const x = new XMLHttpRequest(), fill = f.li.querySelector('.fill');
@@ -1290,7 +1294,7 @@ async function send(f) {
       f.loaded = e.loaded;
       const s = (now - t0) / 1e3;
       fill.style.width = (e.total ? 100 * e.loaded / e.total : 100) + '%';
-      status(f, size(e.loaded) + ' of ' + size(e.total) + (s > 1 ? ' · ' + size(e.loaded / s) + '/s' : ''));
+      status(f, tr("{0} of {1}{2}", size(e.loaded), size(e.total), (s > 1 ? ' · ' + size(e.loaded / s) + '/s' : '')));
       progress();
     };
     const end = (state, text, kind) => { f.xhr = null; finish(f, state, text, kind); resolve(); };
@@ -1311,10 +1315,10 @@ async function send(f) {
           F.scrollTo = join(F.cwd, top);
           load(F.cwd, true, 0);
         }
-        end('done', 'Done, ' + size(f.file.size) + (s > 1 ? ' at ' + size(f.file.size / s) + '/s' : ''), 'ok');
+        end('done', s > 1 ? tr('Done, {0} at {1}/s', size(f.file.size), size(f.file.size / s)) : tr('Done, {0}', size(f.file.size)), 'ok');
       } else {
         if (x.status === 403 && j.access) gate(j.access);
-        end('failed', j.error || 'Failed (' + x.status + ')', 'err');
+        end('failed', j.error || tr("Failed ({0})", x.status), 'err');
       }
     };
     x.onerror = () => {
@@ -1326,15 +1330,15 @@ async function send(f) {
         f.state = 'wait';
         f.replace = true;
         f.loaded = 0;
-        status(f, 'Trying again...');
+        status(f, tr("Trying again..."));
         resolve();
         sleep(1500 * f.tries).then(() => run(() => send(f), 1, 'upload'));
         return;
       }
       offline(true);
-      end('failed', 'The connection to the 3DS was lost.', 'err');
+      end('failed', tr("The connection to the 3DS was lost."), 'err');
     };
-    x.onabort = () => end('off', 'Cancelled', 'err');
+    x.onabort = () => end('off', tr("Cancelled"), 'err');
     x.send(f.file);
   });
 }
@@ -1363,7 +1367,7 @@ addEventListener('scroll', () => {
   if (!ups.hidden) ups.classList.toggle('stuck', ups.getBoundingClientRect().top <= 8.5 && scrollY > 0);
 }, {passive: true});
 $('#upcancel').onclick = () => {
-  for (const f of U.items) if (f.state === 'wait') { f.state = 'off'; status(f, 'Cancelled', 'err'); buttons(f); }
+  for (const f of U.items) if (f.state === 'wait') { f.state = 'off'; status(f, tr("Cancelled"), 'err'); buttons(f); }
   if (U.current && U.current.xhr) U.current.xhr.abort();
   progress();
 };
@@ -1392,7 +1396,7 @@ const canDrop = () => onFiles() && !$('#browser').hidden && !document.querySelec
 addEventListener('dragenter', e => {
   if (!canDrop() || !e.dataTransfer.types.includes('Files')) return;
   depth++;
-  $('#dropto').textContent = 'into ' + (F.cwd === '/' ? 'the SD card' : F.cwd);
+  $('#dropto').textContent = tr("into {0}", (F.cwd === '/' ? tr("the SD card") : F.cwd));
   $('#drop').hidden = false;
 });
 addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; $('#drop').hidden = true; } });
@@ -1429,16 +1433,279 @@ requestAnimationFrame(ink);
 poll();
 </script></body></html>)PAGE";
 
+
+// Only web messages are sent to the browser. Escape '<' inside JSON so a
+// translation can never end the script element.
+std::string webDictionary()
+{
+    std::string result = "const I18N = {";
+    const char *keys[] = {
+        "  ·  {0} of {1}",
+        " ({0} bytes)",
+        " ({0} of {1})",
+        " and {0} more",
+        " delete, ",
+        " filter, ",
+        " rename, ",
+        " select all.",
+        " up, ",
+        " · not saved",
+        ", {0} left.",
+        "3DS ready",
+        "3dsDL website",
+        "A folder already has the name {0}.",
+        "All {0} uploads finished",
+        "Allow this device on the 3DS",
+        "Asking on the 3DS",
+        "By date",
+        "By name",
+        "By size",
+        "By type",
+        "Can't reach the 3DS",
+        "Can't reach the 3DS. Keep 3dsDL open on Receive; this page reconnects by itself.",
+        "Cancel",
+        "Cancel All",
+        "Cancelled",
+        "Cannot upload",
+        "Changed",
+        "Checked {0} of {1} folders...",
+        "Checking {0} folders on the 3DS...",
+        "Clear",
+        "Clear Finished",
+        "Close",
+        "Close without saving?",
+        "Comparing with the SD card: {0} of {1} files",
+        "Connected to the 3DS again.",
+        "Connecting to the 3DS",
+        "Connecting...",
+        "Copied {0}",
+        "Copy Path",
+        "Could not check {0} on the 3DS: {1}",
+        "Could not open {0}.",
+        "Create",
+        "Delete",
+        "Delete {0}?",
+        "Deleted files and folders cannot be brought back.",
+        "Deleted {0}",
+        "Deleted {0} items",
+        "Details ({0})",
+        "Done on the 3DS.",
+        "Done, {0}",
+        "Done, {0} at {1}/s",
+        "Download",
+        "Downloading on the 3DS",
+        "Downloading {0}. The 3DS answers nothing else until it finishes.",
+        "Drop files here, or use Upload.",
+        "Drop files or folders anywhere on this page to upload them here. ",
+        "Drop to upload",
+        "Edit",
+        "Failed ({0})",
+        "File",
+        "Files",
+        "Files are not shared",
+        "Filter this folder",
+        "Folder",
+        "Hidden",
+        "Install on 3DS",
+        "Installing on the 3DS",
+        "Keep Editing",
+        "Kind",
+        "Links",
+        "Lost the connection to the 3DS.",
+        "Move",
+        "Move To...",
+        "Move {0}",
+        "Moved {0} to {1}",
+        "New Folder",
+        "Next",
+        "Not allowed",
+        "Not done on the 3DS.",
+        "Not enough space",
+        "Not saved",
+        "Not saved.",
+        "Note",
+        "Nothing matches",
+        "Nothing to send.",
+        "Nothing to send: the SD card already has all of them.",
+        "OK",
+        "Offer to install CIAs on the 3DS once they arrive",
+        "One moment",
+        "Only links are sent. Keep 3dsDL on the Receive screen while you send.",
+        "Open",
+        "Options for {0}",
+        "Over to you on the 3DS",
+        "Paste one or more direct download links. They go to the 3DS, which downloads them one after another.",
+        "Previous",
+        "Product",
+        "Publisher",
+        "Refresh",
+        "Rename",
+        "Renamed to {0}",
+        "Replace all",
+        "Replace changed",
+        "Replace this file?",
+        "Replace {0} files?",
+        "Retry",
+        "Save",
+        "Saved {0}",
+        "Select all",
+        "Select {0}",
+        "Send to 3DS",
+        "Sending to the 3DS · {0}%",
+        "Sent to the 3DS.",
+        "Sent to the 3DS. Choose Install on the console.",
+        "Size",
+        "Skip",
+        "Sort",
+        "Starting...",
+        "The 3DS answered {0}.",
+        "The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.",
+        "The 3DS did not check {0}.",
+        "The 3DS is asking a question",
+        "The 3DS is busy",
+        "The Homebrew Launcher or 3dsDL itself uses this.",
+        "The changes to {0} will be lost.",
+        "The connection to the 3DS was lost.",
+        "The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.",
+        "There are no http or https links in that.",
+        "These need {0} and the SD card has {1} free.",
+        "They are already in {0}.",
+        "This 3DS only takes links.",
+        "This folder holds installed software, saves and extra data. Changing it can break games.",
+        "This folder is empty",
+        "This is part of what starts custom firmware. Changing it can stop the 3DS from starting.",
+        "Title",
+        "Title ID",
+        "Too big for the SD card",
+        "Try another word, or clear the filter.",
+        "Trying again...",
+        "Type a name for the folder.",
+        "Type the folder to move to, starting with /.",
+        "Unknown",
+        "Up one folder",
+        "Up one folder (Backspace)",
+        "Upload",
+        "Upload files (U)",
+        "Upload finished",
+        "Uploading {0}",
+        "Uploads stopped",
+        "Version",
+        "View",
+        "Waiting",
+        "Waiting for the 3DS",
+        "Waiting for you on the 3DS",
+        "Waiting for you to choose Download on the 3DS.",
+        "Waiting for you to choose Install on the 3DS.",
+        "Website",
+        "Where",
+        "about {0} h",
+        "about {0} min",
+        "about {0} s",
+        "into {0}",
+        "the SD card",
+        "this device",
+        "{0}\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.",
+        "{0} did not finish; Retry is next to each.",
+        "{0} file",
+        "{0} free",
+        "{0} free of {1}",
+        "{0} is 4 GiB or more, which the SD card's FAT32 cannot hold.",
+        "{0} item",
+        "{0} items",
+        "{0} left",
+        "{0} lines · {1}",
+        "{0} link ready",
+        "{0} link: {1}",
+        "{0} links ready",
+        "{0} links: {1}",
+        "{0} of {1} shown",
+        "{0} of {1}{2}",
+        "{0} sent",
+        "{0}Details ({1})",
+        "{0}New Folder",
+        "{0}Retry",
+    };
+    bool first = true;
+    for (const char *key : keys) {
+        if (!first) result += ',';
+        first = false;
+        const std::string pair = jsonString(key) + ":" + jsonString(i18n::t(key));
+        for (char c : pair) {
+            if (c == '<') result += "\\u003c";
+            else result += c;
+        }
+    }
+    return result + "};\nfunction tr(key, ...args) { return (I18N[key] || key).replace(/\\{(\\d+)\\}/g, (token, n) => n < args.length ? String(args[n]) : token); }\n";
+}
+
 } // namespace
 
 std::string page(const std::string &message, bool good)
 {
-    std::string html = PageStart;
-    if (!message.empty()) {
-        html += std::string("<div class=\"note ") + (good ? "good" : "bad") +
-                "\">" + escapeHtml(message) + "</div>\n";
+    std::string html = std::string(PageStart) + "<!--message-->" + PageEnd;
+    const std::pair<const char *, const char *> messages[] = {
+        {"@L0@", "3dsDL website"},
+        {"@L1@", "Website"},
+        {"@L2@", "Connecting..."},
+        {"@L3@", "Links"},
+        {"@L4@", "Files"},
+        {"@L5@", "Can't reach the 3DS. Keep 3dsDL open on Receive; this page reconnects by itself."},
+        {"@L6@", "Paste one or more direct download links. They go to the 3DS, which downloads them one after another."},
+        {"@L7@", "Send to 3DS"},
+        {"@L8@", "Only links are sent. Keep 3dsDL on the Receive screen while you send."},
+        {"@L9@", "Up one folder (Backspace)"},
+        {"@L10@", "Up one folder"},
+        {"@L11@", "Upload files (U)"},
+        {"@L12@", "Upload"},
+        {"@L13@", "Folder"},
+        {"@L14@", "Refresh"},
+        {"@L15@", "Refresh"},
+        {"@L16@", "Filter this folder"},
+        {"@L17@", "Filter this folder"},
+        {"@L18@", "Sort"},
+        {"@L19@", "By name"},
+        {"@L20@", "By size"},
+        {"@L21@", "By date"},
+        {"@L22@", "By type"},
+        {"@L23@", "Hidden"},
+        {"@L24@", "Cancel All"},
+        {"@L25@", "Clear Finished"},
+        {"@L26@", "Offer to install CIAs on the 3DS once they arrive"},
+        {"@L27@", "Select all"},
+        {"@L28@", "Drop files or folders anywhere on this page to upload them here. "},
+        {"@L29@", " filter, "},
+        {"@L30@", " up, "},
+        {"@L31@", " delete, "},
+        {"@L32@", " rename, "},
+        {"@L33@", " select all."},
+        {"@L34@", "Install on 3DS"},
+        {"@L35@", "Move"},
+        {"@L36@", "Delete"},
+        {"@L37@", "Clear"},
+        {"@L38@", "Drop to upload"},
+        {"@L39@", "Close"},
+        {"@L40@", "Previous"},
+        {"@L41@", "Next"},
+        {"@L42@", "Download"},
+        {"@L43@", "Close"},
+        {"@L44@", "Not saved"},
+        {"@L45@", "Close"},
+        {"@L46@", "Save"},
+    };
+    for (const auto &message : messages) {
+        const size_t at = html.find(message.first);
+        if (at != std::string::npos) html.replace(at, std::char_traits<char>::length(message.first), escapeHtml(i18n::t(message.second)));
     }
-    return html + PageEnd;
+    const size_t lang = html.find("@LANG@");
+    if (lang != std::string::npos) html.replace(lang, 6, i18n::language());
+    const size_t script = html.find("<script>") + 8;
+    html.insert(script, webDictionary());
+    const size_t note = html.find("<!--message-->");
+    const std::string response = message.empty() ? "" :
+        std::string("<div class=\"note ") + (good ? "good" : "bad") +
+        "\">" + escapeHtml(message) + "</div>\n";
+    html.replace(note, 14, response);
+    return html;
 }
 
 } // namespace remote

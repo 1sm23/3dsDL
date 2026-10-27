@@ -127,7 +127,7 @@ bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
         return true;
     }
     ui::Dialog dialog;
-    dialog.header = "install";
+    dialog.header = i18n::c("install");
     dialog.title = i18n::t("The save of {0} could not be backed up. Replacing may lose it.", {name});
     dialog.tone = ui::Tone::Warning;
     dialog.icon = ui::showIcon(info.smdh.icon);
@@ -940,7 +940,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     APT_CheckNew3DS(&isNew3ds);
     if (cia::isNew3dsOnly(info.titleId) && !isNew3ds) {
         ui::Dialog dialog;
-        dialog.header = "install";
+        dialog.header = i18n::c("install");
         dialog.title = i18n::t("{0} only starts on New Nintendo 3DS systems.", {name});
         dialog.tone = ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
@@ -963,7 +963,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     const auto confirmReplace = [&](const std::string &title,
                                     bool sameVersion = false) {
         ui::Dialog dialog;
-        dialog.header = "install";
+        dialog.header = i18n::c("install");
         dialog.title = title;
         dialog.tone = sameVersion ? ui::Tone::Info : ui::Tone::Warning;
         dialog.icon = ui::showIcon(info.smdh.icon);
@@ -1074,7 +1074,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     }
     if (result.outcome != installer::Outcome::Installed) {
         if (!address.empty()) {
-            markInstalled(address, path, i18n::t("Install failed: {0}", {result.message}));
+            markInstalled(address, path, i18n::t("Install failed: {0}", {result.message}), false);
         }
         ui::message(i18n::c("Install failed"), result.message, ui::Tone::Error,
                     name);
@@ -1161,11 +1161,11 @@ bool App::installCia(const std::string &path, const cia::Info &info,
 }
 
 void App::markInstalled(const std::string &address, const std::string &path,
-                        const std::string &message)
+                        const std::string &message, bool installed)
 {
     for (HistoryEntry &entry : history_) {
         if (entry.url == address && entry.path == path) {
-            if (message.compare(0, 9, "Installed") == 0) {
+            if (installed) {
                 entry.status = HistoryStatus::Installed;
             }
             entry.message = message;
@@ -2102,7 +2102,7 @@ void App::aboutScreen()
         const float top = ui::TopPanel.y + (ui::TopPanel.h - 84) / 2;
         ui::drawIcon(ui::Icon::AppMark, left, top, 48, ui::color::Accent);
         ui::drawText("3dsDL", left + 60, top + 2, 0.62f, ui::color::InkStrong);
-        ui::drawText(i18n::c("Version ") APP_VERSION, left + 60, top + 30,
+        ui::drawText(i18n::t("Version {0}", {APP_VERSION}), left + 60, top + 30,
                      ui::type::Small, ui::color::InkSoft);
         ui::drawTagRow(left, top + 64, 96, i18n::c("Settings in"), storage::DataFolder);
     };

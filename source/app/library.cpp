@@ -234,7 +234,7 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
             return false;
         }
         for (const std::string &id1 : id1s) {
-            const std::string titleRoot = i18n::t("{0}{1}/{2}/title/", {root, id0, id1});
+            const std::string titleRoot = root + id0 + "/" + id1 + "/title/";
             if (!fs::directoryExists(titleRoot)) {
                 continue;
             }
@@ -251,7 +251,7 @@ bool titlesOnSdCard(std::set<uint64_t> &out, std::string &error)
                         continue;
                     }
                     const std::string content =
-                        i18n::t("{0}{1}/{2}/content/", {titleRoot, high, low});
+                        titleRoot + high + "/" + low + "/content/";
                     if (!fs::directoryExists(content)) {
                         continue;
                     }

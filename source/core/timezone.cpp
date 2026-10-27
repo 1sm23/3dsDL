@@ -1,4 +1,5 @@
 #include "timezone.hpp"
+#include "i18n.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -104,26 +105,19 @@ std::string describeDrift(int64_t consoleUnixSeconds,
 {
     const int64_t difference = consoleUnixSeconds - correctUnixSeconds;
     const int64_t magnitude = std::llabs(difference);
-    const char *direction = difference < 0 ? "behind" : "ahead";
-
     if (magnitude < 60) {
-        return "correct to within a minute";
+        return i18n::t("correct to within a minute");
     }
-    char buffer[64];
     if (magnitude < 3600) {
-        std::snprintf(buffer, sizeof(buffer), "%lld minutes %s",
-                      static_cast<long long>(magnitude / 60), direction);
-    } else if (magnitude < 2 * 86400) {
-        std::snprintf(buffer, sizeof(buffer), "%lld hours %lld minutes %s",
-                      static_cast<long long>(magnitude / 3600),
-                      static_cast<long long>((magnitude / 60) % 60),
-                      direction);
-    } else {
-        std::snprintf(buffer, sizeof(buffer), "about %lld days %s",
-                      static_cast<long long>((magnitude + 43200) / 86400),
-                      direction);
+        return i18n::t(difference < 0 ? "{0} minutes behind" : "{0} minutes ahead",
+                       {std::to_string(magnitude / 60)});
     }
-    return buffer;
+    if (magnitude < 2 * 86400) {
+        return i18n::t(difference < 0 ? "{0} hours {1} minutes behind" : "{0} hours {1} minutes ahead",
+                       {std::to_string(magnitude / 3600), std::to_string((magnitude / 60) % 60)});
+    }
+    return i18n::t(difference < 0 ? "about {0} days behind" : "about {0} days ahead",
+                   {std::to_string((magnitude + 43200) / 86400)});
 }
 
 } // namespace tz

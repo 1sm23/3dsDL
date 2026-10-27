@@ -1908,7 +1908,7 @@ bool App::folderOptions(const std::string &folder,
             }
         }
         ui::Dialog dialog;
-        dialog.header = "install";
+        dialog.header = i18n::c("install");
         dialog.title = i18n::t("Install {0}?", {plural(paths.size(), "CIA")});
         dialog.body.push_back({i18n::t("From {0}", {folder}), ui::color::Muted, 0.46f, 2});
         dialog.buttons = {i18n::c("Install"), i18n::c("Install and Delete"), i18n::c("Cancel")};
@@ -3084,10 +3084,9 @@ void App::hexViewer(const std::string &path)
         const ui::Rect panel = {13, 47, 294, 28};
         ui::drawPanel(panel);
         char where[96];
-        std::snprintf(where, sizeof(where), "Offset 0x%llX of %s",
-                      static_cast<unsigned long long>(top),
-                      units::bytes(size).c_str());
-        ui::drawText(where, 160, panel.y + 6, ui::type::Small, ui::color::Ink,
+        std::snprintf(where, sizeof(where), "%llX",
+                      static_cast<unsigned long long>(top));
+        ui::drawText(i18n::t("Offset 0x{0} of {1}", {where, units::bytes(size)}), 160, panel.y + 6, ui::type::Small, ui::color::Ink,
                      C2D_AlignCenter);
         ui::drawButton(pad.rects[pageUp], i18n::c("Page Up"), ui::Style::Normal,
                        ui::type::Small + 0.02f, ui::Icon::None, 0,
@@ -3295,9 +3294,9 @@ void App::textEditor(const std::string &path)
         ui::beginFrame();
         const std::string name = basename(path);
         const float nameWidth = std::min(260.0f, ui::textWidth(name, ui::type::Title));
-        const std::string state = dirty      ? "edited"
-                                : saved    ? "saved"
-                                : readOnly ? "read-only"
+        const std::string state = dirty      ? i18n::c("edited")
+                                : saved    ? i18n::c("saved")
+                                : readOnly ? i18n::c("read-only")
                                            : "";
         const float width = 28 + nameWidth +
                             (state.empty() ? 0 : 8 + ui::textWidth(state, ui::type::Small));

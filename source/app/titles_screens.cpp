@@ -642,9 +642,9 @@ void App::extraDataScreen()
                 return titles::displayName(*owner, index);
             }
             char text[24];
-            std::snprintf(text, sizeof(text), "Extra data %08llX",
+            std::snprintf(text, sizeof(text), "%08llX",
                           static_cast<unsigned long long>(extData.id));
-            return std::string(text);
+            return i18n::t("Extra data {0}", {text});
         };
         std::vector<const library::ExtData *> shown;
         for (const library::ExtData &extData : library_.extData) {

@@ -39,7 +39,7 @@ void App::reportScreen()
     // compact code. Should it ever not fit, the plain form still works.
     QrCode issue(feedback::newIssueLink(console), QrCode::MaxVersion, true);
     if (!issue.ok()) {
-        issue = QrCode(i18n::t("{0}/new", {std::string(feedback::IssuesPage)}));
+        issue = QrCode(std::string(feedback::IssuesPage) + "/new");
     }
     const Place places[] = {
         {i18n::c("Report a Bug"), ui::Icon::Warning, ui::color::IconOrange,

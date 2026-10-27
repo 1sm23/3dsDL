@@ -2694,7 +2694,7 @@ ScreenResult runScreen(const ScreenSpec &spec, int &focus)
 {
     // Known by its layout, not its labels, which can change in place
     // (e.g. "Check at Startup: On").
-    std::string id = i18n::t("screen|{0}|{1}", {spec.back, spec.action});
+    std::string id = "screen|" + spec.back + "|" + spec.action;
     for (const Control &control : spec.controls) {
         id += "|" + std::to_string(static_cast<int>(control.rect.x)) + "," +
               std::to_string(static_cast<int>(control.rect.y)) + "," +
@@ -3100,7 +3100,7 @@ namespace {
 
 ListResult runListQuietly(const ListSpec &spec, int &cursor)
 {
-    enterScreen(i18n::t("list|{0}|{1}|{2}|{3}", {spec.title, spec.heading, spec.back, spec.action}));
+    enterScreen("list|" + spec.title + "|" + spec.heading + "|" + spec.back + "|" + spec.action);
     constexpr float RowHeight = 25;
     constexpr float Pitch = 31;
     const bool headed = !spec.heading.empty();

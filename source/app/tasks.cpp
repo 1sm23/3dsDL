@@ -383,7 +383,7 @@ bool busy(const std::string &header, const std::string &title,
         }
 
         ui::BusyView view;
-        view.header = header;
+        view.header = i18n::t(header);
         view.title = title;
         view.cancellable = cancellable;
         view.stopping = job.busy.cancel.load();
