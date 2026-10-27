@@ -1,4 +1,5 @@
 #include "app_util.hpp"
+#include "i18n.hpp"
 
 #include "installer.hpp"
 #include "tasks.hpp"
@@ -39,7 +40,7 @@ std::string basename(const std::string &path)
 
 std::string plural(uint64_t count, const std::string &word)
 {
-    return units::grouped(count) + " " + word + (count == 1 ? "" : "s");
+    return i18n::count(count, word, units::grouped(count));
 }
 
 bool readArchive(const std::string &path, archives::Scan scan,
@@ -58,7 +59,7 @@ bool readArchive(const std::string &path, archives::Scan scan,
     bool ok = false;
     error.clear();
     const bool finished = tasks::busy(
-        "Archive", "Reading " + basename(path) + "...",
+        i18n::c("Archive"), i18n::t("Reading {0}...", {basename(path)}),
         [&](tasks::Busy &busy) {
             const int64_t size = fs::fileSize(path);
             busy.bytes = true;
@@ -78,15 +79,15 @@ std::string sortDescription(fs::SortOrder order, bool reverse)
 {
     switch (order) {
     case fs::SortOrder::Size:
-        return reverse ? "Smallest First" : "Largest First";
+        return reverse ? i18n::c("Smallest First") : i18n::c("Largest First");
     case fs::SortOrder::Date:
-        return reverse ? "Oldest First" : "Newest First";
+        return reverse ? i18n::c("Oldest First") : i18n::c("Newest First");
     case fs::SortOrder::Type:
-        return reverse ? "Type, Z to A" : "Type, A to Z";
+        return reverse ? i18n::c("Type, Z to A") : i18n::c("Type, A to Z");
     case fs::SortOrder::Name:
         break;
     }
-    return reverse ? "Name, Z to A" : "Name, A to Z";
+    return reverse ? i18n::c("Name, Z to A") : i18n::c("Name, A to Z");
 }
 
 void drawLabelledPanel(float y, float height, const std::string &label,
@@ -101,7 +102,7 @@ void drawLabelledPanel(float y, float height, const std::string &label,
 std::string ciaName(const cia::Info &info)
 {
     return info.smdh.shortName.empty()
-        ? "title " + cia::titleIdText(info.titleId)
+        ? i18n::t("title {0}", {cia::titleIdText(info.titleId)})
         : info.smdh.shortName;
 }
 
@@ -118,8 +119,7 @@ void addCiaParagraphs(ui::Dialog &dialog, const cia::Info &info)
          ui::color::Text, 0.46f, 2});
     uint16_t installed = 0;
     if (installer::installedVersion(info.titleId, installed)) {
-        dialog.body.push_back({"Installed now: " +
-                                   titleVersion(info.titleId, installed),
+        dialog.body.push_back({i18n::t("Installed now: {0}", {titleVersion(info.titleId, installed)}),
                                installed > info.version ? ui::color::Warning
                                                         : ui::color::Muted,
                                0.44f, 1});
@@ -142,16 +142,16 @@ void drawCiaTop(const cia::Info &info, const std::string &title,
                     left + 60, top + 30, ui::type::Small, ui::color::InkSoft,
                     280);
     float y = top + 60;
-    y = ui::drawTagRow(left, y, 76, "Title ID", cia::titleIdText(info.titleId));
+    y = ui::drawTagRow(left, y, 76, i18n::c("Title ID"), cia::titleIdText(info.titleId));
     uint16_t installed = 0;
     const bool isInstalled = installedCached(info.titleId, installed);
-    y = ui::drawTagRow(left, y, 76, "Version",
+    y = ui::drawTagRow(left, y, 76, i18n::c("Version"),
                        versionRow(info.titleId, info.version, isInstalled,
                                   installed));
-    ui::drawTagRow(left, y, 76, "Size",
+    ui::drawTagRow(left, y, 76, i18n::c("Size"),
                    units::bytes(info.fileSize) + ", " +
-                       (cia::installsToNand(info.titleId) ? "system memory"
-                                                          : "SD card"));
+                       (cia::installsToNand(info.titleId) ? i18n::c("system memory")
+                                                          : i18n::c("SD card")));
 }
 
 std::string titleVersion(uint64_t titleId, uint16_t version)
@@ -168,12 +168,12 @@ std::string versionRow(uint64_t titleId, uint16_t version, bool isInstalled,
         return text.substr(0, text.find(' '));
     };
     if (!isInstalled) {
-        return shortText(version) + ", not installed";
+        return i18n::t("{0}, not installed", {shortText(version)});
     }
     if (installed == version) {
-        return shortText(version) + ", installed";
+        return i18n::t("{0}, installed", {shortText(version)});
     }
-    return shortText(version) + ", installed " + shortText(installed);
+    return i18n::t("{0}, installed {1}", {shortText(version), shortText(installed)});
 }
 
 } // namespace screens

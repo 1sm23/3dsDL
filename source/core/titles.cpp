@@ -1,4 +1,5 @@
 #include "titles.hpp"
+#include "i18n.hpp"
 
 #include "text.hpp"
 
@@ -212,14 +213,12 @@ bool parseSeedDb(const std::string &data, std::vector<SeedEntry> &out,
     constexpr size_t EntrySize = 32;
     out.clear();
     if (data.size() < Header) {
-        error = "The file is too short to be a seeddb.bin.";
+        error = i18n::c("The file is too short to be a seeddb.bin.");
         return false;
     }
     const uint64_t count = readLe(data, 0, 4);
     if (Header + count * EntrySize != data.size()) {
-        error = "The file says it holds " + std::to_string(count) +
-                " seeds, but its size does not match. It is probably not a "
-                "seeddb.bin.";
+        error = i18n::t("The file says it holds {0} seeds, but its size does not match. It is probably not a seeddb.bin.", {std::to_string(count)});
         return false;
     }
     out.reserve(static_cast<size_t>(count));

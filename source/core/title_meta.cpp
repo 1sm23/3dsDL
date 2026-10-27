@@ -1,4 +1,5 @@
 #include "title_meta.hpp"
+#include "i18n.hpp"
 
 #include "smdh.hpp"
 #include "text.hpp"
@@ -77,7 +78,7 @@ bool readHomebrew(const cia::Reader &read, Meta &meta, std::string &error)
     uint8_t header[0x2c];
     if (!read(0, header, sizeof(header)) ||
         std::memcmp(header, "3DSX", 4) != 0) {
-        error = "This is not a 3DSX file.";
+        error = i18n::c("This is not a 3DSX file.");
         return false;
     }
     // Only the extended header has the SMDH's place.
@@ -85,7 +86,7 @@ bool readHomebrew(const cia::Reader &read, Meta &meta, std::string &error)
         readSmdhAt(read, le32(header + 0x20), meta);
     }
     if (meta.name.empty()) {
-        meta.note = "It has no built-in name or icon.";
+        meta.note = i18n::c("It has no built-in name or icon.");
     }
     return true;
 }
@@ -94,7 +95,7 @@ bool readCartridge(const cia::Reader &read, Meta &meta, std::string &error)
 {
     uint8_t ncsd[0x200];
     if (!read(0, ncsd, sizeof(ncsd)) || std::memcmp(ncsd + 0x100, "NCSD", 4)) {
-        error = "This is not a 3DS game image.";
+        error = i18n::c("This is not a 3DS game image.");
         return false;
     }
     meta.titleId = le64(ncsd + 0x108);
@@ -104,13 +105,13 @@ bool readCartridge(const cia::Reader &read, Meta &meta, std::string &error)
     uint8_t ncch[0x200];
     if (!read(ncchOffset, ncch, sizeof(ncch)) ||
         std::memcmp(ncch + 0x100, "NCCH", 4) != 0) {
-        meta.note = "The game partition could not be read.";
+        meta.note = i18n::c("The game partition could not be read.");
         return true;
     }
     meta.productCode = ascii(ncch + 0x150, 16);
     const uint8_t flags = ncch[0x18f];
     if ((flags & 0x04) == 0) {
-        meta.note = "It is encrypted, so its name and icon are hidden.";
+        meta.note = i18n::c("It is encrypted, so its name and icon are hidden.");
         return true;
     }
 
@@ -167,7 +168,7 @@ bool readNds(const cia::Reader &read, Meta &meta, std::string &error)
 {
     uint8_t header[0x70];
     if (!read(0, header, sizeof(header))) {
-        error = "The file could not be read.";
+        error = i18n::c("The file could not be read.");
         return false;
     }
     meta.name = ascii(header, 12);
@@ -176,7 +177,7 @@ bool readNds(const cia::Reader &read, Meta &meta, std::string &error)
     uint8_t data[0x440];
     if (banner == 0 || !read(banner, data, sizeof(data))) {
         if (meta.name.empty()) {
-            error = "This is not a DS game.";
+            error = i18n::c("This is not a DS game.");
             return false;
         }
         return true;
@@ -221,7 +222,7 @@ bool readTicket(const cia::Reader &read, uint64_t size, Meta &meta,
 {
     uint8_t type[4];
     if (!read(0, type, sizeof(type))) {
-        error = "The file could not be read.";
+        error = i18n::c("The file could not be read.");
         return false;
     }
     const uint32_t signature = (static_cast<uint32_t>(type[0]) << 24) |
@@ -241,13 +242,13 @@ bool readTicket(const cia::Reader &read, uint64_t size, Meta &meta,
         offset = 4 + 0x3c + 0x40;
         break;
     default:
-        error = "This is not a ticket.";
+        error = i18n::c("This is not a ticket.");
         return false;
     }
     uint8_t id[8];
     if ((size > 0 && offset + 0x9c + 8 > size) ||
         !read(offset + 0x9c, id, sizeof(id))) {
-        error = "The ticket is incomplete.";
+        error = i18n::c("The ticket is incomplete.");
         return false;
     }
     meta.titleId = be64(id);
@@ -266,7 +267,7 @@ bool read(const cia::Reader &read, uint64_t size, filetype::Kind kind,
         return readHomebrew(read, meta, error);
     case filetype::Kind::Smdh:
         if (!readSmdhAt(read, 0, meta)) {
-            error = "This is not an SMDH file.";
+            error = i18n::c("This is not an SMDH file.");
             return false;
         }
         return true;
@@ -277,7 +278,7 @@ bool read(const cia::Reader &read, uint64_t size, filetype::Kind kind,
     case filetype::Kind::Ticket:
         return readTicket(read, size, meta, error);
     default:
-        error = "There is nothing to show for this kind of file.";
+        error = i18n::c("There is nothing to show for this kind of file.");
         return false;
     }
 }
@@ -288,7 +289,7 @@ bool read(const std::string &path, filetype::Kind kind, Meta &meta,
     std::FILE *file = std::fopen(path.c_str(), "rb");
     if (file == nullptr) {
         meta = Meta();
-        error = "The file could not be opened.";
+        error = i18n::c("The file could not be opened.");
         return false;
     }
     uint64_t size = 0;

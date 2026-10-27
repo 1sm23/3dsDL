@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "i18n.hpp"
 
 #include "app_util.hpp"
 #include "finalize.hpp"
@@ -39,7 +40,7 @@ void drawBadgeIcon(float x, float y, ui::Icon icon, u32 fill)
 // The badge and headline over facts about the installed and newest versions.
 void drawUpdateTop(const updater::Status &status)
 {
-    ui::drawTopChrome("Software Update", ui::Icon::Download,
+    ui::drawTopChrome(i18n::c("Software Update"), ui::Icon::Download,
                       ui::color::IconGreen);
     ui::drawPanel();
     const float left = ui::TopPanel.x + 18;
@@ -48,41 +49,41 @@ void drawUpdateTop(const updater::Status &status)
 
     ui::Icon icon = ui::Icon::Warning;
     u32 fill = ui::color::IconOrange;
-    std::string headline = "Update check failed.";
-    std::vector<ui::Fact> facts = {{"Installed", APP_VERSION}};
+    std::string headline = i18n::c("Update check failed.");
+    std::vector<ui::Fact> facts = {{i18n::c("Installed"), APP_VERSION}};
     switch (status.state) {
     case updater::State::Available: {
         icon = ui::Icon::AppMark;
         fill = ui::color::Accent;
-        headline = "An update is available.";
+        headline = i18n::c("An update is available.");
         const update::Asset *asset =
             update::findAsset(release, updater::assetName());
-        facts.push_back({"New",
+        facts.push_back({i18n::c("New"),
                          release.version +
                              (asset != nullptr && asset->size > 0
                                   ? ", " + units::bytes(asset->size)
                                   : ""),
                          ui::color::Good});
         if (!release.published.empty()) {
-            facts.push_back({"Released", release.published});
+            facts.push_back({i18n::c("Released"), release.published});
         }
         break;
     }
     case updater::State::UpToDate:
         icon = ui::Icon::Check;
         fill = ui::color::Good;
-        headline = "3dsDL is up to date.";
-        facts.push_back({"Newest", release.version});
+        headline = i18n::c("3dsDL is up to date.");
+        facts.push_back({i18n::c("Newest"), release.version});
         if (!release.published.empty()) {
-            facts.push_back({"Released", release.published});
+            facts.push_back({i18n::c("Released"), release.published});
         }
         break;
     default:
-        facts.push_back({"Error", status.message.empty() ? "Not checked yet."
+        facts.push_back({i18n::c("Error"), status.message.empty() ? i18n::c("Not checked yet.")
                                                          : status.message});
         // A wrong clock makes every certificate look invalid.
         if (status.certificateProblem) {
-            facts.push_back({"Clock", "Check Settings, Console Clock",
+            facts.push_back({i18n::c("Clock"), i18n::c("Check Settings, Console Clock"),
                              ui::color::Badge});
         }
         break;
@@ -119,9 +120,8 @@ void App::pollUpdate()
     if (updateAvailable_ && !updateNoticeShown_) {
         updateNoticeShown_ = true;
         ui::Notice notice;
-        notice.title = "Update Available";
-        notice.text = "Get 3dsDL " + status.release.version +
-                      " from Settings.";
+        notice.title = i18n::c("Update Available");
+        notice.text = i18n::t("Get 3dsDL {0} from Settings.", {status.release.version});
         ui::notify(notice);
     }
 }
@@ -131,7 +131,7 @@ void App::softwareUpdateScreen()
     updater::Status status = updater::status();
     const auto check = [&]() {
         tasks::busy(
-            "Software Update", "Checking for updates...",
+            i18n::c("Software Update"), i18n::c("Checking for updates..."),
             [&](tasks::Busy &busy) { status = updater::checkNow(&busy.cancel); },
             true);
         updateGeneration_ = updater::generation();
@@ -150,7 +150,7 @@ void App::softwareUpdateScreen()
         const bool haveRelease = available ||
                                  status.state == updater::State::UpToDate;
         ui::ScreenSpec spec;
-        spec.back = "Back";
+        spec.back = i18n::c("Back");
         const auto add = [&](ui::Rect rect, const std::string &label,
                              ui::Icon icon, u32 iconColor, bool enabled) {
             ui::Control control;
@@ -164,22 +164,21 @@ void App::softwareUpdateScreen()
         };
         // Centred between the top and the tabs.
         if (available) {
-            add({30, 40, 260, 44}, "Update to " + status.release.version,
+            add({30, 40, 260, 44}, i18n::t("Update to {0}", {status.release.version}),
                 ui::Icon::Download, ui::color::IconGreen, true);
             spec.controls.back().scale = ui::type::Button;
         } else {
-            add({30, 40, 260, 44}, "Check for Updates", ui::Icon::Globe,
+            add({30, 40, 260, 44}, i18n::c("Check for Updates"), ui::Icon::Globe,
                 ui::color::IconTeal, true);
             spec.controls.back().scale = ui::type::Button;
         }
         add({30, 94, 260, 32},
-            haveRelease ? "What's New in " + status.release.version
-                        : "What's New",
+            haveRelease ? i18n::t("What's New in {0}", {status.release.version})
+                        : i18n::c("What's New"),
             ui::Icon::Text, ui::color::IconGrey,
             haveRelease && !status.release.notes.empty());
         add({30, 136, 260, 32},
-            std::string("Check at Startup: ") +
-                (settings_.checkForUpdates ? "On" : "Off"),
+            i18n::t("Check at Startup: {0}", {(settings_.checkForUpdates ? i18n::c("On") : i18n::c("Off"))}),
             ui::Icon::Clock, ui::color::IconBlue, true);
         spec.drawTop = [&]() { drawUpdateTop(status); };
 
@@ -230,12 +229,12 @@ void App::showReleaseNotes(const update::Release &release)
     }
     const float viewport = ui::ScreenHeight - Top - 4;
     const float content = lines.size() * pitch;
-    const std::string title = "What's New in " + release.version;
+    const std::string title = i18n::t("What's New in {0}", {release.version});
 
     ui::Scroller scroller;
     bool backPressed = false;
     const ui::Rect back = ui::tabRect(ui::Tab::Left);
-    ui::enterScreen("whats-new");
+    ui::enterScreen(i18n::c("whats-new"));
     while (ui::keepRunning()) {
         const ui::Input input = ui::readInput();
         if (input.down & KEY_B) {
@@ -297,7 +296,7 @@ void App::showReleaseNotes(const update::Release &release)
         }
 
         ui::beginBottom();
-        ui::drawTab(ui::Tab::Left, "Back", "B",
+        ui::drawTab(ui::Tab::Left, i18n::c("Back"), "B",
                     backPressed && (input.held & KEY_TOUCH));
         ui::endFrame();
     }
@@ -308,16 +307,14 @@ void App::installUpdate(const update::Release &release)
     const std::string name = updater::assetName();
     const update::Asset *asset = update::findAsset(release, name);
     if (asset == nullptr) {
-        ui::message("Update Not Available",
-                    "The " + release.version + " release has no " + name +
-                        " file to update from.",
+        ui::message(i18n::c("Update Not Available"),
+                    i18n::t("The {0} release has no {1} file to update from.", {release.version, name}),
                     ui::Tone::Error);
         return;
     }
     if (platform::wifiStatus() == platform::Wifi::Disconnected) {
-        ui::message("Not Connected",
-                    "Updating needs the internet. Turn wireless "
-                    "communication on and try again.",
+        ui::message(i18n::c("Not Connected"),
+                    i18n::c("Updating needs the internet. Turn wireless communication on and try again."),
                     ui::Tone::Warning);
         return;
     }
@@ -325,7 +322,7 @@ void App::installUpdate(const update::Release &release)
     std::string listing;
     std::string error;
     bool listed = false;
-    if (!tasks::busy("Software Update", "Getting the release's checksums...",
+    if (!tasks::busy(i18n::c("Software Update"), i18n::c("Getting the release's checksums..."),
                      [&](tasks::Busy &busy) {
                          listed = updater::fetchChecksums(release, listing,
                                                           error, &busy.cancel);
@@ -336,9 +333,8 @@ void App::installUpdate(const update::Release &release)
     const std::string expected =
         listed ? update::checksumFor(listing, name) : "";
     if (expected.empty()) {
-        ui::message("Update Not Installed",
-                    listed ? "The release's checksum file does not list " +
-                                 name + "."
+        ui::message(i18n::c("Update Not Installed"),
+                    listed ? i18n::t("The release's checksum file does not list {0}.", {name})
                            : error,
                     ui::Tone::Error);
         return;
@@ -351,8 +347,8 @@ void App::installUpdate(const update::Release &release)
                                    : updater::homebrewPath();
     const std::string folder = folderOf(target);
     if (!fs::makeDirectories(folder)) {
-        ui::message("Update Not Installed",
-                    "Could not create " + folder + ".", ui::Tone::Error);
+        ui::message(i18n::c("Update Not Installed"),
+                    i18n::t("Could not create {0}.", {folder}), ui::Tone::Error);
         return;
     }
 
@@ -372,22 +368,20 @@ void App::installUpdate(const update::Release &release)
         return;
     }
     if (result.outcome != net::Outcome::Completed) {
-        ui::message("The update could not be downloaded.", result.message,
+        ui::message(i18n::c("The update could not be downloaded."), result.message,
                     ui::Tone::Error, result.detail);
         return;
     }
 
     std::string actual;
-    tasks::busy("Software Update", "Checking the download...",
+    tasks::busy(i18n::c("Software Update"), i18n::c("Checking the download..."),
                 [&]() { actual = sha256::ofFile(result.partPath); });
     if (actual != expected) {
         fs::removeFile(result.partPath);
-        ui::message("Update Not Installed",
-                    "The download did not match the release's checksum, so "
-                    "nothing was changed. Try again.",
+        ui::message(i18n::c("Update Not Installed"),
+                    i18n::c("The download did not match the release's checksum, so nothing was changed. Try again."),
                     ui::Tone::Error,
-                    "Expected " + expected + ", got " +
-                        (actual.empty() ? "an unreadable file" : actual) + ".");
+                    i18n::t("Expected {0}, got {1}.", {expected, (actual.empty() ? i18n::c("an unreadable file") : actual)}));
         return;
     }
 
@@ -396,7 +390,7 @@ void App::installUpdate(const update::Release &release)
             finalize::commit(result.partPath, folder, name, true, platform::now());
         if (!placed.ok) {
             fs::removeFile(placed.path);
-            ui::message("Update Not Installed", placed.message, ui::Tone::Error);
+            ui::message(i18n::c("Update Not Installed"), placed.message, ui::Tone::Error);
             return;
         }
         cia::Info info;
@@ -405,9 +399,8 @@ void App::installUpdate(const update::Release &release)
         if (!cia::readInfo(placed.path, info, error) ||
             (running != 0 && info.titleId != running)) {
             fs::removeFile(placed.path);
-            ui::message("Update Not Installed",
-                        "The downloaded CIA is not 3dsDL, so it was not "
-                        "installed.",
+            ui::message(i18n::c("Update Not Installed"),
+                        i18n::c("The downloaded CIA is not 3dsDL, so it was not installed."),
                         ui::Tone::Error, error);
             return;
         }
@@ -417,7 +410,7 @@ void App::installUpdate(const update::Release &release)
         // has just been replaced.
         if (!installer::available()) {
             fs::removeFile(placed.path);
-            ui::message("Update Not Installed", installer::unavailableReason(),
+            ui::message(i18n::c("Update Not Installed"), installer::unavailableReason(),
                         ui::Tone::Error);
             return;
         }
@@ -425,22 +418,18 @@ void App::installUpdate(const update::Release &release)
         const int64_t free = platform::sdFreeBytes();
         if (needed > 0 && free >= 0 && needed > free) {
             fs::removeFile(placed.path);
-            ui::message("Update Not Installed",
-                        "The update needs " +
-                            units::bytes(static_cast<uint64_t>(needed)) +
-                            " on the SD card and " +
-                            units::bytes(static_cast<uint64_t>(free)) +
-                            " is free.",
+            ui::message(i18n::c("Update Not Installed"),
+                        i18n::t("The update needs {0} on the SD card and {1} is free.", {units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}),
                         ui::Tone::Error);
             return;
         }
         const installer::Result installed =
-            tasks::install(placed.path, info.titleId, "3dsDL " + release.version,
+            tasks::install(placed.path, info.titleId, i18n::t("3dsDL {0}", {release.version}),
                            settings_.keepAwake, info.smdh.icon);
         fs::removeFile(placed.path);
         if (installed.outcome != installer::Outcome::Installed) {
             if (installed.outcome == installer::Outcome::Failed) {
-                ui::message("Update Not Installed", installed.message,
+                ui::message(i18n::c("Update Not Installed"), installed.message,
                             ui::Tone::Error);
             }
             return;
@@ -448,10 +437,10 @@ void App::installUpdate(const update::Release &release)
         updateAvailable_ = false;
 
         ui::Dialog dialog;
-        dialog.header = "Software Update";
-        dialog.title = "3dsDL has been updated to " + release.version + ".";
+        dialog.header = i18n::c("Software Update");
+        dialog.title = i18n::t("3dsDL has been updated to {0}.", {release.version});
         dialog.tone = ui::Tone::Success;
-        dialog.buttons = {"Restart"};
+        dialog.buttons = {i18n::c("Restart")};
         ui::choose(dialog);
         // Closing with the chainloader set starts the new version.
         aptSetChainloaderToSelf();
@@ -471,19 +460,18 @@ void App::installUpdate(const update::Release &release)
             fs::removeFile(placed.path);
         }
         romfsInit();
-        ui::message("Update Not Installed",
+        ui::message(i18n::c("Update Not Installed"),
                     placed.message.empty()
-                        ? "The new version could not be put in place of " +
-                              target + "."
+                        ? i18n::t("The new version could not be put in place of {0}.", {target})
                         : placed.message,
                     ui::Tone::Error);
         return;
     }
     ui::Dialog dialog;
-    dialog.header = "Software Update";
-    dialog.title = "3dsDL has been updated to " + release.version + ".";
+    dialog.header = i18n::c("Software Update");
+    dialog.title = i18n::t("3dsDL has been updated to {0}.", {release.version});
     dialog.tone = ui::Tone::Success;
-    dialog.buttons = {"Close 3dsDL"};
+    dialog.buttons = {i18n::c("Close 3dsDL")};
     ui::choose(dialog);
     quit_ = true;
 }

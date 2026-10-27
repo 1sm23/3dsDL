@@ -1,4 +1,5 @@
 #include "remote_server.hpp"
+#include "i18n.hpp"
 
 #include "file_ops.hpp"
 #include "file_types.hpp"
@@ -92,7 +93,7 @@ bool listenOn(unsigned short port, int &socketFd, unsigned short &bound,
 {
     socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (socketFd < 0) {
-        error = "Could not open a network socket.";
+        error = i18n::c("Could not open a network socket.");
         return false;
     }
     const int on = 1;
@@ -104,7 +105,7 @@ bool listenOn(unsigned short port, int &socketFd, unsigned short &bound,
     if (bind(socketFd, reinterpret_cast<sockaddr *>(&address),
              sizeof(address)) != 0 ||
         listen(socketFd, 4) != 0) {
-        error = "Port " + std::to_string(port) + " is in use.";
+        error = i18n::t("Port {0} is in use.", {std::to_string(port)});
         closeSocket(socketFd);
         return false;
     }
@@ -326,7 +327,7 @@ bool readBody(int client, std::string &data, size_t bodyStart,
               remote::HttpRequest &request, Clock::time_point deadline)
 {
     if (request.contentLength > 64 * 1024) {
-        sendAll(client, remote::jsonError(413, "That request is too large."));
+        sendAll(client, remote::jsonError(413, i18n::c("That request is too large.")));
         return false;
     }
     const size_t end = bodyStart + static_cast<size_t>(request.contentLength);
@@ -350,7 +351,7 @@ void listFolder(int client, const FileSharing &sharing,
     std::vector<fs::Entry> entries =
         fs::listEntries(local, &ok, hidden, false);
     if (!ok) {
-        sendAll(client, remote::jsonError(404, "That folder does not exist."));
+        sendAll(client, remote::jsonError(404, i18n::c("That folder does not exist.")));
         return;
     }
     times = times && entries.size() <= TimedEntries;
@@ -490,7 +491,7 @@ bool readTitle(const std::string &local, Title &title, std::string &error)
         return true;
     }
     if (!filetype::hasTitleMeta(kind)) {
-        error = "This kind of file has no title.";
+        error = i18n::c("This kind of file has no title.");
         return false;
     }
     titlemeta::Meta meta;
@@ -519,7 +520,7 @@ void sendTitle(int client, const FileSharing &sharing, const std::string &local,
     if (iconOnly) {
         const std::string bmp = remote::iconBmp(title.icon);
         if (bmp.empty()) {
-            sendAll(client, remote::jsonError(404, "It has no icon."));
+            sendAll(client, remote::jsonError(404, i18n::c("It has no icon.")));
             return;
         }
         // The page asks with the file's time in the address, so a changed
@@ -595,7 +596,7 @@ void sendFile(int client, const FileSharing &sharing, const std::string &from,
                      ? nullptr
                      : std::fopen(local.c_str(), "rb");
     if (file == nullptr) {
-        sendAll(client, remote::jsonError(404, "That file does not exist."));
+        sendAll(client, remote::jsonError(404, i18n::c("That file does not exist.")));
         return;
     }
     const std::string name = fileops::name(local);
@@ -686,12 +687,11 @@ void receiveFile(int client, const FileSharing &sharing,
     const bool replace = remote::formValue(request.query, "replace") == "1";
     if (request.headers.count("transfer-encoding") != 0 ||
         request.headers.count("content-length") == 0) {
-        sendAll(client, remote::jsonError(411, "Send the file with its size."));
+        sendAll(client, remote::jsonError(411, i18n::c("Send the file with its size.")));
         return;
     }
     if (!fs::directoryExists(folder)) {
-        sendAll(client, remote::jsonError(404, "The folder for " + name +
-                                                   " does not exist."));
+        sendAll(client, remote::jsonError(404, i18n::t("The folder for {0} does not exist.", {name})));
         return;
     }
     // Whether local is taken is found out at the end, by the rename that
@@ -702,8 +702,7 @@ void receiveFile(int client, const FileSharing &sharing,
         const int64_t free = sharing.freeSpace();
         if (free >= 0 && total > static_cast<uint64_t>(free)) {
             sendAll(client, remote::jsonError(
-                                507, "The SD card does not have room for " +
-                                         name + "."));
+                                507, i18n::t("The SD card does not have room for {0}.", {name})));
             return;
         }
     }
@@ -714,8 +713,7 @@ void receiveFile(int client, const FileSharing &sharing,
                              ".3dsdl-upload.part";
     FILE *file = std::fopen(part.c_str(), "wb");
     if (file == nullptr) {
-        sendAll(client, remote::jsonError(500, "Could not create " + name +
-                                                   " on the SD card."));
+        sendAll(client, remote::jsonError(500, i18n::t("Could not create {0} on the SD card.", {name})));
         return;
     }
     std::setvbuf(file, nullptr, _IONBF, 0);
@@ -724,8 +722,7 @@ void receiveFile(int client, const FileSharing &sharing,
     if (total > 0 && ftruncate(fileno(file), static_cast<off_t>(total)) != 0) {
         std::fclose(file);
         fs::removeFile(part);
-        sendAll(client, remote::jsonError(507, "The SD card does not have room for " +
-                                                   name + "."));
+        sendAll(client, remote::jsonError(507, i18n::t("The SD card does not have room for {0}.", {name})));
         return;
     }
 
@@ -773,14 +770,14 @@ void receiveFile(int client, const FileSharing &sharing,
 
     bool ok = written && connected;
     int status = 500;
-    std::string problem = "Could not write " + name + " to the SD card.";
+    std::string problem = i18n::t("Could not write {0} to the SD card.", {name});
     bool placed = false;
     if (ok && replace && total <= OverwriteBytes) {
         const Overwrite result = overwrite(part, local, total, buffer);
         placed = result == Overwrite::Done;
         if (result == Overwrite::Failed) {
             ok = false;
-            problem = "Could not replace " + name + ".";
+            problem = i18n::t("Could not replace {0}.", {name});
         }
     } else if (ok && replace) {
         fs::removeFile(local); // when it is there
@@ -790,10 +787,10 @@ void receiveFile(int client, const FileSharing &sharing,
         // Only now is it worth searching the folder to say why.
         if (fileops::isFolder(local)) {
             status = 409;
-            problem = "A folder is already called " + name + ".";
+            problem = i18n::t("A folder is already called {0}.", {name});
         } else if (fileops::exists(local)) {
             status = 409;
-            problem = name + " already exists.";
+            problem = i18n::t("{0} already exists.", {name});
         }
     }
     if (!ok || placed) {
@@ -823,7 +820,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         return false;
     }
     if (sharing.root.empty()) {
-        sendAll(client, remote::jsonError(404, "Files are not shared."));
+        sendAll(client, remote::jsonError(404, i18n::c("Files are not shared.")));
         return false;
     }
     const Access access =
@@ -835,8 +832,8 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
                     403, "application/json",
                     std::string("{\"error\":") +
                         remote::jsonString(
-                            pending ? "Choose Allow on the 3DS to see its files."
-                                    : "The 3DS did not allow this device.") +
+                            pending ? i18n::c("Choose Allow on the 3DS to see its files.")
+                                    : i18n::c("The 3DS did not allow this device.")) +
                         ",\"access\":\"" + (pending ? "pending" : "denied") +
                         "\"}"));
         return false;
@@ -850,7 +847,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             return true;
         }
         sendAll(client,
-                remote::jsonError(400, "That is not a path on the SD card."));
+                remote::jsonError(400, i18n::c("That is not a path on the SD card.")));
         return false;
     };
 
@@ -877,14 +874,14 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             sendFile(client, sharing, from, local,
                      remote::formValue(request.query, "download") == "1");
         } else if (isRoot(sharing, local)) {
-            sendAll(client, remote::jsonError(400, "Name the file to upload."));
+            sendAll(client, remote::jsonError(400, i18n::c("Name the file to upload.")));
         } else {
             receiveFile(client, sharing, from, request, data, bodyStart, local);
         }
         return false;
     }
     if (method != "POST") {
-        sendAll(client, remote::jsonError(404, "There is nothing here."));
+        sendAll(client, remote::jsonError(404, i18n::c("There is nothing here.")));
         return false;
     }
     if (!readBody(client, data, bodyStart, request, deadline)) {
@@ -897,10 +894,9 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             return false;
         }
         if (fileops::exists(local) && !fileops::isFolder(local)) {
-            sendAll(client, remote::jsonError(409, "A file is already called " +
-                                                       fileops::name(local) + "."));
+            sendAll(client, remote::jsonError(409, i18n::t("A file is already called {0}.", {fileops::name(local)})));
         } else if (!fs::makeDirectories(local)) {
-            sendAll(client, remote::jsonError(500, "Could not create the folder."));
+            sendAll(client, remote::jsonError(500, i18n::c("Could not create the folder.")));
         } else {
             sendJson(client, "{}");
         }
@@ -926,12 +922,11 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         }
         std::string error;
         if (isRoot(sharing, local) || isRoot(sharing, destination)) {
-            sendAll(client, remote::jsonError(400, "The SD card itself cannot move."));
+            sendAll(client, remote::jsonError(400, i18n::c("The SD card itself cannot move.")));
         } else if (!fileops::exists(local)) {
-            sendAll(client, remote::jsonError(404, fileops::name(local) +
-                                                       " is not there any more."));
+            sendAll(client, remote::jsonError(404, i18n::t("{0} is not there any more.", {fileops::name(local)})));
         } else if (!fs::directoryExists(folderOf(destination))) {
-            sendAll(client, remote::jsonError(404, "That folder does not exist."));
+            sendAll(client, remote::jsonError(404, i18n::c("That folder does not exist.")));
         } else if (!fileops::move(local, destination, error)) {
             sendAll(client, remote::jsonError(409, error));
         } else {
@@ -944,7 +939,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             return false;
         }
         if (isRoot(sharing, local)) {
-            sendAll(client, remote::jsonError(400, "The SD card itself cannot be deleted."));
+            sendAll(client, remote::jsonError(400, i18n::c("The SD card itself cannot be deleted.")));
             return false;
         }
         if (!fileops::exists(local)) {
@@ -986,14 +981,14 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             start = end + 1;
         }
         if (out.install.empty()) {
-            sendAll(client, remote::jsonError(400, "There are no CIAs to install."));
+            sendAll(client, remote::jsonError(400, i18n::c("There are no CIAs to install.")));
             return false;
         }
         out.from = from;
         sendJson(client, "{\"count\":" + std::to_string(out.install.size()) + "}");
         return true;
     }
-    sendAll(client, remote::jsonError(404, "There is nothing here."));
+    sendAll(client, remote::jsonError(404, i18n::c("There is nothing here.")));
     return false;
 }
 
@@ -1147,7 +1142,7 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
     if (state != remote::Parse::Done) {
         if (state == remote::Parse::Bad) {
             sendAll(client, remote::httpResponse(400, "text/plain",
-                                                 "Bad request\n"));
+                                                 i18n::c("Bad request\n")));
         }
         closeClient(client);
         return false;
@@ -1162,10 +1157,9 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
         const std::string sent = remote::formValue(request.query, "sent");
         const std::string message =
             sent.empty() ? ""
-            : sent == "0" ? "No links were found in what you sent."
-            : sent == "1" ? "Sent 1 link. It is downloading on the 3DS."
-                          : "Sent " + sent +
-                                " links. They are downloading on the 3DS.";
+            : sent == "0" ? i18n::c("No links were found in what you sent.")
+            : sent == "1" ? i18n::c("Sent 1 link. It is downloading on the 3DS.")
+                          : i18n::t("Sent {0} links. They are downloading on the 3DS.", {sent});
         sendAll(client, remote::httpResponse(200, html,
                                              remote::page(message, sent != "0")));
     } else if (request.path == "/send" &&
@@ -1194,9 +1188,9 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
         sendAll(client, response);
     } else if (request.method != "GET" && request.method != "POST") {
         sendAll(client, remote::httpResponse(405, "text/plain",
-                                             "Method not allowed\n"));
+                                             i18n::c("Method not allowed\n")));
     } else {
-        sendAll(client, remote::httpResponse(404, "text/plain", "Not found\n"));
+        sendAll(client, remote::httpResponse(404, "text/plain", i18n::c("Not found\n")));
     }
     closeClient(client);
     return got;

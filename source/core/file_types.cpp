@@ -1,4 +1,5 @@
 #include "file_types.hpp"
+#include "i18n.hpp"
 
 #include "naming.hpp"
 #include "text.hpp"
@@ -87,35 +88,35 @@ const char *label(Kind kind)
 {
     switch (kind) {
     case Kind::Folder:
-        return "Folder";
+        return i18n::c("Folder");
     case Kind::Cia:
-        return "CIA installer";
+        return i18n::c("CIA installer");
     case Kind::Ticket:
-        return "Ticket";
+        return i18n::c("Ticket");
     case Kind::Homebrew:
-        return "Homebrew app";
+        return i18n::c("Homebrew app");
     case Kind::Smdh:
-        return "Title icon (SMDH)";
+        return i18n::c("Title icon (SMDH)");
     case Kind::CartridgeImage:
-        return "3DS game image";
+        return i18n::c("3DS game image");
     case Kind::Nds:
-        return "DS game";
+        return i18n::c("DS game");
     case Kind::Firm:
-        return "Firmware (FIRM)";
+        return i18n::c("Firmware (FIRM)");
     case Kind::Image:
-        return "Picture";
+        return i18n::c("Picture");
     case Kind::Text:
-        return "Text";
+        return i18n::c("Text");
     case Kind::Archive:
-        return "Archive";
+        return i18n::c("Archive");
     case Kind::Audio:
-        return "Audio";
+        return i18n::c("Audio");
     case Kind::Video:
-        return "Video";
+        return i18n::c("Video");
     case Kind::Other:
         break;
     }
-    return "File";
+    return i18n::c("File");
 }
 
 bool hasTitleMeta(Kind kind)

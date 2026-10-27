@@ -1,4 +1,5 @@
 #include "scanner.hpp"
+#include "i18n.hpp"
 
 #include "crash.hpp"
 #include "image.hpp"
@@ -100,7 +101,7 @@ bool Camera::open(std::string &error)
 
     Result result = camInit();
     if (R_FAILED(result)) {
-        error = failureText("Starting the camera service", result);
+        error = failureText(i18n::c("Starting the camera service"), result);
         return false;
     }
     initialized_ = true;
@@ -139,14 +140,14 @@ bool Camera::open(std::string &error)
                                                    PORT_CAM1);
     }
     if (R_FAILED(result)) {
-        error = failureText("Setting up the camera", result);
+        error = failureText(i18n::c("Setting up the camera"), result);
         return false;
     }
 
     for (u16 *&buffer : buffers_) {
         buffer = static_cast<u16 *>(linearAlloc(FrameBytes));
         if (buffer == nullptr) {
-            error = "Not enough memory for the camera.";
+            error = i18n::c("Not enough memory for the camera.");
             return false;
         }
         std::memset(buffer, 0, FrameBytes);
@@ -162,7 +163,7 @@ bool Camera::open(std::string &error)
         result = CAMU_StartCapture(PORT_CAM1);
     }
     if (R_FAILED(result)) {
-        error = failureText("Starting the camera", result);
+        error = failureText(i18n::c("Starting the camera"), result);
         return false;
     }
 
@@ -174,7 +175,7 @@ bool Camera::open(std::string &error)
                            std::max(0x18, static_cast<int>(priority) - 1), -2,
                            false);
     if (thread_ == nullptr) {
-        error = "Could not start the camera thread.";
+        error = i18n::c("Could not start the camera thread.");
         return false;
     }
     return true;
@@ -348,7 +349,7 @@ std::string scan(bool *typeInstead)
     std::string error;
     if (!camera.open(error)) {
         camera.close();
-        ui::message("Camera unavailable", error, ui::Tone::Error);
+        ui::message(i18n::c("Camera unavailable"), error, ui::Tone::Error);
         return "";
     }
 
@@ -359,22 +360,20 @@ std::string scan(bool *typeInstead)
             quirc_destroy(decoder);
         }
         camera.close();
-        ui::message("Scanner unavailable", "Not enough memory to decode QR "
-                    "codes.", ui::Tone::Error);
+        ui::message(i18n::c("Scanner unavailable"), i18n::c("Not enough memory to decode QR codes."), ui::Tone::Error);
         return "";
     }
     if (!createTextures()) {
         quirc_destroy(decoder);
         camera.close();
-        ui::message("Scanner unavailable", "Not enough memory for the "
-                    "camera preview.", ui::Tone::Error);
+        ui::message(i18n::c("Scanner unavailable"), i18n::c("Not enough memory for the camera preview."), ui::Tone::Error);
         return "";
     }
 
     const C2D_Image images[2] = {{&previewTextures[0], &PreviewSubTexture},
                                  {&previewTextures[1], &PreviewSubTexture}};
     int shown = -1;
-    std::string status = LookingText;
+    std::string status = i18n::c(LookingText);
     u32 statusColor = ui::color::Success;
     u64 noticeUntil = 0;
     std::string found;
@@ -393,8 +392,7 @@ std::string scan(bool *typeInstead)
             break;
         }
         if (camera.failed()) {
-            error = "The camera stopped sending pictures. Close the scanner "
-                    "and try again.";
+            error = i18n::c("The camera stopped sending pictures. Close the scanner and try again.");
             break;
         }
 
@@ -417,10 +415,10 @@ std::string scan(bool *typeInstead)
                 payload = text::trim(payload);
                 if (url::isHttpUrl(payload)) {
                     found = payload;
-                    status = "QR code found";
+                    status = i18n::c("QR code found");
                     statusColor = ui::color::Success;
                 } else {
-                    status = "That QR code does not hold a web link.";
+                    status = i18n::c("That QR code does not hold a web link.");
                     statusColor = ui::color::Warning;
                     noticeUntil = osGetTime() + NoticeDurationMs;
                 }
@@ -428,7 +426,7 @@ std::string scan(bool *typeInstead)
         }
 
         if (noticeUntil != 0 && osGetTime() > noticeUntil) {
-            status = LookingText;
+            status = i18n::c(LookingText);
             statusColor = ui::color::Success;
             noticeUntil = 0;
         }
@@ -447,7 +445,7 @@ std::string scan(bool *typeInstead)
     camera.close();
 
     if (!error.empty()) {
-        ui::message("Camera error", error, ui::Tone::Error);
+        ui::message(i18n::c("Camera error"), error, ui::Tone::Error);
     }
     return found;
 }

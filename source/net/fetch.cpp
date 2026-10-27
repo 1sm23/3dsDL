@@ -1,4 +1,5 @@
 #include "fetch.hpp"
+#include "i18n.hpp"
 
 #include "download_engine.hpp"
 
@@ -41,7 +42,7 @@ FetchResult fetch(const FetchRequest &request)
     FetchResult result;
     CURL *curl = curl_easy_init();
     if (curl == nullptr) {
-        result.message = "The network library could not start a request.";
+        result.message = i18n::c("The network library could not start a request.");
         return result;
     }
 
@@ -89,11 +90,11 @@ FetchResult fetch(const FetchRequest &request)
     result.detail = errorBuffer;
     if (code == CURLE_ABORTED_BY_CALLBACK) {
         result.cancelled = true;
-        result.message = "Cancelled.";
+        result.message = i18n::c("Cancelled.");
         return result;
     }
     if (transfer.tooLarge) {
-        result.message = "The server's answer was larger than expected.";
+        result.message = i18n::c("The server's answer was larger than expected.");
         return result;
     }
     if (code != CURLE_OK) {
@@ -103,8 +104,7 @@ FetchResult fetch(const FetchRequest &request)
         return result;
     }
     if (result.httpStatus < 200 || result.httpStatus >= 300) {
-        result.message = "The server answered with HTTP status " +
-                         std::to_string(result.httpStatus) + ".";
+        result.message = i18n::t("The server answered with HTTP status {0}.", {std::to_string(result.httpStatus)});
         return result;
     }
     result.ok = true;

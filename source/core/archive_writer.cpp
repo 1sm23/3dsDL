@@ -1,4 +1,5 @@
 #include "archive_writer.hpp"
+#include "i18n.hpp"
 
 #include "fs_util.hpp"
 #include "naming.hpp"
@@ -23,9 +24,9 @@ constexpr uint64_t MaxFileSize = 0xffffffffull;
 std::string writeError(const std::string &path)
 {
     if (errno == ENOSPC) {
-        return "The SD card is full.";
+        return i18n::c("The SD card is full.");
     }
-    return "Could not write " + path + " (" + std::strerror(errno) + ").";
+    return i18n::t("Could not write {0} ({1}).", {path, std::strerror(errno)});
 }
 
 bool writeAll(int fd, const unsigned char *data, size_t size)
@@ -159,7 +160,7 @@ bool Writer::makeRoot()
         return true;
     }
     if (!fs::makeDirectories(folder_)) {
-        return fail("Could not create " + folder_ + ".");
+        return fail(i18n::t("Could not create {0}.", {folder_}));
     }
     names_.madeEmpty("");
     return true;
@@ -177,7 +178,7 @@ bool Writer::makeFolder(const std::string &path)
     if (mkdir(full.c_str(), 0777) == 0) {
         names_.madeEmpty(path);
     } else if (errno != EEXIST && !fs::directoryExists(full)) {
-        return fail("Could not create the folder " + path + ".");
+        return fail(i18n::t("Could not create the folder {0}.", {path}));
     }
     made_.insert(path);
     return true;
@@ -193,8 +194,7 @@ Writer::Start Writer::start(const std::string &path, int64_t size)
     buffered_ = 0;
     replacing_ = false;
     if (size > static_cast<int64_t>(MaxFileSize)) {
-        fail(path + " is over 4 GiB, more than the SD card can hold in one "
-                    "file.");
+        fail(i18n::t("{0} is over 4 GiB, more than the SD card can hold in one file.", {path}));
         return Start::Failed;
     }
     if (!makeFolder(parentOf(path))) {
@@ -276,8 +276,7 @@ bool Writer::write(const void *data, size_t size)
 {
     const unsigned char *bytes = static_cast<const unsigned char *>(data);
     if (written_ + size > MaxFileSize) {
-        return fail(path_ + " is over 4 GiB, more than the SD card can hold "
-                            "in one file.");
+        return fail(i18n::t("{0} is over 4 GiB, more than the SD card can hold in one file.", {path_}));
     }
     written_ += size;
     if (buffered_ == 0 && size >= PieceSize) {
@@ -299,8 +298,7 @@ bool Writer::write(const void *data, size_t size)
 bool Writer::writeZeros(uint64_t count)
 {
     if (written_ + count > MaxFileSize) {
-        return fail(path_ + " is over 4 GiB, more than the SD card can hold "
-                            "in one file.");
+        return fail(i18n::t("{0} is over 4 GiB, more than the SD card can hold in one file.", {path_}));
     }
     written_ += count;
     while (count > 0) {
@@ -331,7 +329,7 @@ bool Writer::finish()
         return false;
     }
     if (size_ >= 0 && written_ != static_cast<uint64_t>(size_)) {
-        return fail(path_ + " is not the size the archive says.");
+        return fail(i18n::t("{0} is not the size the archive says.", {path_}));
     }
     const int fd = fd_;
     fd_ = -1;
@@ -353,14 +351,14 @@ bool Writer::finish()
         !(std::remove(old.c_str()) == 0 &&
           std::rename(target_.c_str(), old.c_str()) == 0)) {
         std::remove(writing_.c_str());
-        return fail("Could not replace " + path_ + ".");
+        return fail(i18n::t("Could not replace {0}.", {path_}));
     }
     if (std::rename(writing_.c_str(), target_.c_str()) != 0) {
         std::remove(writing_.c_str());
         if (replacing_) {
             std::rename(old.c_str(), target_.c_str());
         }
-        return fail("Could not save " + path_ + ".");
+        return fail(i18n::t("Could not save {0}.", {path_}));
     }
     if (replacing_) {
         std::remove(old.c_str());

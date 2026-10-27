@@ -1,4 +1,5 @@
 #include "finalize.hpp"
+#include "i18n.hpp"
 
 #include "fs_util.hpp"
 #include "naming.hpp"
@@ -66,15 +67,12 @@ Result commit(const std::string &partPath, const std::string &folder,
             result.ok = true;
             result.usedFallbackName = true;
             result.path = candidate;
-            result.message = "The SD card would not accept the name \"" +
-                             filename + "\", so the file was saved as " +
-                             candidate + ".";
+            result.message = i18n::t("The SD card would not accept the name \"{0}\", so the file was saved as {1}.", {filename, candidate});
             return result;
         }
     }
 
-    result.message = "The file could not be renamed, so the downloaded data "
-                     "was left in " + partPath + ".";
+    result.message = i18n::t("The file could not be renamed, so the downloaded data was left in {0}.", {partPath});
     return result;
 }
 

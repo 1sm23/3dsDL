@@ -1,4 +1,5 @@
 #include "update.hpp"
+#include "i18n.hpp"
 
 #include "json.hpp"
 
@@ -195,18 +196,17 @@ bool parseRelease(const std::string &text, Release &out, std::string &error)
     out = Release();
     json::Value root;
     if (!json::parse(text, root, error)) {
-        error = "The release information could not be read. " + error;
+        error = i18n::t("The release information could not be read. {0}", {error});
         return false;
     }
     if (root.type != json::Type::Object) {
-        error = "The release information was not a release.";
+        error = i18n::c("The release information was not a release.");
         return false;
     }
     out.tag = root["tag_name"].text();
     if (versionParts(out.tag).empty()) {
-        error = out.tag.empty() ? "The release has no version."
-                                : "The release version \"" + out.tag +
-                                      "\" is not a version number.";
+        error = out.tag.empty() ? i18n::c("The release has no version.")
+                                : i18n::t("The release version \"{0}\" is not a version number.", {out.tag});
         return false;
     }
     out.version = out.tag;

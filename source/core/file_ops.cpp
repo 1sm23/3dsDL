@@ -1,4 +1,5 @@
 #include "file_ops.hpp"
+#include "i18n.hpp"
 
 #include "fs_util.hpp"
 #include "text.hpp"
@@ -49,7 +50,7 @@ std::string failure(const std::string &what, const std::string &path)
     const int code = errno;
     std::string message = what + " " + name(path) + ".";
     if (code == ENOSPC) {
-        message += " The SD card is full.";
+        message += i18n::c(" The SD card is full.");
     } else if (code != 0) {
         message += std::string(" ") + std::strerror(code) + ".";
     }
@@ -63,13 +64,13 @@ Result copyFile(const std::string &source, const std::string &destination,
     std::FILE *input = std::fopen(source.c_str(), "rb");
     if (input == nullptr) {
         result.status = Status::Failed;
-        result.message = failure("Could not open", source);
+        result.message = failure(i18n::c("Could not open"), source);
         return result;
     }
     std::FILE *output = std::fopen(destination.c_str(), "wb");
     if (output == nullptr) {
         result.status = Status::Failed;
-        result.message = failure("Could not create", destination);
+        result.message = failure(i18n::c("Could not create"), destination);
         std::fclose(input);
         return result;
     }
@@ -86,13 +87,13 @@ Result copyFile(const std::string &source, const std::string &destination,
         if (read == 0) {
             if (std::ferror(input)) {
                 result.status = Status::Failed;
-                result.message = failure("Could not read", source);
+                result.message = failure(i18n::c("Could not read"), source);
             }
             break;
         }
         if (std::fwrite(buffer.get(), 1, read, output) != read) {
             result.status = Status::Failed;
-            result.message = failure("Could not write", destination);
+            result.message = failure(i18n::c("Could not write"), destination);
             break;
         }
         done += read;
@@ -102,7 +103,7 @@ Result copyFile(const std::string &source, const std::string &destination,
     std::fclose(input);
     if (std::fclose(output) != 0 && result.status == Status::Ok) {
         result.status = Status::Failed;
-        result.message = failure("Could not finish writing", destination);
+        result.message = failure(i18n::c("Could not finish writing"), destination);
     }
     if (result.status != Status::Ok) {
         std::remove(destination.c_str());
@@ -209,7 +210,7 @@ Result copy(const std::string &source, const std::string &destination,
     Result result;
     if (exists(destination)) {
         result.status = Status::Failed;
-        result.message = name(destination) + " already exists.";
+        result.message = i18n::t("{0} already exists.", {name(destination)});
         return result;
     }
     if (!isFolder(source)) {
@@ -217,18 +218,18 @@ Result copy(const std::string &source, const std::string &destination,
     }
     if (isInside(destination, source)) {
         result.status = Status::Failed;
-        result.message = "A folder cannot be copied into itself.";
+        result.message = i18n::c("A folder cannot be copied into itself.");
         return result;
     }
     if (mkdir(destination.c_str(), 0777) != 0) {
         result.status = Status::Failed;
-        result.message = failure("Could not create the folder", destination);
+        result.message = failure(i18n::c("Could not create the folder"), destination);
         return result;
     }
     std::vector<std::string> names;
     if (!children(source, names)) {
         result.status = Status::Failed;
-        result.message = failure("Could not open the folder", source);
+        result.message = failure(i18n::c("Could not open the folder"), source);
         return result;
     }
     for (const std::string &entry : names) {
@@ -257,7 +258,7 @@ Result remove(const std::string &path, Observer &observer, uint64_t &done,
         std::vector<std::string> names;
         if (!children(path, names)) {
             result.status = Status::Failed;
-            result.message = failure("Could not open the folder", path);
+            result.message = failure(i18n::c("Could not open the folder"), path);
             return result;
         }
         for (const std::string &entry : names) {
@@ -272,14 +273,14 @@ Result remove(const std::string &path, Observer &observer, uint64_t &done,
         }
         if (rmdir(path.c_str()) != 0) {
             result.status = Status::Failed;
-            result.message = failure("Could not delete the folder", path);
+            result.message = failure(i18n::c("Could not delete the folder"), path);
         }
         return result;
     }
     observer.onProgress(done, total, name(path));
     if (std::remove(path.c_str()) != 0) {
         result.status = Status::Failed;
-        result.message = failure("Could not delete", path);
+        result.message = failure(i18n::c("Could not delete"), path);
         return result;
     }
     result.files = 1;
@@ -292,15 +293,15 @@ bool move(const std::string &source, const std::string &destination,
           std::string &error)
 {
     if (exists(destination)) {
-        error = name(destination) + " already exists.";
+        error = i18n::t("{0} already exists.", {name(destination)});
         return false;
     }
     if (isFolder(source) && isInside(destination, source)) {
-        error = "A folder cannot be moved into itself.";
+        error = i18n::c("A folder cannot be moved into itself.");
         return false;
     }
     if (std::rename(source.c_str(), destination.c_str()) != 0) {
-        error = failure("Could not move", source);
+        error = failure(i18n::c("Could not move"), source);
         return false;
     }
     return true;
@@ -393,29 +394,29 @@ bool validName(const std::string &value, std::string &error)
 {
     const std::string trimmed = text::trim(value);
     if (trimmed.empty()) {
-        error = "The name is empty.";
+        error = i18n::c("The name is empty.");
         return false;
     }
     if (trimmed == "." || trimmed == "..") {
-        error = "\".\" and \"..\" cannot be used as names.";
+        error = i18n::c("\".\" and \"..\" cannot be used as names.");
         return false;
     }
     if (trimmed.find_first_of("\\/:*?\"<>|") != std::string::npos) {
-        error = "Names cannot contain \\ / : * ? \" < > or |.";
+        error = i18n::c("Names cannot contain \\ / : * ? \" < > or |.");
         return false;
     }
     for (const char character : trimmed) {
         if (static_cast<unsigned char>(character) < 0x20) {
-            error = "Names cannot contain control characters.";
+            error = i18n::c("Names cannot contain control characters.");
             return false;
         }
     }
     if (trimmed.size() > 255) {
-        error = "The name is too long.";
+        error = i18n::c("The name is too long.");
         return false;
     }
     if (trimmed.back() == '.') {
-        error = "Names cannot end with a dot.";
+        error = i18n::c("Names cannot end with a dot.");
         return false;
     }
     return true;

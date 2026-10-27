@@ -1,4 +1,5 @@
 #include "updater.hpp"
+#include "i18n.hpp"
 
 #include "app_util.hpp"
 #include "crash.hpp"
@@ -57,11 +58,10 @@ net::FetchRequest githubRequest(const std::string &url, size_t maxBytes,
 std::string explain(const net::FetchResult &result)
 {
     if (result.httpStatus == 403 || result.httpStatus == 429) {
-        return "GitHub is limiting how often it can be asked from this "
-               "network. Try again in an hour.";
+        return i18n::c("GitHub is limiting how often it can be asked from this network. Try again in an hour.");
     }
     if (result.httpStatus == 404) {
-        return "No release of 3dsDL has been published yet.";
+        return i18n::c("No release of 3dsDL has been published yet.");
     }
     return result.message;
 }
@@ -76,7 +76,7 @@ Status check(const std::atomic<bool> *stop = nullptr)
     const net::FetchResult result = net::fetch(request);
     if (result.cancelled) {
         status.state = State::Failed;
-        status.message = "The check was stopped.";
+        status.message = i18n::c("The check was stopped.");
         return status;
     }
     if (!result.ok) {
@@ -183,7 +183,7 @@ void startCheck()
         running.store(false);
         Status failed;
         failed.state = State::Failed;
-        failed.message = "The update check could not start.";
+        failed.message = i18n::c("The update check could not start.");
         finish(failed);
     }
 }
@@ -248,8 +248,7 @@ bool fetchChecksums(const update::Release &release, std::string &listing,
 {
     const update::Asset *sums = update::findAsset(release, update::ChecksumAsset);
     if (sums == nullptr) {
-        error = "This release has no checksum file, so 3dsDL cannot make "
-                "sure the download is intact.";
+        error = i18n::c("This release has no checksum file, so 3dsDL cannot make sure the download is intact.");
         return false;
     }
     cancel.store(false);

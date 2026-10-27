@@ -1,4 +1,5 @@
 #include "picture.hpp"
+#include "i18n.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -127,8 +128,7 @@ void place(const uint8_t *pixels, uint32_t channels, uint32_t width,
 
 std::string tooBig(int width, int height)
 {
-    return "At " + std::to_string(width) + " x " + std::to_string(height) +
-           " pixels, this picture is too big to open on a 3DS.";
+    return i18n::t("At {0} x {1} pixels, this picture is too big to open on a 3DS.", {std::to_string(width), std::to_string(height)});
 }
 
 #ifdef __3DS__
@@ -242,9 +242,7 @@ bool takeDecoded(stbi_uc *decoded, int width, int height, int channels,
 {
     if (decoded == nullptr) {
         const char *reason = stbi_failure_reason();
-        error = std::string("The picture could not be decoded") +
-                (reason != nullptr ? std::string(" (") + reason + ")" : "") +
-                ". It may be damaged, or too big for the memory left.";
+        error = i18n::t("The picture could not be decoded{0}. It may be damaged, or too big for the memory left.", {(reason != nullptr ? std::string(" (") + reason + ")" : "")});
         return false;
     }
     place(decoded, static_cast<uint32_t>(channels),
@@ -320,7 +318,7 @@ bool load(const std::string &path, uint32_t maxWidth, uint32_t maxHeight,
     int components = 0;
     if (!stbi_info(path.c_str(), &width, &height, &components) ||
         width <= 0 || height <= 0) {
-        error = "This picture's format is not supported.";
+        error = i18n::c("This picture's format is not supported.");
         return false;
     }
     if (static_cast<uint64_t>(width) * height > MaxSourcePixels) {
@@ -356,7 +354,7 @@ bool decode(const std::vector<uint8_t> &bytes, uint32_t maxWidth,
     if (!stbi_info_from_memory(bytes.data(), length, &width, &height,
                                &components) ||
         width <= 0 || height <= 0) {
-        error = "This picture's format is not supported.";
+        error = i18n::c("This picture's format is not supported.");
         return false;
     }
     if (static_cast<uint64_t>(width) * height > MaxSourcePixels) {

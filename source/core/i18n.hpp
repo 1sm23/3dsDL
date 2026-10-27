@@ -1,6 +1,7 @@
 #pragma once
 
 #include <initializer_list>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -26,7 +27,12 @@ std::string languageName(const std::string &code);
 // Lookup falls back to English, then to the key itself so a missing resource
 // is visible during development rather than silently becoming empty text.
 std::string t(const std::string &key);
+// A catalog-owned string for APIs accepting const char*. It stays valid until
+// init() is called again. Unknown source messages are returned unchanged.
+const char *c(const char *key);
 std::string t(const std::string &key,
               std::initializer_list<std::string> args);
+std::string count(uint64_t value, const std::string &word,
+                  const std::string &formatted);
 
 } // namespace i18n

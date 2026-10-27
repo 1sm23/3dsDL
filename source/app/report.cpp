@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "i18n.hpp"
 
 #include "feedback.hpp"
 #include "platform.hpp"
@@ -38,15 +39,15 @@ void App::reportScreen()
     // compact code. Should it ever not fit, the plain form still works.
     QrCode issue(feedback::newIssueLink(console), QrCode::MaxVersion, true);
     if (!issue.ok()) {
-        issue = QrCode(std::string(feedback::IssuesPage) + "/new");
+        issue = QrCode(i18n::t("{0}/new", {std::string(feedback::IssuesPage)}));
     }
     const Place places[] = {
-        {"Report a Bug", ui::Icon::Warning, ui::color::IconOrange,
+        {i18n::c("Report a Bug"), ui::Icon::Warning, ui::color::IconOrange,
          feedback::withoutScheme(feedback::IssuesPage), issue},
-        {"Discord Server", ui::Icon::Chip, ui::color::IconPink,
+        {i18n::c("Discord Server"), ui::Icon::Chip, ui::color::IconPink,
          feedback::withoutScheme(feedback::DiscordInvite),
          QrCode(feedback::DiscordInvite)},
-        {"Developer on X", ui::Icon::Globe, ui::color::IconTeal,
+        {i18n::c("Developer on X"), ui::Icon::Globe, ui::color::IconTeal,
          feedback::withoutScheme(feedback::DeveloperPage),
          QrCode(feedback::DeveloperPage)},
     };
@@ -56,7 +57,7 @@ void App::reportScreen()
     int shown = 0; // stays on the last place while the ring is on Back
     while (ui::keepRunning() && !quit_) {
         ui::ScreenSpec spec;
-        spec.back = "Back";
+        spec.back = i18n::c("Back");
         for (int index = 0; index < PlaceCount; ++index) {
             ui::Control control;
             control.rect = {30, 12 + index * 44.0f, 260, 36};
@@ -71,7 +72,7 @@ void App::reportScreen()
                 shown = focus;
             }
             const Place &place = places[shown];
-            ui::drawTopChrome("Report an Issue", ui::Icon::Warning,
+            ui::drawTopChrome(i18n::c("Report an Issue"), ui::Icon::Warning,
                               ui::color::IconOrange);
             ui::drawPanel();
             // The code is centred in a column wide enough for the largest
@@ -103,7 +104,7 @@ void App::reportScreen()
         spec.drawBottom = [&]() {
             const ui::Rect panel = {13, 143, 294, 58};
             ui::drawPanel(panel);
-            ui::drawFacts({{"Details", details}, {"Logs", storage::DataFolder}},
+            ui::drawFacts({{i18n::c("Details"), details}, {i18n::c("Logs"), storage::DataFolder}},
                           panel);
         };
 

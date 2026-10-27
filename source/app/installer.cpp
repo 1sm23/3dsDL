@@ -1,4 +1,5 @@
 #include "installer.hpp"
+#include "i18n.hpp"
 
 #include "cia.hpp"
 #include "fs_util.hpp"
@@ -174,7 +175,7 @@ bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message,
 {
     CURL *curl = curl_easy_init();
     if (curl == nullptr) {
-        message = "Could not start the seed download.";
+        message = i18n::c("Could not start the seed download.");
         return false;
     }
     const std::string link =
@@ -201,21 +202,19 @@ bool downloadSeed(uint64_t titleId, uint8_t *seed, std::string &message,
     curl_easy_cleanup(curl);
 
     if (code == CURLE_ABORTED_BY_CALLBACK) {
-        message = "The seed lookup was stopped.";
+        message = i18n::c("The seed lookup was stopped.");
         return false;
     }
     if (code != CURLE_OK) {
-        message = std::string("Could not reach Nintendo's seed server: ") +
-                  curl_easy_strerror(code) + ".";
+        message = i18n::t("Could not reach Nintendo's seed server: {0}.", {curl_easy_strerror(code)});
         return false;
     }
     if (status == 404) {
-        message = "Nintendo's server has no seed for this title.";
+        message = i18n::c("Nintendo's server has no seed for this title.");
         return false;
     }
     if (status != 200 || body.size() != SeedSize) {
-        message = "Nintendo's seed server answered with HTTP " +
-                  std::to_string(status) + ".";
+        message = i18n::t("Nintendo's seed server answered with HTTP {0}.", {std::to_string(status)});
         return false;
     }
     std::memcpy(seed, body.data(), SeedSize);
@@ -260,10 +259,7 @@ bool available()
 
 std::string unavailableReason()
 {
-    return "3dsDL could not open the install service (" +
-           hexCode(startResult) +
-           "). Run the CIA version of 3dsDL, or the .3dsx from the Homebrew "
-           "Launcher with Luma3DS.";
+    return i18n::t("3dsDL could not open the install service ({0}). Run the CIA version of 3dsDL, or the .3dsx from the Homebrew Launcher with Luma3DS.", {hexCode(startResult)});
 }
 
 FS_MediaType destination(uint64_t titleId)
@@ -283,19 +279,19 @@ Result installCia(const std::string &path, uint64_t titleId,
     FileHandle file;
     ::Result code = file.open(path);
     if (R_FAILED(code)) {
-        return failure(code, "Could not open the CIA file.");
+        return failure(code, i18n::c("Could not open the CIA file."));
     }
     u64 size = 0;
     code = FSFILE_GetSize(file.get(), &size);
     if (R_FAILED(code)) {
-        return failure(code, "Could not read the CIA file.");
+        return failure(code, i18n::c("Could not read the CIA file."));
     }
 
     std::unique_ptr<uint8_t, decltype(&std::free)> buffer(
         static_cast<uint8_t *>(std::malloc(ChunkSize)), &std::free);
     if (!buffer) {
         Result result;
-        result.message = "Not enough memory to install.";
+        result.message = i18n::c("Not enough memory to install.");
         return result;
     }
 
@@ -304,7 +300,7 @@ Result installCia(const std::string &path, uint64_t titleId,
     prepareTitleDatabase(destination(titleId));
     code = AM_StartCiaInstall(destination(titleId), &target);
     if (R_FAILED(code)) {
-        return failure(code, "The install could not start.");
+        return failure(code, i18n::c("The install could not start."));
     }
 
     observer.onProgress(0, size);
@@ -314,8 +310,7 @@ Result installCia(const std::string &path, uint64_t titleId,
             AM_CancelCIAInstall(target);
             Result result;
             result.outcome = Outcome::Cancelled;
-            result.message = "The install was cancelled. Nothing was "
-                             "changed.";
+            result.message = i18n::c("The install was cancelled. Nothing was changed.");
             return result;
         }
         const u32 wanted = static_cast<u32>(
@@ -328,13 +323,13 @@ Result installCia(const std::string &path, uint64_t titleId,
         }
         if (R_FAILED(code)) {
             AM_CancelCIAInstall(target);
-            return failure(code, "Reading the CIA file failed.");
+            return failure(code, i18n::c("Reading the CIA file failed."));
         }
         u32 written = 0;
         code = FSFILE_Write(target, &written, offset, buffer.get(), read, 0);
         if (R_FAILED(code)) {
             AM_CancelCIAInstall(target);
-            return failure(code, "The install failed.");
+            return failure(code, i18n::c("The install failed."));
         }
         offset += read;
         observer.onProgress(offset, size);
@@ -342,7 +337,7 @@ Result installCia(const std::string &path, uint64_t titleId,
 
     code = AM_FinishCiaInstall(target);
     if (R_FAILED(code)) {
-        return failure(code, "The install could not be finished.");
+        return failure(code, i18n::c("The install could not be finished."));
     }
 
     Result result;
@@ -361,15 +356,14 @@ bool StreamInstall::begin()
 {
     const cia::Info &info = stream_.info();
     if (cia::isSystemTitle(info.titleId)) {
-        result_.message = "This is a system title. 3dsDL does not install "
-                          "them.";
+        result_.message = i18n::c("This is a system title. 3dsDL does not install them.");
         return false;
     }
     startTime_ = osGetTime();
     prepareTitleDatabase(destination(info.titleId));
     const ::Result code = AM_StartCiaInstall(destination(info.titleId), &target_);
     if (R_FAILED(code)) {
-        result_ = failure(code, "The install could not start.");
+        result_ = failure(code, i18n::c("The install could not start."));
         return false;
     }
     started_ = true;
@@ -378,7 +372,7 @@ bool StreamInstall::begin()
     const ::Result wrote = FSFILE_Write(target_, &done, 0, prefix.data(),
                                         static_cast<u32>(prefix.size()), 0);
     if (R_FAILED(wrote)) {
-        result_ = failure(wrote, "The install failed.");
+        result_ = failure(wrote, i18n::c("The install failed."));
         cancel();
         return false;
     }
@@ -411,7 +405,7 @@ bool StreamInstall::write(uint64_t offset, const void *data, size_t size)
     const ::Result code = FSFILE_Write(target_, &done, offset, data,
                                        static_cast<u32>(size), 0);
     if (R_FAILED(code)) {
-        result_ = failure(code, "The install failed.");
+        result_ = failure(code, i18n::c("The install failed."));
         cancel();
         return false;
     }
@@ -423,8 +417,7 @@ Result StreamInstall::finish()
 {
     if (!started_) {
         if (result_.message.empty()) {
-            result_.message = "The download ended before the CIA's header "
-                              "arrived.";
+            result_.message = i18n::c("The download ended before the CIA's header arrived.");
         }
         return result_;
     }
@@ -432,7 +425,7 @@ Result StreamInstall::finish()
     started_ = false;
     target_ = 0;
     if (R_FAILED(code)) {
-        result_ = failure(code, "The install could not be finished.");
+        result_ = failure(code, i18n::c("The install could not be finished."));
         return result_;
     }
     result_ = Result();
@@ -468,12 +461,12 @@ bool installedVersion(uint64_t titleId, uint16_t &version)
 bool removeTitle(uint64_t titleId, std::string &error)
 {
     if (cia::isSystemTitle(titleId)) {
-        error = "System titles are never removed.";
+        error = i18n::c("System titles are never removed.");
         return false;
     }
     const ::Result code = AM_DeleteTitle(destination(titleId), titleId);
     if (R_FAILED(code)) {
-        error = "Could not remove the installed title. " + describe(code);
+        error = i18n::t("Could not remove the installed title. {0}", {describe(code)});
         return false;
     }
     return true;
@@ -502,19 +495,19 @@ bool installSeed(uint64_t titleId, std::string &message,
     std::string source;
     if (readSeedFile("sdmc:/3ds/3dsDL/seeds/" + name, seed) ||
         readSeedFile("sdmc:/fbi/seed/" + name, seed)) {
-        source = "from the SD card";
+        source = i18n::c("from the SD card");
     } else if (downloadSeed(titleId, seed, message, stop)) {
-        source = "from Nintendo";
+        source = i18n::c("from Nintendo");
     } else {
         return false;
     }
 
     const ::Result code = addSeed(titleId, seed);
     if (R_FAILED(code)) {
-        message = "The seed could not be added. " + describe(code);
+        message = i18n::t("The seed could not be added. {0}", {describe(code)});
         return false;
     }
-    message = "Added the game's seed " + source + ".";
+    message = i18n::t("Added the game's seed {0}.", {source});
     return true;
 }
 
@@ -522,7 +515,7 @@ bool addSeed(uint64_t titleId, const uint8_t *seed, std::string &error)
 {
     const ::Result code = addSeed(titleId, seed);
     if (R_FAILED(code)) {
-        error = "The seed could not be added. " + describe(code);
+        error = i18n::t("The seed could not be added. {0}", {describe(code)});
         return false;
     }
     return true;
@@ -539,7 +532,7 @@ bool launch(uint64_t titleId, std::string &error)
         code = APT_DoApplicationJump(parameters, sizeof(parameters), hmac);
     }
     if (R_FAILED(code)) {
-        error = "Could not start the title. " + describe(code);
+        error = i18n::t("Could not start the title. {0}", {describe(code)});
         return false;
     }
     return true;
@@ -553,41 +546,37 @@ std::string describe(::Result code)
     if (module == RM_AM || module == RM_AM_LOW) {
         switch (description) {
         case 4:
-            text = "The install service was busy with something else. "
-                   "Restart the console and try again.";
+            text = i18n::c("The install service was busy with something else. Restart the console and try again.");
             break;
         case 37:
-            text = "The CIA's contents are damaged.";
+            text = i18n::c("The CIA's contents are damaged.");
             break;
         case 39:
-            text = "The install service refused this version. The same or "
-                   "a newer version may already be installed.";
+            text = i18n::c("The install service refused this version. The same or a newer version may already be installed.");
             break;
         case 43:
-            text = "The SD card's title database is missing.";
+            text = i18n::c("The SD card's title database is missing.");
             break;
         case 44:
-            text = "System titles cannot be removed.";
+            text = i18n::c("System titles cannot be removed.");
             break;
         case 53:
-            text = "There is not enough space left in the DSiWare area of "
-                   "the system memory.";
+            text = i18n::c("There is not enough space left in the DSiWare area of the system memory.");
             break;
         case SameVersion:
-            text = "This version is already installed.";
+            text = i18n::c("This version is already installed.");
             break;
         case 106:
-            text = "The CIA failed a signature or hash check. The file is "
-                   "probably damaged; download it again.";
+            text = i18n::c("The CIA failed a signature or hash check. The file is probably damaged; download it again.");
             break;
         default:
             break;
         }
     } else if (module == RM_FS && description == RD_NOT_FOUND) {
-        text = "The file was not found.";
+        text = i18n::c("The file was not found.");
     }
     if (text.empty()) {
-        text = "Error " + hexCode(code) + ".";
+        text = i18n::t("Error {0}.", {hexCode(code)});
     } else {
         text += " (" + hexCode(code) + ")";
     }
