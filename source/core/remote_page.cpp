@@ -337,6 +337,12 @@ const char *const PageEnd = R"PAGE(<form method="post" action="/send" class="pan
 const $ = s => document.querySelector(s);
 const enc = encodeURIComponent;
 const H = {'X-Requested-With': '3dsDL'};
+const plurals = new Intl.PluralRules(document.documentElement.lang === 'pt' ? 'pt-PT' : document.documentElement.lang);
+function counted(one, other, value, ...args) {
+  const form = plurals.select(value);
+  const key = form === 'one' ? one : form === 'few' && I18N[other + '.few'] ? other + '.few' : other;
+  return tr(key, value, ...args);
+}
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const store = {
   get(key, fallback) { try { const v = localStorage.getItem('3dsdl.' + key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } },
@@ -638,7 +644,7 @@ function linkName(l) { try { return decodeURIComponent(base(new URL(l).pathname)
 $('#sendform').noValidate = true;
 $('#linkbox').addEventListener('input', () => {
   const n = linksIn($('#linkbox').value).length, c = $('#linkcount');
-  c.textContent = n ? tr(n === 1 ? '{0} link ready' : '{0} links ready', n) : '';
+  c.textContent = n ? counted('{0} link ready', '{0} links ready', n) : '';
   c.classList.toggle('has', n > 0);
 });
 $('#sendform').addEventListener('submit', async e => {
@@ -657,7 +663,7 @@ $('#sendform').addEventListener('submit', async e => {
     const li = document.createElement('li');
     li.className = 'wait';
     li.innerHTML = svg('link') + ("<div><b></b><span>" + esc(tr("Sent to the 3DS.")) + "</span></div>");
-    li.querySelector('b').textContent = tr(j.count === 1 ? '{0} link: {1}' : '{0} links: {1}', j.count, links.slice(0, 2).map(linkName).join(', ')) + (links.length > 2 ? tr(' and {0} more', links.length - 2) : '');
+    li.querySelector('b').textContent = counted('{0} link: {1}', '{0} links: {1}', j.count, links.slice(0, 2).map(linkName).join(', ')) + (links.length > 2 ? tr(' and {0} more', links.length - 2) : '');
     $('#sent').prepend(li);
     S.expect.push(li);
     box.value = '';
@@ -826,7 +832,7 @@ function render(animate) {
     if (row) reveal(row);
   }
   const n = F.entries.length;
-  $('#count').textContent = list.length === n ? tr(n === 1 ? '{0} item' : '{0} items', n) : tr('{0} of {1} shown', list.length, n);
+  $('#count').textContent = list.length === n ? counted('{0} item', '{0} items', n) : tr('{0} of {1} shown', list.length, n);
   selbar();
 }
 // Scrolls a row into the middle of the screen, unless it is in full view
@@ -993,7 +999,7 @@ async function rename(path) {
   if (typeof r === 'string') { toast(tr("Renamed to {0}", r), 'good'); load(F.cwd, true); }
 }
 async function move(paths) {
-  const what = paths.length > 1 ? tr("{0} items", paths.length) : '"' + base(paths[0]) + '"';
+  const what = paths.length > 1 ? counted('{0} item', '{0} items', paths.length) : '"' + base(paths[0]) + '"';
   const r = await ask(tr("Move {0}", what), tr("Type the folder to move to, starting with /."), {input: F.cwd, buttons: [tr("Cancel"), tr("Move")], warn: risk(paths), action: async to => {
     const dest = ('/' + to.trim()).replace(/\/+/g, '/').replace(/(.)\/$/, '$1');
     if (dest === F.cwd) throw new Error(tr("They are already in {0}.", dest));
@@ -1004,7 +1010,7 @@ async function move(paths) {
 }
 async function remove(paths) {
   const many = paths.length > 1;
-  const ok = await ask(tr("Delete {0}?", (many ? tr("{0} items", paths.length) : '"' + base(paths[0]) + '"')), tr("Deleted files and folders cannot be brought back."),
+  const ok = await ask(tr("Delete {0}?", (many ? counted('{0} item', '{0} items', paths.length) : '"' + base(paths[0]) + '"')), tr("Deleted files and folders cannot be brought back."),
     {buttons: [tr("Cancel"), tr("Delete")], danger: true, warn: risk(paths), action: async () => { for (const p of paths) await api('POST', '/api/delete', {path: p}, 0, {retry: true}); }});
   if (ok !== true) return;
   for (const r of $('#list').querySelectorAll('.row')) if (paths.includes(r.dataset.path)) r.classList.add('gone');
@@ -1614,12 +1620,15 @@ std::string webDictionary()
         "{0} is 4 GiB or more, which the SD card's FAT32 cannot hold.",
         "{0} item",
         "{0} items",
+        "{0} items.few",
         "{0} left",
         "{0} lines · {1}",
         "{0} link ready",
         "{0} link: {1}",
         "{0} links ready",
+        "{0} links ready.few",
         "{0} links: {1}",
+        "{0} links: {1}.few",
         "{0} of {1} shown",
         "{0} of {1}{2}",
         "{0} sent",

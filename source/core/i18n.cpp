@@ -13,11 +13,16 @@ namespace {
 const std::vector<Language> Supported = {
     {"en", "English"},
     {"zh", "简体中文"},
+    {"zh-Hant", "繁體中文"},
     {"es", "Español"},
     {"fr", "Français"},
     {"pt", "Português"},
     {"de", "Deutsch"},
     {"ja", "日本語"},
+    {"it", "Italiano"},
+    {"ko", "한국어"},
+    {"ru", "Русский"},
+    {"pt-BR", "Português (Brasil)"},
 };
 
 struct Entry {
@@ -27,7 +32,13 @@ struct Entry {
 
 std::vector<Entry> catalog;
 std::atomic<size_t> currentLanguage {0};
-const std::vector<std::string> LanguageCodes = {"en", "zh", "es", "fr", "pt", "de", "ja"};
+const std::vector<std::string> LanguageCodes = [] {
+    std::vector<std::string> codes;
+    for (const Language &language : Supported) {
+        codes.emplace_back(language.code);
+    }
+    return codes;
+}();
 
 const json::Value *field(const json::Value &object, const std::string &key)
 {
@@ -186,9 +197,16 @@ std::string t(const std::string &key,
 std::string count(uint64_t value, const std::string &word,
                   const std::string &formatted)
 {
-    const bool singular = value == 1 || (language() == "fr" && value == 0);
+    const std::string code = language();
+    bool singular = value == 1 || ((code == "fr" || code == "pt-BR") && value == 0);
+    bool few = false;
+    if (code == "ru") {
+        singular = value % 10 == 1 && value % 100 != 11;
+        few = value % 10 >= 2 && value % 10 <= 4 &&
+              (value % 100 < 12 || value % 100 > 14);
+    }
     const std::string noun = singular ? word : word == "entry" ? "entries" : word + "s";
-    return t("{0} " + noun, {formatted});
+    return t("{0} " + noun + (few ? ".few" : ""), {formatted});
 }
 
 } // namespace i18n

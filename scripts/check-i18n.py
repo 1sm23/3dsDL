@@ -8,7 +8,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-LANGUAGES = {"en", "zh", "es", "fr", "pt", "de", "ja"}
+LANGUAGES = {"en", "zh", "zh-Hant", "es", "fr", "pt", "de", "ja", "it", "ko", "ru", "pt-BR"}
 errors = []
 
 
@@ -26,6 +26,10 @@ catalog = json.loads((ROOT / "romfs/i18n.json").read_text(encoding="utf-8"),
 placeholder = re.compile(r"\{\d+\}")
 literal = r'"(?:[^"\\]|\\.)*"'
 used = set()
+registry = (ROOT / "source/core/i18n.cpp").read_text(encoding="utf-8")
+supported = re.search(r'const std::vector<Language> Supported = \{(.*?)\n\};', registry, re.S)
+if not supported or set(re.findall(r'\{"([^"]+)",', supported[1])) != LANGUAGES:
+    errors.append("The runtime language registry does not match the catalog languages")
 for key, values in catalog.items():
     if set(values) != LANGUAGES:
         errors.append(f"{key!r}: language set is {sorted(values)}")
@@ -61,6 +65,9 @@ else:
     js_literal = r'''(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')'''
     called = {ast.literal_eval(m[1]) for m in re.finditer(
         r'\b(?:tr|heading|waiting)\(\s*(' + js_literal + ')', script)}
+    for match in re.finditer(r'\bcounted\(\s*(' + js_literal + r')\s*,\s*(' + js_literal + ')', script):
+        one, other = (ast.literal_eval(value) for value in match.groups())
+        called.update((one, other, other + '.few'))
     # Restrict conditional keys to the first argument of tr(). A later
     # conditional may choose HTML attributes or other non-message values.
     for call in re.finditer(r'\btr\(', script):
@@ -102,6 +109,7 @@ for word in ("entry", "file", "folder", "item", "backup", "link", "CIA",
              "unfinished install", "Marked Item"):
     used.add("{0} " + word)
     used.add("{0} " + ("entries" if word == "entry" else word + "s"))
+    used.add("{0} " + ("entries" if word == "entry" else word + "s") + ".few")
 for key in sorted(used - catalog.keys()):
     errors.append(f"Source key missing from catalog: {key!r}")
 
