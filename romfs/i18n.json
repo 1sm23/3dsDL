@@ -619,5 +619,2801 @@
     "pt": "Definições em",
     "de": "Einstellungen in",
     "ja": "設定の保存先"
+  },
+  "SD card root": {
+    "en": "SD card root"
+  },
+  "Downloads": {
+    "en": "Downloads"
+  },
+  "CIA installers": {
+    "en": "CIA installers"
+  },
+  "Homebrew apps": {
+    "en": "Homebrew apps"
+  },
+  "Luma3DS payloads": {
+    "en": "Luma3DS payloads"
+  },
+  "GodMode9 scripts": {
+    "en": "GodMode9 scripts"
+  },
+  "{0} Before Reinstall": {
+    "en": "{0} Before Reinstall"
+  },
+  "Backing up the save of {0}...": {
+    "en": "Backing up the save of {0}..."
+  },
+  "The save was backed up first, as {0} in Titles, Save Data.": {
+    "en": "The save was backed up first, as {0} in Titles, Save Data."
+  },
+  "The save of {0} could not be backed up. Replacing may lose it.": {
+    "en": "The save of {0} could not be backed up. Replacing may lose it."
+  },
+  "Continue Anyway": {
+    "en": "Continue Anyway"
+  },
+  "Cancel": {
+    "en": "Cancel"
+  },
+  "Direct http:// or https:// file link": {
+    "en": "Direct http:// or https:// file link"
+  },
+  "Settings": {
+    "en": "Settings"
+  },
+  "Queue": {
+    "en": "Queue"
+  },
+  "Scan QR Code": {
+    "en": "Scan QR Code"
+  },
+  "Enter URL": {
+    "en": "Enter URL"
+  },
+  "Receive": {
+    "en": "Receive"
+  },
+  "History": {
+    "en": "History"
+  },
+  "Files": {
+    "en": "Files"
+  },
+  "Titles": {
+    "en": "Titles"
+  },
+  "New": {
+    "en": "New"
+  },
+  "Home": {
+    "en": "Home"
+  },
+  "Not a download link": {
+    "en": "Not a download link"
+  },
+  "3dsDL can only download direct http:// or https:// links.": {
+    "en": "3dsDL can only download direct http:// or https:// links."
+  },
+  "Folder unavailable": {
+    "en": "Folder unavailable"
+  },
+  "Could not create {0}.": {
+    "en": "Could not create {0}."
+  },
+  "Download": {
+    "en": "Download"
+  },
+  "The system is not connected to the internet.": {
+    "en": "The system is not connected to the internet."
+  },
+  "Try Anyway": {
+    "en": "Try Anyway"
+  },
+  "Interrupted when 3dsDL closed.": {
+    "en": "Interrupted when 3dsDL closed."
+  },
+  "The download could not be completed.": {
+    "en": "The download could not be completed."
+  },
+  "{0} arrived and is kept for Retry.": {
+    "en": "{0} arrived and is kept for Retry."
+  },
+  "The console's clock says {0}.": {
+    "en": "The console's clock says {0}."
+  },
+  "Install Directly": {
+    "en": "Install Directly"
+  },
+  "Close": {
+    "en": "Close"
+  },
+  "Check Clock": {
+    "en": "Check Clock"
+  },
+  "Retry": {
+    "en": "Retry"
+  },
+  "Add to Queue": {
+    "en": "Add to Queue"
+  },
+  "Change Folder": {
+    "en": "Change Folder"
+  },
+  "from {0}": {
+    "en": "from {0}"
+  },
+  "Save to": {
+    "en": "Save to"
+  },
+  "Resume": {
+    "en": "Resume"
+  },
+  "{0} is already here": {
+    "en": "{0} is already here"
+  },
+  "Encrypted": {
+    "en": "Encrypted"
+  },
+  "Not encrypted": {
+    "en": "Not encrypted"
+  },
+  "A file with this name already exists.": {
+    "en": "A file with this name already exists."
+  },
+  "{0} is already in {1}.": {
+    "en": "{0} is already in {1}."
+  },
+  "Keep Both saves the new file as {0}.": {
+    "en": "Keep Both saves the new file as {0}."
+  },
+  "Keep Both": {
+    "en": "Keep Both"
+  },
+  "Replace": {
+    "en": "Replace"
+  },
+  "Kept the existing {0}.": {
+    "en": "Kept the existing {0}."
+  },
+  " over {0} connections": {
+    "en": " over {0} connections"
+  },
+  "Saved": {
+    "en": "Saved"
+  },
+  "Saved at {0}": {
+    "en": "Saved at {0}"
+  },
+  "Could not save the file": {
+    "en": "Could not save the file"
+  },
+  "Saved as {0} ({1}{2}).": {
+    "en": "Saved as {0} ({1}{2})."
+  },
+  "Download complete": {
+    "en": "Download complete"
+  },
+  "Cannot extract": {
+    "en": "Cannot extract"
+  },
+  "It was not extracted: {0}": {
+    "en": "It was not extracted: {0}"
+  },
+  "Into: {0}{1}{2}": {
+    "en": "Into: {0}{1}{2}"
+  },
+  "Here: {0}\nNew Folder: {1}": {
+    "en": "Here: {0}\nNew Folder: {1}"
+  },
+  "extract": {
+    "en": "extract"
+  },
+  "Extract": {
+    "en": "Extract"
+  },
+  "Not Now": {
+    "en": "Not Now"
+  },
+  "Here": {
+    "en": "Here"
+  },
+  "New Folder": {
+    "en": "New Folder"
+  },
+  "Not enough free space": {
+    "en": "Not enough free space"
+  },
+  "Extracting needs {0}{1}, but only {2} is free.": {
+    "en": "Extracting needs {0}{1}, but only {2} is free."
+  },
+  "at least ": {
+    "en": "at least "
+  },
+  "Archive": {
+    "en": "Archive"
+  },
+  "Checking {0}...": {
+    "en": "Checking {0}..."
+  },
+  "1 file already exists. Replace it?": {
+    "en": "1 file already exists. Replace it?"
+  },
+  "{0} already exist. Replace them?": {
+    "en": "{0} already exist. Replace them?"
+  },
+  "For example {0} in {1}": {
+    "en": "For example {0} in {1}"
+  },
+  "Overwrite": {
+    "en": "Overwrite"
+  },
+  "Skip Them": {
+    "en": "Skip Them"
+  },
+  "{0} extracted into {1}{2}.": {
+    "en": "{0} extracted into {1}{2}."
+  },
+  " in {0}": {
+    "en": " in {0}"
+  },
+  "Extraction stopped": {
+    "en": "Extraction stopped"
+  },
+  "Extraction failed": {
+    "en": "Extraction failed"
+  },
+  "{0} left alone. ": {
+    "en": "{0} left alone. "
+  },
+  "{0} skipped because the path would leave the folder. ": {
+    "en": "{0} skipped because the path would leave the folder. "
+  },
+  "{0} skipped (encrypted, a link or unknown compression). ": {
+    "en": "{0} skipped (encrypted, a link or unknown compression). "
+  },
+  "done": {
+    "en": "done"
+  },
+  "The archive has been extracted.": {
+    "en": "The archive has been extracted."
+  },
+  "Done": {
+    "en": "Done"
+  },
+  "Delete Archive": {
+    "en": "Delete Archive"
+  },
+  "Replace Them": {
+    "en": "Replace Them"
+  },
+  "Could not delete the archive": {
+    "en": "Could not delete the archive"
+  },
+  "{0} replaced in {1}.": {
+    "en": "{0} replaced in {1}."
+  },
+  "Replacing stopped": {
+    "en": "Replacing stopped"
+  },
+  "Replacing failed": {
+    "en": "Replacing failed"
+  },
+  "Files replaced": {
+    "en": "Files replaced"
+  },
+  "It looks like a CIA but cannot be installed: {0}": {
+    "en": "It looks like a CIA but cannot be installed: {0}"
+  },
+  "Keep File": {
+    "en": "Keep File"
+  },
+  "Install": {
+    "en": "Install"
+  },
+  "Install and Delete File": {
+    "en": "Install and Delete File"
+  },
+  "Download Complete": {
+    "en": "Download Complete"
+  },
+  "File Kept": {
+    "en": "File Kept"
+  },
+  "Cannot install": {
+    "en": "Cannot install"
+  },
+  "Not installed": {
+    "en": "Not installed"
+  },
+  "3dsDL does not install system titles. A broken one can stop the console from starting.": {
+    "en": "3dsDL does not install system titles. A broken one can stop the console from starting."
+  },
+  "{0} only starts on New Nintendo 3DS systems.": {
+    "en": "{0} only starts on New Nintendo 3DS systems."
+  },
+  "Install Anyway": {
+    "en": "Install Anyway"
+  },
+  "Installed: {0}\nThis file: {1}": {
+    "en": "Installed: {0}\nThis file: {1}"
+  },
+  "Reinstall": {
+    "en": "Reinstall"
+  },
+  "Keep Installed": {
+    "en": "Keep Installed"
+  },
+  "Already Installed": {
+    "en": "Already Installed"
+  },
+  "{0} {1} is running now, so it cannot be installed again.": {
+    "en": "{0} {1} is running now, so it cannot be installed again."
+  },
+  "This version of {0} is already installed": {
+    "en": "This version of {0} is already installed"
+  },
+  "Already installed": {
+    "en": "Already installed"
+  },
+  "Newer Version Running": {
+    "en": "Newer Version Running"
+  },
+  "{0} {1} is installed and running now, so it cannot be replaced by this older {2}.": {
+    "en": "{0} {1} is installed and running now, so it cannot be replaced by this older {2}."
+  },
+  "A newer version of {0} is installed": {
+    "en": "A newer version of {0} is installed"
+  },
+  "Not enough space": {
+    "en": "Not enough space"
+  },
+  "{0} needs {1} on the SD card and {2} is free.": {
+    "en": "{0} needs {1} on the SD card and {2} is free."
+  },
+  "Could not replace {0}": {
+    "en": "Could not replace {0}"
+  },
+  "{0} is already installed": {
+    "en": "{0} is already installed"
+  },
+  "Install cancelled": {
+    "en": "Install cancelled"
+  },
+  "Install failed: {0}": {
+    "en": "Install failed: {0}"
+  },
+  "Install failed": {
+    "en": "Install failed"
+  },
+  "Getting the seed {0} needs...": {
+    "en": "Getting the seed {0} needs..."
+  },
+  "The CIA file is still at {0}.": {
+    "en": "The CIA file is still at {0}."
+  },
+  "The CIA file was deleted.": {
+    "en": "The CIA file was deleted."
+  },
+  "The CIA file could not be deleted.": {
+    "en": "The CIA file could not be deleted."
+  },
+  "Installed, file deleted": {
+    "en": "Installed, file deleted"
+  },
+  "Installed": {
+    "en": "Installed"
+  },
+  "Installation Complete": {
+    "en": "Installation Complete"
+  },
+  "{0} has been installed.": {
+    "en": "{0} has been installed."
+  },
+  ", installed in {0}": {
+    "en": ", installed in {0}"
+  },
+  "Launch": {
+    "en": "Launch"
+  },
+  "Could Not Launch": {
+    "en": "Could Not Launch"
+  },
+  "Download Folder": {
+    "en": "Download Folder"
+  },
+  "Browse the SD Card...": {
+    "en": "Browse the SD Card..."
+  },
+  "Type a Folder...": {
+    "en": "Type a Folder..."
+  },
+  "Recent": {
+    "en": "Recent"
+  },
+  "Now": {
+    "en": "Now"
+  },
+  "Selected": {
+    "en": "Selected"
+  },
+  "Folder Unavailable": {
+    "en": "Folder Unavailable"
+  },
+  "Choose a Folder": {
+    "en": "Choose a Folder"
+  },
+  "Back": {
+    "en": "Back"
+  },
+  "Use This": {
+    "en": "Use This"
+  },
+  "New Folder...": {
+    "en": "New Folder..."
+  },
+  "Browsing": {
+    "en": "Browsing"
+  },
+  "Open": {
+    "en": "Open"
+  },
+  "New folder name": {
+    "en": "New folder name"
+  },
+  "Could Not Create the Folder": {
+    "en": "Could Not Create the Folder"
+  },
+  "Folder, for example sdmc:/downloads/": {
+    "en": "Folder, for example sdmc:/downloads/"
+  },
+  "Not an SD card folder": {
+    "en": "Not an SD card folder"
+  },
+  "Folders must start with sdmc:/ and cannot contain . or .. parts.": {
+    "en": "Folders must start with sdmc:/ and cannot contain . or .. parts."
+  },
+  "new folder": {
+    "en": "new folder"
+  },
+  "Create this folder?": {
+    "en": "Create this folder?"
+  },
+  "Create": {
+    "en": "Create"
+  },
+  "Could not create the folder": {
+    "en": "Could not create the folder"
+  },
+  "history": {
+    "en": "history"
+  },
+  "Clear the download history and delete partial downloads?": {
+    "en": "Clear the download history and delete partial downloads?"
+  },
+  "Clear": {
+    "en": "Clear"
+  },
+  "Failed": {
+    "en": "Failed"
+  },
+  "Stopped": {
+    "en": "Stopped"
+  },
+  "Saved as {0}": {
+    "en": "Saved as {0}"
+  },
+  "Can resume": {
+    "en": "Can resume"
+  },
+  "{0} in {1}": {
+    "en": "{0} in {1}"
+  },
+  "Recent Downloads": {
+    "en": "Recent Downloads"
+  },
+  "No downloads yet.": {
+    "en": "No downloads yet."
+  },
+  "{0} saved": {
+    "en": "{0} saved"
+  },
+  "Saves to": {
+    "en": "Saves to"
+  },
+  "Resume Download": {
+    "en": "Resume Download"
+  },
+  "Download Again": {
+    "en": "Download Again"
+  },
+  "Remove from History": {
+    "en": "Remove from History"
+  },
+  "Settings not saved": {
+    "en": "Settings not saved"
+  },
+  "The change works for now, but could not be written to the SD card.": {
+    "en": "The change works for now, but could not be written to the SD card."
+  },
+  "Time Zone": {
+    "en": "Time Zone"
+  },
+  "Offset": {
+    "en": "Offset"
+  },
+  "Time there": {
+    "en": "Time there"
+  },
+  "Console Clock": {
+    "en": "Console Clock"
+  },
+  "Asking a time server for the current time...": {
+    "en": "Asking a time server for the current time..."
+  },
+  "The time could not be checked online.": {
+    "en": "The time could not be checked online."
+  },
+  "Check Wi-Fi. Some networks block time servers (UDP port 123).": {
+    "en": "Check Wi-Fi. Some networks block time servers (UDP port 123)."
+  },
+  "Try Again": {
+    "en": "Try Again"
+  },
+  "Set the Clock": {
+    "en": "Set the Clock"
+  },
+  "Change Time Zone": {
+    "en": "Change Time Zone"
+  },
+  "This console": {
+    "en": "This console"
+  },
+  "Internet time": {
+    "en": "Internet time"
+  },
+  "Time zone": {
+    "en": "Time zone"
+  },
+  "Clock": {
+    "en": "Clock"
+  },
+  "Right": {
+    "en": "Right"
+  },
+  "Could not set the clock": {
+    "en": "Could not set the clock"
+  },
+  "Clock set": {
+    "en": "Clock set"
+  },
+  "The console clock now reads {0} ({1}).": {
+    "en": "The console clock now reads {0} ({1})."
+  },
+  "Report Issue": {
+    "en": "Report Issue"
+  },
+  "About 3dsDL": {
+    "en": "About 3dsDL"
+  },
+  "Version ": {
+    "en": "Version "
+  },
+  "Settings in": {
+    "en": "Settings in"
+  },
+  "Free software under the GPLv3. Built on libcurl, Mbed TLS, quirc and Citro2D, and grew out of Multidownload by hax0kartik. CIA installing follows FBI by Steveice10 (MIT).": {
+    "en": "Free software under the GPLv3. Built on libcurl, Mbed TLS, quirc and Citro2D, and grew out of Multidownload by hax0kartik. CIA installing follows FBI by Steveice10 (MIT)."
+  },
+  "Reading {0}...": {
+    "en": "Reading {0}..."
+  },
+  "Smallest First": {
+    "en": "Smallest First"
+  },
+  "Largest First": {
+    "en": "Largest First"
+  },
+  "Oldest First": {
+    "en": "Oldest First"
+  },
+  "Newest First": {
+    "en": "Newest First"
+  },
+  "Type, Z to A": {
+    "en": "Type, Z to A"
+  },
+  "Type, A to Z": {
+    "en": "Type, A to Z"
+  },
+  "Name, Z to A": {
+    "en": "Name, Z to A"
+  },
+  "Name, A to Z": {
+    "en": "Name, A to Z"
+  },
+  "title {0}": {
+    "en": "title {0}"
+  },
+  "Installed now: {0}": {
+    "en": "Installed now: {0}"
+  },
+  "Title ID": {
+    "en": "Title ID"
+  },
+  "Version": {
+    "en": "Version"
+  },
+  "Size": {
+    "en": "Size"
+  },
+  "system memory": {
+    "en": "system memory"
+  },
+  "SD card": {
+    "en": "SD card"
+  },
+  "{0}, not installed": {
+    "en": "{0}, not installed"
+  },
+  "{0}, installed": {
+    "en": "{0}, installed"
+  },
+  "{0}, installed {1}": {
+    "en": "{0}, installed {1}"
+  },
+  "SD Card": {
+    "en": "SD Card"
+  },
+  "Clipboard": {
+    "en": "Clipboard"
+  },
+  ", cut": {
+    "en": ", cut"
+  },
+  ", copied": {
+    "en": ", copied"
+  },
+  "{0} x {1} pixels": {
+    "en": "{0} x {1} pixels"
+  },
+  "Changed": {
+    "en": "Changed"
+  },
+  "Type": {
+    "en": "Type"
+  },
+  "Folder": {
+    "en": "Folder"
+  },
+  "Contains": {
+    "en": "Contains"
+  },
+  "CIA, {0}": {
+    "en": "CIA, {0}"
+  },
+  "Album": {
+    "en": "Album"
+  },
+  "Length": {
+    "en": "Length"
+  },
+  "Format": {
+    "en": "Format"
+  },
+  "Code": {
+    "en": "Code"
+  },
+  "Note": {
+    "en": "Note"
+  },
+  "Picture": {
+    "en": "Picture"
+  },
+  "Problem": {
+    "en": "Problem"
+  },
+  "This folder is empty.": {
+    "en": "This folder is empty."
+  },
+  "Options": {
+    "en": "Options"
+  },
+  "Sort": {
+    "en": "Sort"
+  },
+  "{0} marked": {
+    "en": "{0} marked"
+  },
+  " to move": {
+    "en": " to move"
+  },
+  " to paste": {
+    "en": " to paste"
+  },
+  "Marked": {
+    "en": "Marked"
+  },
+  "The SD card could not be read.": {
+    "en": "The SD card could not be read."
+  },
+  "Path": {
+    "en": "Path"
+  },
+  "Reading": {
+    "en": "Reading"
+  },
+  "{0} so far": {
+    "en": "{0} so far"
+  },
+  "CIA Installer": {
+    "en": "CIA Installer"
+  },
+  "This CIA cannot be installed.": {
+    "en": "This CIA cannot be installed."
+  },
+  "Open as Hex": {
+    "en": "Open as Hex"
+  },
+  "Delete File": {
+    "en": "Delete File"
+  },
+  "Installing is not available.": {
+    "en": "Installing is not available."
+  },
+  "No Checksum": {
+    "en": "No Checksum"
+  },
+  "The file could not be read.": {
+    "en": "The file could not be read."
+  },
+  "It matches {0}.": {
+    "en": "It matches {0}."
+  },
+  "It does not match {0}, which expects {1}.": {
+    "en": "It does not match {0}, which expects {1}."
+  },
+  "SHA-256 of {0}": {
+    "en": "SHA-256 of {0}"
+  },
+  "{0} is intact.": {
+    "en": "{0} is intact."
+  },
+  "{0} does not match its checksum.": {
+    "en": "{0} does not match its checksum."
+  },
+  "Install and Delete": {
+    "en": "Install and Delete"
+  },
+  "Install Ticket": {
+    "en": "Install Ticket"
+  },
+  "Edit": {
+    "en": "Edit"
+  },
+  "Install {0}": {
+    "en": "Install {0}"
+  },
+  "Open as Text": {
+    "en": "Open as Text"
+  },
+  "Rename": {
+    "en": "Rename"
+  },
+  "Copy": {
+    "en": "Copy"
+  },
+  "Cut": {
+    "en": "Cut"
+  },
+  "Delete": {
+    "en": "Delete"
+  },
+  "Properties": {
+    "en": "Properties"
+  },
+  "Unmark": {
+    "en": "Unmark"
+  },
+  "Mark": {
+    "en": "Mark"
+  },
+  "Clear Marks": {
+    "en": "Clear Marks"
+  },
+  "This Folder...": {
+    "en": "This Folder..."
+  },
+  "Folders": {
+    "en": "Folders"
+  },
+  "Extract {0}?": {
+    "en": "Extract {0}?"
+  },
+  "Ready to Move": {
+    "en": "Ready to Move"
+  },
+  "Ready to Copy": {
+    "en": "Ready to Copy"
+  },
+  "Open a folder and choose {0} in Options.": {
+    "en": "Open a folder and choose {0} in Options."
+  },
+  "Move Here": {
+    "en": "Move Here"
+  },
+  "Paste Here": {
+    "en": "Paste Here"
+  },
+  "Sort...": {
+    "en": "Sort..."
+  },
+  "Forget Clipboard": {
+    "en": "Forget Clipboard"
+  },
+  "New File": {
+    "en": "New File"
+  },
+  "Hidden: {0}": {
+    "en": "Hidden: {0}"
+  },
+  "On": {
+    "en": "On"
+  },
+  "Off": {
+    "en": "Off"
+  },
+  "Mark All": {
+    "en": "Mark All"
+  },
+  "Install All CIAs": {
+    "en": "Install All CIAs"
+  },
+  "Sorted": {
+    "en": "Sorted"
+  },
+  "Install {0}?": {
+    "en": "Install {0}?"
+  },
+  "From {0}": {
+    "en": "From {0}"
+  },
+  "Name": {
+    "en": "Name"
+  },
+  "Date": {
+    "en": "Date"
+  },
+  "Reverse Order": {
+    "en": "Reverse Order"
+  },
+  "Order": {
+    "en": "Order"
+  },
+  "All installed": {
+    "en": "All installed"
+  },
+  "Some were not installed": {
+    "en": "Some were not installed"
+  },
+  "Installed {0} of {1}.{2}": {
+    "en": "Installed {0} of {1}.{2}"
+  },
+  " was": {
+    "en": " was"
+  },
+  " were": {
+    "en": " were"
+  },
+  " {0}{1} already installed.": {
+    "en": " {0}{1} already installed."
+  },
+  "Not installed: {0}": {
+    "en": "Not installed: {0}"
+  },
+  "New name": {
+    "en": "New name"
+  },
+  "Cannot use that name": {
+    "en": "Cannot use that name"
+  },
+  "Could not rename": {
+    "en": "Could not rename"
+  },
+  "delete": {
+    "en": "delete"
+  },
+  "Counting what will be deleted...": {
+    "en": "Counting what will be deleted..."
+  },
+  "Delete {0}?": {
+    "en": "Delete {0}?"
+  },
+  "deleting": {
+    "en": "deleting"
+  },
+  "Delete stopped": {
+    "en": "Delete stopped"
+  },
+  "{0} deleted before that.": {
+    "en": "{0} deleted before that."
+  },
+  "{0} deleted before you stopped it.": {
+    "en": "{0} deleted before you stopped it."
+  },
+  "{0} no longer exists.": {
+    "en": "{0} no longer exists."
+  },
+  "{0} cannot go inside itself.": {
+    "en": "{0} cannot go inside itself."
+  },
+  "paste": {
+    "en": "paste"
+  },
+  "{0} is already here.": {
+    "en": "{0} is already here."
+  },
+  "Skip": {
+    "en": "Skip"
+  },
+  "No free name was found for {0}.": {
+    "en": "No free name was found for {0}."
+  },
+  "Measuring what will be copied...": {
+    "en": "Measuring what will be copied..."
+  },
+  "Copying needs {0} and {1} is free.": {
+    "en": "Copying needs {0} and {1} is free."
+  },
+  "moving": {
+    "en": "moving"
+  },
+  "copying": {
+    "en": "copying"
+  },
+  "Stopped before it finished.": {
+    "en": "Stopped before it finished."
+  },
+  "Not everything was pasted": {
+    "en": "Not everything was pasted"
+  },
+  "Already exists": {
+    "en": "Already exists"
+  },
+  "{0} is already in this folder.": {
+    "en": "{0} is already in this folder."
+  },
+  "New file name": {
+    "en": "New file name"
+  },
+  "Could not create the file": {
+    "en": "Could not create the file"
+  },
+  "properties": {
+    "en": "properties"
+  },
+  "Adding up sizes...": {
+    "en": "Adding up sizes..."
+  },
+  "Bytes": {
+    "en": "Bytes"
+  },
+  "OK": {
+    "en": "OK"
+  },
+  "Cannot Install": {
+    "en": "Cannot Install"
+  },
+  "Tickets": {
+    "en": "Tickets"
+  },
+  "Installing the ticket...": {
+    "en": "Installing the ticket..."
+  },
+  "Ticket Installed": {
+    "en": "Ticket Installed"
+  },
+  "The ticket for {0} is installed.": {
+    "en": "The ticket for {0} is installed."
+  },
+  "Ticket Not Installed": {
+    "en": "Ticket Not Installed"
+  },
+  "Starting homebrew needs Luma3DS, and its homebrew loader did not answer.": {
+    "en": "Starting homebrew needs Luma3DS, and its homebrew loader did not answer."
+  },
+  "Luma3DS starts homebrew in place of {0}, which is not installed. Open the Homebrew Launcher and start it from there.": {
+    "en": "Luma3DS starts homebrew in place of {0}, which is not installed. Open the Homebrew Launcher and start it from there."
+  },
+  "The homebrew loader did not take {0}.": {
+    "en": "The homebrew loader did not take {0}."
+  },
+  "Start": {
+    "en": "Start"
+  },
+  "Cannot Start": {
+    "en": "Cannot Start"
+  },
+  "{0} {1} of {2}": {
+    "en": "{0} {1} of {2}"
+  },
+  "Previous": {
+    "en": "Previous"
+  },
+  "Next": {
+    "en": "Next"
+  },
+  "Artist": {
+    "en": "Artist"
+  },
+  "Track": {
+    "en": "Track"
+  },
+  "Genre": {
+    "en": "Genre"
+  },
+  "Loop": {
+    "en": "Loop"
+  },
+  "Pictures": {
+    "en": "Pictures"
+  },
+  "{0} x {1} pixels, {2}": {
+    "en": "{0} x {1} pixels, {2}"
+  },
+  "The picture could not be shown.": {
+    "en": "The picture could not be shown."
+  },
+  "Song": {
+    "en": "Song"
+  },
+  "Songs": {
+    "en": "Songs"
+  },
+  "Cannot Open the Archive": {
+    "en": "Cannot Open the Archive"
+  },
+  "This archive is empty.": {
+    "en": "This archive is empty."
+  },
+  "Holds": {
+    "en": "Holds"
+  },
+  "Extracted": {
+    "en": "Extracted"
+  },
+  "Skipped": {
+    "en": "Skipped"
+  },
+  "Path leaves the folder": {
+    "en": "Path leaves the folder"
+  },
+  "Encrypted, a link or unknown": {
+    "en": "Encrypted, a link or unknown"
+  },
+  "Cannot Open the File": {
+    "en": "Cannot Open the File"
+  },
+  "Page Up": {
+    "en": "Page Up"
+  },
+  "Page Down": {
+    "en": "Page Down"
+  },
+  "Go to Start": {
+    "en": "Go to Start"
+  },
+  "Go to End": {
+    "en": "Go to End"
+  },
+  "This is not a text file.": {
+    "en": "This is not a text file."
+  },
+  "Only the first {0} is shown.": {
+    "en": "Only the first {0} is shown."
+  },
+  "Not UTF-8 text.": {
+    "en": "Not UTF-8 text."
+  },
+  "Not Saved": {
+    "en": "Not Saved"
+  },
+  "The file could not be written. The SD card may be full or read-only.": {
+    "en": "The file could not be written. The SD card may be full or read-only."
+  },
+  "Line Too Long": {
+    "en": "Line Too Long"
+  },
+  "This line is too long for the keyboard.": {
+    "en": "This line is too long for the keyboard."
+  },
+  "Line {0}": {
+    "en": "Line {0}"
+  },
+  "Read-Only": {
+    "en": "Read-Only"
+  },
+  "Save your changes before closing?": {
+    "en": "Save your changes before closing?"
+  },
+  "Discard": {
+    "en": "Discard"
+  },
+  "Keep Editing": {
+    "en": "Keep Editing"
+  },
+  "Save": {
+    "en": "Save"
+  },
+  "Line {0} of {1}": {
+    "en": "Line {0} of {1}"
+  },
+  "(empty line)": {
+    "en": "(empty line)"
+  },
+  "New Line": {
+    "en": "New Line"
+  },
+  "Could not start the seed download.": {
+    "en": "Could not start the seed download."
+  },
+  "The seed lookup was stopped.": {
+    "en": "The seed lookup was stopped."
+  },
+  "Could not reach Nintendo's seed server: {0}.": {
+    "en": "Could not reach Nintendo's seed server: {0}."
+  },
+  "Nintendo's server has no seed for this title.": {
+    "en": "Nintendo's server has no seed for this title."
+  },
+  "Nintendo's seed server answered with HTTP {0}.": {
+    "en": "Nintendo's seed server answered with HTTP {0}."
+  },
+  "3dsDL could not open the install service ({0}). Run the CIA version of 3dsDL, or the .3dsx from the Homebrew Launcher with Luma3DS.": {
+    "en": "3dsDL could not open the install service ({0}). Run the CIA version of 3dsDL, or the .3dsx from the Homebrew Launcher with Luma3DS."
+  },
+  "Could not open the CIA file.": {
+    "en": "Could not open the CIA file."
+  },
+  "Could not read the CIA file.": {
+    "en": "Could not read the CIA file."
+  },
+  "Not enough memory to install.": {
+    "en": "Not enough memory to install."
+  },
+  "The install could not start.": {
+    "en": "The install could not start."
+  },
+  "The install was cancelled. Nothing was changed.": {
+    "en": "The install was cancelled. Nothing was changed."
+  },
+  "Reading the CIA file failed.": {
+    "en": "Reading the CIA file failed."
+  },
+  "The install failed.": {
+    "en": "The install failed."
+  },
+  "The install could not be finished.": {
+    "en": "The install could not be finished."
+  },
+  "This is a system title. 3dsDL does not install them.": {
+    "en": "This is a system title. 3dsDL does not install them."
+  },
+  "The download ended before the CIA's header arrived.": {
+    "en": "The download ended before the CIA's header arrived."
+  },
+  "System titles are never removed.": {
+    "en": "System titles are never removed."
+  },
+  "Could not remove the installed title. {0}": {
+    "en": "Could not remove the installed title. {0}"
+  },
+  "from the SD card": {
+    "en": "from the SD card"
+  },
+  "from Nintendo": {
+    "en": "from Nintendo"
+  },
+  "The seed could not be added. {0}": {
+    "en": "The seed could not be added. {0}"
+  },
+  "Added the game's seed {0}.": {
+    "en": "Added the game's seed {0}."
+  },
+  "Could not start the title. {0}": {
+    "en": "Could not start the title. {0}"
+  },
+  "The install service was busy with something else. Restart the console and try again.": {
+    "en": "The install service was busy with something else. Restart the console and try again."
+  },
+  "The CIA's contents are damaged.": {
+    "en": "The CIA's contents are damaged."
+  },
+  "The install service refused this version. The same or a newer version may already be installed.": {
+    "en": "The install service refused this version. The same or a newer version may already be installed."
+  },
+  "The SD card's title database is missing.": {
+    "en": "The SD card's title database is missing."
+  },
+  "System titles cannot be removed.": {
+    "en": "System titles cannot be removed."
+  },
+  "There is not enough space left in the DSiWare area of the system memory.": {
+    "en": "There is not enough space left in the DSiWare area of the system memory."
+  },
+  "This version is already installed.": {
+    "en": "This version is already installed."
+  },
+  "The CIA failed a signature or hash check. The file is probably damaged; download it again.": {
+    "en": "The CIA failed a signature or hash check. The file is probably damaged; download it again."
+  },
+  "The file was not found.": {
+    "en": "The file was not found."
+  },
+  "Error {0}.": {
+    "en": "Error {0}."
+  },
+  "The console cannot read the list of software on the SD card right now, so 3dsDL cannot tell what is installed.": {
+    "en": "The console cannot read the list of software on the SD card right now, so 3dsDL cannot tell what is installed."
+  },
+  "Could not read the software installed {0}. {1}": {
+    "en": "Could not read the software installed {0}. {1}"
+  },
+  "in system memory": {
+    "en": "in system memory"
+  },
+  "on the SD card": {
+    "en": "on the SD card"
+  },
+  "Could not read the tickets. {0}": {
+    "en": "Could not read the tickets. {0}"
+  },
+  "Could not read sdmc:/Nintendo 3DS/ (test fault).": {
+    "en": "Could not read sdmc:/Nintendo 3DS/ (test fault)."
+  },
+  "Could not read {0}.": {
+    "en": "Could not read {0}."
+  },
+  "{0}{1}/{2}/title/": {
+    "en": "{0}{1}/{2}/title/"
+  },
+  "{0}{1}/{2}/content/": {
+    "en": "{0}{1}/{2}/content/"
+  },
+  "3dsDL cannot delete itself while it is running.": {
+    "en": "3dsDL cannot delete itself while it is running."
+  },
+  "Software on a game card cannot be deleted.": {
+    "en": "Software on a game card cannot be deleted."
+  },
+  "It could not be deleted. {0}": {
+    "en": "It could not be deleted. {0}"
+  },
+  "{0} is installed but was not listed, so the installed software could not be read reliably.": {
+    "en": "{0} is installed but was not listed, so the installed software could not be read reliably."
+  },
+  "The ticket install could not start. {0}": {
+    "en": "The ticket install could not start. {0}"
+  },
+  "The ticket could not be installed. {0}": {
+    "en": "The ticket could not be installed. {0}"
+  },
+  "System tickets are never removed.": {
+    "en": "System tickets are never removed."
+  },
+  "3dsDL needs its own ticket to start.": {
+    "en": "3dsDL needs its own ticket to start."
+  },
+  "nothing (test fault)": {
+    "en": "nothing (test fault)"
+  },
+  "The ticket was kept, as it could not be saved first. {0}": {
+    "en": "The ticket was kept, as it could not be saved first. {0}"
+  },
+  "The ticket could not be deleted. {0}": {
+    "en": "The ticket could not be deleted. {0}"
+  },
+  "The extra data could not be deleted. {0}": {
+    "en": "The extra data could not be deleted. {0}"
+  },
+  "System installs are never removed.": {
+    "en": "System installs are never removed."
+  },
+  "The unfinished install could not be removed. {0}": {
+    "en": "The unfinished install could not be removed. {0}"
+  },
+  "This is not a ticket file.": {
+    "en": "This is not a ticket file."
+  },
+  "This ticket is for a system title, which 3dsDL does not install.": {
+    "en": "This ticket is for a system title, which 3dsDL does not install."
+  },
+  "The ticket file could not be read.": {
+    "en": "The ticket file could not be read."
+  },
+  "The ticket there now could not be saved first, so nothing was changed. {0}": {
+    "en": "The ticket there now could not be saved first, so nothing was changed. {0}"
+  },
+  "The console did not give out this ticket. {0}": {
+    "en": "The console did not give out this ticket. {0}"
+  },
+  "The console gave back something that is not this title's ticket.": {
+    "en": "The console gave back something that is not this title's ticket."
+  },
+  "Could not write {0}.": {
+    "en": "Could not write {0}."
+  },
+  "Could not allocate the network buffer.": {
+    "en": "Could not allocate the network buffer."
+  },
+  "Opening the app's files": {
+    "en": "Opening the app's files"
+  },
+  "Starting the network service": {
+    "en": "Starting the network service"
+  },
+  "Starting the secure random source": {
+    "en": "Starting the secure random source"
+  },
+  "Starting libcurl failed: {0}": {
+    "en": "Starting libcurl failed: {0}"
+  },
+  "Startup failed": {
+    "en": "Startup failed"
+  },
+  "{0} was refused ({1}). Try the CIA build of 3dsDL, or set the clock from Rosalina: press L + Down + Select, open Miscellaneous options and choose \"Update time and date via NTP\".": {
+    "en": "{0} was refused ({1}). Try the CIA build of 3dsDL, or set the clock from Rosalina: press L + Down + Select, open Miscellaneous options and choose \"Update time and date via NTP\"."
+  },
+  "Access to the clock service": {
+    "en": "Access to the clock service"
+  },
+  "Access to the system settings": {
+    "en": "Access to the system settings"
+  },
+  "Setting the time": {
+    "en": "Setting the time"
+  },
+  "Saving the system settings": {
+    "en": "Saving the system settings"
+  },
+  "3ds": {
+    "en": "3ds"
+  },
+  "{0} from {1}": {
+    "en": "{0} from {1}"
+  },
+  "Added to the Queue": {
+    "en": "Added to the Queue"
+  },
+  "Already in the Queue": {
+    "en": "Already in the Queue"
+  },
+  "{0} waiting in Queue on Home.": {
+    "en": "{0} waiting in Queue on Home."
+  },
+  "Not Connected": {
+    "en": "Not Connected"
+  },
+  "Turn wireless communication on, then download the queue again.": {
+    "en": "Turn wireless communication on, then download the queue again."
+  },
+  "{0} of {1}": {
+    "en": "{0} of {1}"
+  },
+  "Stopped.": {
+    "en": "Stopped."
+  },
+  "Saved from the queue": {
+    "en": "Saved from the queue"
+  },
+  "Install the CIAs from this queue?": {
+    "en": "Install the CIAs from this queue?"
+  },
+  "Install, Delete": {
+    "en": "Install, Delete"
+  },
+  "Keep Files": {
+    "en": "Keep Files"
+  },
+  "{0} downloaded": {
+    "en": "{0} downloaded"
+  },
+  ", {0} installed": {
+    "en": ", {0} installed"
+  },
+  ", {0} failed": {
+    "en": ", {0} failed"
+  },
+  " The queue was stopped; the rest are still in it.": {
+    "en": " The queue was stopped; the rest are still in it."
+  },
+  " What failed stays in the queue to try again.": {
+    "en": " What failed stays in the queue to try again."
+  },
+  " and {0} more": {
+    "en": " and {0} more"
+  },
+  "Queue Done": {
+    "en": "Queue Done"
+  },
+  "Queue Finished": {
+    "en": "Queue Finished"
+  },
+  "Saved: {0}.": {
+    "en": "Saved: {0}."
+  },
+  "Nothing is waiting.": {
+    "en": "Nothing is waiting."
+  },
+  "Download All": {
+    "en": "Download All"
+  },
+  "Position": {
+    "en": "Position"
+  },
+  "Download Now": {
+    "en": "Download Now"
+  },
+  "Remove": {
+    "en": "Remove"
+  },
+  "Remove All": {
+    "en": "Remove All"
+  },
+  "Remove {0} from the queue?": {
+    "en": "Remove {0} from the queue?"
+  },
+  "Receiving needs the same Wi-Fi network as the phone or computer sending. Turn wireless communication on first.": {
+    "en": "Receiving needs the same Wi-Fi network as the phone or computer sending. Turn wireless communication on first."
+  },
+  "No Network Address": {
+    "en": "No Network Address"
+  },
+  "The console has no address on the local network yet. Check the connection and try again.": {
+    "en": "The console has no address on the local network yet. Check the connection and try again."
+  },
+  "Cannot Receive": {
+    "en": "Cannot Receive"
+  },
+  "The network listener could not start.": {
+    "en": "The network listener could not start."
+  },
+  "Installing {0}{1}.": {
+    "en": "Installing {0}{1}."
+  },
+  " ({0} of {1})": {
+    "en": " ({0} of {1})"
+  },
+  "Installed {0}.": {
+    "en": "Installed {0}."
+  },
+  "Installed all {0}.": {
+    "en": "Installed all {0}."
+  },
+  "{0} was already installed.": {
+    "en": "{0} was already installed."
+  },
+  "Already installed: {0}.": {
+    "en": "Already installed: {0}."
+  },
+  "{0}Not installed: {1}.": {
+    "en": "{0}Not installed: {1}."
+  },
+  "Let {0} add, change and delete files on the SD card?": {
+    "en": "Let {0} add, change and delete files on the SD card?"
+  },
+  "Allow": {
+    "en": "Allow"
+  },
+  "Don't Allow": {
+    "en": "Don't Allow"
+  },
+  "Asking whether {0} may use the SD card.": {
+    "en": "Asking whether {0} may use the SD card."
+  },
+  "Install {0} sent from {1}?": {
+    "en": "Install {0} sent from {1}?"
+  },
+  "Waiting for you to choose Install on the 3DS.": {
+    "en": "Waiting for you to choose Install on the 3DS."
+  },
+  "Not installed: Not Now was chosen on the 3DS.": {
+    "en": "Not installed: Not Now was chosen on the 3DS."
+  },
+  "Received {0} from {1}.": {
+    "en": "Received {0} from {1}."
+  },
+  "They go to {0}.": {
+    "en": "They go to {0}."
+  },
+  "Waiting for you to choose Download on the 3DS.": {
+    "en": "Waiting for you to choose Download on the 3DS."
+  },
+  "Added {0} to the Queue on the 3DS.": {
+    "en": "Added {0} to the Queue on the 3DS."
+  },
+  "Not downloaded: Cancel was chosen on the 3DS.": {
+    "en": "Not downloaded: Cancel was chosen on the 3DS."
+  },
+  "Downloading {0}.": {
+    "en": "Downloading {0}."
+  },
+  "Done with {0} on the 3DS. History has how each went.": {
+    "en": "Done with {0} on the 3DS. History has how each went."
+  },
+  "Port {0} is busy": {
+    "en": "Port {0} is busy"
+  },
+  "Receiving": {
+    "en": "Receiving"
+  },
+  "Sending": {
+    "en": "Sending"
+  },
+  "from ": {
+    "en": "from "
+  },
+  "to ": {
+    "en": "to "
+  },
+  "From ": {
+    "en": "From "
+  },
+  "To ": {
+    "en": "To "
+  },
+  "Waiting at": {
+    "en": "Waiting at"
+  },
+  "or {0}": {
+    "en": "or {0}"
+  },
+  "Last: {0}": {
+    "en": "Last: {0}"
+  },
+  "Not Installed": {
+    "en": "Not Installed"
+  },
+  "Direct install stopped": {
+    "en": "Direct install stopped"
+  },
+  "Install Stopped": {
+    "en": "Install Stopped"
+  },
+  "Nothing was changed.": {
+    "en": "Nothing was changed."
+  },
+  "Direct install failed: {0}": {
+    "en": "Direct install failed: {0}"
+  },
+  "Install Failed": {
+    "en": "Install Failed"
+  },
+  "Installed directly, nothing saved": {
+    "en": "Installed directly, nothing saved"
+  },
+  "Installing": {
+    "en": "Installing"
+  },
+  "{0}/new": {
+    "en": "{0}/new"
+  },
+  "Report a Bug": {
+    "en": "Report a Bug"
+  },
+  "Discord Server": {
+    "en": "Discord Server"
+  },
+  "Developer on X": {
+    "en": "Developer on X"
+  },
+  "Report an Issue": {
+    "en": "Report an Issue"
+  },
+  "Details": {
+    "en": "Details"
+  },
+  "Logs": {
+    "en": "Logs"
+  },
+  "Could not read {0} ({1}).": {
+    "en": "Could not read {0} ({1})."
+  },
+  "The SD card could not take {0}.": {
+    "en": "The SD card could not take {0}."
+  },
+  "Could not open {0} ({1}).": {
+    "en": "Could not open {0} ({1})."
+  },
+  "Could not read {0}{1}.": {
+    "en": "Could not read {0}{1}."
+  },
+  "{0} has a path too long for save data.": {
+    "en": "{0} has a path too long for save data."
+  },
+  "Could not write {0} ({1}).": {
+    "en": "Could not write {0} ({1})."
+  },
+  "DSiWare saves live in a different place that 3dsDL does not open yet. Checkpoint can back them up.": {
+    "en": "DSiWare saves live in a different place that 3dsDL does not open yet. Checkpoint can back them up."
+  },
+  "This title has no save data of its own.": {
+    "en": "This title has no save data of its own."
+  },
+  "Not enough memory.": {
+    "en": "Not enough memory."
+  },
+  "The data could not be opened ({0}).": {
+    "en": "The data could not be opened ({0})."
+  },
+  "This backup has no files in it.": {
+    "en": "This backup has no files in it."
+  },
+  "The old save could not be cleared ({0}).": {
+    "en": "The old save could not be cleared ({0})."
+  },
+  "The save could not be committed ({0}).": {
+    "en": "The save could not be committed ({0})."
+  },
+  "The save was restored, but its secure value could not be cleared ({0}). The game may call it corrupted.": {
+    "en": "The save was restored, but its secure value could not be cleared ({0}). The game may call it corrupted."
+  },
+  "Save Data": {
+    "en": "Save Data"
+  },
+  "Extra Data": {
+    "en": "Extra Data"
+  },
+  "No save data.": {
+    "en": "No save data."
+  },
+  "Backups in": {
+    "en": "Backups in"
+  },
+  "save data": {
+    "en": "save data"
+  },
+  "extra data": {
+    "en": "extra data"
+  },
+  "New Backup": {
+    "en": "New Backup"
+  },
+  "Browse": {
+    "en": "Browse"
+  },
+  "Backup name (up to 20 characters)": {
+    "en": "Backup name (up to 20 characters)"
+  },
+  "Backup": {
+    "en": "Backup"
+  },
+  "Replace the backup {0}?": {
+    "en": "Replace the backup {0}?"
+  },
+  "Backing up the {0}...": {
+    "en": "Backing up the {0}..."
+  },
+  "Backed Up": {
+    "en": "Backed Up"
+  },
+  "{0} saved as {1}.": {
+    "en": "{0} saved as {1}."
+  },
+  "{0} the system was using were left out.": {
+    "en": "{0} the system was using were left out."
+  },
+  "Not Backed Up": {
+    "en": "Not Backed Up"
+  },
+  "Restore": {
+    "en": "Restore"
+  },
+  "Delete Backup": {
+    "en": "Delete Backup"
+  },
+  "Title": {
+    "en": "Title"
+  },
+  "Replace the {0} on the console with {1}?": {
+    "en": "Replace the {0} on the console with {1}?"
+  },
+  "{0} Before Restore": {
+    "en": "{0} Before Restore"
+  },
+  "Backing up what is there now...": {
+    "en": "Backing up what is there now..."
+  },
+  "What is there now could not be backed up.": {
+    "en": "What is there now could not be backed up."
+  },
+  "Restore Anyway": {
+    "en": "Restore Anyway"
+  },
+  "Restoring {0}...": {
+    "en": "Restoring {0}..."
+  },
+  "Restored": {
+    "en": "Restored"
+  },
+  "{0} restored from {1}.": {
+    "en": "{0} restored from {1}."
+  },
+  "The earlier {0} is kept as {1}.": {
+    "en": "The earlier {0} is kept as {1}."
+  },
+  "Not Restored": {
+    "en": "Not Restored"
+  },
+  "Delete the backup {0}?": {
+    "en": "Delete the backup {0}?"
+  },
+  "Not Deleted": {
+    "en": "Not Deleted"
+  },
+  "Cannot Open": {
+    "en": "Cannot Open"
+  },
+  "This folder cannot be read.": {
+    "en": "This folder cannot be read."
+  },
+  "Copy All": {
+    "en": "Copy All"
+  },
+  "File": {
+    "en": "File"
+  },
+  "View as Hex": {
+    "en": "View as Hex"
+  },
+  "Copy to SD Card": {
+    "en": "Copy to SD Card"
+  },
+  "Not Copied": {
+    "en": "Not Copied"
+  },
+  "Copying to the SD card": {
+    "en": "Copying to the SD card"
+  },
+  "Copied": {
+    "en": "Copied"
+  },
+  "Copied to {0}.": {
+    "en": "Copied to {0}."
+  },
+  "Looking for a QR code...": {
+    "en": "Looking for a QR code..."
+  },
+  "Starting the camera service": {
+    "en": "Starting the camera service"
+  },
+  "Setting up the camera": {
+    "en": "Setting up the camera"
+  },
+  "Not enough memory for the camera.": {
+    "en": "Not enough memory for the camera."
+  },
+  "Starting the camera": {
+    "en": "Starting the camera"
+  },
+  "Could not start the camera thread.": {
+    "en": "Could not start the camera thread."
+  },
+  "Camera unavailable": {
+    "en": "Camera unavailable"
+  },
+  "Scanner unavailable": {
+    "en": "Scanner unavailable"
+  },
+  "Not enough memory to decode QR codes.": {
+    "en": "Not enough memory to decode QR codes."
+  },
+  "Not enough memory for the camera preview.": {
+    "en": "Not enough memory for the camera preview."
+  },
+  "The camera stopped sending pictures. Close the scanner and try again.": {
+    "en": "The camera stopped sending pictures. Close the scanner and try again."
+  },
+  "QR code found": {
+    "en": "QR code found"
+  },
+  "That QR code does not hold a web link.": {
+    "en": "That QR code does not hold a web link."
+  },
+  "Camera error": {
+    "en": "Camera error"
+  },
+  "Software Update": {
+    "en": "Software Update"
+  },
+  "Update check failed.": {
+    "en": "Update check failed."
+  },
+  "An update is available.": {
+    "en": "An update is available."
+  },
+  "Released": {
+    "en": "Released"
+  },
+  "3dsDL is up to date.": {
+    "en": "3dsDL is up to date."
+  },
+  "Newest": {
+    "en": "Newest"
+  },
+  "Error": {
+    "en": "Error"
+  },
+  "Not checked yet.": {
+    "en": "Not checked yet."
+  },
+  "Check Settings, Console Clock": {
+    "en": "Check Settings, Console Clock"
+  },
+  "Update Available": {
+    "en": "Update Available"
+  },
+  "Get 3dsDL {0} from Settings.": {
+    "en": "Get 3dsDL {0} from Settings."
+  },
+  "Checking for updates...": {
+    "en": "Checking for updates..."
+  },
+  "Update to {0}": {
+    "en": "Update to {0}"
+  },
+  "Check for Updates": {
+    "en": "Check for Updates"
+  },
+  "What's New in {0}": {
+    "en": "What's New in {0}"
+  },
+  "What's New": {
+    "en": "What's New"
+  },
+  "Check at Startup: {0}": {
+    "en": "Check at Startup: {0}"
+  },
+  "whats-new": {
+    "en": "whats-new"
+  },
+  "Update Not Available": {
+    "en": "Update Not Available"
+  },
+  "The {0} release has no {1} file to update from.": {
+    "en": "The {0} release has no {1} file to update from."
+  },
+  "Updating needs the internet. Turn wireless communication on and try again.": {
+    "en": "Updating needs the internet. Turn wireless communication on and try again."
+  },
+  "Getting the release's checksums...": {
+    "en": "Getting the release's checksums..."
+  },
+  "Update Not Installed": {
+    "en": "Update Not Installed"
+  },
+  "The release's checksum file does not list {0}.": {
+    "en": "The release's checksum file does not list {0}."
+  },
+  "The update could not be downloaded.": {
+    "en": "The update could not be downloaded."
+  },
+  "Checking the download...": {
+    "en": "Checking the download..."
+  },
+  "The download did not match the release's checksum, so nothing was changed. Try again.": {
+    "en": "The download did not match the release's checksum, so nothing was changed. Try again."
+  },
+  "Expected {0}, got {1}.": {
+    "en": "Expected {0}, got {1}."
+  },
+  "an unreadable file": {
+    "en": "an unreadable file"
+  },
+  "The downloaded CIA is not 3dsDL, so it was not installed.": {
+    "en": "The downloaded CIA is not 3dsDL, so it was not installed."
+  },
+  "The update needs {0} on the SD card and {1} is free.": {
+    "en": "The update needs {0} on the SD card and {1} is free."
+  },
+  "3dsDL {0}": {
+    "en": "3dsDL {0}"
+  },
+  "3dsDL has been updated to {0}.": {
+    "en": "3dsDL has been updated to {0}."
+  },
+  "Restart": {
+    "en": "Restart"
+  },
+  "The new version could not be put in place of {0}.": {
+    "en": "The new version could not be put in place of {0}."
+  },
+  "Close 3dsDL": {
+    "en": "Close 3dsDL"
+  },
+  "cancel": {
+    "en": "cancel"
+  },
+  "Stop {0}?": {
+    "en": "Stop {0}?"
+  },
+  "Keep Going": {
+    "en": "Keep Going"
+  },
+  "Stop": {
+    "en": "Stop"
+  },
+  "Could not start the download thread.": {
+    "en": "Could not start the download thread."
+  },
+  "this download": {
+    "en": "this download"
+  },
+  "Connecting": {
+    "en": "Connecting"
+  },
+  "Starting Over": {
+    "en": "Starting Over"
+  },
+  "Downloading": {
+    "en": "Downloading"
+  },
+  "{0} connections": {
+    "en": "{0} connections"
+  },
+  "Continuing from {0} downloaded earlier": {
+    "en": "Continuing from {0} downloaded earlier"
+  },
+  ", {0} left": {
+    "en": ", {0} left"
+  },
+  "Measuring speed...": {
+    "en": "Measuring speed..."
+  },
+  "Installing as it downloads": {
+    "en": "Installing as it downloads"
+  },
+  "Saving to {0}": {
+    "en": "Saving to {0}"
+  },
+  "Could not start the extraction thread.": {
+    "en": "Could not start the extraction thread."
+  },
+  "extracting": {
+    "en": "extracting"
+  },
+  "Extracting": {
+    "en": "Extracting"
+  },
+  "Reading the archive...": {
+    "en": "Reading the archive..."
+  },
+  "{0} left": {
+    "en": "{0} left"
+  },
+  "Extracting into {0}": {
+    "en": "Extracting into {0}"
+  },
+  "Could not start the install thread.": {
+    "en": "Could not start the install thread."
+  },
+  "Do not turn off the power or remove the SD card.": {
+    "en": "Do not turn off the power or remove the SD card."
+  },
+  "Could not start the worker thread.": {
+    "en": "Could not start the worker thread."
+  },
+  "{0} of {1} files": {
+    "en": "{0} of {1} files"
+  },
+  "In {0}": {
+    "en": "In {0}"
+  },
+  "game card": {
+    "en": "game card"
+  },
+  "Reading the installed software...": {
+    "en": "Reading the installed software..."
+  },
+  "Titles Unavailable": {
+    "en": "Titles Unavailable"
+  },
+  "Clean Up": {
+    "en": "Clean Up"
+  },
+  "Seeds": {
+    "en": "Seeds"
+  },
+  "Software": {
+    "en": "Software"
+  },
+  "Updates and DLC": {
+    "en": "Updates and DLC"
+  },
+  "Not read": {
+    "en": "Not read"
+  },
+  "Unfinished": {
+    "en": "Unfinished"
+  },
+  "Unused": {
+    "en": "Unused"
+  },
+  "Looks in": {
+    "en": "Looks in"
+  },
+  "On SD card": {
+    "en": "On SD card"
+  },
+  "Not readable": {
+    "en": "Not readable"
+  },
+  "All Software": {
+    "en": "All Software"
+  },
+  "No software installed.": {
+    "en": "No software installed."
+  },
+  "Software on SD Card": {
+    "en": "Software on SD Card"
+  },
+  "No software on the SD card.": {
+    "en": "No software on the SD card."
+  },
+  "System Memory": {
+    "en": "System Memory"
+  },
+  "Software in System Memory": {
+    "en": "Software in System Memory"
+  },
+  "No software in system memory.": {
+    "en": "No software in system memory."
+  },
+  "No updates or DLC installed.": {
+    "en": "No updates or DLC installed."
+  },
+  "Updates": {
+    "en": "Updates"
+  },
+  "No updates installed.": {
+    "en": "No updates installed."
+  },
+  "No DLC installed.": {
+    "en": "No DLC installed."
+  },
+  "Update": {
+    "en": "Update"
+  },
+  "Showing": {
+    "en": "Showing"
+  },
+  "Get Seed": {
+    "en": "Get Seed"
+  },
+  "Delete Extra Data": {
+    "en": "Delete Extra Data"
+  },
+  "Delete with Ticket": {
+    "en": "Delete with Ticket"
+  },
+  "Seed Added": {
+    "en": "Seed Added"
+  },
+  "No Seed Added": {
+    "en": "No Seed Added"
+  },
+  "Delete the extra data of {0}?": {
+    "en": "Delete the extra data of {0}?"
+  },
+  "Delete the {0} for {1}{2}": {
+    "en": "Delete the {0} for {1}{2}"
+  },
+  "update": {
+    "en": "update"
+  },
+  " and its ticket?": {
+    "en": " and its ticket?"
+  },
+  "Delete {0}{1}": {
+    "en": "Delete {0}{1}"
+  },
+  ", its save data and its ticket?": {
+    "en": ", its save data and its ticket?"
+  },
+  " and its save data?": {
+    "en": " and its save data?"
+  },
+  "Deleting {0}...": {
+    "en": "Deleting {0}..."
+  },
+  "No extra data.": {
+    "en": "No extra data."
+  },
+  "Back Up and Restore": {
+    "en": "Back Up and Restore"
+  },
+  "No tickets.": {
+    "en": "No tickets."
+  },
+  "Unknown": {
+    "en": "Unknown"
+  },
+  "Delete Unused": {
+    "en": "Delete Unused"
+  },
+  "Export to SD Card": {
+    "en": "Export to SD Card"
+  },
+  "Exporting the ticket...": {
+    "en": "Exporting the ticket..."
+  },
+  "Ticket Exported": {
+    "en": "Ticket Exported"
+  },
+  "Saved as {0}.": {
+    "en": "Saved as {0}."
+  },
+  "Not Exported": {
+    "en": "Not Exported"
+  },
+  "Delete the ticket {0} needs to start?": {
+    "en": "Delete the ticket {0} needs to start?"
+  },
+  "Delete the ticket for {0}?": {
+    "en": "Delete the ticket for {0}?"
+  },
+  "Checking which tickets are unused...": {
+    "en": "Checking which tickets are unused..."
+  },
+  "Nothing Deleted": {
+    "en": "Nothing Deleted"
+  },
+  "Nothing to Delete": {
+    "en": "Nothing to Delete"
+  },
+  "Every ticket belongs to installed software.": {
+    "en": "Every ticket belongs to installed software."
+  },
+  "Deleting unused tickets...": {
+    "en": "Deleting unused tickets..."
+  },
+  "Tickets Deleted": {
+    "en": "Tickets Deleted"
+  },
+  "{0} deleted.": {
+    "en": "{0} deleted."
+  },
+  "Some Tickets Remain": {
+    "en": "Some Tickets Remain"
+  },
+  "{0} of {1} deleted.": {
+    "en": "{0} of {1} deleted."
+  },
+  "Remove Unfinished Installs": {
+    "en": "Remove Unfinished Installs"
+  },
+  "Delete Unused Tickets": {
+    "en": "Delete Unused Tickets"
+  },
+  "Restore Deleted Tickets": {
+    "en": "Restore Deleted Tickets"
+  },
+  "Remove {0}?": {
+    "en": "Remove {0}?"
+  },
+  "Removing unfinished installs...": {
+    "en": "Removing unfinished installs..."
+  },
+  "Cleaned Up": {
+    "en": "Cleaned Up"
+  },
+  "Some Remain": {
+    "en": "Some Remain"
+  },
+  "{0} removed.": {
+    "en": "{0} removed."
+  },
+  "Restoring deleted tickets...": {
+    "en": "Restoring deleted tickets..."
+  },
+  "Tickets Restored": {
+    "en": "Tickets Restored"
+  },
+  "Some Tickets Not Restored": {
+    "en": "Some Tickets Not Restored"
+  },
+  "{0} of {1} restored.": {
+    "en": "{0} of {1} restored."
+  },
+  "No seeddb.bin Found": {
+    "en": "No seeddb.bin Found"
+  },
+  "Put a seeddb.bin in sdmc:/, sdmc:/3ds/ or sdmc:/3ds/3dsDL/ and try again.": {
+    "en": "Put a seeddb.bin in sdmc:/, sdmc:/3ds/ or sdmc:/3ds/3dsDL/ and try again."
+  },
+  "Seeds Not Imported": {
+    "en": "Seeds Not Imported"
+  },
+  "No Seeds Needed": {
+    "en": "No Seeds Needed"
+  },
+  "None of the games installed here are in {0} ({1}).": {
+    "en": "None of the games installed here are in {0} ({1})."
+  },
+  "Add seeds for {0} from {1}?": {
+    "en": "Add seeds for {0} from {1}?"
+  },
+  "Add": {
+    "en": "Add"
+  },
+  "Adding seeds...": {
+    "en": "Adding seeds..."
+  },
+  "Seeds Added": {
+    "en": "Seeds Added"
+  },
+  "Some Seeds Not Added": {
+    "en": "Some Seeds Not Added"
+  },
+  "{0} added.": {
+    "en": "{0} added."
+  },
+  "Connected": {
+    "en": "Connected"
+  },
+  "SD {0}": {
+    "en": "SD {0}"
+  },
+  "ABXY": {
+    "en": "ABXY"
+  },
+  "screen|{0}|{1}": {
+    "en": "screen|{0}|{1}"
+  },
+  "list|{0}|{1}|{2}|{3}": {
+    "en": "list|{0}|{1}|{2}|{3}"
+  },
+  "Stopping...": {
+    "en": "Stopping..."
+  },
+  "Please wait...": {
+    "en": "Please wait..."
+  },
+  "Type a URL Instead": {
+    "en": "Type a URL Instead"
+  },
+  "GitHub is limiting how often it can be asked from this network. Try again in an hour.": {
+    "en": "GitHub is limiting how often it can be asked from this network. Try again in an hour."
+  },
+  "No release of 3dsDL has been published yet.": {
+    "en": "No release of 3dsDL has been published yet."
+  },
+  "The check was stopped.": {
+    "en": "The check was stopped."
+  },
+  "The update check could not start.": {
+    "en": "The update check could not start."
+  },
+  "This release has no checksum file, so 3dsDL cannot make sure the download is intact.": {
+    "en": "This release has no checksum file, so 3dsDL cannot make sure the download is intact."
+  },
+  "The SD card is full.": {
+    "en": "The SD card is full."
+  },
+  "Could not create the folder {0}.": {
+    "en": "Could not create the folder {0}."
+  },
+  "{0} is over 4 GiB, more than the SD card can hold in one file.": {
+    "en": "{0} is over 4 GiB, more than the SD card can hold in one file."
+  },
+  "{0} is not the size the archive says.": {
+    "en": "{0} is not the size the archive says."
+  },
+  "Could not replace {0}.": {
+    "en": "Could not replace {0}."
+  },
+  "Could not save {0}.": {
+    "en": "Could not save {0}."
+  },
+  "Not enough memory to read this archive.": {
+    "en": "Not enough memory to read this archive."
+  },
+  "This archive cannot be read.": {
+    "en": "This archive cannot be read."
+  },
+  "This is not an archive 3dsDL can read.": {
+    "en": "This is not an archive 3dsDL can read."
+  },
+  "Extraction cancelled.": {
+    "en": "Extraction cancelled."
+  },
+  "{0} is damaged. {1}": {
+    "en": "{0} is damaged. {1}"
+  },
+  "{0} is damaged.": {
+    "en": "{0} is damaged."
+  },
+  "Could not open the archive.": {
+    "en": "Could not open the archive."
+  },
+  "This is not a CIA file.": {
+    "en": "This is not a CIA file."
+  },
+  "The CIA file is incomplete. It may not have finished downloading.": {
+    "en": "The CIA file is incomplete. It may not have finished downloading."
+  },
+  "Could not read the CIA's title metadata.": {
+    "en": "Could not read the CIA's title metadata."
+  },
+  "The CIA's title metadata is damaged.": {
+    "en": "The CIA's title metadata is damaged."
+  },
+  "The download arrived out of order.": {
+    "en": "The download arrived out of order."
+  },
+  "This CIA's header is too large to be real.": {
+    "en": "This CIA's header is too large to be real."
+  },
+  "Could not open the file.": {
+    "en": "Could not open the file."
+  },
+  "Game or app": {
+    "en": "Game or app"
+  },
+  "Demo": {
+    "en": "Demo"
+  },
+  "DSiWare": {
+    "en": "DSiWare"
+  },
+  "Download Play": {
+    "en": "Download Play"
+  },
+  "System title": {
+    "en": "System title"
+  },
+  " The SD card is full.": {
+    "en": " The SD card is full."
+  },
+  "Could not open": {
+    "en": "Could not open"
+  },
+  "Could not create": {
+    "en": "Could not create"
+  },
+  "Could not read": {
+    "en": "Could not read"
+  },
+  "Could not write": {
+    "en": "Could not write"
+  },
+  "Could not finish writing": {
+    "en": "Could not finish writing"
+  },
+  "{0} already exists.": {
+    "en": "{0} already exists."
+  },
+  "A folder cannot be copied into itself.": {
+    "en": "A folder cannot be copied into itself."
+  },
+  "Could not open the folder": {
+    "en": "Could not open the folder"
+  },
+  "Could not delete the folder": {
+    "en": "Could not delete the folder"
+  },
+  "Could not delete": {
+    "en": "Could not delete"
+  },
+  "A folder cannot be moved into itself.": {
+    "en": "A folder cannot be moved into itself."
+  },
+  "Could not move": {
+    "en": "Could not move"
+  },
+  "The name is empty.": {
+    "en": "The name is empty."
+  },
+  "\".\" and \"..\" cannot be used as names.": {
+    "en": "\".\" and \"..\" cannot be used as names."
+  },
+  "Names cannot contain \\ / : * ? \" < > or |.": {
+    "en": "Names cannot contain \\ / : * ? \" < > or |."
+  },
+  "Names cannot contain control characters.": {
+    "en": "Names cannot contain control characters."
+  },
+  "The name is too long.": {
+    "en": "The name is too long."
+  },
+  "Names cannot end with a dot.": {
+    "en": "Names cannot end with a dot."
+  },
+  "CIA installer": {
+    "en": "CIA installer"
+  },
+  "Ticket": {
+    "en": "Ticket"
+  },
+  "Homebrew app": {
+    "en": "Homebrew app"
+  },
+  "Title icon (SMDH)": {
+    "en": "Title icon (SMDH)"
+  },
+  "3DS game image": {
+    "en": "3DS game image"
+  },
+  "DS game": {
+    "en": "DS game"
+  },
+  "Firmware (FIRM)": {
+    "en": "Firmware (FIRM)"
+  },
+  "Text": {
+    "en": "Text"
+  },
+  "Audio": {
+    "en": "Audio"
+  },
+  "Video": {
+    "en": "Video"
+  },
+  "The SD card would not accept the name \"{0}\", so the file was saved as {1}.": {
+    "en": "The SD card would not accept the name \"{0}\", so the file was saved as {1}."
+  },
+  "The file could not be renamed, so the downloaded data was left in {0}.": {
+    "en": "The file could not be renamed, so the downloaded data was left in {0}."
+  },
+  "At {0} x {1} pixels, this picture is too big to open on a 3DS.": {
+    "en": "At {0} x {1} pixels, this picture is too big to open on a 3DS."
+  },
+  "The picture could not be decoded{0}. It may be damaged, or too big for the memory left.": {
+    "en": "The picture could not be decoded{0}. It may be damaged, or too big for the memory left."
+  },
+  "This picture's format is not supported.": {
+    "en": "This picture's format is not supported."
+  },
+  "system volume information": {
+    "en": "system volume information"
+  },
+  "$recycle.bin": {
+    "en": "$recycle.bin"
+  },
+  "This is not a 3DSX file.": {
+    "en": "This is not a 3DSX file."
+  },
+  "It has no built-in name or icon.": {
+    "en": "It has no built-in name or icon."
+  },
+  "This is not a 3DS game image.": {
+    "en": "This is not a 3DS game image."
+  },
+  "The game partition could not be read.": {
+    "en": "The game partition could not be read."
+  },
+  "It is encrypted, so its name and icon are hidden.": {
+    "en": "It is encrypted, so its name and icon are hidden."
+  },
+  "This is not a DS game.": {
+    "en": "This is not a DS game."
+  },
+  "This is not a ticket.": {
+    "en": "This is not a ticket."
+  },
+  "The ticket is incomplete.": {
+    "en": "The ticket is incomplete."
+  },
+  "This is not an SMDH file.": {
+    "en": "This is not an SMDH file."
+  },
+  "There is nothing to show for this kind of file.": {
+    "en": "There is nothing to show for this kind of file."
+  },
+  "The file could not be opened.": {
+    "en": "The file could not be opened."
+  },
+  "The file is too short to be a seeddb.bin.": {
+    "en": "The file is too short to be a seeddb.bin."
+  },
+  "The file says it holds {0} seeds, but its size does not match. It is probably not a seeddb.bin.": {
+    "en": "The file says it holds {0} seeds, but its size does not match. It is probably not a seeddb.bin."
+  },
+  "The release information could not be read. {0}": {
+    "en": "The release information could not be read. {0}"
+  },
+  "The release information was not a release.": {
+    "en": "The release information was not a release."
+  },
+  "The release has no version.": {
+    "en": "The release has no version."
+  },
+  "The release version \"{0}\" is not a version number.": {
+    "en": "The release version \"{0}\" is not a version number."
+  },
+  "The file is too small to be a ZIP archive.": {
+    "en": "The file is too small to be a ZIP archive."
+  },
+  "Could not read the end of the archive.": {
+    "en": "Could not read the end of the archive."
+  },
+  "This is not a ZIP archive, or it is incomplete.": {
+    "en": "This is not a ZIP archive, or it is incomplete."
+  },
+  "The archive's ZIP64 directory is missing.": {
+    "en": "The archive's ZIP64 directory is missing."
+  },
+  "The archive's ZIP64 directory is damaged.": {
+    "en": "The archive's ZIP64 directory is damaged."
+  },
+  "The archive's directory is damaged or too large.": {
+    "en": "The archive's directory is damaged or too large."
+  },
+  "{0} is damaged (bad local header).": {
+    "en": "{0} is damaged (bad local header)."
+  },
+  "{0} is larger than the archive says.": {
+    "en": "{0} is larger than the archive says."
+  },
+  "{0} is damaged (size mismatch).": {
+    "en": "{0} is damaged (size mismatch)."
+  },
+  "{0} is truncated.": {
+    "en": "{0} is truncated."
+  },
+  "Not enough memory to decompress {0}.": {
+    "en": "Not enough memory to decompress {0}."
+  },
+  "{0} is damaged ({1}).": {
+    "en": "{0} is damaged ({1})."
+  },
+  "inflate error": {
+    "en": "inflate error"
+  },
+  "{0} is smaller than the archive says.": {
+    "en": "{0} is smaller than the archive says."
+  },
+  "{0} is damaged (checksum mismatch).": {
+    "en": "{0} is damaged (checksum mismatch)."
+  },
+  "Could not read the archive's directory.": {
+    "en": "Could not read the archive's directory."
+  },
+  "The archive's directory is damaged.": {
+    "en": "The archive's directory is damaged."
+  },
+  "Could not write to the SD card ({0}).": {
+    "en": "Could not write to the SD card ({0})."
+  },
+  "The file is {0}, but the SD card's FAT32 format cannot store files of 4 GiB or more.": {
+    "en": "The file is {0}, but the SD card's FAT32 format cannot store files of 4 GiB or more."
+  },
+  "Not enough free space on the SD card: {0} needed, {1} free.": {
+    "en": "Not enough free space on the SD card: {0} needed, {1} free."
+  },
+  "Could not start the HTTPS client.": {
+    "en": "Could not start the HTTPS client."
+  },
+  "Only http:// and https:// links can be downloaded.": {
+    "en": "Only http:// and https:// links can be downloaded."
+  },
+  "The folder {0} does not exist.": {
+    "en": "The folder {0} does not exist."
+  },
+  "Could not create a file in {0} ({1}).": {
+    "en": "Could not create a file in {0} ({1})."
+  },
+  "Download cancelled.": {
+    "en": "Download cancelled."
+  },
+  "Could not finish writing to the SD card.": {
+    "en": "Could not finish writing to the SD card."
+  },
+  "The server kept rejecting the request to continue the download.": {
+    "en": "The server kept rejecting the request to continue the download."
+  },
+  "Only http:// and https:// links are supported, and the server redirected somewhere else.": {
+    "en": "Only http:// and https:// links are supported, and the server redirected somewhere else."
+  },
+  "That link is not a valid URL.": {
+    "en": "That link is not a valid URL."
+  },
+  "Could not find the server. Check the Wi-Fi connection and the link.": {
+    "en": "Could not find the server. Check the Wi-Fi connection and the link."
+  },
+  "Could not connect to the server. Check the Wi-Fi connection.": {
+    "en": "Could not connect to the server. Check the Wi-Fi connection."
+  },
+  "The connection timed out because the server stopped responding.": {
+    "en": "The connection timed out because the server stopped responding."
+  },
+  "The server's certificate is not valid yet according to the console's clock, so the console's date is probably behind. Check the clock and try again.": {
+    "en": "The server's certificate is not valid yet according to the console's clock, so the console's date is probably behind. Check the clock and try again."
+  },
+  "The server's certificate has expired according to the console's clock. Check that the console's date is right; if it is, the site's certificate really has expired.": {
+    "en": "The server's certificate has expired according to the console's clock. Check that the console's date is right; if it is, the site's certificate really has expired."
+  },
+  "The server's certificate is for a different site than the link.": {
+    "en": "The server's certificate is for a different site than the link."
+  },
+  "The server's certificate is not signed by an authority 3dsDL trusts.": {
+    "en": "The server's certificate is not signed by an authority 3dsDL trusts."
+  },
+  "The server's certificate could not be verified. If the console's date and time are wrong, fix them with Check clock and try again.": {
+    "en": "The server's certificate could not be verified. If the console's date and time are wrong, fix them with Check clock and try again."
+  },
+  "The secure connection to the server failed.": {
+    "en": "The secure connection to the server failed."
+  },
+  "3dsDL could not load its certificate store.": {
+    "en": "3dsDL could not load its certificate store."
+  },
+  "The link redirected too many times.": {
+    "en": "The link redirected too many times."
+  },
+  "The file is too large for the SD card's FAT32 format (4 GiB or more).": {
+    "en": "The file is too large for the SD card's FAT32 format (4 GiB or more)."
+  },
+  "The connection dropped before the download finished.": {
+    "en": "The connection dropped before the download finished."
+  },
+  "Could not write to the SD card.": {
+    "en": "Could not write to the SD card."
+  },
+  "The server refused to continue the earlier download.": {
+    "en": "The server refused to continue the earlier download."
+  },
+  "The server refused access (HTTP {0}). The link may need a login or may have expired.": {
+    "en": "The server refused access (HTTP {0}). The link may need a login or may have expired."
+  },
+  "The file was not found on the server (HTTP {0}).": {
+    "en": "The file was not found on the server (HTTP {0})."
+  },
+  "The server is limiting requests (HTTP 429). Try again later.": {
+    "en": "The server is limiting requests (HTTP 429). Try again later."
+  },
+  "The server had an error (HTTP {0}). Try again later.": {
+    "en": "The server had an error (HTTP {0}). Try again later."
+  },
+  "The server answered with HTTP {0}.": {
+    "en": "The server answered with HTTP {0}."
+  },
+  "The download failed: {0}.": {
+    "en": "The download failed: {0}."
+  },
+  "The network library could not start a request.": {
+    "en": "The network library could not start a request."
+  },
+  "Cancelled.": {
+    "en": "Cancelled."
+  },
+  "The server's answer was larger than expected.": {
+    "en": "The server's answer was larger than expected."
+  },
+  "The server answered with HTTP status {0}.": {
+    "en": "The server answered with HTTP status {0}."
+  },
+  "Could not find {0}.": {
+    "en": "Could not find {0}."
+  },
+  "The time server sent a short reply.": {
+    "en": "The time server sent a short reply."
+  },
+  "The reply was not from a time server.": {
+    "en": "The reply was not from a time server."
+  },
+  "The reply did not match the request.": {
+    "en": "The reply did not match the request."
+  },
+  "The time server is not synchronised.": {
+    "en": "The time server is not synchronised."
+  },
+  "The time server sent no time.": {
+    "en": "The time server sent no time."
+  },
+  "Could not open a network socket.": {
+    "en": "Could not open a network socket."
+  },
+  "Could not reach {0}.": {
+    "en": "Could not reach {0}."
+  },
+  "Could not read the reply from {0}.": {
+    "en": "Could not read the reply from {0}."
+  },
+  "{0} did not answer.": {
+    "en": "{0} did not answer."
+  },
+  "No time servers to ask.": {
+    "en": "No time servers to ask."
+  },
+  "Port {0} is in use.": {
+    "en": "Port {0} is in use."
+  },
+  "That request is too large.": {
+    "en": "That request is too large."
+  },
+  "That folder does not exist.": {
+    "en": "That folder does not exist."
+  },
+  "This kind of file has no title.": {
+    "en": "This kind of file has no title."
+  },
+  "It has no icon.": {
+    "en": "It has no icon."
+  },
+  "That file does not exist.": {
+    "en": "That file does not exist."
+  },
+  "Send the file with its size.": {
+    "en": "Send the file with its size."
+  },
+  "The folder for {0} does not exist.": {
+    "en": "The folder for {0} does not exist."
+  },
+  "The SD card does not have room for {0}.": {
+    "en": "The SD card does not have room for {0}."
+  },
+  "Could not create {0} on the SD card.": {
+    "en": "Could not create {0} on the SD card."
+  },
+  "Could not write {0} to the SD card.": {
+    "en": "Could not write {0} to the SD card."
+  },
+  "A folder is already called {0}.": {
+    "en": "A folder is already called {0}."
+  },
+  "Files are not shared.": {
+    "en": "Files are not shared."
+  },
+  "Choose Allow on the 3DS to see its files.": {
+    "en": "Choose Allow on the 3DS to see its files."
+  },
+  "The 3DS did not allow this device.": {
+    "en": "The 3DS did not allow this device."
+  },
+  "That is not a path on the SD card.": {
+    "en": "That is not a path on the SD card."
+  },
+  "Name the file to upload.": {
+    "en": "Name the file to upload."
+  },
+  "There is nothing here.": {
+    "en": "There is nothing here."
+  },
+  "A file is already called {0}.": {
+    "en": "A file is already called {0}."
+  },
+  "Could not create the folder.": {
+    "en": "Could not create the folder."
+  },
+  "The SD card itself cannot move.": {
+    "en": "The SD card itself cannot move."
+  },
+  "{0} is not there any more.": {
+    "en": "{0} is not there any more."
+  },
+  "The SD card itself cannot be deleted.": {
+    "en": "The SD card itself cannot be deleted."
+  },
+  "There are no CIAs to install.": {
+    "en": "There are no CIAs to install."
+  },
+  "Bad request\n": {
+    "en": "Bad request\n"
+  },
+  "No links were found in what you sent.": {
+    "en": "No links were found in what you sent."
+  },
+  "Sent 1 link. It is downloading on the 3DS.": {
+    "en": "Sent 1 link. It is downloading on the 3DS."
+  },
+  "Sent {0} links. They are downloading on the 3DS.": {
+    "en": "Sent {0} links. They are downloading on the 3DS."
+  },
+  "Method not allowed\n": {
+    "en": "Method not allowed\n"
+  },
+  "Not found\n": {
+    "en": "Not found\n"
   }
 }
