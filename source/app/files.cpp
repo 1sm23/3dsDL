@@ -2034,7 +2034,7 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
         list += (list.empty() ? "" : ", ") + name;
     }
     ui::message(failed.empty() ? i18n::c("All installed") : i18n::c("Some were not installed"),
-                i18n::t("Installed {0} of {1}.{2}", {std::to_string(installed), plural(paths.size(), "CIA"), (kept > 0 ? i18n::t(" {0}{1} already installed.", {std::to_string(kept), (kept == 1 ? i18n::c(" was") : i18n::c(" were"))})
+                i18n::t("Installed {0} of {1}.{2}", {std::to_string(installed), plural(paths.size(), "CIA"), (kept > 0 ? i18n::t(kept == 1 ? " {0} was already installed." : " {0} were already installed.", {std::to_string(kept)})
                               : "")}),
                 failed.empty() ? ui::Tone::Success : ui::Tone::Warning,
                 failed.empty() ? "" : i18n::t("Not installed: {0}", {list}));

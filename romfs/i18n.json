@@ -622,7 +622,7 @@
   },
   "SD card root": {
     "en": "SD card root",
-    "zh": "SD卡根",
+    "zh": "SD 卡根目录",
     "es": "raíz de la tarjeta SD",
     "fr": "Racine de la carte SD",
     "pt": "Raiz do cartão SD",
@@ -640,16 +640,16 @@
   },
   "CIA installers": {
     "en": "CIA installers",
-    "zh": "中央情报局安装人员",
-    "es": "instaladores de la CIA",
-    "fr": "Installateurs de la CIA",
-    "pt": "Instaladores da CIA",
-    "de": "CIA-Installateure",
+    "zh": "CIA 安装包",
+    "es": "Instaladores CIA",
+    "fr": "Installateurs CIA",
+    "pt": "Instaladores CIA",
+    "de": "CIA-Installationsdateien",
     "ja": "CIA インストーラー"
   },
   "Homebrew apps": {
     "en": "Homebrew apps",
-    "zh": "自制应用程序",
+    "zh": "自制应用",
     "es": "Aplicaciones caseras",
     "fr": "Applications homebrews",
     "pt": "Aplicativos caseiros",
@@ -658,7 +658,7 @@
   },
   "Luma3DS payloads": {
     "en": "Luma3DS payloads",
-    "zh": "Luma3DS 有效负载",
+    "zh": "Luma3DS 启动载荷",
     "es": "Cargas útiles de Luma3DS",
     "fr": "Charges utiles Luma3DS",
     "pt": "Cargas úteis do Luma3DS",
@@ -712,7 +712,7 @@
   },
   "Continue Anyway": {
     "en": "Continue Anyway",
-    "zh": "无论如何继续",
+    "zh": "仍然继续",
     "es": "Continuar de todos modos",
     "fr": "Continuer quand même",
     "pt": "Continuar mesmo assim",
@@ -775,7 +775,7 @@
   },
   "Receive": {
     "en": "Receive",
-    "zh": "收到",
+    "zh": "接收",
     "es": "Recibir",
     "fr": "Recevoir",
     "pt": "Receber",
@@ -784,7 +784,7 @@
   },
   "History": {
     "en": "History",
-    "zh": "历史",
+    "zh": "下载历史",
     "es": "Historia",
     "fr": "Histoire",
     "pt": "História",
@@ -802,16 +802,16 @@
   },
   "Titles": {
     "en": "Titles",
-    "zh": "标题",
-    "es": "Títulos",
-    "fr": "Titres",
-    "pt": "Títulos",
-    "de": "Titel",
-    "ja": "タイトル"
+    "zh": "软件管理",
+    "es": "Programas",
+    "fr": "Logiciels",
+    "pt": "Programas",
+    "de": "Software",
+    "ja": "ソフト管理"
   },
   "New": {
     "en": "New",
-    "zh": "新的",
+    "zh": "新",
     "es": "Nuevo",
     "fr": "Nouveau",
     "pt": "Novo",
@@ -820,12 +820,12 @@
   },
   "Home": {
     "en": "Home",
-    "zh": "家",
-    "es": "Hogar",
-    "fr": "Maison",
-    "pt": "Lar",
-    "de": "Heim",
-    "ja": "家"
+    "zh": "主页",
+    "es": "Inicio",
+    "fr": "Accueil",
+    "pt": "Início",
+    "de": "Startseite",
+    "ja": "ホーム"
   },
   "Not a download link": {
     "en": "Not a download link",
@@ -883,7 +883,7 @@
   },
   "Try Anyway": {
     "en": "Try Anyway",
-    "zh": "无论如何都要尝试",
+    "zh": "仍然尝试",
     "es": "Inténtalo de todos modos",
     "fr": "Essayez quand même",
     "pt": "Tente mesmo assim",
@@ -919,7 +919,7 @@
   },
   "The console's clock says {0}.": {
     "en": "The console's clock says {0}.",
-    "zh": "控制台的时钟显示 {0}。",
+    "zh": "主机的时钟显示 {0}。",
     "es": "El reloj de la consola dice {0}.",
     "fr": "L'horloge de la console indique {0}.",
     "pt": "O relógio do console diz {0}.",
@@ -1000,12 +1000,12 @@
   },
   "Resume": {
     "en": "Resume",
-    "zh": "恢复",
+    "zh": "继续下载",
     "es": "Reanudar",
-    "fr": "CV",
+    "fr": "Reprendre",
     "pt": "Retomar",
-    "de": "Wieder aufnehmen",
-    "ja": "再開する"
+    "de": "Fortsetzen",
+    "ja": "再開"
   },
   "{0} is already here": {
     "en": "{0} is already here",
@@ -1018,7 +1018,7 @@
   },
   "Encrypted": {
     "en": "Encrypted",
-    "zh": "加密的",
+    "zh": "已加密",
     "es": "cifrado",
     "fr": "Crypté",
     "pt": "Criptografado",
@@ -1072,7 +1072,7 @@
   },
   "Replace": {
     "en": "Replace",
-    "zh": "代替",
+    "zh": "替换",
     "es": "Reemplazar",
     "fr": "Remplacer",
     "pt": "Substituir",
@@ -1108,7 +1108,7 @@
   },
   "Saved at {0}": {
     "en": "Saved at {0}",
-    "zh": "保存于 {0}",
+    "zh": "已保存，速度 {0}",
     "es": "Guardado en {0}",
     "fr": "Enregistrée sur {0}",
     "pt": "Salvo em {0}",
@@ -1144,7 +1144,7 @@
   },
   "Cannot extract": {
     "en": "Cannot extract",
-    "zh": "无法提取",
+    "zh": "无法解压",
     "es": "No se puede extraer",
     "fr": "Impossible d'extraire",
     "pt": "Não é possível extrair",
@@ -1153,7 +1153,7 @@
   },
   "It was not extracted: {0}": {
     "en": "It was not extracted: {0}",
-    "zh": "未提取：{0}",
+    "zh": "未解压：{0}",
     "es": "No fue extraído: {0}",
     "fr": "Il n'a pas été extrait : {0}",
     "pt": "Não foi extraído: {0}",
@@ -1162,7 +1162,7 @@
   },
   "Into: {0}{1}{2}": {
     "en": "Into: {0}{1}{2}",
-    "zh": "进入：{0}{1}{2}",
+    "zh": "解压到：{0}{1}{2}",
     "es": "En: {0}{1}{2}",
     "fr": "Dans : {0}{1}{2}",
     "pt": "Em: {0}{1}{2}",
@@ -1171,7 +1171,7 @@
   },
   "Here: {0}\nNew Folder: {1}": {
     "en": "Here: {0}\nNew Folder: {1}",
-    "zh": "这里：{0}\n新文件夹：{1}",
+    "zh": "当前目录：{0}\n新建文件夹：{1}",
     "es": "Aquí: {0}\nNueva carpeta: {1}",
     "fr": "Ici : {0}\nNouveau dossier : {1}",
     "pt": "Aqui: {0}\nNova pasta: {1}",
@@ -1180,25 +1180,25 @@
   },
   "extract": {
     "en": "extract",
-    "zh": "提炼",
-    "es": "extracto",
-    "fr": "extrait",
-    "pt": "extrair",
-    "de": "Extrakt",
-    "ja": "抽出する"
+    "zh": "解压",
+    "es": "Extraer",
+    "fr": "Extraire",
+    "pt": "Extrair",
+    "de": "Entpacken",
+    "ja": "展開"
   },
   "Extract": {
     "en": "Extract",
-    "zh": "提炼",
-    "es": "Extracto",
-    "fr": "Extrait",
+    "zh": "解压",
+    "es": "Extraer",
+    "fr": "Extraire",
     "pt": "Extrair",
-    "de": "Extrakt",
-    "ja": "抽出する"
+    "de": "Entpacken",
+    "ja": "展開"
   },
   "Not Now": {
     "en": "Not Now",
-    "zh": "现在不要",
+    "zh": "暂不",
     "es": "Ahora no",
     "fr": "Pas maintenant",
     "pt": "Agora não",
@@ -1207,7 +1207,7 @@
   },
   "Here": {
     "en": "Here",
-    "zh": "这里",
+    "zh": "当前目录",
     "es": "Aquí",
     "fr": "Ici",
     "pt": "Aqui",
@@ -1234,7 +1234,7 @@
   },
   "Extracting needs {0}{1}, but only {2} is free.": {
     "en": "Extracting needs {0}{1}, but only {2} is free.",
-    "zh": "提取需要{0}{1}，但只有{2}是免费的。",
+    "zh": "解压需要{0}{1}，但只有{2}是免费的。",
     "es": "La extracción necesita {0}{1}, pero solo {2} es gratuito.",
     "fr": "L'extraction nécessite {0}{1}, mais seul {2} est gratuit.",
     "pt": "A extração precisa de {0}{1}, mas apenas {2} é gratuito.",
@@ -1252,12 +1252,12 @@
   },
   "Archive": {
     "en": "Archive",
-    "zh": "档案",
-    "es": "Archivo",
+    "zh": "压缩包",
+    "es": "Archivo comprimido",
     "fr": "Archive",
-    "pt": "Arquivo",
+    "pt": "Arquivo compactado",
     "de": "Archiv",
-    "ja": "アーカイブ"
+    "ja": "圧縮ファイル"
   },
   "Checking {0}...": {
     "en": "Checking {0}...",
@@ -1306,7 +1306,7 @@
   },
   "Skip Them": {
     "en": "Skip Them",
-    "zh": "跳过它们",
+    "zh": "全部跳过",
     "es": "Saltarlos",
     "fr": "Ignorez-les",
     "pt": "Ignorá-los",
@@ -1315,7 +1315,7 @@
   },
   "{0} extracted into {1}{2}.": {
     "en": "{0} extracted into {1}{2}.",
-    "zh": "{0} 提取为 {1}{2}。",
+    "zh": "{0} 解压为 {1}{2}。",
     "es": "{0} extraído en {1}{2}.",
     "fr": "{0} extrait dans {1}{2}.",
     "pt": "{0} extraído em {1}{2}.",
@@ -1333,7 +1333,7 @@
   },
   "Extraction stopped": {
     "en": "Extraction stopped",
-    "zh": "提取停止",
+    "zh": "解压已停止",
     "es": "Extracción detenida",
     "fr": "Extraction arrêtée",
     "pt": "Extração interrompida",
@@ -1342,7 +1342,7 @@
   },
   "Extraction failed": {
     "en": "Extraction failed",
-    "zh": "提取失败",
+    "zh": "解压失败",
     "es": "Error de extracción",
     "fr": "Échec de l'extraction",
     "pt": "Falha na extração",
@@ -1378,7 +1378,7 @@
   },
   "done": {
     "en": "done",
-    "zh": "完毕",
+    "zh": "完成",
     "es": "hecho",
     "fr": "fait",
     "pt": "feito",
@@ -1387,7 +1387,7 @@
   },
   "The archive has been extracted.": {
     "en": "The archive has been extracted.",
-    "zh": "档案已被提取。",
+    "zh": "压缩包已被解压。",
     "es": "El archivo ha sido extraído.",
     "fr": "L'archive a été extraite.",
     "pt": "O arquivo foi extraído.",
@@ -1396,7 +1396,7 @@
   },
   "Done": {
     "en": "Done",
-    "zh": "完毕",
+    "zh": "完成",
     "es": "Hecho",
     "fr": "Fait",
     "pt": "Feito",
@@ -1405,7 +1405,7 @@
   },
   "Delete Archive": {
     "en": "Delete Archive",
-    "zh": "删除存档",
+    "zh": "删除压缩包",
     "es": "Eliminar archivo",
     "fr": "Supprimer l'archive",
     "pt": "Excluir arquivo",
@@ -1414,7 +1414,7 @@
   },
   "Replace Them": {
     "en": "Replace Them",
-    "zh": "替换它们",
+    "zh": "覆盖这些文件",
     "es": "Reemplazarlos",
     "fr": "Remplacez-les",
     "pt": "Substitua-os",
@@ -1423,7 +1423,7 @@
   },
   "Could not delete the archive": {
     "en": "Could not delete the archive",
-    "zh": "无法删除存档",
+    "zh": "无法删除压缩包",
     "es": "No se pudo eliminar el archivo",
     "fr": "Impossible de supprimer l'archive",
     "pt": "Não foi possível excluir o arquivo",
@@ -1441,7 +1441,7 @@
   },
   "Replacing stopped": {
     "en": "Replacing stopped",
-    "zh": "更换已停止",
+    "zh": "覆盖已停止",
     "es": "Reemplazo detenido",
     "fr": "Remplacement arrêté",
     "pt": "Substituição interrompida",
@@ -1450,7 +1450,7 @@
   },
   "Replacing failed": {
     "en": "Replacing failed",
-    "zh": "更换失败",
+    "zh": "覆盖失败",
     "es": "Reemplazo fallido",
     "fr": "Le remplacement a échoué",
     "pt": "Falha na substituição",
@@ -1459,7 +1459,7 @@
   },
   "Files replaced": {
     "en": "Files replaced",
-    "zh": "文件被替换",
+    "zh": "文件已覆盖",
     "es": "Archivos reemplazados",
     "fr": "Fichiers remplacés",
     "pt": "Arquivos substituídos",
@@ -1495,7 +1495,7 @@
   },
   "Install and Delete File": {
     "en": "Install and Delete File",
-    "zh": "安装和删除文件",
+    "zh": "安装后删除文件",
     "es": "Instalar y eliminar archivo",
     "fr": "Installer et supprimer le fichier",
     "pt": "Instalar e excluir arquivo",
@@ -1540,7 +1540,7 @@
   },
   "3dsDL does not install system titles. A broken one can stop the console from starting.": {
     "en": "3dsDL does not install system titles. A broken one can stop the console from starting.",
-    "zh": "3dsDL 不安装系统标题。损坏的控制台可能会导致控制台无法启动。",
+    "zh": "3dsDL 不安装系统软件。损坏的系统软件可能导致主机无法启动。",
     "es": "3dsDL no instala títulos del sistema. Uno roto puede impedir que la consola se inicie.",
     "fr": "3dsDL n'installe pas les titres système. Un modèle cassé peut empêcher le démarrage de la console.",
     "pt": "3dsDL não instala títulos de sistema. Um quebrado pode impedir a inicialização do console.",
@@ -1558,7 +1558,7 @@
   },
   "Install Anyway": {
     "en": "Install Anyway",
-    "zh": "无论如何安装",
+    "zh": "仍然安装",
     "es": "Instalar de todos modos",
     "fr": "Installer quand même",
     "pt": "Instale mesmo assim",
@@ -1585,7 +1585,7 @@
   },
   "Keep Installed": {
     "en": "Keep Installed",
-    "zh": "保持安装",
+    "zh": "保留已安装版本",
     "es": "Mantener instalado",
     "fr": "Rester installé",
     "pt": "Mantenha instalado",
@@ -1630,7 +1630,7 @@
   },
   "Newer Version Running": {
     "en": "Newer Version Running",
-    "zh": "新版本运行",
+    "zh": "较新版本正在运行",
     "es": "Versión más reciente en ejecución",
     "fr": "Version plus récente en cours d'exécution",
     "pt": "Versão mais recente em execução",
@@ -1720,7 +1720,7 @@
   },
   "Getting the seed {0} needs...": {
     "en": "Getting the seed {0} needs...",
-    "zh": "获取种子 {0} 需要...",
+    "zh": "正在获取 {0} 所需的加密种子…",
     "es": "Conseguir la semilla que {0} necesita...",
     "fr": "Obtenir la graine dont {0} a besoin...",
     "pt": "Obtendo a semente que {0} precisa...",
@@ -1801,12 +1801,12 @@
   },
   "Launch": {
     "en": "Launch",
-    "zh": "发射",
-    "es": "Lanzamiento",
-    "fr": "Lancement",
-    "pt": "Lançar",
-    "de": "Start",
-    "ja": "打ち上げ"
+    "zh": "启动",
+    "es": "Iniciar",
+    "fr": "Lancer",
+    "pt": "Iniciar",
+    "de": "Starten",
+    "ja": "起動"
   },
   "Could Not Launch": {
     "en": "Could Not Launch",
@@ -1837,7 +1837,7 @@
   },
   "Type a Folder...": {
     "en": "Type a Folder...",
-    "zh": "输入文件夹...",
+    "zh": "输入文件夹路径…",
     "es": "Escriba una carpeta...",
     "fr": "Tapez un dossier...",
     "pt": "Digite uma pasta...",
@@ -1846,7 +1846,7 @@
   },
   "Recent": {
     "en": "Recent",
-    "zh": "最近的",
+    "zh": "最近使用",
     "es": "Reciente",
     "fr": "Récent",
     "pt": "Recente",
@@ -1855,7 +1855,7 @@
   },
   "Now": {
     "en": "Now",
-    "zh": "现在",
+    "zh": "当前",
     "es": "Ahora",
     "fr": "Maintenant",
     "pt": "Agora",
@@ -1864,7 +1864,7 @@
   },
   "Selected": {
     "en": "Selected",
-    "zh": "已选择",
+    "zh": "已选中",
     "es": "Seleccionado",
     "fr": "Choisi",
     "pt": "Selecionado",
@@ -1891,7 +1891,7 @@
   },
   "Back": {
     "en": "Back",
-    "zh": "后退",
+    "zh": "返回",
     "es": "Atrás",
     "fr": "Dos",
     "pt": "Voltar",
@@ -1900,7 +1900,7 @@
   },
   "Use This": {
     "en": "Use This",
-    "zh": "使用这个",
+    "zh": "使用此文件夹",
     "es": "Usa esto",
     "fr": "Utilisez ceci",
     "pt": "Use isto",
@@ -1999,7 +1999,7 @@
   },
   "Create": {
     "en": "Create",
-    "zh": "创造",
+    "zh": "创建",
     "es": "Crear",
     "fr": "Créer",
     "pt": "Criar",
@@ -2044,7 +2044,7 @@
   },
   "Failed": {
     "en": "Failed",
-    "zh": "失败的",
+    "zh": "失败",
     "es": "Fallido",
     "fr": "Échoué",
     "pt": "Fracassado",
@@ -2071,7 +2071,7 @@
   },
   "Can resume": {
     "en": "Can resume",
-    "zh": "可以恢复",
+    "zh": "可继续下载",
     "es": "puede reanudar",
     "fr": "Peut reprendre",
     "pt": "Pode retomar",
@@ -2125,7 +2125,7 @@
   },
   "Resume Download": {
     "en": "Resume Download",
-    "zh": "简历下载",
+    "zh": "继续下载",
     "es": "Reanudar descarga",
     "fr": "Reprendre le téléchargement",
     "pt": "Retomar download",
@@ -2179,7 +2179,7 @@
   },
   "Offset": {
     "en": "Offset",
-    "zh": "抵消",
+    "zh": "时差",
     "es": "Compensar",
     "fr": "Compenser",
     "pt": "Desvio",
@@ -2188,7 +2188,7 @@
   },
   "Time there": {
     "en": "Time there",
-    "zh": "那里的时间",
+    "zh": "当地时间",
     "es": "tiempo allí",
     "fr": "Temps là-bas",
     "pt": "Tempo lá",
@@ -2197,7 +2197,7 @@
   },
   "Console Clock": {
     "en": "Console Clock",
-    "zh": "控制台时钟",
+    "zh": "主机时钟",
     "es": "Reloj de consola",
     "fr": "Horloge console",
     "pt": "Relógio do console",
@@ -2260,7 +2260,7 @@
   },
   "This console": {
     "en": "This console",
-    "zh": "这个控制台",
+    "zh": "本机时间",
     "es": "esta consola",
     "fr": "Cette console",
     "pt": "Este console",
@@ -2269,7 +2269,7 @@
   },
   "Internet time": {
     "en": "Internet time",
-    "zh": "上网时间",
+    "zh": "网络时间",
     "es": "tiempo de internet",
     "fr": "Temps Internet",
     "pt": "Horário da Internet",
@@ -2287,7 +2287,7 @@
   },
   "Clock": {
     "en": "Clock",
-    "zh": "钟",
+    "zh": "时钟",
     "es": "Reloj",
     "fr": "Horloge",
     "pt": "Relógio",
@@ -2296,7 +2296,7 @@
   },
   "Right": {
     "en": "Right",
-    "zh": "正确的",
+    "zh": "准确",
     "es": "Bien",
     "fr": "Droite",
     "pt": "Certo",
@@ -2314,7 +2314,7 @@
   },
   "Clock set": {
     "en": "Clock set",
-    "zh": "时钟设置",
+    "zh": "时钟已设置",
     "es": "Conjunto de reloj",
     "fr": "Ensemble d'horloge",
     "pt": "Conjunto de relógio",
@@ -2323,7 +2323,7 @@
   },
   "The console clock now reads {0} ({1}).": {
     "en": "The console clock now reads {0} ({1}).",
-    "zh": "控制台时钟现在读数为 {0} ({1})。",
+    "zh": "主机时钟现在读数为 {0} ({1})。",
     "es": "El reloj de la consola ahora indica {0} ({1}).",
     "fr": "L'horloge de la console indique désormais {0} ({1}).",
     "pt": "O relógio do console agora indica {0} ({1}).",
@@ -2348,18 +2348,9 @@
     "de": "Über 3dsDL",
     "ja": "3dsDLについて"
   },
-  "Version ": {
-    "en": "Version ",
-    "zh": "版本 ",
-    "es": "Versión ",
-    "fr": "Version ",
-    "pt": "Versão ",
-    "de": "Version ",
-    "ja": "バージョン "
-  },
   "Settings in": {
     "en": "Settings in",
-    "zh": "设置在",
+    "zh": "设置目录",
     "es": "Configuraciones en",
     "fr": "Paramètres dans",
     "pt": "Configurações em",
@@ -2404,7 +2395,7 @@
   },
   "Oldest First": {
     "en": "Oldest First",
-    "zh": "最旧的在前",
+    "zh": "最旧优先",
     "es": "El más viejo primero",
     "fr": "Le plus âgé en premier",
     "pt": "Mais antigo primeiro",
@@ -2413,7 +2404,7 @@
   },
   "Newest First": {
     "en": "Newest First",
-    "zh": "最新第一",
+    "zh": "最新优先",
     "es": "Lo más nuevo primero",
     "fr": "Le plus récent en premier",
     "pt": "Mais novo primeiro",
@@ -2449,7 +2440,7 @@
   },
   "Name, A to Z": {
     "en": "Name, A to Z",
-    "zh": "姓名，A 到 Z",
+    "zh": "名称，A 到 Z",
     "es": "Nombre, de la A a la Z",
     "fr": "Nom, de A à Z",
     "pt": "Nome, A a Z",
@@ -2458,7 +2449,7 @@
   },
   "title {0}": {
     "en": "title {0}",
-    "zh": "标题{0}",
+    "zh": "软件 {0}",
     "es": "título {0}",
     "fr": "titre {0}",
     "pt": "título {0}",
@@ -2476,12 +2467,12 @@
   },
   "Title ID": {
     "en": "Title ID",
-    "zh": "标题 ID",
+    "zh": "Title ID",
     "es": "ID del título",
-    "fr": "Identifiant du titre",
+    "fr": "ID du titre",
     "pt": "ID do título",
     "de": "Titel-ID",
-    "ja": "タイトルID"
+    "ja": "タイトル ID"
   },
   "Version": {
     "en": "Version",
@@ -2494,7 +2485,7 @@
   },
   "Size": {
     "en": "Size",
-    "zh": "尺寸",
+    "zh": "大小",
     "es": "Tamaño",
     "fr": "Taille",
     "pt": "Tamanho",
@@ -2593,7 +2584,7 @@
   },
   "Changed": {
     "en": "Changed",
-    "zh": "改变了",
+    "zh": "修改时间",
     "es": "Cambió",
     "fr": "Modifié",
     "pt": "Mudado",
@@ -2629,7 +2620,7 @@
   },
   "CIA, {0}": {
     "en": "CIA, {0}",
-    "zh": "中央情报局，{0}",
+    "zh": "CIA，{0}",
     "es": "CIA, {0}",
     "fr": "CIA, {0}",
     "pt": "CIA, {0}",
@@ -2674,7 +2665,7 @@
   },
   "Note": {
     "en": "Note",
-    "zh": "笔记",
+    "zh": "说明",
     "es": "Nota",
     "fr": "Note",
     "pt": "Observação",
@@ -2719,7 +2710,7 @@
   },
   "Sort": {
     "en": "Sort",
-    "zh": "种类",
+    "zh": "排序",
     "es": "Clasificar",
     "fr": "Trier",
     "pt": "Organizar",
@@ -2773,7 +2764,7 @@
   },
   "Path": {
     "en": "Path",
-    "zh": "小路",
+    "zh": "路径",
     "es": "Camino",
     "fr": "Chemin",
     "pt": "Caminho",
@@ -2786,7 +2777,7 @@
     "fr": "En lisant",
     "pt": "Leitura",
     "de": "Lektüre",
-    "zh": "阅读",
+    "zh": "正在读取",
     "ja": "読む"
   },
   "{0} so far": {
@@ -2800,11 +2791,11 @@
   },
   "CIA Installer": {
     "en": "CIA Installer",
-    "es": "Instalador de la CIA",
-    "fr": "Installateur de la CIA",
-    "pt": "Instalador da CIA",
-    "de": "CIA-Installer",
-    "zh": "中央情报局安装程序",
+    "zh": "CIA 安装包",
+    "es": "Instalador CIA",
+    "fr": "Installateur CIA",
+    "pt": "Instalador CIA",
+    "de": "CIA-Installationsdatei",
     "ja": "CIA インストーラー"
   },
   "This CIA cannot be installed.": {
@@ -2912,7 +2903,7 @@
     "fr": "Installer et supprimer",
     "pt": "Instalar e excluir",
     "de": "Installieren und löschen",
-    "zh": "安装和删除",
+    "zh": "安装后删除",
     "ja": "インストールと削除"
   },
   "Install Ticket": {
@@ -2921,7 +2912,7 @@
     "fr": "Installer le ticket",
     "pt": "Instalar ingresso",
     "de": "Ticket installieren",
-    "zh": "安装票证",
+    "zh": "安装凭证",
     "ja": "インストールチケット"
   },
   "Edit": {
@@ -2975,7 +2966,7 @@
     "fr": "Couper",
     "pt": "Corte",
     "de": "Schneiden",
-    "zh": "切",
+    "zh": "剪切",
     "ja": "カット"
   },
   "Delete": {
@@ -2993,7 +2984,7 @@
     "fr": "Propriétés",
     "pt": "Propriedades",
     "de": "Eigenschaften",
-    "zh": "特性",
+    "zh": "属性",
     "ja": "プロパティ"
   },
   "Unmark": {
@@ -3016,7 +3007,7 @@
   },
   "Clear Marks": {
     "en": "Clear Marks",
-    "zh": "清晰的标记",
+    "zh": "清除标记",
     "es": "Borrar marcas",
     "fr": "Effacer les marques",
     "pt": "Marcas claras",
@@ -3043,7 +3034,7 @@
   },
   "Extract {0}?": {
     "en": "Extract {0}?",
-    "zh": "提取{0}？",
+    "zh": "解压{0}？",
     "es": "¿Extraer {0}?",
     "fr": "Extraire {0} ?",
     "pt": "Extrair {0}?",
@@ -3052,7 +3043,7 @@
   },
   "Ready to Move": {
     "en": "Ready to Move",
-    "zh": "准备搬家",
+    "zh": "已准备移动",
     "es": "Listo para mudarse",
     "fr": "Prêt à déménager",
     "pt": "Pronto para mover",
@@ -3079,7 +3070,7 @@
   },
   "Move Here": {
     "en": "Move Here",
-    "zh": "搬到这里",
+    "zh": "移动到此处",
     "es": "Muévete aquí",
     "fr": "Déplacer ici",
     "pt": "Mova-se aqui",
@@ -3088,7 +3079,7 @@
   },
   "Paste Here": {
     "en": "Paste Here",
-    "zh": "粘贴在这里",
+    "zh": "粘贴到此处",
     "es": "Pegar aquí",
     "fr": "Coller ici",
     "pt": "Cole aqui",
@@ -3097,7 +3088,7 @@
   },
   "Sort...": {
     "en": "Sort...",
-    "zh": "种类...",
+    "zh": "排序…",
     "es": "Clasificar...",
     "fr": "Trier...",
     "pt": "Organizar...",
@@ -3106,7 +3097,7 @@
   },
   "Forget Clipboard": {
     "en": "Forget Clipboard",
-    "zh": "忘记剪贴板",
+    "zh": "清空剪贴板",
     "es": "Olvídate del portapapeles",
     "fr": "Oublier le Presse-papiers",
     "pt": "Esqueça a área de transferência",
@@ -3133,7 +3124,7 @@
   },
   "On": {
     "en": "On",
-    "zh": "在",
+    "zh": "开",
     "es": "En",
     "fr": "Sur",
     "pt": "Sobre",
@@ -3142,7 +3133,7 @@
   },
   "Off": {
     "en": "Off",
-    "zh": "离开",
+    "zh": "关",
     "es": "Apagado",
     "fr": "Désactivé",
     "pt": "Desligado",
@@ -3196,7 +3187,7 @@
   },
   "Name": {
     "en": "Name",
-    "zh": "姓名",
+    "zh": "名称",
     "es": "Nombre",
     "fr": "Nom",
     "pt": "Nome",
@@ -3223,7 +3214,7 @@
   },
   "Order": {
     "en": "Order",
-    "zh": "命令",
+    "zh": "顺序",
     "es": "Orden",
     "fr": "Commande",
     "pt": "Ordem",
@@ -3250,39 +3241,12 @@
   },
   "Installed {0} of {1}.{2}": {
     "en": "Installed {0} of {1}.{2}",
-    "zh": "已安装 {1}.{2} 的 {0}",
+    "zh": "已安装 {0} / {1}。{2}",
     "es": "Instalado {0} de {1}.{2}",
     "fr": "{0} installé ou {1}.{2}",
     "pt": "{0} instalado de {1}.{2}",
     "de": "Installierte {0} von {1}.{2}",
     "ja": "{0} または {1}.{2} をインストールしました"
-  },
-  " was": {
-    "en": " was",
-    "zh": " 曾是",
-    "es": " era",
-    "fr": " était",
-    "pt": " era",
-    "de": " War",
-    "ja": " だった"
-  },
-  " were": {
-    "en": " were",
-    "zh": " 是",
-    "es": " eran",
-    "fr": " étaient",
-    "pt": " eram",
-    "de": " war",
-    "ja": " だった"
-  },
-  " {0}{1} already installed.": {
-    "en": " {0}{1} already installed.",
-    "zh": " {0}{1} 已安装。",
-    "es": " {0}{1} ya instalado.",
-    "fr": " {0}{1} déjà installé.",
-    "pt": " {0}{1} já instalado.",
-    "de": " {0}{1} bereits installiert.",
-    "ja": " {0}{1} はすでにインストールされています。"
   },
   "Not installed: {0}": {
     "en": "Not installed: {0}",
@@ -3529,7 +3493,7 @@
   },
   "properties": {
     "en": "properties",
-    "zh": "特性",
+    "zh": "属性",
     "es": "propiedades",
     "fr": "propriétés",
     "pt": "propriedades",
@@ -3538,7 +3502,7 @@
   },
   "Adding up sizes...": {
     "en": "Adding up sizes...",
-    "zh": "添加尺寸...",
+    "zh": "正在统计大小…",
     "es": "Sumando tallas...",
     "fr": "Additionner les tailles...",
     "pt": "Somando tamanhos...",
@@ -3556,7 +3520,7 @@
   },
   "OK": {
     "en": "OK",
-    "zh": "好的",
+    "zh": "确定",
     "es": "DE ACUERDO",
     "fr": "D'ACCORD",
     "pt": "OK",
@@ -3574,16 +3538,16 @@
   },
   "Tickets": {
     "en": "Tickets",
-    "zh": "门票",
-    "es": "Entradas",
-    "fr": "Billets",
-    "pt": "Ingressos",
+    "zh": "凭证",
+    "es": "Tickets",
+    "fr": "Tickets",
+    "pt": "Tickets",
     "de": "Tickets",
     "ja": "チケット"
   },
   "Installing the ticket...": {
     "en": "Installing the ticket...",
-    "zh": "正在安装票证...",
+    "zh": "正在安装凭证...",
     "es": "Instalando el billete...",
     "fr": "Installation du ticket...",
     "pt": "Instalando o ticket...",
@@ -3592,7 +3556,7 @@
   },
   "Ticket Installed": {
     "en": "Ticket Installed",
-    "zh": "票证已安装",
+    "zh": "凭证已安装",
     "es": "Boleto instalado",
     "fr": "Billet installé",
     "pt": "Bilhete instalado",
@@ -3601,7 +3565,7 @@
   },
   "The ticket for {0} is installed.": {
     "en": "The ticket for {0} is installed.",
-    "zh": "{0} 的票证已安装。",
+    "zh": "{0} 的凭证已安装。",
     "es": "El ticket para {0} está instalado.",
     "fr": "Le ticket pour {0} est installé.",
     "pt": "O ticket para {0} está instalado.",
@@ -3610,7 +3574,7 @@
   },
   "Ticket Not Installed": {
     "en": "Ticket Not Installed",
-    "zh": "票证未安装",
+    "zh": "凭证未安装",
     "es": "Boleto no instalado",
     "fr": "Billet non installé",
     "pt": "Bilhete não instalado",
@@ -3646,7 +3610,7 @@
   },
   "Start": {
     "en": "Start",
-    "zh": "开始",
+    "zh": "启动",
     "es": "Comenzar",
     "fr": "Commencer",
     "pt": "Começar",
@@ -3673,7 +3637,7 @@
   },
   "Previous": {
     "en": "Previous",
-    "zh": "以前的",
+    "zh": "上一项",
     "es": "Anterior",
     "fr": "Précédent",
     "pt": "Anterior",
@@ -3700,7 +3664,7 @@
   },
   "Track": {
     "en": "Track",
-    "zh": "追踪",
+    "zh": "曲目",
     "es": "Pista",
     "fr": "Piste",
     "pt": "Acompanhar",
@@ -3709,7 +3673,7 @@
   },
   "Genre": {
     "en": "Genre",
-    "zh": "类型",
+    "zh": "流派",
     "es": "Género",
     "fr": "Genre",
     "pt": "Gênero",
@@ -3718,7 +3682,7 @@
   },
   "Loop": {
     "en": "Loop",
-    "zh": "环形",
+    "zh": "循环",
     "es": "Bucle",
     "fr": "Boucle",
     "pt": "Laço",
@@ -3772,7 +3736,7 @@
   },
   "Cannot Open the Archive": {
     "en": "Cannot Open the Archive",
-    "zh": "无法打开存档",
+    "zh": "无法打开压缩包",
     "es": "No se puede abrir el archivo",
     "fr": "Impossible d'ouvrir l'archive",
     "pt": "Não é possível abrir o arquivo",
@@ -3781,7 +3745,7 @@
   },
   "This archive is empty.": {
     "en": "This archive is empty.",
-    "zh": "该档案是空的。",
+    "zh": "此压缩包为空。",
     "es": "Este archivo está vacío.",
     "fr": "Cette archive est vide.",
     "pt": "Este arquivo está vazio.",
@@ -3790,7 +3754,7 @@
   },
   "Holds": {
     "en": "Holds",
-    "zh": "持有",
+    "zh": "包含",
     "es": "Sostiene",
     "fr": "Détient",
     "pt": "Detém",
@@ -3799,7 +3763,7 @@
   },
   "Extracted": {
     "en": "Extracted",
-    "zh": "提取的",
+    "zh": "已解压",
     "es": "Extraído",
     "fr": "Extrait",
     "pt": "Extraído",
@@ -3808,7 +3772,7 @@
   },
   "Skipped": {
     "en": "Skipped",
-    "zh": "跳过",
+    "zh": "已跳过",
     "es": "Saltado",
     "fr": "Sauté",
     "pt": "Ignorado",
@@ -3925,7 +3889,7 @@
   },
   "Line Too Long": {
     "en": "Line Too Long",
-    "zh": "线太长",
+    "zh": "此行过长",
     "es": "Línea demasiado larga",
     "fr": "Ligne trop longue",
     "pt": "Linha muito longa",
@@ -3943,7 +3907,7 @@
   },
   "Line {0}": {
     "en": "Line {0}",
-    "zh": "{0}线",
+    "zh": "第 {0} 行",
     "es": "Línea {0}",
     "fr": "Ligne {0}",
     "pt": "Linha {0}",
@@ -3988,16 +3952,16 @@
   },
   "Save": {
     "en": "Save",
-    "zh": "节省",
-    "es": "Ahorrar",
-    "fr": "Sauvegarder",
+    "zh": "保存",
+    "es": "Guardar",
+    "fr": "Enregistrer",
     "pt": "Salvar",
     "de": "Speichern",
     "ja": "保存"
   },
   "Line {0} of {1}": {
     "en": "Line {0} of {1}",
-    "zh": "{1}线{0}",
+    "zh": "第 {0} / {1} 行",
     "es": "Línea {0} de {1}",
     "fr": "Ligne {0} de {1}",
     "pt": "Linha {0} de {1}",
@@ -4015,7 +3979,7 @@
   },
   "New Line": {
     "en": "New Line",
-    "zh": "新线",
+    "zh": "新建一行",
     "es": "Nueva línea",
     "fr": "Nouvelle ligne",
     "pt": "Nova linha",
@@ -4150,7 +4114,7 @@
   },
   "This is a system title. 3dsDL does not install them.": {
     "en": "This is a system title. 3dsDL does not install them.",
-    "zh": "这是一个系统标题。 3dsDL 不安装它们。",
+    "zh": "这是系统软件，3dsDL 不会安装。",
     "es": "Este es un título del sistema. 3dsDL no los instala.",
     "fr": "Il s'agit d'un titre système. 3dsDL ne les installe pas.",
     "pt": "Este é um título do sistema. 3dsDL não os instala.",
@@ -4159,7 +4123,7 @@
   },
   "The download ended before the CIA's header arrived.": {
     "en": "The download ended before the CIA's header arrived.",
-    "zh": "下载在中央情报局的标题到达之前就结束了。",
+    "zh": "下载在CIA的标题到达之前就结束了。",
     "es": "La descarga terminó antes de que llegara el encabezado de la CIA.",
     "fr": "Le téléchargement s'est terminé avant l'arrivée de l'en-tête de la CIA.",
     "pt": "O download terminou antes que o cabeçalho da CIA chegasse.",
@@ -4168,7 +4132,7 @@
   },
   "System titles are never removed.": {
     "en": "System titles are never removed.",
-    "zh": "系统标题永远不会被删除。",
+    "zh": "不会删除系统软件。",
     "es": "Los títulos del sistema nunca se eliminan.",
     "fr": "Les titres système ne sont jamais supprimés.",
     "pt": "Os títulos do sistema nunca são removidos.",
@@ -4231,7 +4195,7 @@
   },
   "The install service was busy with something else. Restart the console and try again.": {
     "en": "The install service was busy with something else. Restart the console and try again.",
-    "zh": "安装服务正忙于其他事情。重新启动控制台并重试。",
+    "zh": "安装服务正忙于其他事情。重新启动主机并重试。",
     "es": "El servicio de instalación estaba ocupado con otra cosa. Reinicia la consola y vuelve a intentarlo.",
     "fr": "Le service d'installation était occupé avec autre chose. Redémarrez la console et réessayez.",
     "pt": "O serviço de instalação estava ocupado com outra coisa. Reinicie o console e tente novamente.",
@@ -4240,7 +4204,7 @@
   },
   "The CIA's contents are damaged.": {
     "en": "The CIA's contents are damaged.",
-    "zh": "中央情报局的内容已损坏。",
+    "zh": "CIA的内容已损坏。",
     "es": "El contenido de la CIA está dañado.",
     "fr": "Le contenu de la CIA est endommagé.",
     "pt": "O conteúdo da CIA está danificado.",
@@ -4267,7 +4231,7 @@
   },
   "System titles cannot be removed.": {
     "en": "System titles cannot be removed.",
-    "zh": "系统标题无法删除。",
+    "zh": "不能删除系统软件。",
     "es": "Los títulos del sistema no se pueden eliminar.",
     "fr": "Les titres système ne peuvent pas être supprimés.",
     "pt": "Os títulos do sistema não podem ser removidos.",
@@ -4294,7 +4258,7 @@
   },
   "The CIA failed a signature or hash check. The file is probably damaged; download it again.": {
     "en": "The CIA failed a signature or hash check. The file is probably damaged; download it again.",
-    "zh": "中央情报局未能通过签名或哈希检查。文件可能已损坏；再次下载。",
+    "zh": "CIA未能通过签名或哈希检查。文件可能已损坏；再次下载。",
     "es": "La CIA no pasó una verificación de firma o hash. Probablemente el archivo esté dañado; descargarlo de nuevo.",
     "fr": "La CIA a échoué à une vérification de signature ou de hachage. Le fichier est probablement endommagé ; téléchargez-le à nouveau.",
     "pt": "A CIA falhou na verificação de assinatura ou hash. O arquivo provavelmente está danificado; baixe novamente.",
@@ -4321,7 +4285,7 @@
   },
   "The console cannot read the list of software on the SD card right now, so 3dsDL cannot tell what is installed.": {
     "en": "The console cannot read the list of software on the SD card right now, so 3dsDL cannot tell what is installed.",
-    "zh": "控制台现在无法读取 SD 卡上的软件列表，因此 3dsDL 无法判断安装了什么。",
+    "zh": "主机现在无法读取 SD 卡上的软件列表，因此 3dsDL 无法判断安装了什么。",
     "es": "La consola no puede leer la lista de software en la tarjeta SD en este momento, por lo que 3dsDL no puede saber qué está instalado.",
     "fr": "La console ne peut pas lire la liste des logiciels sur la carte SD pour le moment, donc 3dsDL ne peut pas savoir ce qui est installé.",
     "pt": "O console não consegue ler a lista de software no cartão SD no momento, então o 3dsDL não consegue dizer o que está instalado.",
@@ -4357,7 +4321,7 @@
   },
   "Could not read the tickets. {0}": {
     "en": "Could not read the tickets. {0}",
-    "zh": "无法读取门票。 {0}",
+    "zh": "无法读取凭证。{0}",
     "es": "No se pudieron leer los boletos. {0}",
     "fr": "Impossible de lire les billets. {0}",
     "pt": "Não foi possível ler os ingressos. {0}",
@@ -4420,7 +4384,7 @@
   },
   "The ticket install could not start. {0}": {
     "en": "The ticket install could not start. {0}",
-    "zh": "票证安装无法启动。 {0}",
+    "zh": "凭证安装无法启动。 {0}",
     "es": "No se pudo iniciar la instalación del ticket. {0}",
     "fr": "L'installation du ticket n'a pas pu démarrer. {0}",
     "pt": "A instalação do ticket não pôde ser iniciada. {0}",
@@ -4429,7 +4393,7 @@
   },
   "The ticket could not be installed. {0}": {
     "en": "The ticket could not be installed. {0}",
-    "zh": "无法安装票证。 {0}",
+    "zh": "无法安装凭证。 {0}",
     "es": "No se pudo instalar el ticket. {0}",
     "fr": "Le ticket n'a pas pu être installé. {0}",
     "pt": "Não foi possível instalar o ticket. {0}",
@@ -4438,7 +4402,7 @@
   },
   "System tickets are never removed.": {
     "en": "System tickets are never removed.",
-    "zh": "系统票证永远不会被删除。",
+    "zh": "系统凭证永远不会被删除。",
     "es": "Los tickets del sistema nunca se eliminan.",
     "fr": "Les tickets système ne sont jamais supprimés.",
     "pt": "Os tickets do sistema nunca são removidos.",
@@ -4447,7 +4411,7 @@
   },
   "3dsDL needs its own ticket to start.": {
     "en": "3dsDL needs its own ticket to start.",
-    "zh": "3dsDL 需要自己的票证才能启动。",
+    "zh": "3dsDL 需要自己的凭证才能启动。",
     "es": "3dsDL necesita su propio ticket para comenzar.",
     "fr": "3dsDL a besoin de son propre ticket pour démarrer.",
     "pt": "3dsDL precisa de seu próprio ticket para iniciar.",
@@ -4465,7 +4429,7 @@
   },
   "The ticket was kept, as it could not be saved first. {0}": {
     "en": "The ticket was kept, as it could not be saved first. {0}",
-    "zh": "票被保留了，因为它无法先保存。 {0}",
+    "zh": "无法先备份凭证，因此已保留原凭证。{0}",
     "es": "El billete se conservó porque no se pudo guardar primero. {0}",
     "fr": "Le ticket a été conservé car il n’a pas pu être sauvegardé au préalable. {0}",
     "pt": "O ticket foi guardado, pois não pôde ser salvo primeiro. {0}",
@@ -4474,7 +4438,7 @@
   },
   "The ticket could not be deleted. {0}": {
     "en": "The ticket could not be deleted. {0}",
-    "zh": "无法删除该票证。 {0}",
+    "zh": "无法删除该凭证。 {0}",
     "es": "El ticket no se pudo eliminar. {0}",
     "fr": "Le ticket n'a pas pu être supprimé. {0}",
     "pt": "O ticket não pôde ser excluído. {0}",
@@ -4483,7 +4447,7 @@
   },
   "The extra data could not be deleted. {0}": {
     "en": "The extra data could not be deleted. {0}",
-    "zh": "无法删除多余的数据。 {0}",
+    "zh": "无法删除扩展数据。{0}",
     "es": "Los datos adicionales no se pudieron eliminar. {0}",
     "fr": "Les données supplémentaires n'ont pas pu être supprimées. {0}",
     "pt": "Os dados extras não puderam ser excluídos. {0}",
@@ -4510,7 +4474,7 @@
   },
   "This is not a ticket file.": {
     "en": "This is not a ticket file.",
-    "zh": "这不是票证文件。",
+    "zh": "这不是凭证文件。",
     "es": "Este no es un archivo de ticket.",
     "fr": "Ceci n'est pas un fichier de tickets.",
     "pt": "Este não é um arquivo de ticket.",
@@ -4519,7 +4483,7 @@
   },
   "This ticket is for a system title, which 3dsDL does not install.": {
     "en": "This ticket is for a system title, which 3dsDL does not install.",
-    "zh": "此票证适用于 3dsDL 不安装的系统标题。",
+    "zh": "此凭证适用于 3dsDL 不安装的系统软件。",
     "es": "Este ticket es para un título de sistema que 3dsDL no instala.",
     "fr": "Ce ticket concerne un titre système que 3dsDL n'installe pas.",
     "pt": "Este ticket é para um título de sistema que o 3dsDL não instala.",
@@ -4528,7 +4492,7 @@
   },
   "The ticket file could not be read.": {
     "en": "The ticket file could not be read.",
-    "zh": "无法读取票证文件。",
+    "zh": "无法读取凭证文件。",
     "es": "No se pudo leer el archivo del ticket.",
     "fr": "Le fichier du ticket n'a pas pu être lu.",
     "pt": "Não foi possível ler o arquivo do ticket.",
@@ -4537,7 +4501,7 @@
   },
   "The ticket there now could not be saved first, so nothing was changed. {0}": {
     "en": "The ticket there now could not be saved first, so nothing was changed. {0}",
-    "zh": "现在那里的票不能先保存，所以什么也没有改变。 {0}",
+    "zh": "无法先备份现有凭证，因此未作更改。{0}",
     "es": "El billete allí ahora no se pudo guardar primero, por lo que no se cambió nada. {0}",
     "fr": "Le ticket n'a pas pu être enregistré au préalable, donc rien n'a été modifié. {0}",
     "pt": "O ticket lá agora não pôde ser salvo primeiro, então nada foi alterado. {0}",
@@ -4546,7 +4510,7 @@
   },
   "The console did not give out this ticket. {0}": {
     "en": "The console did not give out this ticket. {0}",
-    "zh": "控制台没有发出这张票。 {0}",
+    "zh": "主机未能提供此凭证。{0}",
     "es": "La consola no entregó este ticket. {0}",
     "fr": "La console n'a pas distribué ce ticket. {0}",
     "pt": "O console não distribuiu esse ticket. {0}",
@@ -4555,7 +4519,7 @@
   },
   "The console gave back something that is not this title's ticket.": {
     "en": "The console gave back something that is not this title's ticket.",
-    "zh": "控制台返回的东西不是该游戏的门票。",
+    "zh": "主机返回的数据不是此软件的凭证。",
     "es": "La consola devolvió algo que no es el billete de este título.",
     "fr": "La console a rendu quelque chose qui n'est pas le ticket de ce titre.",
     "pt": "O console devolveu algo que não é o bilhete deste título.",
@@ -4670,15 +4634,6 @@
     "de": "Speichern der Systemeinstellungen",
     "ja": "システム設定の保存"
   },
-  "3ds": {
-    "en": "3ds",
-    "zh": "3ds",
-    "es": "3ds",
-    "fr": "3DS",
-    "pt": "3ds",
-    "de": "3ds",
-    "ja": "3DS"
-  },
   "{0} from {1}": {
     "en": "{0} from {1}",
     "zh": "{0} 来自 {1}",
@@ -4735,7 +4690,7 @@
   },
   "{0} of {1}": {
     "en": "{0} of {1}",
-    "zh": "{0} {1}",
+    "zh": "{0} / {1}",
     "es": "{0} de {1}",
     "fr": "{0} ou {1}",
     "pt": "{0} de {1}",
@@ -4744,7 +4699,7 @@
   },
   "Stopped.": {
     "en": "Stopped.",
-    "zh": "停了。",
+    "zh": "已停止。",
     "es": "Interrumpido.",
     "fr": "Arrêté.",
     "pt": "Parou.",
@@ -4834,7 +4789,7 @@
   },
   " and {0} more": {
     "en": " and {0} more",
-    "zh": " 还有 {0} 更多",
+    "zh": "，另有 {0} 项",
     "es": " y {0} más",
     "fr": " et {0} plus",
     "pt": " e {0} mais",
@@ -4906,7 +4861,7 @@
   },
   "Remove": {
     "en": "Remove",
-    "zh": "消除",
+    "zh": "移除",
     "es": "Eliminar",
     "fr": "Retirer",
     "pt": "Remover",
@@ -4951,7 +4906,7 @@
   },
   "The console has no address on the local network yet. Check the connection and try again.": {
     "en": "The console has no address on the local network yet. Check the connection and try again.",
-    "zh": "控制台在本地网络上还没有地址。检查连接并重试。",
+    "zh": "主机在本地网络上还没有地址。检查连接并重试。",
     "es": "La consola aún no tiene dirección en la red local. Verifique la conexión y vuelva a intentarlo.",
     "fr": "La console n'a pas encore d'adresse sur le réseau local. Vérifiez la connexion et réessayez.",
     "pt": "O console ainda não possui endereço na rede local. Verifique a conexão e tente novamente.",
@@ -4987,7 +4942,7 @@
   },
   " ({0} of {1})": {
     "en": " ({0} of {1})",
-    "zh": " （{1} 的 {0}）",
+    "zh": "（{0} / {1}）",
     "es": " ({0} de {1})",
     "fr": " ({0} de {1})",
     "pt": " ({0} de {1})",
@@ -5113,7 +5068,7 @@
   },
   "They go to {0}.": {
     "en": "They go to {0}.",
-    "zh": "他们去{0}。",
+    "zh": "将保存到 {0}。",
     "es": "Van a {0}.",
     "fr": "Ils vont à {0}.",
     "pt": "Eles vão para {0}.",
@@ -5248,7 +5203,7 @@
   },
   "Last: {0}": {
     "en": "Last: {0}",
-    "zh": "上一篇：{0}",
+    "zh": "最近：{0}",
     "es": "Último: {0}",
     "fr": "Dernier : {0}",
     "pt": "Último: {0}",
@@ -5338,12 +5293,12 @@
   },
   "Discord Server": {
     "en": "Discord Server",
-    "zh": "不和谐服务器",
-    "es": "Servidor de discordia",
-    "fr": "Serveur Discorde",
-    "pt": "Servidor de discórdia",
+    "zh": "Discord 服务器",
+    "es": "Servidor de Discord",
+    "fr": "Serveur Discord",
+    "pt": "Servidor do Discord",
     "de": "Discord-Server",
-    "ja": "ディスコードサーバー"
+    "ja": "Discord サーバー"
   },
   "Developer on X": {
     "en": "Developer on X",
@@ -5365,7 +5320,7 @@
   },
   "Details": {
     "en": "Details",
-    "zh": "细节",
+    "zh": "详情",
     "es": "Detalles",
     "fr": "Détails",
     "pt": "Detalhes",
@@ -5419,7 +5374,7 @@
   },
   "{0} has a path too long for save data.": {
     "en": "{0} has a path too long for save data.",
-    "zh": "{0} 的保存数据路径太长。",
+    "zh": "{0} 的存档数据路径太长。",
     "es": "{0} tiene una ruta demasiado larga para guardar datos.",
     "fr": "{0} a un chemin trop long pour sauvegarder les données.",
     "pt": "{0} tem um caminho muito longo para salvar dados.",
@@ -5446,7 +5401,7 @@
   },
   "This title has no save data of its own.": {
     "en": "This title has no save data of its own.",
-    "zh": "该游戏没有自己的保存数据。",
+    "zh": "该游戏没有自己的存档数据。",
     "es": "Este título no tiene datos de guardado propios.",
     "fr": "Ce titre ne possède pas de données de sauvegarde propres.",
     "pt": "Este título não possui dados salvos próprios.",
@@ -5482,7 +5437,7 @@
   },
   "The old save could not be cleared ({0}).": {
     "en": "The old save could not be cleared ({0}).",
-    "zh": "无法清除旧的保存（{0}）。",
+    "zh": "无法清除旧存档（{0}）。",
     "es": "No se pudo borrar el guardado anterior ({0}).",
     "fr": "L'ancienne sauvegarde n'a pas pu être effacée ({0}).",
     "pt": "O salvamento antigo não pôde ser apagado ({0}).",
@@ -5518,7 +5473,7 @@
   },
   "Extra Data": {
     "en": "Extra Data",
-    "zh": "额外数据",
+    "zh": "扩展数据",
     "es": "Datos adicionales",
     "fr": "Données supplémentaires",
     "pt": "Dados extras",
@@ -5527,7 +5482,7 @@
   },
   "No save data.": {
     "en": "No save data.",
-    "zh": "没有保存数据。",
+    "zh": "没有存档数据。",
     "es": "Sin datos guardados.",
     "fr": "Aucune donnée de sauvegarde.",
     "pt": "Não há dados salvos.",
@@ -5545,7 +5500,7 @@
   },
   "save data": {
     "en": "save data",
-    "zh": "保存数据",
+    "zh": "存档数据",
     "es": "guardar datos",
     "fr": "enregistrer des données",
     "pt": "salvar dados",
@@ -5554,7 +5509,7 @@
   },
   "extra data": {
     "en": "extra data",
-    "zh": "额外数据",
+    "zh": "扩展数据",
     "es": "datos extra",
     "fr": "données supplémentaires",
     "pt": "dados extras",
@@ -5680,7 +5635,7 @@
   },
   "Replace the {0} on the console with {1}?": {
     "en": "Replace the {0} on the console with {1}?",
-    "zh": "将控制台上的 {0} 替换为 {1}？",
+    "zh": "将主机上的 {0} 替换为 {1}？",
     "es": "¿Reemplazar el {0} en la consola con {1}?",
     "fr": "Remplacer le {0} sur la console par {1} ?",
     "pt": "Substituir o {0} no console por {1}?",
@@ -5716,7 +5671,7 @@
   },
   "Restore Anyway": {
     "en": "Restore Anyway",
-    "zh": "无论如何恢复",
+    "zh": "仍然恢复",
     "es": "Restaurar de todos modos",
     "fr": "Restaurer quand même",
     "pt": "Restaurar de qualquer maneira",
@@ -6076,7 +6031,7 @@
   },
   "Check Settings, Console Clock": {
     "en": "Check Settings, Console Clock",
-    "zh": "检查设置、控制台时钟",
+    "zh": "检查设置、主机时钟",
     "es": "Verificar configuración, reloj de la consola",
     "fr": "Vérifier les paramètres, l'horloge de la console",
     "pt": "Verifique as configurações, relógio do console",
@@ -6139,7 +6094,7 @@
   },
   "What's New": {
     "en": "What's New",
-    "zh": "什么是新的",
+    "zh": "更新内容",
     "es": "Qué hay de nuevo",
     "fr": "Quoi de neuf",
     "pt": "O que há de novo",
@@ -6337,7 +6292,7 @@
   },
   "Keep Going": {
     "en": "Keep Going",
-    "zh": "继续前进",
+    "zh": "继续",
     "es": "Sigue adelante",
     "fr": "Continue",
     "pt": "Continue",
@@ -6418,7 +6373,7 @@
   },
   ", {0} left": {
     "en": ", {0} left",
-    "zh": ", {0} 左",
+    "zh": "，剩余 {0}",
     "es": ", {0} izquierda",
     "fr": ", {0} gauche",
     "pt": ", {0} esquerda",
@@ -6436,7 +6391,7 @@
   },
   "Installing as it downloads": {
     "en": "Installing as it downloads",
-    "zh": "下载后安装",
+    "zh": "边下载边安装",
     "es": "Instalando mientras se descarga",
     "fr": "Installation pendant le téléchargement",
     "pt": "Instalando durante o download",
@@ -6454,7 +6409,7 @@
   },
   "Could not start the extraction thread.": {
     "en": "Could not start the extraction thread.",
-    "zh": "无法启动提取线程。",
+    "zh": "无法启动解压线程。",
     "es": "No se pudo iniciar el hilo de extracción.",
     "fr": "Impossible de démarrer le thread d'extraction.",
     "pt": "Não foi possível iniciar o thread de extração.",
@@ -6463,7 +6418,7 @@
   },
   "extracting": {
     "en": "extracting",
-    "zh": "提取",
+    "zh": "正在解压",
     "es": "extrayendo",
     "fr": "extraction",
     "pt": "extraindo",
@@ -6472,7 +6427,7 @@
   },
   "Extracting": {
     "en": "Extracting",
-    "zh": "提取",
+    "zh": "正在解压",
     "es": "Extrayendo",
     "fr": "Extraction",
     "pt": "Extraindo",
@@ -6481,7 +6436,7 @@
   },
   "Reading the archive...": {
     "en": "Reading the archive...",
-    "zh": "正在阅读档案...",
+    "zh": "正在读取压缩包…",
     "es": "Leyendo el archivo...",
     "fr": "Lecture des archives...",
     "pt": "Lendo o arquivo...",
@@ -6490,7 +6445,7 @@
   },
   "{0} left": {
     "en": "{0} left",
-    "zh": "{0} 左",
+    "zh": "剩余 {0}",
     "es": "{0} izquierda",
     "fr": "{0} gauche",
     "pt": "{0} esquerda",
@@ -6499,7 +6454,7 @@
   },
   "Extracting into {0}": {
     "en": "Extracting into {0}",
-    "zh": "提取到{0}",
+    "zh": "解压到{0}",
     "es": "Extrayendo en {0}",
     "fr": "Extraction dans {0}",
     "pt": "Extraindo para {0}",
@@ -6571,7 +6526,7 @@
   },
   "Titles Unavailable": {
     "en": "Titles Unavailable",
-    "zh": "标题不可用",
+    "zh": "无法读取软件列表",
     "es": "Títulos no disponibles",
     "fr": "Titres indisponibles",
     "pt": "Títulos indisponíveis",
@@ -6616,7 +6571,7 @@
   },
   "Not read": {
     "en": "Not read",
-    "zh": "未读",
+    "zh": "未读取",
     "es": "no leer",
     "fr": "Pas lu",
     "pt": "Não lido",
@@ -6643,7 +6598,7 @@
   },
   "Looks in": {
     "en": "Looks in",
-    "zh": "看起来",
+    "zh": "查找目录",
     "es": "mira en",
     "fr": "Regarde dans",
     "pt": "Olha para dentro",
@@ -6796,7 +6751,7 @@
   },
   "Delete Extra Data": {
     "en": "Delete Extra Data",
-    "zh": "删除额外数据",
+    "zh": "删除扩展数据",
     "es": "Eliminar datos adicionales",
     "fr": "Supprimer les données supplémentaires",
     "pt": "Excluir dados extras",
@@ -6805,7 +6760,7 @@
   },
   "Delete with Ticket": {
     "en": "Delete with Ticket",
-    "zh": "凭票删除",
+    "zh": "连同凭证删除",
     "es": "Eliminar con ticket",
     "fr": "Supprimer avec un ticket",
     "pt": "Excluir com ticket",
@@ -6832,7 +6787,7 @@
   },
   "Delete the extra data of {0}?": {
     "en": "Delete the extra data of {0}?",
-    "zh": "删除{0}的多余数据？",
+    "zh": "删除 {0} 的扩展数据？",
     "es": "¿Eliminar los datos extra de {0}?",
     "fr": "Supprimer les données supplémentaires de {0} ?",
     "pt": "Excluir os dados extras de {0}?",
@@ -6859,7 +6814,7 @@
   },
   " and its ticket?": {
     "en": " and its ticket?",
-    "zh": " 以及它的门票？",
+    "zh": " 以及它的凭证？",
     "es": " y su billete?",
     "fr": " et son billet ?",
     "pt": " e seu ingresso?",
@@ -6877,7 +6832,7 @@
   },
   ", its save data and its ticket?": {
     "en": ", its save data and its ticket?",
-    "zh": "，其保存数据及其门票？",
+    "zh": "，其存档数据及其凭证？",
     "es": ", sus datos guardados y su ticket?",
     "fr": ", ses données de sauvegarde et son ticket ?",
     "pt": ", seus dados salvos e seu ticket?",
@@ -6886,7 +6841,7 @@
   },
   " and its save data?": {
     "en": " and its save data?",
-    "zh": " 及其保存数据？",
+    "zh": " 及其存档数据？",
     "es": " y sus datos guardados?",
     "fr": " et ses données de sauvegarde ?",
     "pt": " e seus dados salvos?",
@@ -6904,7 +6859,7 @@
   },
   "No extra data.": {
     "en": "No extra data.",
-    "zh": "没有额外的数据。",
+    "zh": "没有扩展数据。",
     "es": "Sin datos adicionales.",
     "fr": "Aucune donnée supplémentaire.",
     "pt": "Sem dados extras.",
@@ -6922,7 +6877,7 @@
   },
   "No tickets.": {
     "en": "No tickets.",
-    "zh": "没有门票。",
+    "zh": "没有凭证。",
     "es": "Sin entradas.",
     "fr": "Pas de billets.",
     "pt": "Sem ingressos.",
@@ -6958,7 +6913,7 @@
   },
   "Exporting the ticket...": {
     "en": "Exporting the ticket...",
-    "zh": "正在导出票...",
+    "zh": "正在导出凭证...",
     "es": "Exportando el billete...",
     "fr": "Exportation du ticket...",
     "pt": "Exportando o ingresso...",
@@ -6967,7 +6922,7 @@
   },
   "Ticket Exported": {
     "en": "Ticket Exported",
-    "zh": "票证已导出",
+    "zh": "凭证已导出",
     "es": "Boleto exportado",
     "fr": "Billet exporté",
     "pt": "Bilhete exportado",
@@ -6985,7 +6940,7 @@
   },
   "Not Exported": {
     "en": "Not Exported",
-    "zh": "未出口",
+    "zh": "未导出",
     "es": "No exportado",
     "fr": "Non exporté",
     "pt": "Não exportado",
@@ -6994,7 +6949,7 @@
   },
   "Delete the ticket {0} needs to start?": {
     "en": "Delete the ticket {0} needs to start?",
-    "zh": "删除票{0}需要启动吗？",
+    "zh": "删除 {0} 启动所需的凭证？",
     "es": "¿Eliminar el ticket {0} necesita comenzar?",
     "fr": "Supprimer le ticket dont {0} doit démarrer ?",
     "pt": "Excluir o ticket que {0} precisa para iniciar?",
@@ -7003,7 +6958,7 @@
   },
   "Delete the ticket for {0}?": {
     "en": "Delete the ticket for {0}?",
-    "zh": "删除 {0} 的票吗？",
+    "zh": "删除 {0} 的凭证？",
     "es": "¿Eliminar el ticket para {0}?",
     "fr": "Supprimer le ticket pour {0} ?",
     "pt": "Excluir o ticket para {0}?",
@@ -7012,7 +6967,7 @@
   },
   "Checking which tickets are unused...": {
     "en": "Checking which tickets are unused...",
-    "zh": "检查哪些票未使用...",
+    "zh": "检查哪些凭证未使用...",
     "es": "Comprobando qué entradas están sin usar...",
     "fr": "Vérifier quels billets ne sont pas utilisés...",
     "pt": "Verificando quais ingressos não foram utilizados...",
@@ -7039,7 +6994,7 @@
   },
   "Every ticket belongs to installed software.": {
     "en": "Every ticket belongs to installed software.",
-    "zh": "每张票都属于已安装的软件。",
+    "zh": "所有凭证均属于已安装的软件。",
     "es": "Cada ticket pertenece al software instalado.",
     "fr": "Chaque ticket appartient au logiciel installé.",
     "pt": "Cada ticket pertence ao software instalado.",
@@ -7048,7 +7003,7 @@
   },
   "Deleting unused tickets...": {
     "en": "Deleting unused tickets...",
-    "zh": "正在删除未使用的门票...",
+    "zh": "正在删除未使用的凭证...",
     "es": "Eliminando billetes no utilizados...",
     "fr": "Suppression des tickets inutilisés...",
     "pt": "Excluindo tickets não utilizados...",
@@ -7057,7 +7012,7 @@
   },
   "Tickets Deleted": {
     "en": "Tickets Deleted",
-    "zh": "票证已删除",
+    "zh": "凭证已删除",
     "es": "Entradas eliminadas",
     "fr": "Billets supprimés",
     "pt": "Ingressos excluídos",
@@ -7075,7 +7030,7 @@
   },
   "Some Tickets Remain": {
     "en": "Some Tickets Remain",
-    "zh": "还剩一些票",
+    "zh": "部分凭证未删除",
     "es": "Quedan algunas entradas",
     "fr": "Il reste quelques billets",
     "pt": "Alguns ingressos permanecem",
@@ -7102,7 +7057,7 @@
   },
   "Delete Unused Tickets": {
     "en": "Delete Unused Tickets",
-    "zh": "删除未使用的门票",
+    "zh": "删除未使用的凭证",
     "es": "Eliminar boletos no utilizados",
     "fr": "Supprimer les billets inutilisés",
     "pt": "Excluir ingressos não utilizados",
@@ -7111,7 +7066,7 @@
   },
   "Restore Deleted Tickets": {
     "en": "Restore Deleted Tickets",
-    "zh": "恢复已删除的票证",
+    "zh": "恢复已删除的凭证",
     "es": "Restaurar entradas eliminadas",
     "fr": "Restaurer les billets supprimés",
     "pt": "Restaurar tickets excluídos",
@@ -7147,7 +7102,7 @@
   },
   "Some Remain": {
     "en": "Some Remain",
-    "zh": "一些仍然存在",
+    "zh": "部分项目未删除",
     "es": "Algunos quedan",
     "fr": "Certains restent",
     "pt": "Alguns permanecem",
@@ -7165,7 +7120,7 @@
   },
   "Restoring deleted tickets...": {
     "en": "Restoring deleted tickets...",
-    "zh": "正在恢复已删除的票证...",
+    "zh": "正在恢复已删除的凭证...",
     "es": "Restaurando tickets eliminados...",
     "fr": "Restauration des tickets supprimés...",
     "pt": "Restaurando tickets excluídos...",
@@ -7174,7 +7129,7 @@
   },
   "Tickets Restored": {
     "en": "Tickets Restored",
-    "zh": "门票已恢复",
+    "zh": "凭证已恢复",
     "es": "Entradas restauradas",
     "fr": "Billets restaurés",
     "pt": "Ingressos restaurados",
@@ -7183,7 +7138,7 @@
   },
   "Some Tickets Not Restored": {
     "en": "Some Tickets Not Restored",
-    "zh": "部分门票未恢复",
+    "zh": "部分凭证未恢复",
     "es": "Algunas entradas no restauradas",
     "fr": "Certains billets non restaurés",
     "pt": "Alguns tickets não restaurados",
@@ -7219,7 +7174,7 @@
   },
   "Seeds Not Imported": {
     "en": "Seeds Not Imported",
-    "zh": "种子未进口",
+    "zh": "种子未导入",
     "es": "Semillas no importadas",
     "fr": "Semences non importées",
     "pt": "Sementes não importadas",
@@ -7363,7 +7318,7 @@
   },
   "The check was stopped.": {
     "en": "The check was stopped.",
-    "zh": "支票被停止了。",
+    "zh": "检查已停止。",
     "es": "El cheque fue suspendido.",
     "fr": "Le contrôle a été arrêté.",
     "pt": "A verificação foi interrompida.",
@@ -7417,7 +7372,7 @@
   },
   "{0} is not the size the archive says.": {
     "en": "{0} is not the size the archive says.",
-    "zh": "{0} 不是存档所说的大小。",
+    "zh": "{0} 不是压缩包所说的大小。",
     "es": "{0} no es el tamaño que dice el archivo.",
     "fr": "{0} n'est pas la taille indiquée dans l'archive.",
     "pt": "{0} não é o tamanho indicado no arquivo.",
@@ -7444,7 +7399,7 @@
   },
   "Not enough memory to read this archive.": {
     "en": "Not enough memory to read this archive.",
-    "zh": "内存不足，无法读取此存档。",
+    "zh": "内存不足，无法读取此压缩包。",
     "es": "No hay suficiente memoria para leer este archivo.",
     "fr": "Pas assez de mémoire pour lire cette archive.",
     "pt": "Não há memória suficiente para ler este arquivo.",
@@ -7453,7 +7408,7 @@
   },
   "This archive cannot be read.": {
     "en": "This archive cannot be read.",
-    "zh": "无法读取该存档。",
+    "zh": "无法读取该压缩包。",
     "es": "Este archivo no se puede leer.",
     "fr": "Cette archive ne peut pas être lue.",
     "pt": "Este arquivo não pode ser lido.",
@@ -7462,7 +7417,7 @@
   },
   "This is not an archive 3dsDL can read.": {
     "en": "This is not an archive 3dsDL can read.",
-    "zh": "这不是 3dsDL 可以读取的存档。",
+    "zh": "这不是 3dsDL 可以读取的压缩包。",
     "es": "Este no es un archivo que 3dsDL pueda leer.",
     "fr": "Ce n'est pas une archive que 3dsDL peut lire.",
     "pt": "Este não é um arquivo que o 3dsDL possa ler.",
@@ -7471,7 +7426,7 @@
   },
   "Extraction cancelled.": {
     "en": "Extraction cancelled.",
-    "zh": "提取已取消。",
+    "zh": "解压已取消。",
     "es": "Extracción cancelada.",
     "fr": "Extraction annulée.",
     "pt": "Extração cancelada.",
@@ -7498,7 +7453,7 @@
   },
   "Could not open the archive.": {
     "en": "Could not open the archive.",
-    "zh": "无法打开存档。",
+    "zh": "无法打开压缩包。",
     "es": "No se pudo abrir el archivo.",
     "fr": "Impossible d'ouvrir l'archive.",
     "pt": "Não foi possível abrir o arquivo.",
@@ -7516,7 +7471,7 @@
   },
   "The CIA file is incomplete. It may not have finished downloading.": {
     "en": "The CIA file is incomplete. It may not have finished downloading.",
-    "zh": "中央情报局的文件不完整。它可能尚未完成下载。",
+    "zh": "CIA的文件不完整。它可能尚未完成下载。",
     "es": "El expediente de la CIA está incompleto. Es posible que no haya terminado de descargarse.",
     "fr": "Le dossier de la CIA est incomplet. Le téléchargement n'est peut-être pas terminé.",
     "pt": "O arquivo CIA está incompleto. Pode não ter terminado o download.",
@@ -7534,7 +7489,7 @@
   },
   "The CIA's title metadata is damaged.": {
     "en": "The CIA's title metadata is damaged.",
-    "zh": "中央情报局的头衔元数据已损坏。",
+    "zh": "CIA的头衔元数据已损坏。",
     "es": "Los metadatos del título de la CIA están dañados.",
     "fr": "Les métadonnées du titre de la CIA sont endommagées.",
     "pt": "Os metadados do título da CIA estão danificados.",
@@ -7579,7 +7534,7 @@
   },
   "Demo": {
     "en": "Demo",
-    "zh": "演示",
+    "zh": "试玩版",
     "es": "Manifestación",
     "fr": "Démo",
     "pt": "Demonstração",
@@ -7597,7 +7552,7 @@
   },
   "Download Play": {
     "en": "Download Play",
-    "zh": "下载播放",
+    "zh": "下载通信",
     "es": "Descargar Jugar",
     "fr": "Télécharger Jouer",
     "pt": "Baixe o jogo",
@@ -7606,7 +7561,7 @@
   },
   "System title": {
     "en": "System title",
-    "zh": "系统标题",
+    "zh": "系统软件",
     "es": "Título del sistema",
     "fr": "Titre du système",
     "pt": "Título do sistema",
@@ -7660,7 +7615,7 @@
   },
   "Could not finish writing": {
     "en": "Could not finish writing",
-    "zh": "无法完成写作",
+    "zh": "无法完成写入",
     "es": "No pude terminar de escribir",
     "fr": "Je n'ai pas pu finir d'écrire",
     "pt": "Não foi possível terminar de escrever",
@@ -7732,7 +7687,7 @@
   },
   "The name is empty.": {
     "en": "The name is empty.",
-    "zh": "名字是空的。",
+    "zh": "名称不能为空。",
     "es": "El nombre está vacío.",
     "fr": "Le nom est vide.",
     "pt": "O nome está vazio.",
@@ -7741,7 +7696,7 @@
   },
   "\".\" and \"..\" cannot be used as names.": {
     "en": "\".\" and \"..\" cannot be used as names.",
-    "zh": "“。”并且“..”不能用作名称。",
+    "zh": "不能使用「.」或「..」作为名称。",
     "es": "\".\" y \"...\" no se pueden utilizar como nombres.",
     "fr": "\".\" et \"..\" ne peuvent pas être utilisés comme noms.",
     "pt": "\".\" e \"..\" não podem ser usados ​​como nomes.",
@@ -7768,7 +7723,7 @@
   },
   "The name is too long.": {
     "en": "The name is too long.",
-    "zh": "名字太长了。",
+    "zh": "名称过长。",
     "es": "El nombre es demasiado largo.",
     "fr": "Le nom est trop long.",
     "pt": "O nome é muito longo.",
@@ -7786,19 +7741,19 @@
   },
   "CIA installer": {
     "en": "CIA installer",
-    "zh": "中央情报局安装程序",
-    "es": "instalador de la CIA",
-    "fr": "Installateur de la CIA",
-    "pt": "Instalador da CIA",
-    "de": "CIA-Installationsprogramm",
+    "zh": "CIA 安装包",
+    "es": "Instalador CIA",
+    "fr": "Installateur CIA",
+    "pt": "Instalador CIA",
+    "de": "CIA-Installationsdatei",
     "ja": "CIA インストーラー"
   },
   "Ticket": {
     "en": "Ticket",
-    "zh": "票",
-    "es": "Boleto",
-    "fr": "Billet",
-    "pt": "Bilhete",
+    "zh": "凭证",
+    "es": "Ticket",
+    "fr": "Ticket",
+    "pt": "Ticket",
     "de": "Ticket",
     "ja": "チケット"
   },
@@ -7813,7 +7768,7 @@
   },
   "Title icon (SMDH)": {
     "en": "Title icon (SMDH)",
-    "zh": "标题图标 (SMDH)",
+    "zh": "软件图标（SMDH）",
     "es": "Icono de título (SMDH)",
     "fr": "Icône de titre (SMDH)",
     "pt": "Ícone de título (SMDH)",
@@ -7822,7 +7777,7 @@
   },
   "3DS game image": {
     "en": "3DS game image",
-    "zh": "3DS游戏画面",
+    "zh": "3DS 游戏镜像",
     "es": "imagen del juego 3DS",
     "fr": "Image du jeu 3DS",
     "pt": "Imagem do jogo 3DS",
@@ -7858,7 +7813,7 @@
   },
   "Audio": {
     "en": "Audio",
-    "zh": "声音的",
+    "zh": "音频",
     "es": "Audio",
     "fr": "Audio",
     "pt": "Áudio",
@@ -7975,7 +7930,7 @@
   },
   "This is not a ticket.": {
     "en": "This is not a ticket.",
-    "zh": "这不是门票。",
+    "zh": "这不是凭证。",
     "es": "Esto no es un boleto.",
     "fr": "Ce n'est pas un billet.",
     "pt": "Isto não é um bilhete.",
@@ -7984,7 +7939,7 @@
   },
   "The ticket is incomplete.": {
     "en": "The ticket is incomplete.",
-    "zh": "门票不完整。",
+    "zh": "凭证不完整。",
     "es": "El billete está incompleto.",
     "fr": "Le billet est incomplet.",
     "pt": "O bilhete está incompleto.",
@@ -8074,7 +8029,7 @@
   },
   "The file is too small to be a ZIP archive.": {
     "en": "The file is too small to be a ZIP archive.",
-    "zh": "该文件太小，无法作为 ZIP 存档。",
+    "zh": "该文件太小，无法作为 ZIP 压缩包。",
     "es": "El archivo es demasiado pequeño para ser un archivo ZIP.",
     "fr": "Le fichier est trop petit pour être une archive ZIP.",
     "pt": "O arquivo é muito pequeno para ser um arquivo ZIP.",
@@ -8083,7 +8038,7 @@
   },
   "Could not read the end of the archive.": {
     "en": "Could not read the end of the archive.",
-    "zh": "无法读取存档的末尾。",
+    "zh": "无法读取压缩包的末尾。",
     "es": "No se pudo leer el final del archivo.",
     "fr": "Impossible de lire la fin de l'archive.",
     "pt": "Não foi possível ler o final do arquivo.",
@@ -8092,7 +8047,7 @@
   },
   "This is not a ZIP archive, or it is incomplete.": {
     "en": "This is not a ZIP archive, or it is incomplete.",
-    "zh": "这不是 ZIP 存档，或者不完整。",
+    "zh": "这不是 ZIP 压缩包，或者不完整。",
     "es": "Este no es un archivo ZIP o está incompleto.",
     "fr": "Ce n'est pas une archive ZIP ou elle est incomplète.",
     "pt": "Este não é um arquivo ZIP ou está incompleto.",
@@ -8101,7 +8056,7 @@
   },
   "The archive's ZIP64 directory is missing.": {
     "en": "The archive's ZIP64 directory is missing.",
-    "zh": "存档的 ZIP64 目录丢失。",
+    "zh": "压缩包的 ZIP64 目录丢失。",
     "es": "Falta el directorio ZIP64 del archivo.",
     "fr": "Le répertoire ZIP64 de l'archive est manquant.",
     "pt": "O diretório ZIP64 do arquivo está faltando.",
@@ -8110,7 +8065,7 @@
   },
   "The archive's ZIP64 directory is damaged.": {
     "en": "The archive's ZIP64 directory is damaged.",
-    "zh": "存档的 ZIP64 目录已损坏。",
+    "zh": "压缩包的 ZIP64 目录已损坏。",
     "es": "El directorio ZIP64 del archivo está dañado.",
     "fr": "Le répertoire ZIP64 de l'archive est endommagé.",
     "pt": "O diretório ZIP64 do arquivo está danificado.",
@@ -8119,7 +8074,7 @@
   },
   "The archive's directory is damaged or too large.": {
     "en": "The archive's directory is damaged or too large.",
-    "zh": "存档的目录已损坏或太大。",
+    "zh": "压缩包的目录已损坏或太大。",
     "es": "El directorio del archivo está dañado o es demasiado grande.",
     "fr": "Le répertoire de l'archive est endommagé ou trop volumineux.",
     "pt": "O diretório do arquivo está danificado ou é muito grande.",
@@ -8137,7 +8092,7 @@
   },
   "{0} is larger than the archive says.": {
     "en": "{0} is larger than the archive says.",
-    "zh": "{0} 比档案中所说的要大。",
+    "zh": "{0} 比压缩包中所说的要大。",
     "es": "{0} es más grande de lo que dice el archivo.",
     "fr": "{0} est plus grand que ce que dit l'archive.",
     "pt": "{0} é maior do que diz o arquivo.",
@@ -8182,7 +8137,7 @@
   },
   "inflate error": {
     "en": "inflate error",
-    "zh": "膨胀错误",
+    "zh": "解压错误",
     "es": "error de inflado",
     "fr": "erreur de gonflage",
     "pt": "erro de inflação",
@@ -8191,7 +8146,7 @@
   },
   "{0} is smaller than the archive says.": {
     "en": "{0} is smaller than the archive says.",
-    "zh": "{0} 比档案中所说的要小。",
+    "zh": "{0} 比压缩包中所说的要小。",
     "es": "{0} es más pequeño de lo que dice el archivo.",
     "fr": "{0} est plus petit que ce que dit l'archive.",
     "pt": "{0} é menor do que diz o arquivo.",
@@ -8209,7 +8164,7 @@
   },
   "Could not read the archive's directory.": {
     "en": "Could not read the archive's directory.",
-    "zh": "无法读取存档的目录。",
+    "zh": "无法读取压缩包的目录。",
     "es": "No se pudo leer el directorio del archivo.",
     "fr": "Impossible de lire le répertoire de l'archive.",
     "pt": "Não foi possível ler o diretório do arquivo.",
@@ -8218,7 +8173,7 @@
   },
   "The archive's directory is damaged.": {
     "en": "The archive's directory is damaged.",
-    "zh": "存档目录已损坏。",
+    "zh": "压缩包目录已损坏。",
     "es": "El directorio del archivo está dañado.",
     "fr": "Le répertoire de l'archive est endommagé.",
     "pt": "O diretório do arquivo está danificado.",
@@ -8362,7 +8317,7 @@
   },
   "The server's certificate is not valid yet according to the console's clock, so the console's date is probably behind. Check the clock and try again.": {
     "en": "The server's certificate is not valid yet according to the console's clock, so the console's date is probably behind. Check the clock and try again.",
-    "zh": "根据控制台的时钟，服务器的证书尚未生效，因此控制台的日期可能落后。检查时钟并重试。",
+    "zh": "根据主机的时钟，服务器的证书尚未生效，因此主机的日期可能落后。检查时钟并重试。",
     "es": "El certificado del servidor aún no es válido según el reloj de la consola, por lo que probablemente la fecha de la consola esté atrasada. Consulta el reloj y vuelve a intentarlo.",
     "fr": "Le certificat du serveur n'est pas encore valide selon l'horloge de la console, donc la date de la console est probablement en retard. Vérifiez l'horloge et réessayez.",
     "pt": "O certificado do servidor ainda não é válido de acordo com o relógio do console, então a data do console provavelmente está atrasada. Verifique o relógio e tente novamente.",
@@ -8371,7 +8326,7 @@
   },
   "The server's certificate has expired according to the console's clock. Check that the console's date is right; if it is, the site's certificate really has expired.": {
     "en": "The server's certificate has expired according to the console's clock. Check that the console's date is right; if it is, the site's certificate really has expired.",
-    "zh": "根据控制台的时钟，服务器的证书已过期。检查控制台日期是否正确；如果是，则该网站的证书确实已过期。",
+    "zh": "根据主机的时钟，服务器的证书已过期。检查主机日期是否正确；如果是，则该网站的证书确实已过期。",
     "es": "El certificado del servidor ha caducado según el reloj de la consola. Comprueba que la fecha de la consola sea correcta; si es así, el certificado del sitio realmente ha caducado.",
     "fr": "Le certificat du serveur a expiré selon l'horloge de la console. Vérifiez que la date de la console est correcte ; si c'est le cas, le certificat du site a effectivement expiré.",
     "pt": "O certificado do servidor expirou de acordo com o relógio do console. Verifique se a data do console está correta; se for, o certificado do site realmente expirou.",
@@ -8398,7 +8353,7 @@
   },
   "The server's certificate could not be verified. If the console's date and time are wrong, fix them with Check clock and try again.": {
     "en": "The server's certificate could not be verified. If the console's date and time are wrong, fix them with Check clock and try again.",
-    "zh": "无法验证服务器的证书。如果控制台的日期和时间错误，请使用检查时钟修复它们，然后重试。",
+    "zh": "无法验证服务器的证书。如果主机的日期和时间错误，请使用检查时钟修复它们，然后重试。",
     "es": "No se pudo verificar el certificado del servidor. Si la fecha y hora de la consola son incorrectas, corríjalas con Comprobar reloj y vuelva a intentarlo.",
     "fr": "Le certificat du serveur n'a pas pu être vérifié. Si la date et l'heure de la console sont erronées, corrigez-les avec Vérifier l'horloge et réessayez.",
     "pt": "O certificado do servidor não pôde ser verificado. Se a data e a hora do console estiverem erradas, corrija-as com Verificar relógio e tente novamente.",
@@ -8929,84 +8884,84 @@
   },
   "{0} entry": {
     "en": "{0} entry",
-    "zh": "{0} 条目",
-    "es": "Entrada {0}",
-    "fr": "Entrée {0}",
-    "pt": "Entrada {0}",
-    "de": "{0}-Eintrag",
-    "ja": "{0} エントリ"
+    "zh": "{0} 个条目",
+    "es": "{0} entrada",
+    "fr": "{0} entrée",
+    "pt": "{0} entrada",
+    "de": "{0} Eintrag",
+    "ja": "{0} 件の項目"
   },
   "{0} file": {
     "en": "{0} file",
-    "zh": "{0} 文件",
-    "es": "Archivo {0}",
-    "fr": "Fichier {0}",
-    "pt": "Arquivo {0}",
-    "de": "{0}-Datei",
-    "ja": "{0}ファイル"
+    "zh": "{0} 个文件",
+    "es": "{0} archivo",
+    "fr": "{0} fichier",
+    "pt": "{0} arquivo",
+    "de": "{0} Datei",
+    "ja": "{0} 個のファイル"
   },
   "{0} files": {
     "en": "{0} files",
-    "zh": "{0} 文件",
-    "es": "Archivos {0}",
-    "fr": "Fichiers {0}",
-    "pt": "Arquivos {0}",
-    "de": "{0}-Dateien",
-    "ja": "{0} ファイル"
+    "zh": "{0} 个文件",
+    "es": "{0} archivos",
+    "fr": "{0} fichiers",
+    "pt": "{0} arquivos",
+    "de": "{0} Dateien",
+    "ja": "{0} 個のファイル"
   },
   "{0} folder": {
     "en": "{0} folder",
-    "zh": "{0}文件夹",
-    "es": "Carpeta {0}",
-    "fr": "Dossier {0}",
-    "pt": "Pasta {0}",
-    "de": "{0}-Ordner",
-    "ja": "{0}フォルダー"
+    "zh": "{0} 个文件夹",
+    "es": "{0} carpeta",
+    "fr": "{0} dossier",
+    "pt": "{0} pasta",
+    "de": "{0} Ordner",
+    "ja": "{0} 個のフォルダー"
   },
   "{0} folders": {
     "en": "{0} folders",
-    "zh": "{0} 文件夹",
-    "es": "Carpetas {0}",
-    "fr": "Dossiers {0}",
-    "pt": "Pastas {0}",
-    "de": "{0}-Ordner",
-    "ja": "{0} フォルダー"
+    "zh": "{0} 个文件夹",
+    "es": "{0} carpetas",
+    "fr": "{0} dossiers",
+    "pt": "{0} pastas",
+    "de": "{0} Ordner",
+    "ja": "{0} 個のフォルダー"
   },
   "{0} CIA": {
     "en": "{0} CIA",
-    "zh": "{0} 中央情报局",
+    "zh": "{0} 个 CIA",
     "es": "{0} CIA",
     "fr": "{0} CIA",
     "pt": "{0} CIA",
     "de": "{0} CIA",
-    "ja": "{0} CIA"
+    "ja": "{0} 個の CIA"
   },
   "{0} CIAs": {
     "en": "{0} CIAs",
-    "zh": "{0} CIA",
+    "zh": "{0} 个 CIA",
     "es": "{0} CIA",
     "fr": "{0} CIA",
-    "pt": "CIAs {0}",
+    "pt": "{0} CIAs",
     "de": "{0} CIAs",
-    "ja": "{0} CIA"
+    "ja": "{0} 個の CIA"
   },
   "{0} backup": {
     "en": "{0} backup",
-    "zh": "{0}备份",
-    "es": "Copia de seguridad {0}",
-    "fr": "Sauvegarde {0}",
-    "pt": "Backup {0}",
-    "de": "{0}-Sicherung",
-    "ja": "{0}バックアップ"
+    "zh": "{0} 份备份",
+    "es": "{0} copia de seguridad",
+    "fr": "{0} sauvegarde",
+    "pt": "{0} backup",
+    "de": "{0} Sicherung",
+    "ja": "{0} 件のバックアップ"
   },
   "{0} backups": {
     "en": "{0} backups",
-    "zh": "{0} 备份",
-    "es": "Copias de seguridad {0}",
-    "fr": "Sauvegardes {0}",
-    "pt": "Backups {0}",
-    "de": "{0}-Backups",
-    "ja": "{0} バックアップ"
+    "zh": "{0} 份备份",
+    "es": "{0} copias de seguridad",
+    "fr": "{0} sauvegardes",
+    "pt": "{0} backups",
+    "de": "{0} Sicherungen",
+    "ja": "{0} 件のバックアップ"
   },
   "{0} existing file": {
     "en": "{0} existing file",
@@ -9028,39 +8983,39 @@
   },
   "{0} install": {
     "en": "{0} install",
-    "zh": "{0}安装",
-    "es": "Instalación de {0}",
-    "fr": "Installation de {0}",
-    "pt": "Instalação {0}",
-    "de": "{0} installieren",
-    "ja": "{0} インストール"
+    "zh": "{0} 项安装",
+    "es": "{0} instalación",
+    "fr": "{0} installation",
+    "pt": "{0} instalação",
+    "de": "{0} Installation",
+    "ja": "{0} 件のインストール"
   },
   "{0} installs": {
     "en": "{0} installs",
-    "zh": "{0} 安装",
-    "es": "{0} instala",
-    "fr": "{0} installe",
-    "pt": "Instalações {0}",
-    "de": "{0} wird installiert",
-    "ja": "{0} のインストール"
+    "zh": "{0} 项安装",
+    "es": "{0} instalaciones",
+    "fr": "{0} installations",
+    "pt": "{0} instalações",
+    "de": "{0} Installationen",
+    "ja": "{0} 件のインストール"
   },
   "{0} title": {
     "en": "{0} title",
-    "zh": "{0}标题",
-    "es": "Título {0}",
-    "fr": "Titre {0}",
-    "pt": "Título {0}",
-    "de": "{0}-Titel",
-    "ja": "タイトル{0}"
+    "zh": "{0} 个软件",
+    "es": "{0} programa",
+    "fr": "{0} logiciel",
+    "pt": "{0} programa",
+    "de": "{0} Titel",
+    "ja": "{0} 本のソフト"
   },
   "{0} titles": {
     "en": "{0} titles",
-    "zh": "{0} 标题",
-    "es": "Títulos {0}",
-    "fr": "Titres {0}",
-    "pt": "Títulos {0}",
-    "de": "{0}-Titel",
-    "ja": "{0} タイトル"
+    "zh": "{0} 个软件",
+    "es": "{0} programas",
+    "fr": "{0} logiciels",
+    "pt": "{0} programas",
+    "de": "{0} Titel",
+    "ja": "{0} 本のソフト"
   },
   "{0} unfinished install": {
     "en": "{0} unfinished install",
@@ -9082,63 +9037,63 @@
   },
   "{0} item": {
     "en": "{0} item",
-    "es": "{0} artículo",
-    "fr": "Article {0}",
-    "zh": "{0} 项目",
-    "pt": "Item {0}",
-    "de": "{0}-Artikel",
-    "ja": "{0} アイテム"
+    "zh": "{0} 项",
+    "es": "{0} elemento",
+    "fr": "{0} élément",
+    "pt": "{0} item",
+    "de": "{0} Element",
+    "ja": "{0} 件の項目"
   },
   "{0} items": {
     "en": "{0} items",
-    "es": "{0} artículos",
-    "fr": "Articles {0}",
-    "zh": "{0} 项目",
-    "pt": "Itens {0}",
-    "de": "{0} Artikel",
-    "ja": "{0} アイテム"
+    "zh": "{0} 项",
+    "es": "{0} elementos",
+    "fr": "{0} éléments",
+    "pt": "{0} itens",
+    "de": "{0} Elemente",
+    "ja": "{0} 件の項目"
   },
   "{0} ticket": {
     "en": "{0} ticket",
-    "es": "Billete {0}",
-    "fr": "Billet {0}",
-    "zh": "{0}票",
-    "pt": "Bilhete {0}",
-    "de": "{0}-Ticket",
-    "ja": "{0}チケット"
+    "zh": "{0} 份凭证",
+    "es": "{0} ticket",
+    "fr": "{0} ticket",
+    "pt": "{0} ticket",
+    "de": "{0} Ticket",
+    "ja": "{0} 枚のチケット"
   },
   "{0} tickets": {
     "en": "{0} tickets",
-    "es": "Entradas {0}",
-    "fr": "Billets {0}",
-    "zh": "{0} 门票",
-    "pt": "Ingressos {0}",
-    "de": "{0}-Tickets",
-    "ja": "{0}チケット"
+    "zh": "{0} 份凭证",
+    "es": "{0} tickets",
+    "fr": "{0} tickets",
+    "pt": "{0} tickets",
+    "de": "{0} Tickets",
+    "ja": "{0} 枚のチケット"
   },
   "{0} link": {
     "en": "{0} link",
-    "es": "Enlace {0}",
-    "fr": "Lien {0}",
-    "zh": "{0} 链接",
-    "pt": "Ligação {0}",
-    "de": "{0}-Link",
-    "ja": "{0}リンク"
+    "zh": "{0} 个链接",
+    "es": "{0} enlace",
+    "fr": "{0} lien",
+    "pt": "{0} link",
+    "de": "{0} Link",
+    "ja": "{0} 件のリンク"
   },
   "{0} links": {
     "en": "{0} links",
-    "es": "Enlaces {0}",
-    "fr": "Liens {0}",
-    "zh": "{0} 链接",
-    "pt": "Ligações {0}",
-    "de": "{0}-Links",
-    "ja": "{0} リンク"
+    "zh": "{0} 个链接",
+    "es": "{0} enlaces",
+    "fr": "{0} liens",
+    "pt": "{0} links",
+    "de": "{0} Links",
+    "ja": "{0} 件のリンク"
   },
   "{0} unused ticket": {
     "en": "{0} unused ticket",
     "es": "{0} billete no utilizado",
     "fr": "Billet {0} inutilisé",
-    "zh": "{0} 未使用的票",
+    "zh": "{0} 未使用的凭证",
     "pt": "Bilhete não utilizado {0}",
     "de": "{0} ungenutztes Ticket",
     "ja": "{0}未使用チケット"
@@ -9147,7 +9102,7 @@
     "en": "{0} unused tickets",
     "es": "{0} entradas no utilizadas",
     "fr": "Billets {0} inutilisés",
-    "zh": "{0} 未使用的门票",
+    "zh": "{0} 未使用的凭证",
     "pt": "{0} tickets não utilizados",
     "de": "{0} ungenutzte Tickets",
     "ja": "{0}未使用チケット"
@@ -9156,7 +9111,7 @@
     "en": "{0} deleted ticket",
     "es": "{0} billete eliminado",
     "fr": "{0} ticket supprimé",
-    "zh": "{0} 已删除票证",
+    "zh": "{0} 已删除凭证",
     "pt": "{0} ticket excluído",
     "de": "{0} Ticket gelöscht",
     "ja": "{0} がチケットを削除しました"
@@ -9165,7 +9120,7 @@
     "en": "{0} deleted tickets",
     "es": "{0} entradas eliminadas",
     "fr": "{0} tickets supprimés",
-    "zh": "{0} 已删除票证",
+    "zh": "{0} 已删除凭证",
     "pt": "{0} tickets excluídos",
     "de": "{0} gelöschte Tickets",
     "ja": "{0} がチケットを削除しました"
@@ -9208,30 +9163,21 @@
   },
   "{0} seed": {
     "en": "{0} seed",
-    "es": "semilla {0}",
-    "fr": "Graine {0}",
-    "zh": "{0} 种子",
-    "pt": "Semente {0}",
-    "de": "{0}-Samen",
-    "ja": "{0}シード"
+    "zh": "{0} 个加密种子",
+    "es": "{0} semilla",
+    "fr": "{0} graine",
+    "pt": "{0} semente",
+    "de": "{0} Seed",
+    "ja": "{0} 個のシード"
   },
   "{0} seeds": {
     "en": "{0} seeds",
-    "es": "Semillas {0}",
-    "fr": "Graines {0}",
-    "zh": "{0} 种子",
-    "pt": "Sementes {0}",
-    "de": "{0} Samen",
-    "ja": "{0} シード"
-  },
-  "timezone.hpp": {
-    "en": "timezone.hpp",
-    "es": "zona horaria.hpp",
-    "fr": "fuseau horaire.hpp",
-    "zh": "时区.hpp",
-    "pt": "fuso horário.hpp",
-    "de": "timezone.hpp",
-    "ja": "タイムゾーン.hpp"
+    "zh": "{0} 个加密种子",
+    "es": "{0} semillas",
+    "fr": "{0} graines",
+    "pt": "{0} sementes",
+    "de": "{0} Seeds",
+    "ja": "{0} 個のシード"
   },
   "Baker Island": {
     "en": "Baker Island",
@@ -9575,45 +9521,18 @@
     "de": "Linieninseln (Kiribati)",
     "ja": "ライン諸島 (キリバス)"
   },
-  "behind": {
-    "en": "behind",
-    "zh": "在后面",
-    "es": "detrás",
-    "fr": "derrière",
-    "pt": "atrás",
-    "de": "hinter",
-    "ja": "後ろに"
-  },
-  "ahead": {
-    "en": "ahead",
-    "zh": "前面",
-    "es": "adelante",
-    "fr": "devant",
-    "pt": "à frente",
-    "de": "voraus",
-    "ja": "先に"
-  },
   "correct to within a minute": {
     "en": "correct to within a minute",
-    "zh": "纠正到一分钟内",
+    "zh": "误差不足一分钟",
     "es": "correcto en un minuto",
     "fr": "corriger en une minute",
     "pt": "corrigir dentro de um minuto",
     "de": "auf eine Minute genau korrigieren",
     "ja": "1分以内に正解する"
   },
-  "about %lld days %s": {
-    "en": "about %lld days %s",
-    "zh": "大约 %lld 天 %s",
-    "es": "aproximadamente %lld días %s",
-    "fr": "environ %lld jours %s",
-    "pt": "cerca de %lld dias %s",
-    "de": "ungefähr %lld Tage %s",
-    "ja": "約 %lld 日 %s"
-  },
   "Sun": {
     "en": "Sun",
-    "zh": "太阳",
+    "zh": "周日",
     "es": "Sol",
     "fr": "Soleil",
     "pt": "Sol",
@@ -9631,7 +9550,7 @@
   },
   "Tue": {
     "en": "Tue",
-    "zh": "星期二",
+    "zh": "周二",
     "es": "Mar",
     "fr": "Mar",
     "pt": "ter",
@@ -9649,7 +9568,7 @@
   },
   "Thu": {
     "en": "Thu",
-    "zh": "星期四",
+    "zh": "周四",
     "es": "Jue",
     "fr": "Jeu",
     "pt": "qui",
@@ -9667,7 +9586,7 @@
   },
   "Sat": {
     "en": "Sat",
-    "zh": "星期六",
+    "zh": "周六",
     "es": "Se sentó",
     "fr": "Assis",
     "pt": "Sentado",
@@ -9676,7 +9595,7 @@
   },
   "Version {0}": {
     "en": "Version {0}",
-    "zh": "版本{0}",
+    "zh": "版本 {0}",
     "es": "Versión {0}",
     "fr": "Version{0}",
     "pt": "Versão {0}",
@@ -9694,7 +9613,7 @@
   },
   "Extra data {0}": {
     "en": "Extra data {0}",
-    "zh": "额外数据 {0}",
+    "zh": "扩展数据 {0}",
     "es": "Datos adicionales {0}",
     "fr": "Données supplémentaires {0}",
     "pt": "Dados extras {0}",
@@ -9703,7 +9622,7 @@
   },
   "Offset 0x{0} of {1}": {
     "en": "Offset 0x{0} of {1}",
-    "zh": "{1} 的偏移量 0x{0}",
+    "zh": "偏移 0x{0} / {1}",
     "es": "Desplazamiento 0x{0} de {1}",
     "fr": "Décalage 0x{0} de {1}",
     "pt": "Deslocamento 0x{0} de {1}",
@@ -9748,7 +9667,7 @@
   },
   "installing": {
     "en": "installing",
-    "zh": "安装",
+    "zh": "正在安装",
     "es": "instalando",
     "fr": "installation",
     "pt": "instalando",
@@ -9775,7 +9694,7 @@
   },
   "checking": {
     "en": "checking",
-    "zh": "检查",
+    "zh": "正在检查",
     "es": "de cheques",
     "fr": "vérification",
     "pt": "verificando",
@@ -9784,7 +9703,7 @@
   },
   "working": {
     "en": "working",
-    "zh": "在职的",
+    "zh": "正在处理",
     "es": "laboral",
     "fr": "fonctionnement",
     "pt": "trabalhando",
@@ -9793,7 +9712,7 @@
   },
   "reading": {
     "en": "reading",
-    "zh": "阅读",
+    "zh": "正在读取",
     "es": "lectura",
     "fr": "en lisant",
     "pt": "leitura",
@@ -9856,7 +9775,7 @@
   },
   "about {0} s": {
     "en": "about {0} s",
-    "zh": "关于 {0} s",
+    "zh": "约 {0} 秒",
     "es": "acerca de {0} s",
     "fr": "à propos des {0}",
     "pt": "sobre {0}",
@@ -9874,7 +9793,7 @@
   },
   "about {0} h": {
     "en": "about {0} h",
-    "zh": "大约 {0} h",
+    "zh": "约 {0} 小时",
     "es": "acerca de {0} h",
     "fr": "à propos de {0} h",
     "pt": "sobre {0} h",
@@ -9892,7 +9811,7 @@
   },
   "This folder holds installed software, saves and extra data. Changing it can break games.": {
     "en": "This folder holds installed software, saves and extra data. Changing it can break games.",
-    "zh": "该文件夹保存已安装的软件、保存的数据和额外的数据。更改它可能会破坏游戏。",
+    "zh": "该文件夹保存已安装的软件、保存的数据和扩展数据。更改它可能会破坏游戏。",
     "es": "Esta carpeta contiene software instalado, archivos guardados y datos adicionales. Cambiarlo puede romper los juegos.",
     "fr": "Ce dossier contient les logiciels installés, les sauvegardes et les données supplémentaires. Le changer peut interrompre les jeux.",
     "pt": "Esta pasta contém software instalado, salvamentos e dados extras. Mudá-lo pode quebrar os jogos.",
@@ -9919,7 +9838,7 @@
   },
   "3DS ready": {
     "en": "3DS ready",
-    "zh": "3DS 就绪",
+    "zh": "3DS 已就绪",
     "es": "3DS listo",
     "fr": "Prêt pour la 3DS",
     "pt": "Pronto para 3DS",
@@ -9928,7 +9847,7 @@
   },
   "Asking on the 3DS": {
     "en": "Asking on the 3DS",
-    "zh": "在3DS上提问",
+    "zh": "请在 3DS 上确认",
     "es": "Preguntando en la 3DS",
     "fr": "Demander sur la 3DS",
     "pt": "Perguntando no 3DS",
@@ -9937,7 +9856,7 @@
   },
   "Waiting for you on the 3DS": {
     "en": "Waiting for you on the 3DS",
-    "zh": "在3DS上等你",
+    "zh": "等待你操作 3DS",
     "es": "Esperándote en la 3DS",
     "fr": "Je vous attends sur la 3DS",
     "pt": "Esperando por você no 3DS",
@@ -9991,7 +9910,7 @@
   },
   "Over to you on the 3DS": {
     "en": "Over to you on the 3DS",
-    "zh": "3DS 上的任务就交给你了",
+    "zh": "请在 3DS 上继续操作",
     "es": "A ti en la 3DS",
     "fr": "À vous de jouer sur la 3DS",
     "pt": "Até você no 3DS",
@@ -10018,7 +9937,7 @@
   },
   "Done on the 3DS.": {
     "en": "Done on the 3DS.",
-    "zh": "在3DS上完成。",
+    "zh": "3DS 已完成。",
     "es": "Hecho en la 3DS.",
     "fr": "Fait sur 3DS.",
     "pt": "Feito no 3DS.",
@@ -10027,7 +9946,7 @@
   },
   "Not done on the 3DS.": {
     "en": "Not done on the 3DS.",
-    "zh": "3DS 上没有完成。",
+    "zh": "3DS 未能完成。",
     "es": "No hecho en 3DS.",
     "fr": "Pas fait sur la 3DS.",
     "pt": "Não feito no 3DS.",
@@ -10090,7 +10009,7 @@
   },
   "View": {
     "en": "View",
-    "zh": "看法",
+    "zh": "查看",
     "es": "Vista",
     "fr": "Voir",
     "pt": "Visualizar",
@@ -10126,7 +10045,7 @@
   },
   "Kind": {
     "en": "Kind",
-    "zh": "种类",
+    "zh": "类型",
     "es": "Amable",
     "fr": "Gentil",
     "pt": "Tipo",
@@ -10135,7 +10054,7 @@
   },
   "Where": {
     "en": "Where",
-    "zh": "在哪里",
+    "zh": "位置",
     "es": "Dónde",
     "fr": "Où",
     "pt": "Onde",
@@ -10144,7 +10063,7 @@
   },
   "Publisher": {
     "en": "Publisher",
-    "zh": "出版商",
+    "zh": "发行商",
     "es": "Editor",
     "fr": "Éditeur",
     "pt": "Editor",
@@ -10171,7 +10090,7 @@
   },
   "Copied {0}": {
     "en": "Copied {0}",
-    "zh": "复制 {0}",
+    "zh": "已复制 {0}",
     "es": "Copiado {0}",
     "fr": "Copié {0}",
     "pt": "Copiado {0}",
@@ -10180,7 +10099,7 @@
   },
   "Renamed to {0}": {
     "en": "Renamed to {0}",
-    "zh": "更名为{0}",
+    "zh": "已重命名为 {0}",
     "es": "Renombrado a {0}",
     "fr": "Renommé {0}",
     "pt": "Renomeado para {0}",
@@ -10216,7 +10135,7 @@
   },
   "They are already in {0}.": {
     "en": "They are already in {0}.",
-    "zh": "他们已经在{0}中了。",
+    "zh": "这些文件已在 {0} 中。",
     "es": "Ya están en {0}.",
     "fr": "Ils sont déjà dans {0}.",
     "pt": "Eles já estão em {0}.",
@@ -10261,7 +10180,7 @@
   },
   "Sent to the 3DS. Choose Install on the console.": {
     "en": "Sent to the 3DS. Choose Install on the console.",
-    "zh": "发送到3DS。选择在控制台上安装。",
+    "zh": "发送到3DS。选择在主机上安装。",
     "es": "Enviado a la 3DS. Elija Instalar en la consola.",
     "fr": "Envoyé sur la 3DS. Choisissez Installer sur la console.",
     "pt": "Enviado para o 3DS. Escolha Instalar no console.",
@@ -10306,7 +10225,7 @@
   },
   "Not saved.": {
     "en": "Not saved.",
-    "zh": "没有保存。",
+    "zh": "未保存。",
     "es": "No salvo.",
     "fr": "Non enregistré.",
     "pt": "Não salvo.",
@@ -10414,7 +10333,7 @@
   },
   "Replace changed": {
     "en": "Replace changed",
-    "zh": "更换已更改",
+    "zh": "仅替换内容不同的文件",
     "es": "Reemplazar cambiado",
     "fr": "Remplacer modifié",
     "pt": "Substituir alterado",
@@ -10432,7 +10351,7 @@
   },
   "Nothing to send.": {
     "en": "Nothing to send.",
-    "zh": "没什么可发送的。",
+    "zh": "没有需要发送的文件。",
     "es": "Nada que enviar.",
     "fr": "Rien à envoyer.",
     "pt": "Nada para enviar.",
@@ -10450,7 +10369,7 @@
   },
   "Too big for the SD card": {
     "en": "Too big for the SD card",
-    "zh": "SD 卡太大",
+    "zh": "文件超过 SD 卡限制",
     "es": "Demasiado grande para la tarjeta SD",
     "fr": "Trop gros pour la carte SD",
     "pt": "Grande demais para o cartão SD",
@@ -10486,7 +10405,7 @@
   },
   "Cancelled": {
     "en": "Cancelled",
-    "zh": "取消",
+    "zh": "已取消",
     "es": "Cancelado",
     "fr": "Annulé",
     "pt": "Cancelado",
@@ -10594,7 +10513,7 @@
   },
   "into {0}": {
     "en": "into {0}",
-    "zh": "进入{0}",
+    "zh": "上传到 {0}",
     "es": "en {0}",
     "fr": "dans {0}",
     "pt": "em {0}",
@@ -10675,7 +10594,7 @@
   },
   "The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.": {
     "en": "The console is asking whether {0} may see and change the files on its SD card. Choose Allow on the 3DS.",
-    "zh": "控制台询问 {0} 是否可以查看并更改其 SD 卡上的文件。在 3DS 上选择允许。",
+    "zh": "主机询问 {0} 是否可以查看并更改其 SD 卡上的文件。在 3DS 上选择允许。",
     "es": "La consola pregunta si {0} puede ver y cambiar los archivos en su tarjeta SD. Elija Permitir en la 3DS.",
     "fr": "La console demande si {0} peut voir et modifier les fichiers sur sa carte SD. Choisissez Autoriser sur la 3DS.",
     "pt": "O console está perguntando se {0} pode ver e alterar os arquivos em seu cartão SD. Escolha Permitir no 3DS.",
@@ -10693,7 +10612,7 @@
   },
   "The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.": {
     "en": "The 3DS chose not to let {0} see its files. To ask again, leave Receive on the console and open it again.",
-    "zh": "3DS 选择不让 {0} 查看其文件。要再次询问，请将“接收”保留在控制台上，然后再次打开它。",
+    "zh": "3DS 选择不让 {0} 查看其文件。要再次询问，请将“接收”保留在主机上，然后再次打开它。",
     "es": "La 3DS optó por no permitir que {0} vea sus archivos. Para volver a preguntar, deja Recibir en la consola y ábrela nuevamente.",
     "fr": "La 3DS a choisi de ne pas laisser {0} voir ses fichiers. Pour demander à nouveau, laissez Recevoir sur la console et ouvrez-la à nouveau.",
     "pt": "O 3DS optou por não permitir que {0} visse seus arquivos. Para perguntar novamente, deixe Receber no console e abra-o novamente.",
@@ -10711,7 +10630,7 @@
   },
   "This 3DS only takes links.": {
     "en": "This 3DS only takes links.",
-    "zh": "这个 3DS 只需要链接。",
+    "zh": "此 3DS 仅接收链接。",
     "es": "Esta 3DS sólo acepta enlaces.",
     "fr": "Cette 3DS ne prend que des liens.",
     "pt": "Este 3DS só aceita links.",
@@ -10729,7 +10648,7 @@
   },
   "One moment": {
     "en": "One moment",
-    "zh": "一瞬间",
+    "zh": "请稍候",
     "es": "Un momento",
     "fr": "Un instant",
     "pt": "Um momento",
@@ -10801,7 +10720,7 @@
   },
   ", {0} left.": {
     "en": ", {0} left.",
-    "zh": "，{0} 左。",
+    "zh": "，剩余 {0}。",
     "es": ", {0} se fue.",
     "fr": ", {0} à gauche.",
     "pt": ", {0} saiu.",
@@ -10844,15 +10763,6 @@
     "de": "3dsDL-Website",
     "ja": "3dsDL ウェブサイト"
   },
-  "3dsDL": {
-    "en": "3dsDL",
-    "zh": "3dDL",
-    "es": "3dsDL",
-    "fr": "3dsDL",
-    "pt": "3dsDL",
-    "de": "3dsDL",
-    "ja": "3dsDL"
-  },
   "Website": {
     "en": "Website",
     "zh": "网站",
@@ -10861,15 +10771,6 @@
     "pt": "Site",
     "de": "Webseite",
     "ja": "Webサイト"
-  },
-  "GitHub": {
-    "en": "GitHub",
-    "zh": "GitHub",
-    "es": "GitHub",
-    "fr": "GitHub",
-    "pt": "GitHub",
-    "de": "GitHub",
-    "ja": "GitHub"
   },
   "Links": {
     "en": "Links",
@@ -10927,7 +10828,7 @@
   },
   "Up one folder": {
     "en": "Up one folder",
-    "zh": "上一个文件夹",
+    "zh": "返回上级文件夹",
     "es": "Subir una carpeta",
     "fr": "Jusqu'à un dossier",
     "pt": "Acima de uma pasta",
@@ -10963,7 +10864,7 @@
   },
   "Filter this folder": {
     "en": "Filter this folder",
-    "zh": "过滤此文件夹",
+    "zh": "筛选当前文件夹",
     "es": "Filtrar esta carpeta",
     "fr": "Filtrer ce dossier",
     "pt": "Filtrar esta pasta",
@@ -10972,7 +10873,7 @@
   },
   "By name": {
     "en": "By name",
-    "zh": "按名字",
+    "zh": "按名称",
     "es": "Por nombre",
     "fr": "Par nom",
     "pt": "Por nome",
@@ -10981,7 +10882,7 @@
   },
   "By size": {
     "en": "By size",
-    "zh": "按尺寸",
+    "zh": "按大小",
     "es": "Por tamaño",
     "fr": "Par taille",
     "pt": "Por tamanho",
@@ -11008,7 +10909,7 @@
   },
   "Hidden": {
     "en": "Hidden",
-    "zh": "隐",
+    "zh": "显示隐藏项目",
     "es": "Oculto",
     "fr": "Caché",
     "pt": "Escondido",
@@ -11026,7 +10927,7 @@
   },
   "Clear Finished": {
     "en": "Clear Finished",
-    "zh": "清除完成",
+    "zh": "清除已完成项",
     "es": "Claro acabado",
     "fr": "Effacer Terminé",
     "pt": "Limpar concluído",
@@ -11069,15 +10970,6 @@
     "de": " Filter, ",
     "ja": " フィルター、 "
   },
-  "Backspace": {
-    "en": "Backspace",
-    "zh": "退格键",
-    "es": "Retroceso",
-    "fr": "Retour arrière",
-    "pt": "Retrocesso",
-    "de": "Rücktaste",
-    "ja": "バックスペース"
-  },
   " up, ": {
     "en": " up, ",
     "zh": " 向上， ",
@@ -11086,15 +10978,6 @@
     "pt": " acima, ",
     "de": " hoch, ",
     "ja": " 上、 "
-  },
-  "Del": {
-    "en": "Del",
-    "zh": "德尔",
-    "es": "Del",
-    "fr": "Del",
-    "pt": "Del",
-    "de": "Del",
-    "ja": "デル"
   },
   " delete, ": {
     "en": " delete, ",
@@ -11105,15 +10988,6 @@
     "de": " löschen, ",
     "ja": " 消去、 "
   },
-  "F2": {
-    "en": "F2",
-    "zh": "F2",
-    "es": "F2",
-    "fr": "F2",
-    "pt": "F2",
-    "de": "F2",
-    "ja": "F2"
-  },
   " rename, ": {
     "en": " rename, ",
     "zh": " 重命名， ",
@@ -11122,24 +10996,6 @@
     "pt": " renomear, ",
     "de": " umbenennen, ",
     "ja": " 名前を変更し、 "
-  },
-  "Ctrl": {
-    "en": "Ctrl",
-    "zh": "控制键",
-    "es": "Control",
-    "fr": "Ctrl",
-    "pt": "Ctrl",
-    "de": "Strg",
-    "ja": "Ctrl"
-  },
-  "A": {
-    "en": "A",
-    "zh": "一个",
-    "es": "A",
-    "fr": "UN",
-    "pt": "UM",
-    "de": "A",
-    "ja": "あ"
   },
   " select all.": {
     "en": " select all.",
@@ -11206,12 +11062,12 @@
   },
   "{0} entries": {
     "en": "{0} entries",
-    "zh": "{0} 条目",
-    "es": "Entradas {0}",
-    "fr": "Entrées {0}",
-    "pt": "Entradas {0}",
-    "de": "{0}-Einträge",
-    "ja": "{0} エントリ"
+    "zh": "{0} 个条目",
+    "es": "{0} entradas",
+    "fr": "{0} entrées",
+    "pt": "{0} entradas",
+    "de": "{0} Einträge",
+    "ja": "{0} 件の項目"
   },
   "{0} selected": {
     "en": "{0} selected",
@@ -11221,5 +11077,266 @@
     "pt": "{0} selecionados",
     "de": "{0} ausgewählt",
     "ja": "{0} 件選択中"
+  },
+  "The picture could not be decoded{0}.": {
+    "en": "The picture could not be decoded{0}.",
+    "fr": "L'image n'a pas pu être décodée{0}.",
+    "es": "La imagen no se pudo decodificar{0}.",
+    "zh": "图片无法解码{0}。",
+    "pt": "A imagem não pôde ser decodificada{0}.",
+    "de": "Das Bild konnte nicht dekodiert werden{0}.",
+    "ja": "画像をデコードできませんでした{0}。"
+  },
+  "The picture could not be read.": {
+    "en": "The picture could not be read.",
+    "fr": "L'image n'a pas pu être lue.",
+    "es": "La imagen no se pudo leer.",
+    "zh": "图片无法读取。",
+    "pt": "A imagem não pôde ser lida.",
+    "de": "Das Bild konnte nicht gelesen werden.",
+    "ja": "画像を読み取れませんでした。"
+  },
+  "Open this page by the console's address.": {
+    "en": "Open this page by the console's address.",
+    "fr": "Ouvrez cette page par l'adresse de la console.",
+    "es": "Abra esta página por la dirección de la consola.",
+    "zh": "通过主机地址打开此页面。",
+    "pt": "Abra esta página pelo endereço do console.",
+    "de": "Öffnen Sie diese Seite über die Adresse der Konsole.",
+    "ja": "コンソールのアドレスでこのページを開きます。"
+  },
+  "Changes must come from the 3dsDL page.": {
+    "en": "Changes must come from the 3dsDL page.",
+    "fr": "Les modifications doivent provenir de la page 3dsDL.",
+    "es": "Los cambios deben provenir de la página 3dsDL.",
+    "zh": "更改必须来自 3dsDL 页面。",
+    "pt": "As alterações devem vir da página 3dsDL.",
+    "de": "Änderungen müssen von der 3dsDL-Seite stammen.",
+    "ja": "変更は 3dsDL ページから行う必要があります。"
+  },
+  "{0}-bit": {
+    "en": "{0}-bit",
+    "fr": "{0}-bit",
+    "es": "{0}-bit",
+    "zh": "{0} 位",
+    "pt": "{0} bits",
+    "de": "{0}-Bit",
+    "ja": "{0}ビット"
+  },
+  "mono": {
+    "en": "mono",
+    "zh": "单声道",
+    "es": "mono",
+    "fr": "mono",
+    "pt": "mono",
+    "de": "Mono",
+    "ja": "モノラル"
+  },
+  "{0} channels": {
+    "en": "{0} channels",
+    "fr": "Canaux {0}",
+    "es": "Canales {0}",
+    "zh": "{0} 声道",
+    "pt": "Canais {0}",
+    "de": "{0}-Kanäle",
+    "ja": "{0} チャンネル"
+  },
+  "{0} to {1}": {
+    "en": "{0} to {1}",
+    "fr": "{0} à {1}",
+    "es": "{0} a {1}",
+    "zh": "{0} 至 {1}",
+    "pt": "{0} para {1}",
+    "de": "{0} bis {1}",
+    "ja": "{0} ～ {1}"
+  },
+  "Disc {0}": {
+    "en": "Disc {0}",
+    "fr": "Disque {0}",
+    "es": "Disco {0}",
+    "zh": "光盘 {0}",
+    "pt": "Disco {0}",
+    "de": "Scheibe {0}",
+    "ja": "ディスク{0}"
+  },
+  "{0}, disc {1}": {
+    "en": "{0}, disc {1}",
+    "fr": "{0}, disque {1}",
+    "es": "{0}, disco {1}",
+    "zh": "{0}，光盘 {1}",
+    "pt": "{0}, disco {1}",
+    "de": "{0}, Scheibe {1}",
+    "ja": "{0}、ディスク {1}"
+  },
+  "Unexpected text after the value at {0}.": {
+    "en": "Unexpected text after the value at {0}.",
+    "fr": "Texte inattendu après la valeur {0}.",
+    "es": "Texto inesperado después del valor en {0}.",
+    "zh": "{0} 处的值后面出现意外文本。",
+    "pt": "Texto inesperado após o valor em {0}.",
+    "de": "Unerwarteter Text nach dem Wert bei {0}.",
+    "ja": "{0} の値の後に予期しないテキストが含まれています。"
+  },
+  "offset {0}": {
+    "en": "offset {0}",
+    "fr": "décalage {0}",
+    "es": "desplazamiento {0}",
+    "zh": "偏移{0}",
+    "pt": "deslocamento {0}",
+    "de": "Offset {0}",
+    "ja": "オフセット {0}"
+  },
+  "{0} at {1}.": {
+    "en": "{0} at {1}.",
+    "fr": "{0} à {1}.",
+    "es": "{0} y {1}.",
+    "zh": "{0} 位于 {1}。",
+    "pt": "{0} em {1}.",
+    "de": "{0} bei {1}.",
+    "ja": "{1}で{0}。"
+  },
+  "Unknown word": {
+    "en": "Unknown word",
+    "fr": "Mot inconnu",
+    "es": "palabra desconocida",
+    "zh": "未知关键字",
+    "pt": "Palavra desconhecida",
+    "de": "Unbekanntes Wort",
+    "ja": "未知の単語"
+  },
+  "Nested too deeply": {
+    "en": "Nested too deeply",
+    "fr": "Niché trop profondément",
+    "es": "Anidado demasiado profundamente",
+    "zh": "嵌套层数过多",
+    "pt": "Aninhado muito profundamente",
+    "de": "Zu tief verschachtelt",
+    "ja": "入れ子が深すぎます"
+  },
+  "Expected a field name": {
+    "en": "Expected a field name",
+    "fr": "Attendu un nom de champ",
+    "es": "Se esperaba un nombre de campo",
+    "zh": "缺少字段名",
+    "pt": "Esperava um nome de campo",
+    "de": "Es wurde ein Feldname erwartet",
+    "ja": "フィールド名が必要です"
+  },
+  "Expected ':'": {
+    "en": "Expected ':'",
+    "fr": "Attendu ':'",
+    "es": "Esperado ':'",
+    "zh": "缺少 ':'",
+    "pt": "Esperado ':'",
+    "de": "Erwartet ':'",
+    "ja": "期待される '：'"
+  },
+  "Expected ',' or '}'": {
+    "en": "Expected ',' or '}'",
+    "fr": "Attendu ',' ou '}'",
+    "es": "Se esperaba ',' o '}'",
+    "zh": "缺少 ',' 或 '}'",
+    "pt": "Esperado ',' ou '}'",
+    "de": "Erwartet ',' oder '}'",
+    "ja": "',' または '}' が必要です"
+  },
+  "Expected ',' or ']'": {
+    "en": "Expected ',' or ']'",
+    "fr": "Attendu ',' ou ']'",
+    "es": "Se esperaba ',' o ']'",
+    "zh": "缺少 ',' 或 ']'",
+    "pt": "Esperado ',' ou ']'",
+    "de": "Erwartet ',' oder ']'",
+    "ja": "',' または ']' が必要です"
+  },
+  "Short \\u escape": {
+    "en": "Short \\u escape",
+    "fr": "Courte évasion",
+    "es": "Escape corto \\u",
+    "zh": "不完整的 \\u 转义",
+    "pt": "Curta \\u fuga",
+    "de": "Kurze Flucht",
+    "ja": "短い \\u 脱出"
+  },
+  "Bad \\u escape": {
+    "en": "Bad \\u escape",
+    "fr": "Mauvaise évasion",
+    "es": "Malo escapar",
+    "zh": "无效的 \\u 转义",
+    "de": "Schlechte Flucht",
+    "pt": "Ruim e escapar",
+    "ja": "悪い\\u 逃げます"
+  },
+  "Unterminated string": {
+    "en": "Unterminated string",
+    "fr": "Chaîne non terminée",
+    "es": "cadena sin terminar",
+    "zh": "字符串未闭合",
+    "de": "Unterminierte Saite",
+    "pt": "String não terminada",
+    "ja": "終端されていない文字列"
+  },
+  "Control character in a string": {
+    "en": "Control character in a string",
+    "fr": "Caractère de contrôle dans une chaîne",
+    "es": "Carácter de control en una cadena",
+    "zh": "字符串中的控制字符",
+    "de": "Steuerzeichen in einer Zeichenfolge",
+    "pt": "Caractere de controle em uma string",
+    "ja": "文字列内の制御文字"
+  },
+  "Unterminated escape": {
+    "en": "Unterminated escape",
+    "fr": "Évasion interminable",
+    "es": "Escape sin fin",
+    "zh": "转义未结束",
+    "de": "Unterbrochene Flucht",
+    "pt": "Fuga interminada",
+    "ja": "終わらない逃避行"
+  },
+  "Unknown escape": {
+    "en": "Unknown escape",
+    "fr": "Évasion inconnue",
+    "es": "Escape desconocido",
+    "zh": "未知转义序列",
+    "de": "Unbekannte Flucht",
+    "pt": "Fuga desconhecida",
+    "ja": "未知の逃走"
+  },
+  "Unexpected character": {
+    "en": "Unexpected character",
+    "fr": "Caractère inattendu",
+    "es": "Carácter inesperado",
+    "zh": "意外的字符",
+    "de": "Unerwarteter Charakter",
+    "pt": "Personagem inesperado",
+    "ja": "予想外のキャラクター"
+  },
+  "Bad number": {
+    "en": "Bad number",
+    "fr": "Mauvais numéro",
+    "es": "mal numero",
+    "zh": "无效的数字",
+    "de": "Schlechte Nummer",
+    "pt": "Número ruim",
+    "ja": "不正な番号"
+  },
+  " {0} was already installed.": {
+    "en": " {0} was already installed.",
+    "fr": " {0} était déjà installé.",
+    "es": " {0} ya estaba instalado.",
+    "zh": " {0} 已安装。",
+    "de": " {0} war bereits installiert.",
+    "pt": " {0} já estava instalado.",
+    "ja": " {0} はすでにインストールされています。"
+  },
+  " {0} were already installed.": {
+    "en": " {0} were already installed.",
+    "fr": " {0} étaient déjà installés.",
+    "es": " {0} ya estaban instalados.",
+    "zh": " {0} 已安装。",
+    "de": " {0} wurden bereits installiert.",
+    "pt": " {0} já estavam instalados.",
+    "ja": " {0} はすでにインストールされています。"
   }
 }

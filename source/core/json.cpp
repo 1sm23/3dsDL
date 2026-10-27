@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include "i18n.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -23,7 +24,7 @@ public:
         }
         skipSpace();
         if (position_ != text_.size()) {
-            error = "Unexpected text after the value at " + at() + ".";
+            error = i18n::t("Unexpected text after the value at {0}.", {at()});
             return false;
         }
         return true;
@@ -35,12 +36,12 @@ private:
     size_t position_ = 0;
     std::string error_;
 
-    std::string at() const { return "offset " + std::to_string(position_); }
+    std::string at() const { return i18n::t("offset {0}", {std::to_string(position_)}); }
 
     bool fail(const std::string &what)
     {
         if (error_.empty()) {
-            error_ = what + " at " + at() + ".";
+            error_ = i18n::t("{0} at {1}.", {what, at()});
         }
         return false;
     }
@@ -63,7 +64,7 @@ private:
     {
         for (size_t index = 0; word[index] != '\0'; ++index) {
             if (peek() != word[index]) {
-                return fail("Unknown word");
+                return fail(i18n::c("Unknown word"));
             }
             ++position_;
         }
@@ -73,7 +74,7 @@ private:
     bool value(Value &out, int depth)
     {
         if (depth > maxDepth_) {
-            return fail("Nested too deeply");
+            return fail(i18n::c("Nested too deeply"));
         }
         switch (peek()) {
         case '{':
@@ -111,7 +112,7 @@ private:
         while (true) {
             skipSpace();
             if (peek() != '"') {
-                return fail("Expected a field name");
+                return fail(i18n::c("Expected a field name"));
             }
             std::string key;
             if (!string(key)) {
@@ -119,7 +120,7 @@ private:
             }
             skipSpace();
             if (peek() != ':') {
-                return fail("Expected ':'");
+                return fail(i18n::c("Expected ':'"));
             }
             ++position_;
             skipSpace();
@@ -136,7 +137,7 @@ private:
                 ++position_;
                 return true;
             }
-            return fail("Expected ',' or '}'");
+            return fail(i18n::c("Expected ',' or '}'"));
         }
     }
 
@@ -164,14 +165,14 @@ private:
                 ++position_;
                 return true;
             }
-            return fail("Expected ',' or ']'");
+            return fail(i18n::c("Expected ',' or ']'"));
         }
     }
 
     bool hex4(uint32_t &out)
     {
         if (position_ + 4 > text_.size()) {
-            return fail("Short \\u escape");
+            return fail(i18n::c("Short \\u escape"));
         }
         out = 0;
         for (int index = 0; index < 4; ++index) {
@@ -184,7 +185,7 @@ private:
             } else if (c >= 'A' && c <= 'F') {
                 out |= static_cast<uint32_t>(c - 'A' + 10);
             } else {
-                return fail("Bad \\u escape");
+                return fail(i18n::c("Bad \\u escape"));
             }
         }
         return true;
@@ -214,21 +215,21 @@ private:
         ++position_; // opening quote
         while (true) {
             if (atEnd()) {
-                return fail("Unterminated string");
+                return fail(i18n::c("Unterminated string"));
             }
             const char c = text_[position_++];
             if (c == '"') {
                 return true;
             }
             if (static_cast<unsigned char>(c) < 0x20) {
-                return fail("Control character in a string");
+                return fail(i18n::c("Control character in a string"));
             }
             if (c != '\\') {
                 out += c;
                 continue;
             }
             if (atEnd()) {
-                return fail("Unterminated escape");
+                return fail(i18n::c("Unterminated escape"));
             }
             const char escape = text_[position_++];
             switch (escape) {
@@ -280,7 +281,7 @@ private:
                 break;
             }
             default:
-                return fail("Unknown escape");
+                return fail(i18n::c("Unknown escape"));
             }
         }
     }
@@ -292,7 +293,7 @@ private:
             ++position_;
         }
         if (!(peek() >= '0' && peek() <= '9')) {
-            return fail("Unexpected character");
+            return fail(i18n::c("Unexpected character"));
         }
         while ((peek() >= '0' && peek() <= '9') || peek() == '.' ||
                peek() == 'e' || peek() == 'E' || peek() == '+' ||
@@ -304,7 +305,7 @@ private:
         const double parsed = std::strtod(digits.c_str(), &end);
         if (end == nullptr || *end != '\0' || !std::isfinite(parsed)) {
             position_ = start;
-            return fail("Bad number");
+            return fail(i18n::c("Bad number"));
         }
         out.type = Type::Number;
         out.number = parsed;

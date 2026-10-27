@@ -1,4 +1,5 @@
 #include "remote.hpp"
+#include "i18n.hpp"
 
 #include "file_ops.hpp"
 #include "text.hpp"
@@ -282,13 +283,13 @@ bool apiRequestAllowed(const HttpRequest &request, std::string &why)
     const bool local = name.size() > 6 &&
                        name.compare(name.size() - 6, 6, ".local") == 0;
     if (!address && !local) {
-        why = "Open this page by the console's address.";
+        why = i18n::c("Open this page by the console's address.");
         return false;
     }
     if (request.method != "GET") {
         const auto marker = request.headers.find("x-requested-with");
         if (marker == request.headers.end() || marker->second != "3dsDL") {
-            why = "Changes must come from the 3dsDL page.";
+            why = i18n::c("Changes must come from the 3dsDL page.");
             return false;
         }
     }

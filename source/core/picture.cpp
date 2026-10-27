@@ -189,9 +189,8 @@ bool decodeJpeg(const uint8_t *data, size_t size, uint32_t maxWidth,
     }
     if (!ok && error.empty()) {
         const char *reason = tj3GetErrorStr(decoder);
-        error = std::string("The picture could not be decoded") +
-                (reason != nullptr ? std::string(" (") + reason + ")" : "") +
-                ".";
+        error = i18n::t("The picture could not be decoded{0}.",
+                         {reason != nullptr ? std::string(" (") + reason + ")" : ""});
     }
     tj3Destroy(decoder);
     return ok;
@@ -225,7 +224,7 @@ bool loadJpeg(const std::string &path, uint32_t maxWidth, uint32_t maxHeight,
                       bytes.size();
     std::fclose(file);
     if (!read) {
-        error = "The picture could not be read.";
+        error = i18n::c("The picture could not be read.");
         return false;
     }
     const bool ok = decodeJpeg(bytes.data(), bytes.size(), maxWidth,
