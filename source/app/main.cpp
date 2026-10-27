@@ -52,6 +52,7 @@ struct Services {
             return false;
         }
         romfs = true;
+        ui::loadFallbackFont();
         i18n::init("romfs:/i18n.json");
         i18n::setLanguage(storage::loadSettings().language);
 

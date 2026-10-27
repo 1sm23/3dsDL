@@ -95,6 +95,8 @@ struct Rect {
 };
 
 bool init();
+// Call once after mounting RomFS, before drawing localized screens.
+void loadFallbackFont();
 void shutdown();
 
 // False once the system has asked 3dsDL to close. Use this instead of calling

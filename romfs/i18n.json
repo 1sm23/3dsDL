@@ -1075,7 +1075,7 @@
     "ko": "{0} 세이브 백업 중...",
     "ru": "Резервное копирование сохранения {0}...",
     "pt-BR": "Fazendo backup do salvamento de {0}...",
-    "zh-Hant": "正在備份 {0} 的儲存..."
+    "zh-Hant": "正在備份 {0} 的存檔..."
   },
   "The save was backed up first, as {0} in Titles, Save Data.": {
     "en": "The save was backed up first, as {0} in Titles, Save Data.",
@@ -1089,7 +1089,7 @@
     "ko": "타이틀, 저장 데이터에서 {0}로 저장이 먼저 백업되었습니다.",
     "ru": "Сначала была создана резервная копия сохранения под именем {0} в разделе «Заголовки», «Данные сохранения».",
     "pt-BR": "O backup foi feito primeiro, como {0} em Títulos, Dados salvos.",
-    "zh-Hant": "首先備份儲存內容，在“標題”、“儲存資料”中備份為 {0}。"
+    "zh-Hant": "原有存檔已先備份為 {0}，可在「軟體」的「存檔資料」中找到。"
   },
   "The save of {0} could not be backed up. Replacing may lose it.": {
     "en": "The save of {0} could not be backed up. Replacing may lose it.",
@@ -1103,7 +1103,7 @@
     "ko": "{0}의 세이브를 백업할 수 없습니다. 교체하면 분실될 수 있습니다.",
     "ru": "Не удалось создать резервную копию сохранения {0}. При замене можно его потерять.",
     "pt-BR": "Não foi possível fazer backup do salvamento de {0}. A substituição pode perdê-lo.",
-    "zh-Hant": "{0}的存檔無法備份。更換可能會丟失。"
+    "zh-Hant": "無法備份 {0} 的存檔。取代後可能會遺失存檔。"
   },
   "Continue Anyway": {
     "en": "Continue Anyway",
@@ -1677,7 +1677,7 @@
     "ko": "바꾸기",
     "ru": "Заменить",
     "pt-BR": "Substituir",
-    "zh-Hant": "替換"
+    "zh-Hant": "取代"
   },
   "Kept the existing {0}.": {
     "en": "Kept the existing {0}.",
@@ -2559,7 +2559,7 @@
     "ko": "{0} {1}가 현재 설치되어 실행 중이므로 이전 {2}로 교체할 수 없습니다.",
     "ru": "{0} {1} сейчас установлен и работает, поэтому его нельзя заменить более старым {2}.",
     "pt-BR": "{0} {1} está instalado e em execução agora, portanto não pode ser substituído por este {2} mais antigo.",
-    "zh-Hant": "{0} {1} 現已安裝並正在執行，因此無法用舊版 {2} 替換。"
+    "zh-Hant": "{0} {1} 現已安裝並正在執行，因此無法用舊版 {2} 取代。"
   },
   "A newer version of {0} is installed": {
     "en": "A newer version of {0} is installed",
@@ -2615,7 +2615,7 @@
     "ko": "{0}를 교체할 수 없습니다.",
     "ru": "Не удалось заменить {0}",
     "pt-BR": "Não foi possível substituir {0}",
-    "zh-Hant": "無法替換 {0}"
+    "zh-Hant": "無法取代 {0}"
   },
   "{0} is already installed": {
     "en": "{0} is already installed",
@@ -7627,7 +7627,7 @@
     "ko": "네트워크 주소 없음",
     "ru": "Нет сетевого адреса",
     "pt-BR": "Sem endereço de rede",
-    "zh-Hant": "無網路地址"
+    "zh-Hant": "無網路位址"
   },
   "The console has no address on the local network yet. Check the connection and try again.": {
     "en": "The console has no address on the local network yet. Check the connection and try again.",
@@ -8509,7 +8509,7 @@
     "ko": "저장 데이터",
     "ru": "Данные сохранений",
     "pt-BR": "Dados salvos",
-    "zh-Hant": "儲存資料"
+    "zh-Hant": "存檔資料"
   },
   "Extra Data": {
     "en": "Extra Data",
@@ -8649,7 +8649,7 @@
     "ko": "백업 {0}를 교체하시겠습니까?",
     "ru": "Заменить резервную копию {0}?",
     "pt-BR": "Substituir o backup {0}?",
-    "zh-Hant": "替換備份{0}？"
+    "zh-Hant": "取代備份{0}？"
   },
   "Backing up the {0}...": {
     "en": "Backing up the {0}...",
@@ -8733,7 +8733,7 @@
     "ko": "복원",
     "ru": "Восстановить",
     "pt-BR": "Restaurar",
-    "zh-Hant": "恢復"
+    "zh-Hant": "還原"
   },
   "Delete Backup": {
     "en": "Delete Backup",
@@ -8775,7 +8775,7 @@
     "ko": "콘솔의 {0}를 {1}로 교체하시겠습니까?",
     "ru": "Заменить {0} на консоли на {1}?",
     "pt-BR": "Substituir o {0} no console por {1}?",
-    "zh-Hant": "將主機上的 {0} 替換為 {1}？"
+    "zh-Hant": "將主機上的 {0} 取代為 {1}？"
   },
   "{0} Before Restore": {
     "en": "{0} Before Restore",
@@ -8789,7 +8789,7 @@
     "ko": "{0} 복원 전",
     "ru": "{0} перед восстановлением",
     "pt-BR": "{0} antes da restauração",
-    "zh-Hant": "恢復前的 {0}"
+    "zh-Hant": "還原前的 {0}"
   },
   "Backing up what is there now...": {
     "en": "Backing up what is there now...",
@@ -8831,7 +8831,7 @@
     "ko": "계속 복원",
     "ru": "Всё равно восстановить",
     "pt-BR": "Restaurar mesmo assim",
-    "zh-Hant": "仍然恢復"
+    "zh-Hant": "仍然還原"
   },
   "Restoring {0}...": {
     "en": "Restoring {0}...",
@@ -8845,7 +8845,7 @@
     "ko": "{0} 복원 중...",
     "ru": "Восстановление {0}...",
     "pt-BR": "Restaurando {0}...",
-    "zh-Hant": "正在恢復 {0}..."
+    "zh-Hant": "正在還原 {0}..."
   },
   "Restored": {
     "en": "Restored",
@@ -8859,7 +8859,7 @@
     "ko": "복원됨",
     "ru": "Восстановлено",
     "pt-BR": "Restaurado",
-    "zh-Hant": "已恢復"
+    "zh-Hant": "已還原"
   },
   "{0} restored from {1}.": {
     "en": "{0} restored from {1}.",
@@ -8873,7 +8873,7 @@
     "ko": "{1}에서 {0}가 복원되었습니다.",
     "ru": "{0} восстановлен из {1}.",
     "pt-BR": "{0} restaurado de {1}.",
-    "zh-Hant": "{0} 從 {1} 恢復。"
+    "zh-Hant": "{0} 從 {1} 還原。"
   },
   "The earlier {0} is kept as {1}.": {
     "en": "The earlier {0} is kept as {1}.",
@@ -8901,7 +8901,7 @@
     "ko": "복원되지 않음",
     "ru": "Не восстановлено",
     "pt-BR": "Não restaurado",
-    "zh-Hant": "未恢復"
+    "zh-Hant": "未還原"
   },
   "Delete the backup {0}?": {
     "en": "Delete the backup {0}?",
@@ -10693,7 +10693,7 @@
     "ko": "백업 및 복원",
     "ru": "Копирование и восстановление",
     "pt-BR": "Backup e restauração",
-    "zh-Hant": "備份和恢復"
+    "zh-Hant": "備份與還原"
   },
   "No tickets.": {
     "en": "No tickets.",
@@ -11001,7 +11001,7 @@
     "ko": "삭제된 티켓 복원",
     "ru": "Восстановить удалённые тикеты",
     "pt-BR": "Restaurar tickets excluídos",
-    "zh-Hant": "恢復已刪除的憑證"
+    "zh-Hant": "還原已刪除的憑證"
   },
   "Remove {0}?": {
     "en": "Remove {0}?",
@@ -11057,7 +11057,7 @@
     "ko": "일부 남아 있음",
     "ru": "Некоторые остаются",
     "pt-BR": "Alguns permanecem",
-    "zh-Hant": "部分專案未刪除"
+    "zh-Hant": "部分項目未刪除"
   },
   "{0} removed.": {
     "en": "{0} removed.",
@@ -11085,7 +11085,7 @@
     "ko": "삭제된 티켓을 복원하는 중...",
     "ru": "Восстановление удаленных билетов...",
     "pt-BR": "Restaurando tickets excluídos...",
-    "zh-Hant": "正在恢復已刪除的憑證..."
+    "zh-Hant": "正在還原已刪除的憑證..."
   },
   "Tickets Restored": {
     "en": "Tickets Restored",
@@ -11099,7 +11099,7 @@
     "ko": "티켓이 복원되었습니다",
     "ru": "Билеты восстановлены",
     "pt-BR": "Ingressos restaurados",
-    "zh-Hant": "憑證已恢復"
+    "zh-Hant": "憑證已還原"
   },
   "Some Tickets Not Restored": {
     "en": "Some Tickets Not Restored",
@@ -11113,7 +11113,7 @@
     "ko": "일부 티켓이 복원되지 않음",
     "ru": "Некоторые билеты не восстановлены",
     "pt-BR": "Alguns tickets não restaurados",
-    "zh-Hant": "部分憑證未恢復"
+    "zh-Hant": "部分憑證未還原"
   },
   "{0} of {1} restored.": {
     "en": "{0} of {1} restored.",
@@ -11127,7 +11127,7 @@
     "ko": "{1}의 {0}가 복원되었습니다.",
     "ru": "{0} из {1} восстановлен.",
     "pt-BR": "{0} de {1} restaurado.",
-    "zh-Hant": "已恢復 {0} / {1}。"
+    "zh-Hant": "已還原 {0} / {1}。"
   },
   "No seeddb.bin Found": {
     "en": "No seeddb.bin Found",
@@ -11491,7 +11491,7 @@
     "ko": "{0}를 교체할 수 없습니다.",
     "ru": "Не удалось заменить {0}.",
     "pt-BR": "Não foi possível substituir {0}.",
-    "zh-Hant": "無法替換 {0}。"
+    "zh-Hant": "無法取代 {0}。"
   },
   "Could not save {0}.": {
     "en": "Could not save {0}.",
@@ -12107,7 +12107,7 @@
     "ko": "3DS 게임 이미지",
     "ru": "Изображение игры 3DS",
     "pt-BR": "Imagem do jogo 3DS",
-    "zh-Hant": "3DS 遊戲映象"
+    "zh-Hant": "3DS 遊戲映像"
   },
   "DS game": {
     "en": "DS game",
@@ -12289,7 +12289,7 @@
     "ko": "3DS 게임 이미지가 아닙니다.",
     "ru": "Это не изображение игры 3DS.",
     "pt-BR": "Esta não é uma imagem de jogo 3DS.",
-    "zh-Hant": "這不是 3DS 遊戲影象。"
+    "zh-Hant": "這不是 3DS 遊戲映像。"
   },
   "The game partition could not be read.": {
     "en": "The game partition could not be read.",
@@ -14235,7 +14235,7 @@
     "ko": "선택한 항목 {0}개",
     "ru": "{0} отмеченный элемент",
     "pt-BR": "{0} item marcado",
-    "zh-Hant": "{0} 個已標記專案"
+    "zh-Hant": "{0} 個已標記項目"
   },
   "{0} Marked Items": {
     "en": "{0} Marked Items",
@@ -14249,7 +14249,7 @@
     "ko": "선택한 항목 {0}개",
     "ru": "{0} отмеченных элементов",
     "pt-BR": "{0} itens marcados",
-    "zh-Hant": "{0} 個已標記專案"
+    "zh-Hant": "{0} 個已標記項目"
   },
   "{0} seed": {
     "en": "{0} seed",
@@ -15817,7 +15817,7 @@
     "ko": "{0} 항목을 삭제했습니다.",
     "ru": "Удалено элементов: {0}",
     "pt-BR": "Itens {0} excluídos",
-    "zh-Hant": "已刪除 {0} 專案"
+    "zh-Hant": "已刪除 {0} 項目"
   },
   "Deleted {0}": {
     "en": "Deleted {0}",
@@ -16027,7 +16027,7 @@
     "ko": "이 파일을 바꾸시겠습니까?",
     "ru": "Заменить этот файл?",
     "pt-BR": "Substituir este arquivo?",
-    "zh-Hant": "替換這個檔案？"
+    "zh-Hant": "取代這個檔案？"
   },
   "Replace {0} files?": {
     "en": "Replace {0} files?",
@@ -16979,7 +16979,7 @@
     "ko": "숨김",
     "ru": "Скрытые",
     "pt-BR": "Ocultos",
-    "zh-Hant": "顯示隱藏專案"
+    "zh-Hant": "顯示隱藏項目"
   },
   "Cancel All": {
     "en": "Cancel All",
@@ -17889,7 +17889,7 @@
     "ko": "선택한 항목 {0}개",
     "ru": "{0} отмеченных элемента",
     "pt-BR": "{0} itens marcados",
-    "zh-Hant": "{0} 個已標記專案"
+    "zh-Hant": "{0} 個已標記項目"
   },
   "{0} links ready.few": {
     "en": "{0} links ready",

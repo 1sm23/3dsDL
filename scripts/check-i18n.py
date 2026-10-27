@@ -5,6 +5,7 @@ import ast
 import json
 import pathlib
 import re
+import struct
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -112,6 +113,34 @@ for word in ("entry", "file", "folder", "item", "backup", "link", "CIA",
     used.add("{0} " + ("entries" if word == "entry" else word + "s") + ".few")
 for key in sorted(used - catalog.keys()):
     errors.append(f"Source key missing from catalog: {key!r}")
+
+# Inspect the actual bundled BCFNT, so new translations cannot silently add
+# glyphs absent on consoles whose regional system font does not include them.
+try:
+    font = (ROOT / "romfs/ui/fallback.bcfnt").read_bytes()
+    assert font[:4] == b"CFNT" and struct.unpack_from('<I', font, 12)[0] == len(font)
+    tglp, cwdh, cmap = struct.unpack_from('<III', font, 36)
+    assert font[tglp - 8:tglp - 4] == b'TGLP'
+    assert font[cwdh - 8:cwdh - 4] == b'CWDH'
+    assert font[cmap - 8:cmap - 4] == b'CMAP'
+    sheet_size, sheets, pixel_format, columns, rows, width, height, pixels = struct.unpack_from('<IHHHHHHI', font, tglp + 4)
+    assert pixel_format == 11 and sheet_size == width * height // 2
+    assert pixels % 128 == 0 and pixels + sheets * sheet_size <= cwdh - 8
+    first_glyph, last_glyph, next_widths = struct.unpack_from('<HHI', font, cwdh)
+    assert first_glyph == 0 and not next_widths and last_glyph < sheets * columns * rows
+    assert cwdh + 8 + (last_glyph + 1) * 3 <= cmap - 8
+    first, last, method, reserved, next_map = struct.unpack_from('<HHHHI', font, cmap)
+    assert method == 1 and not reserved and not next_map
+    table = struct.unpack_from('<' + 'H' * (last - first + 1), font, cmap + 12)
+    assert all(index == 0xffff or index <= last_glyph for index in table)
+    names = re.findall(r'\{"[^"\n]+", "([^"\n]+)"\}', supported[1])
+    texts = [text for values in catalog.values() for text in values.values()] + names
+    required = {ord(ch) for text in texts for ch in text if ord(ch) > 127}
+    for code in sorted(required):
+        if not first <= code <= last or table[code - first] == 0xffff:
+            errors.append(f"Fallback font missing U+{code:04X}; run scripts/make-i18n-font.py")
+except (OSError, AssertionError, struct.error, TypeError) as error:
+    errors.append(f"Invalid or missing bundled fallback font: {error}")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)
