@@ -171,7 +171,9 @@ def find_elf(version):
     path = os.path.join(cache, "3dsDL.elf")
     if os.path.exists(path):
         return path
-    releases = FORK_RELEASES if version.endswith("n") else RELEASES
+    releases = (FORK_RELEASES
+                if version.endswith("n") or re.fullmatch(r"\d+\.\d+\.\d+\.\d+", version)
+                else RELEASES)
     url = f"{releases}/v{version}/3dsDL.elf"
     print(f"Downloading {url}", file=sys.stderr)
     os.makedirs(cache, exist_ok=True)

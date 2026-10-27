@@ -90,6 +90,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           read -r _ _ _ kind < <(scripts/version.sh)
+          notes_source="docs/releases/${GITHUB_REF_NAME}.md"
+          extra_assets=()
+          if [[ -f "${notes_source}" ]]; then
+            notes=(--notes-file "${notes_source}")
+            extra_assets+=("docs/releases/${GITHUB_REF_NAME}-qr.png")
+          else
+            notes=(--generate-notes)
+          fi
           if [ "${kind}" = "prerelease" ]; then
             stage=(--prerelease)
           else
@@ -98,6 +106,7 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             dist/3dsDL.3dsx dist/3dsDL.cia dist/3dsDL.smdh dist/3dsDL.sha256 \
             dist/3dsDL.elf \
+            "${extra_assets[@]}" \
             --title "3dsDL ${GITHUB_REF_NAME}" \
-            --generate-notes \
+            "${notes[@]}" \
             "${stage[@]}"
