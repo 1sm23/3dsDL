@@ -753,7 +753,7 @@
     "fr": "File d'attente",
     "pt": "Fila",
     "de": "Warteschlange",
-    "ja": "列"
+    "ja": "キュー"
   },
   "Scan QR Code": {
     "en": "Scan QR Code",
@@ -780,7 +780,7 @@
     "fr": "Recevoir",
     "pt": "Receber",
     "de": "Erhalten",
-    "ja": "受け取る"
+    "ja": "受信"
   },
   "History": {
     "en": "History",
@@ -789,7 +789,7 @@
     "fr": "Histoire",
     "pt": "História",
     "de": "Geschichte",
-    "ja": "歴史"
+    "ja": "履歴"
   },
   "Files": {
     "en": "Files",
@@ -816,7 +816,7 @@
     "fr": "Nouveau",
     "pt": "Novo",
     "de": "Neu",
-    "ja": "新しい"
+    "ja": "新着"
   },
   "Home": {
     "en": "Home",
@@ -942,7 +942,7 @@
     "fr": "Fermer",
     "pt": "Fechar",
     "de": "Schließen",
-    "ja": "近い"
+    "ja": "閉じる"
   },
   "Check Clock": {
     "en": "Check Clock",
@@ -960,7 +960,7 @@
     "fr": "Réessayer",
     "pt": "Tentar novamente",
     "de": "Wiederholen",
-    "ja": "リトライ"
+    "ja": "再試行"
   },
   "Add to Queue": {
     "en": "Add to Queue",
@@ -1932,7 +1932,7 @@
     "fr": "Ouvrir",
     "pt": "Abrir",
     "de": "Offen",
-    "ja": "開ける"
+    "ja": "開く"
   },
   "New folder name": {
     "en": "New folder name",
@@ -2130,7 +2130,7 @@
     "fr": "Reprendre le téléchargement",
     "pt": "Retomar download",
     "de": "Download fortsetzen",
-    "ja": "ダウンロードを再開する"
+    "ja": "ダウンロードを再開"
   },
   "Download Again": {
     "en": "Download Again",
@@ -2598,7 +2598,7 @@
     "fr": "Taper",
     "pt": "Tipo",
     "de": "Typ",
-    "ja": "タイプ"
+    "ja": "種類"
   },
   "Folder": {
     "en": "Folder",
@@ -2607,7 +2607,7 @@
     "fr": "Dossier",
     "pt": "Pasta",
     "de": "Ordner",
-    "ja": "フォルダ"
+    "ja": "フォルダー"
   },
   "Contains": {
     "en": "Contains",
@@ -2949,7 +2949,7 @@
     "pt": "Renomear",
     "de": "Umbenennen",
     "zh": "重命名",
-    "ja": "名前の変更"
+    "ja": "名前を変更"
   },
   "Copy": {
     "en": "Copy",
@@ -2967,7 +2967,7 @@
     "pt": "Corte",
     "de": "Schneiden",
     "zh": "剪切",
-    "ja": "カット"
+    "ja": "切り取り"
   },
   "Delete": {
     "en": "Delete",
@@ -2976,7 +2976,7 @@
     "pt": "Excluir",
     "de": "Löschen",
     "zh": "删除",
-    "ja": "消去"
+    "ja": "削除"
   },
   "Properties": {
     "en": "Properties",
@@ -3093,7 +3093,7 @@
     "fr": "Trier...",
     "pt": "Organizar...",
     "de": "Sortieren...",
-    "ja": "選別..."
+    "ja": "並べ替え…"
   },
   "Forget Clipboard": {
     "en": "Forget Clipboard",
@@ -3111,7 +3111,7 @@
     "fr": "Nouveau fichier",
     "pt": "Novo arquivo",
     "de": "Neue Datei",
-    "ja": "新しいファイル"
+    "ja": "新規ファイル"
   },
   "Hidden: {0}": {
     "en": "Hidden: {0}",
@@ -3129,7 +3129,7 @@
     "fr": "Sur",
     "pt": "Sobre",
     "de": "An",
-    "ja": "の上"
+    "ja": "オン"
   },
   "Off": {
     "en": "Off",
@@ -3642,7 +3642,7 @@
     "fr": "Précédent",
     "pt": "Anterior",
     "de": "Vorherige",
-    "ja": "前の"
+    "ja": "前へ"
   },
   "Next": {
     "en": "Next",
@@ -3651,7 +3651,7 @@
     "fr": "Suivant",
     "pt": "Próximo",
     "de": "Nächste",
-    "ja": "次"
+    "ja": "次へ"
   },
   "Artist": {
     "en": "Artist",
@@ -6891,7 +6891,7 @@
     "fr": "Inconnu",
     "pt": "Desconhecido",
     "de": "Unbekannt",
-    "ja": "未知"
+    "ja": "不明"
   },
   "Delete Unused": {
     "en": "Delete Unused",
@@ -7530,7 +7530,7 @@
     "fr": "Jeu ou application",
     "pt": "Jogo ou aplicativo",
     "de": "Spiel oder App",
-    "ja": "ゲームとかアプリとか"
+    "ja": "ゲーム・アプリ"
   },
   "Demo": {
     "en": "Demo",
@@ -7566,7 +7566,7 @@
     "fr": "Titre du système",
     "pt": "Título do sistema",
     "de": "Systemtitel",
-    "ja": "システムタイトル"
+    "ja": "システムソフト"
   },
   " The SD card is full.": {
     "en": " The SD card is full.",
@@ -10014,7 +10014,7 @@
     "fr": "Voir",
     "pt": "Visualizar",
     "de": "Sicht",
-    "ja": "ビュー"
+    "ja": "表示"
   },
   "Install on 3DS": {
     "en": "Install on 3DS",
@@ -10131,7 +10131,7 @@
     "fr": "Se déplacer",
     "pt": "Mover",
     "de": "Bewegen",
-    "ja": "動く"
+    "ja": "移動"
   },
   "They are already in {0}.": {
     "en": "They are already in {0}.",
