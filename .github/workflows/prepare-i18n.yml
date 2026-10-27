@@ -1,0 +1,25 @@
+name: Prepare localization catalog
+
+on:
+  push:
+    branches: [fix/complete-i18n]
+    paths: ['.github/workflows/prepare-i18n.yml', 'scripts/prepare-i18n.py', 'romfs/i18n.json']
+
+permissions:
+  contents: read
+
+jobs:
+  translate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check translation service
+        run: |
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request
+          params = [('client', 'dict-chrome-ex'), ('sl', 'en'), ('tl', 'zh-CN')]
+          params += [('q', 'Save your changes before closing?'), ('q', 'Keep Both'), ('q', 'Delete {0} files?')]
+          url = 'https://translate.googleapis.com/translate_a/t?' + urllib.parse.urlencode(params)
+          with urllib.request.urlopen(url, timeout=30) as r:
+              print(r.read().decode())
+          PY
