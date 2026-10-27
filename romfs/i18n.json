@@ -1221,7 +1221,7 @@
     "fr": "Nouveau dossier",
     "pt": "Nova pasta",
     "de": "Neuer Ordner",
-    "ja": "新しいフォルダー"
+    "ja": "新規フォルダー"
   },
   "Not enough free space": {
     "en": "Not enough free space",
@@ -2711,11 +2711,11 @@
   "Sort": {
     "en": "Sort",
     "zh": "排序",
-    "es": "Clasificar",
+    "es": "Ordenar",
     "fr": "Trier",
-    "pt": "Organizar",
+    "pt": "Ordenar",
     "de": "Sortieren",
-    "ja": "選別"
+    "ja": "並べ替え"
   },
   "{0} marked": {
     "en": "{0} marked",
@@ -4692,10 +4692,10 @@
     "en": "{0} of {1}",
     "zh": "{0} / {1}",
     "es": "{0} de {1}",
-    "fr": "{0} ou {1}",
+    "fr": "{0} sur {1}",
     "pt": "{0} de {1}",
     "de": "{0} von {1}",
-    "ja": "{0}/{1}"
+    "ja": "{0} / {1}"
   },
   "Stopped.": {
     "en": "Stopped.",
@@ -6423,7 +6423,7 @@
     "fr": "extraction",
     "pt": "extraindo",
     "de": "extrahieren",
-    "ja": "抽出する"
+    "ja": "展開中"
   },
   "Extracting": {
     "en": "Extracting",
@@ -6432,7 +6432,7 @@
     "fr": "Extraction",
     "pt": "Extraindo",
     "de": "Extrahieren",
-    "ja": "抽出中"
+    "ja": "展開中"
   },
   "Reading the archive...": {
     "en": "Reading the archive...",
@@ -9839,11 +9839,11 @@
   "3DS ready": {
     "en": "3DS ready",
     "zh": "3DS 已就绪",
-    "es": "3DS listo",
-    "fr": "Prêt pour la 3DS",
-    "pt": "Pronto para 3DS",
+    "es": "3DS lista",
+    "fr": "3DS prête",
+    "pt": "3DS pronto",
     "de": "3DS bereit",
-    "ja": "3DS対応"
+    "ja": "3DS 準備完了"
   },
   "Asking on the 3DS": {
     "en": "Asking on the 3DS",
@@ -10658,11 +10658,11 @@
   "{0} free of {1}": {
     "en": "{0} free of {1}",
     "zh": "可用 {0} / 总计 {1}",
-    "es": "{0} libre de {1}",
-    "fr": "{0} gratuit de {1}",
-    "pt": "{0} livre de {1}",
+    "es": "{0} libres de {1}",
+    "fr": "{0} libres sur {1}",
+    "pt": "{0} livres de {1}",
     "de": "{0} frei von {1}",
-    "ja": "{1} から {0} を解放"
+    "ja": "空き {0} / 合計 {1}"
   },
   "Select {0}": {
     "en": "Select {0}",
@@ -10856,11 +10856,11 @@
   "Refresh": {
     "en": "Refresh",
     "zh": "刷新",
-    "es": "Refrescar",
-    "fr": "Rafraîchir",
+    "es": "Actualizar",
+    "fr": "Actualiser",
     "pt": "Atualizar",
     "de": "Aktualisieren",
-    "ja": "リフレッシュ"
+    "ja": "更新"
   },
   "Filter this folder": {
     "en": "Filter this folder",
@@ -10910,11 +10910,11 @@
   "Hidden": {
     "en": "Hidden",
     "zh": "显示隐藏项目",
-    "es": "Oculto",
-    "fr": "Caché",
-    "pt": "Escondido",
-    "de": "Versteckt",
-    "ja": "隠れた"
+    "es": "Ocultos",
+    "fr": "Masqués",
+    "pt": "Ocultos",
+    "de": "Versteckte",
+    "ja": "隠しファイル"
   },
   "Cancel All": {
     "en": "Cancel All",
@@ -11018,20 +11018,20 @@
   "Not saved": {
     "en": "Not saved",
     "zh": "未保存",
-    "es": "No guardado",
+    "es": "Sin guardar",
     "fr": "Non enregistré",
     "pt": "Não salvo",
     "de": "Nicht gespeichert",
-    "ja": "保存されていません"
+    "ja": "未保存"
   },
   "{0} free": {
     "en": "{0} free",
     "zh": "可用 {0}",
-    "es": "{0} gratis",
-    "fr": "{0} gratuit",
-    "pt": "{0} grátis",
-    "de": "{0} kostenlos",
-    "ja": "{0}無料"
+    "es": "{0} libres",
+    "fr": "{0} libres",
+    "pt": "{0} livres",
+    "de": "{0} frei",
+    "ja": "空き {0}"
   },
   " ({0} bytes)": {
     "en": " ({0} bytes)",
