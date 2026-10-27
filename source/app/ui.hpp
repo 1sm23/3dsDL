@@ -386,7 +386,8 @@ int menu(const std::vector<MenuItem> &items,
          const std::string &back = "Back");
 
 // One choice out of several, the current one drawn as chosen. Picking one
-// returns its index at once; Back returns -1.
+// returns its index at once; Back returns -1. More than four options use a
+// scrollable list with the current option visible when it opens.
 int chooseOption(const std::string &title,
                  const std::vector<std::string> &options, int current,
                  Icon icon = Icon::Gear, u32 iconColor = color::IconGrey);
@@ -420,6 +421,9 @@ struct ListSpec {
     std::string headingActionKey; // its key cap
     u32 headingActionKeys = 0;
     std::vector<ListItem> items;
+    // For setting choices: taller option buttons, with this index chosen.
+    // -1 keeps the usual file-style rows.
+    int chosenOption = -1;
     std::string emptyText;
     std::string back = "Back";
     std::string action;    // right tab

@@ -7,6 +7,7 @@ A Nintendo 3DS homebrew app (C++17, libctru, citro2d) that downloads files, inst
 - `scripts/build.sh` builds the .3dsx and CIA in Docker (pinned devkitARM image) into `dist/`. `THREEDSDL_BUILD_JOBS=6` speeds it up. It cleans first, so never run two builds at once.
 - `make -C tests check` runs the host tests (portable code in `source/core` and `source/net`). Keep new logic there, with tests, when it does not need the console. TMPDIR must ignore case, as FAT does: macOS's does, and on Linux CI mounts an ext4 casefold folder.
 - `VERSION` holds the version; releases are a tag push, and CI publishes them.
+- Write changelog entries and GitHub release notes in English.
 
 ## Layout
 
