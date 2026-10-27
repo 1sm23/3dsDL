@@ -18,7 +18,7 @@ jobs:
           python3 - <<'PY'
           import json, urllib.parse, urllib.request
           params = [('client', 'dict-chrome-ex'), ('sl', 'en'), ('tl', 'zh-CN')]
-          params += [('q', 'Save your changes before closing?'), ('q', 'Keep Both'), ('q', 'Delete {0} files?')]
+          params += [('q', 'Delete XQZ0ZQX files?'), ('q', 'XQZ0ZQX has been installed.'), ('q', 'Install {0}?')]
           url = 'https://translate.googleapis.com/translate_a/t?' + urllib.parse.urlencode(params)
           with urllib.request.urlopen(url, timeout=30) as r:
               print(r.read().decode())
