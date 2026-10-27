@@ -861,7 +861,7 @@ async function icon(li, target) {
 function selbar() {
   const n = F.sel.size, all = $('#all'), visible = shown().length;
   $('#selbar').hidden = !n;
-  $('#selcount').textContent = n + ' selected';
+  $('#selcount').textContent = tr("{0} selected", n);
   $('#selinstall').hidden = ![...F.sel].some(p => ext(p) === 'cia');
   all.checked = n > 0 && n >= visible;
   all.indeterminate = n > 0 && n < visible;
@@ -1142,7 +1142,7 @@ async function plan(files) {
   const clash = files.filter(f => card(f));
   let skip = new Set();
   if (clash.length) {
-    const names = clash.slice(0, 5).map(f => base(f.path)).join('\n') + (clash.length > 5 ? '\n...and ' + (clash.length - 5) + ' more' : '');
+    const names = clash.slice(0, 5).map(f => base(f.path)).join('\n') + (clash.length > 5 ? '\n' + tr(' and {0} more', clash.length - 5) : '');
     const stop = {done: false};
     const c = await ask(clash.length === 1 ? tr("Replace this file?") : tr("Replace {0} files?", clash.length),
       tr("{0}\n\nReplace changed sends only the files whose contents differ. The 3DS checks its own copies, so nothing is sent just to compare.", names),

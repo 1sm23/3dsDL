@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the offline catalog, source keys and untranslated UI entry points."""
 import collections
+import ast
 import json
 import pathlib
 import re
@@ -54,7 +55,17 @@ keys = re.search(r'const char \*keys\[\] = \{(.*?)\n    \};', web, re.S)
 if not keys:
     errors.append("Missing Receive web dictionary")
 else:
-    used.update(json.loads(s) for s in re.findall(literal, keys[1]))
+    web_keys = {json.loads(s) for s in re.findall(literal, keys[1])}
+    used.update(web_keys)
+    script = web.split("<script>\n", 1)[1].split("</script>", 1)[0]
+    js_literal = r'''(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')'''
+    called = {ast.literal_eval(m[1]) for m in re.finditer(
+        r'\b(?:tr|heading|waiting)\(\s*(' + js_literal + ')', script)}
+    for match in re.finditer(r'\btr\([^?\n]+\?\s*(' + js_literal +
+                             r')\s*:\s*(' + js_literal + ')', script):
+        called.update(ast.literal_eval(s) for s in match.groups())
+    for key in sorted(called - web_keys):
+        errors.append(f"Receive dictionary missing JavaScript message: {key!r}")
 used.update(json.loads(m[1]) for m in re.finditer(
     r'\{"@L\d+@",\s*(' + literal + r')\}', web))
 for word in ("entry", "file", "folder", "item", "backup", "link", "CIA",
