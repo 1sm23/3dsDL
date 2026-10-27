@@ -932,7 +932,7 @@ async function details(li) {
   d.innerHTML = ("<button class=\"close\" aria-label=\"" + esc(tr("Close")) + "\">") + svg('x') + '</button><div class="top">' + badge(e) + '<div><h2></h2><div class="sub"></div></div></div><dl class="facts">' +
     facts.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl><div class="acts"></div>';
   d.querySelector('h2').textContent = e.name;
-  d.querySelector('.sub').textContent = e.dir ? tr("Folder") : (x ? tr("{0} file", x.toUpperCase()) : tr("File"));
+  d.querySelector('.sub').textContent = e.dir ? tr("Folder") : (x ? tr("web.file_kind", x.toUpperCase()) : tr("File"));
   const box = d.querySelector('.acts');
   for (const a of acts) {
     const b = document.createElement('button');
@@ -1440,6 +1440,7 @@ std::string webDictionary()
 {
     std::string result = "const I18N = {";
     const char *keys[] = {
+        "web.file_kind",
         "{0} selected",
         "  ·  {0} of {1}",
         " ({0} bytes)",

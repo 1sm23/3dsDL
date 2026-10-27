@@ -11338,5 +11338,14 @@
     "de": " {0} wurden bereits installiert.",
     "pt": " {0} já estavam instalados.",
     "ja": " {0} はすでにインストールされています。"
+  },
+  "web.file_kind": {
+    "en": "{0} file",
+    "zh": "{0} 文件",
+    "es": "Archivo {0}",
+    "fr": "Fichier {0}",
+    "pt": "Arquivo {0}",
+    "de": "{0}-Datei",
+    "ja": "{0} ファイル"
   }
 }
