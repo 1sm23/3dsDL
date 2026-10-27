@@ -24,21 +24,24 @@ refuse() {
     fi
 }
 
-# fields of major * 16384 + minor * 256 + patch * 16 + step
-expect 0.8.1 "2 1 15 release"              # 2079
-expect 0.8.1-beta.1 "2 1 1 prerelease"     # 2065
-expect 0.8.1-beta.2 "2 1 2 prerelease"     # 2066
-expect 0.8.1-rc.3 "2 1 3 prerelease"       # 2067
-expect 0.8.0 "2 0 15 release"              # 2063, above the 128 it shipped as
-expect 0.9.0-beta.14 "2 16 14 prerelease"  # 2318
+# fields of major * 16384 + minor * 512 + patch * 32 + step
+expect 0.8.1 "4 2 15 release"              # 4143
+expect 0.8.1-beta.1 "4 2 1 prerelease"     # 4129
+expect 0.8.1-beta.2 "4 2 2 prerelease"     # 4130
+expect 0.8.1-rc.3 "4 2 3 prerelease"       # 4131
+expect 0.8.0 "4 0 15 release"              # 4111, above the 128 it shipped as
+expect 0.9.0-beta.14 "4 32 14 prerelease"  # 4622
 expect 1.0.0 "16 0 15 release"             # 16399
-expect 3.63.15 "63 63 15 release"          # 65535, the most a CIA holds
-expect 0.8.1-x-y.1.2 "2 1 2 prerelease"
-expect 0.8.2n "2 3 0 release"             # 2096, above upstream's 2095
-expect 0.8.3n "2 4 0 release"             # 2112
-expect 0.8.3-beta.1n "2 3 2 prerelease"   # 2098
-expect 0.8.15n "2 16 0 release"           # 2304, patch carry
-expect 0.63.15n "16 0 0 release"          # 16384, minor carry
+expect 3.31.15 "63 62 15 release"          # 65519
+expect 3.31.15.15 "63 63 15 release"  # 65535, the most a CIA holds
+expect 0.8.1-x-y.1.2 "4 2 2 prerelease"
+expect 0.8.2n "4 5 0 release"             # 4176, above old 0.8.2n builds
+expect 0.8.2.1 "4 5 1 release"       # 4177, after its n build
+expect 0.8.2.2 "4 5 2 release"       # 4178
+expect 0.8.3-beta.1n "4 6 2 prerelease"   # 4194, after the fork revisions
+expect 0.8.3n "4 7 0 release"             # 4208
+expect 0.8.15n "4 31 0 release"           # 4592, patch carry
+expect 0.31.15n "15 63 0 release"         # 16368, minor carry
 refuse 0.8
 refuse v0.8.1
 refuse 0.8.1-
@@ -54,11 +57,19 @@ refuse 0.8.1-beta.15
 refuse 0.8.1-beta.1a
 refuse 0.8.2nn
 refuse 0.8.2N
+refuse 0.8.2.16
+refuse 0.8.2.0
+refuse 0.8.2.01
+refuse 0.8.2.1.1
+refuse 0.8.2.1-beta.1
+refuse 0.8.2.1n
+refuse 3.31.16
+refuse 3.32.0
 refuse 3.63.15n
 
 # Each build must install over the one before it: the numbers only go up.
 previous=128 # what 0.8.0 shipped as
-for version in 0.8.1-beta.1 0.8.1-beta.2 0.8.1-rc.3 0.8.1 0.8.2-beta.1 0.8.2 0.8.2n 0.8.3-beta.1n 0.8.3n 0.8.15n 0.9.0-beta.1 0.9.0 0.9.0n 1.0.0-rc.1 1.0.0 1.0.0n; do
+for version in 0.8.1-beta.1 0.8.1-beta.2 0.8.1-rc.3 0.8.1 0.8.2-beta.1 0.8.2 0.8.2n 0.8.2.1 0.8.2.2 0.8.3-beta.1n 0.8.3n 0.8.15n 0.9.0-beta.1 0.9.0 0.9.0n 1.0.0-rc.1 1.0.0 1.0.0n; do
     read -r a b c _ <<< "$(cia_version "${version}")"
     number=$(( (a << 10) | (b << 4) | c ))
     if (( number <= previous )); then

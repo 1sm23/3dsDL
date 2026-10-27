@@ -74,7 +74,7 @@ Everything also works by touch, and lists scroll with a flick.
 | After a CIA downloads | Ask | Ask, install, install and delete, or keep |
 | Check for updates | On | Looks for a new 3dsDL when it opens |
 | Sounds | On | Needs `sdmc:/3ds/dspfirm.cdc` |
-| Language | English | Change the interface language in **Settings → Other Settings** |
+| Language | English | English, 简体中文, Español, Français, Português, Deutsch and 日本語; change it in **Settings → Other Settings** |
 
 The language catalog is bundled in the app. English is used when a translation
 is missing, so updating the catalog never makes an older installation unusable.

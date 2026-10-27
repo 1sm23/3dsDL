@@ -1,5 +1,6 @@
 #include "records.hpp"
 
+#include "i18n.hpp"
 #include "text.hpp"
 #include "timezone.hpp"
 
@@ -168,7 +169,7 @@ Settings parseSettings(const std::string &contents)
         } else if (key == "language") {
             // Unknown language codes stay on the durable default instead of
             // making the UI unusable after a hand-edited settings file.
-            if (value == "en" || value == "zh") {
+            if (i18n::findLanguage(value) != nullptr) {
                 settings.language = value;
             }
         } else if (key == "resume_downloads") {
@@ -241,7 +242,9 @@ std::string serializeSettings(const Settings &settings)
     std::string output = "# 3dsDL settings\n";
     output += "destination=" + text::singleLine(settings.destination) + "\n";
     output += "language=" +
-              (settings.language == "zh" ? std::string("zh") : "en") +
+              (i18n::findLanguage(settings.language) != nullptr
+                   ? settings.language
+                   : std::string("en")) +
               "\n";
     output += std::string("resume_downloads=") +
               (settings.resumeDownloads ? "1" : "0") + "\n";

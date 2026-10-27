@@ -46,6 +46,7 @@ bool parseRelease(const std::string &json, Release &out, std::string &error);
 // as 0.0.0.
 // This fork's trailing n sorts after the matching upstream version:
 // 0.8.2 < 0.8.2n < 0.8.3.
+// Fork revisions use a fourth number: 0.8.2n < 0.8.2.1 < 0.8.2.2 < 0.8.3.
 int compareVersions(const std::string &a, const std::string &b);
 bool isNewer(const std::string &candidate, const std::string &current);
 
