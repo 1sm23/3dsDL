@@ -28,6 +28,7 @@ constexpr size_t MaxObjects = 8192;
 C3D_RenderTarget *topTarget = nullptr;
 C3D_RenderTarget *bottomTarget = nullptr;
 C2D_TextBuf textBuffer = nullptr;
+C2D_Font fallbackFont = nullptr;
 bool closing = false;
 bool onBottom = false;
 uint64_t startTime = 0;
@@ -126,25 +127,40 @@ void loadFontMetrics()
     fontLineFeed = fontGetInfo(font)->lineFeed;
 }
 
+// Keep the console's font wherever it has a glyph. The bundled OFL subset
+// supplies missing characters, including Hangul on non-Korean consoles.
+C2D_Font glyphFont(uint32_t codePoint)
+{
+    if (codePoint < 128 || fallbackFont == nullptr ||
+        C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint) !=
+            C2D_FontGetInfo(nullptr)->alterCharIndex) {
+        return nullptr;
+    }
+    return C2D_FontGlyphIndexFromCodePoint(fallbackFont, codePoint) !=
+                   C2D_FontGetInfo(fallbackFont)->alterCharIndex
+               ? fallbackFont : nullptr;
+}
+
+fontGlyphPos_s glyphPos(uint32_t codePoint)
+{
+    const C2D_Font font = glyphFont(codePoint);
+    fontGlyphPos_s glyph;
+    // Normalize fallback metrics to the system font's units. Layout, ink
+    // centering and rendering then use exactly the same advance widths.
+    const float ratio = font == nullptr ? 1.0f
+        : (30.0f / C2D_FontGetInfo(font)->tglp->cellHeight) / fontScale;
+    C2D_FontCalcGlyphPos(font, &glyph,
+                         C2D_FontGlyphIndexFromCodePoint(font, codePoint),
+                         0, ratio, ratio);
+    return glyph;
+}
+
 float advance(uint32_t codePoint)
 {
     if (codePoint < 128 && asciiReady) {
         return asciiAdvance[codePoint];
     }
-    fontGlyphPos_s glyph;
-    C2D_FontCalcGlyphPos(nullptr, &glyph,
-                         C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint),
-                         0, 1.0f, 1.0f);
-    return glyph.xAdvance * fontScale;
-}
-
-fontGlyphPos_s glyphPos(uint32_t codePoint)
-{
-    fontGlyphPos_s glyph;
-    C2D_FontCalcGlyphPos(nullptr, &glyph,
-                         C2D_FontGlyphIndexFromCodePoint(nullptr, codePoint),
-                         0, 1.0f, 1.0f);
-    return glyph;
+    return glyphPos(codePoint).xAdvance * fontScale;
 }
 
 // The x offset that centres value's ink rather than its advance width:
@@ -248,6 +264,56 @@ std::string withEllipsis(const std::string &value, float scale,
 void drawSqueezed(const std::string &value, float x, float y, float scale,
                   float squeeze, u32 textColor, u32 flags)
 {
+    bool needsFallback = false;
+    for (size_t index = 0; index < value.size();) {
+        uint32_t code = 0xfffd;
+        const size_t length = text::utf8SequenceLength(value, index, &code);
+        needsFallback = needsFallback || glyphFont(code) != nullptr;
+        index += length == 0 ? 1 : length;
+    }
+    if (needsFallback) {
+        const float scaleY = scale * TextBoost;
+        const float scaleX = scaleY * squeeze;
+        const float baseline = C2D_FontGetInfo(nullptr)->tglp->baselinePos * fontScale;
+        size_t start = 0;
+        do {
+            const size_t end = value.find('\n', start);
+            const std::string line = value.substr(start, end == std::string::npos
+                ? end : end - start);
+            const float width = textWidth(line, scale) * squeeze;
+            const u32 align = flags & C2D_AlignMask;
+            float left = align == C2D_AlignCenter ? x - width / 2
+                         : align == C2D_AlignRight ? x - width : x;
+            for (size_t at = 0; at < line.size();) {
+                uint32_t code = 0xfffd;
+                size_t length = text::utf8SequenceLength(line, at, &code);
+                if (length == 0) length = 1;
+                const C2D_Font font = glyphFont(code);
+                const size_t runStart = at;
+                float runWidth = 0;
+                do {
+                    runWidth += advance(code);
+                    at += length;
+                    if (at == line.size()) break;
+                    length = text::utf8SequenceLength(line, at, &code);
+                    if (length == 0) length = 1;
+                } while (glyphFont(code) == font);
+                C2D_Text run;
+                C2D_TextFontParse(&run, font, textBuffer, line.substr(runStart, at - runStart).c_str());
+                C2D_TextOptimize(&run);
+                const FINF_s *info = C2D_FontGetInfo(font);
+                const float runBaseline = info->tglp->baselinePos * (30.0f / info->tglp->cellHeight);
+                const float top = flags & C2D_AtBaseline ? y : y + (baseline - runBaseline) * scaleY;
+                C2D_DrawText(&run, (flags & ~C2D_AlignMask) | C2D_WithColor,
+                             left, top, Depth, scaleX, scaleY, textColor);
+                left += runWidth * scaleX;
+            }
+            if (end == std::string::npos) break;
+            start = end + 1;
+            y += lineHeight(scale);
+        } while (start < value.size());
+        return;
+    }
     C2D_Text textObject;
     C2D_TextParse(&textObject, textBuffer, value.c_str());
     C2D_TextOptimize(&textObject);
@@ -1003,6 +1069,16 @@ bool init()
     return true;
 }
 
+void loadFallbackFont()
+{
+    if (fallbackFont == nullptr) {
+        fallbackFont = C2D_FontLoad("romfs:/ui/fallback.bcfnt");
+        if (fallbackFont == nullptr) {
+            logging::warn("ui.font.unavailable");
+        }
+    }
+}
+
 void shutdown()
 {
     for (int index = 0; index < 2; ++index) {
@@ -1035,6 +1111,10 @@ void shutdown()
     if (textBuffer != nullptr) {
         C2D_TextBufDelete(textBuffer);
         textBuffer = nullptr;
+    }
+    if (fallbackFont != nullptr) {
+        C2D_FontFree(fallbackFont);
+        fallbackFont = nullptr;
     }
     C2D_Fini();
     C3D_Fini();
@@ -1427,11 +1507,7 @@ std::vector<std::string> wrap(const std::string &value, float scale,
 void drawText(const std::string &value, float x, float y, float scale,
               u32 textColor, u32 flags)
 {
-    C2D_Text textObject;
-    C2D_TextParse(&textObject, textBuffer, value.c_str());
-    C2D_TextOptimize(&textObject);
-    C2D_DrawText(&textObject, flags | C2D_WithColor, x, y, Depth,
-                 scale * TextBoost, scale * TextBoost, textColor);
+    drawSqueezed(value, x, y, scale, 1.0f, textColor, flags);
 }
 
 namespace {

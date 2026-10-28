@@ -1,0 +1,7 @@
+{
+  "source": "Noto Sans CJK TC Regular",
+  "source_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf",
+  "source_sha256": "dce08bd4fd91aa8aa76ed8fea4b694c2dfb8550f67871e326843212ddbeb88b4",
+  "license": "SIL Open Font License 1.1",
+  "output": "romfs/ui/fallback.bcfnt"
+}

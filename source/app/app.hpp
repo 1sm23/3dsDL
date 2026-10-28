@@ -5,6 +5,7 @@
 #include "download_engine.hpp"
 #include "file_index.hpp"
 #include "file_types.hpp"
+#include "i18n.hpp"
 #include "library.hpp"
 #include "savedata.hpp"
 #include "platform.hpp"
@@ -56,7 +57,7 @@ private:
     void offerExtraction(const std::string &path, const std::string &folder,
                          const std::string &summary,
                          const std::string &title =
-                             "Download complete. Extract the archive?",
+                             i18n::c("Download complete. Extract the archive?"),
                          const archives::Listing *known = nullptr);
 
     // Asks what to do with a CIA that just finished downloading.

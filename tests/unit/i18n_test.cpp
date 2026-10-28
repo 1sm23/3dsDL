@@ -26,10 +26,13 @@ TEST("i18n: language lookup, fallback and placeholders")
     CHECK_EQ(i18n::languageName("zh"), std::string("简体中文"));
 
     const std::vector<std::pair<std::string, std::string>> addedLanguages = {
+        {"zh-Hant", "繁體中文"},
         {"es", "Español"}, {"fr", "Français"},
         {"pt", "Português"}, {"de", "Deutsch"}, {"ja", "日本語"},
+        {"it", "Italiano"}, {"ko", "한국어"}, {"ru", "Русский"},
+        {"pt-BR", "Português (Brasil)"},
     };
-    CHECK_EQ(i18n::languages().size(), size_t(7));
+    CHECK_EQ(i18n::languages().size(), size_t(12));
     for (const auto &language : addedLanguages) {
         CHECK(i18n::findLanguage(language.first) != nullptr);
         CHECK_EQ(i18n::languageName(language.first), language.second);
@@ -48,12 +51,75 @@ TEST("i18n: language lookup, fallback and placeholders")
     for (const auto &language : addedLanguages) {
         i18n::setLanguage(language.first);
         CHECK_EQ(i18n::t("settings.title"),
-                 language.first == "es" ? std::string("Configuración")
+                 language.first == "zh-Hant" ? std::string("設定")
+                 : language.first == "es" ? std::string("Configuración")
                  : language.first == "fr" ? std::string("Paramètres")
                  : language.first == "pt" ? std::string("Configurações")
                  : language.first == "de" ? std::string("Einstellungen")
-                                            : std::string("設定"));
+                 : language.first == "ja" ? std::string("設定")
+                 : language.first == "it" ? std::string("Impostazioni")
+                 : language.first == "ko" ? std::string("설정")
+                 : language.first == "ru" ? std::string("Настройки")
+                                            : std::string("Configurações"));
     }
+    i18n::setLanguage("en");
+}
+
+TEST("i18n: Russian count forms and Brazilian Portuguese are distinct")
+{
+    CHECK(i18n::init("../romfs/i18n.json"));
+    i18n::setLanguage("ru");
+    const std::vector<std::pair<uint64_t, std::string>> forms = {
+        {0, "0 файлов"}, {1, "1 файл"}, {2, "2 файла"}, {4, "4 файла"},
+        {5, "5 файлов"}, {11, "11 файлов"}, {12, "12 файлов"},
+        {14, "14 файлов"}, {21, "21 файл"}, {22, "22 файла"},
+        {101, "101 файл"}, {111, "111 файлов"}, {112, "112 файлов"},
+    };
+    for (const auto &form : forms) {
+        CHECK_EQ(i18n::count(form.first, "file", std::to_string(form.first)), form.second);
+    }
+    CHECK_EQ(i18n::count(2, "entry", "2"), std::string("2 записи"));
+    CHECK_EQ(i18n::count(5, "entry", "5"), std::string("5 записей"));
+    i18n::setLanguage("pt-BR");
+    CHECK_EQ(i18n::language(), std::string("pt-BR"));
+    CHECK_EQ(i18n::count(0, "file", "0"), std::string("0 arquivo"));
+    CHECK_EQ(i18n::count(1, "file", "1"), std::string("1 arquivo"));
+    CHECK_EQ(i18n::count(2, "file", "2"), std::string("2 arquivos"));
+    CHECK_EQ(i18n::t("settings.clock.title"), std::string("Relógio do console"));
+    i18n::setLanguage("pt");
+    CHECK_EQ(i18n::language(), std::string("pt"));
+    CHECK_EQ(i18n::t("settings.clock.title"), std::string("Relógio da consola"));
+    CHECK_EQ(i18n::count(0, "file", "0"), std::string("0 arquivos"));
+    i18n::setLanguage("ru");
+    const std::string russianHtml = remote::page("", true);
+    CHECK(russianHtml.find("\"{0} items.few\":\"{0} элемента\"") != std::string::npos);
+    i18n::setLanguage("en");
+}
+
+TEST("i18n: new locales reach the console catalog and Receive page")
+{
+    CHECK(i18n::init("../romfs/i18n.json"));
+    const std::vector<std::pair<std::string, std::string>> web = {
+        {"zh-Hant", "傳送至 3DS"},
+        {"it", "Invia al 3DS"}, {"ko", "3DS로 보내기"},
+        {"ru", "Отправить на 3DS"}, {"pt-BR", "Enviar para o 3DS"},
+    };
+    for (const auto &locale : web) {
+        i18n::setLanguage(locale.first);
+        const std::string html = remote::page("", true);
+        CHECK(html.find("lang=\"" + locale.first + "\"") != std::string::npos);
+        CHECK(html.find(locale.second + "</button>") != std::string::npos);
+    }
+    i18n::setLanguage("ko");
+    CHECK_EQ(i18n::count(1, "file", "1"), std::string("파일 1개"));
+    CHECK_EQ(i18n::count(2, "file", "2"), std::string("파일 2개"));
+    i18n::setLanguage("zh-Hant");
+    CHECK_EQ(i18n::language(), std::string("zh-Hant"));
+    CHECK_EQ(i18n::t("settings.clock.title"), std::string("主機時鐘"));
+    CHECK_EQ(i18n::count(2, "file", "2"), std::string("2 個檔案"));
+    i18n::setLanguage("zh");
+    CHECK_EQ(i18n::t("settings.clock.title"), std::string("主机时钟"));
+    CHECK_EQ(i18n::count(2, "file", "2"), std::string("2 个文件"));
     i18n::setLanguage("en");
 }
 

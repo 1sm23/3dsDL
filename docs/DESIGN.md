@@ -16,7 +16,8 @@ real captures of those applets, not from memory.
 3dsDL keeps its own identity the way each system app does: one accent colour
 (3dsDL blue, `#1C93C2`, where Data Management uses green) and its own icons.
 No Nintendo logos, mascots or artwork are used. On the console the type is
-the system font itself, which is what makes it read as native.
+the system font itself, which is what makes it read as native. Characters
+missing from a region's font use the bundled OFL fallback subset.
 
 ## Rules
 

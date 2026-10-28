@@ -5,10 +5,11 @@ import ast
 import json
 import pathlib
 import re
+import struct
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-LANGUAGES = {"en", "zh", "es", "fr", "pt", "de", "ja"}
+LANGUAGES = {"en", "zh", "zh-Hant", "es", "fr", "pt", "de", "ja", "it", "ko", "ru", "pt-BR"}
 errors = []
 
 
@@ -26,6 +27,10 @@ catalog = json.loads((ROOT / "romfs/i18n.json").read_text(encoding="utf-8"),
 placeholder = re.compile(r"\{\d+\}")
 literal = r'"(?:[^"\\]|\\.)*"'
 used = set()
+registry = (ROOT / "source/core/i18n.cpp").read_text(encoding="utf-8")
+supported = re.search(r'const std::vector<Language> Supported = \{(.*?)\n\};', registry, re.S)
+if not supported or set(re.findall(r'\{"([^"]+)",', supported[1])) != LANGUAGES:
+    errors.append("The runtime language registry does not match the catalog languages")
 for key, values in catalog.items():
     if set(values) != LANGUAGES:
         errors.append(f"{key!r}: language set is {sorted(values)}")
@@ -36,11 +41,23 @@ for key, values in catalog.items():
         elif collections.Counter(placeholder.findall(value)) != expected:
             errors.append(f"{key!r}: inconsistent {code} placeholders")
 
-for path in (ROOT / "source").rglob("*.cpp"):
+for path in (ROOT / "source").rglob("*"):
+    if path.suffix not in {".cpp", ".hpp"}:
+        continue
     source = path.read_text(encoding="utf-8")
     for match in re.finditer(r'i18n::(?:c|t)\(\s*(' + literal + ')', source):
         used.add(json.loads(match[1]))
     if path.parent.name == "app":
+        # Defaults are evaluated at construction/call time and must translate
+        # then too. Several lists and menus intentionally omit an explicit back.
+        for match in re.finditer(
+                r'(?:std::string\s+|const\s+std::string\s*&\s*)'
+                r'(?:back|action|emptyText|heading|hint|title|label)\s*=\s*('
+                + literal + ')', source):
+            value = json.loads(match[1])
+            if re.search(r"[A-Za-z]{2}", value):
+                line = source.count("\n", 0, match.start()) + 1
+                errors.append(f"{path.relative_to(ROOT)}:{line}: untranslated UI default {value!r}")
         # These direct entry points must receive translated static messages.
         for match in re.finditer(
                 r'(?:ui::(?:message|drawTopChrome)|dialog\.(?:header|title)\s*=)'
@@ -61,6 +78,9 @@ else:
     js_literal = r'''(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')'''
     called = {ast.literal_eval(m[1]) for m in re.finditer(
         r'\b(?:tr|heading|waiting)\(\s*(' + js_literal + ')', script)}
+    for match in re.finditer(r'\bcounted\(\s*(' + js_literal + r')\s*,\s*(' + js_literal + ')', script):
+        one, other = (ast.literal_eval(value) for value in match.groups())
+        called.update((one, other, other + '.few'))
     # Restrict conditional keys to the first argument of tr(). A later
     # conditional may choose HTML attributes or other non-message values.
     for call in re.finditer(r'\btr\(', script):
@@ -102,8 +122,37 @@ for word in ("entry", "file", "folder", "item", "backup", "link", "CIA",
              "unfinished install", "Marked Item"):
     used.add("{0} " + word)
     used.add("{0} " + ("entries" if word == "entry" else word + "s"))
+    used.add("{0} " + ("entries" if word == "entry" else word + "s") + ".few")
 for key in sorted(used - catalog.keys()):
     errors.append(f"Source key missing from catalog: {key!r}")
+
+# Inspect the actual bundled BCFNT, so new translations cannot silently add
+# glyphs absent on consoles whose regional system font does not include them.
+try:
+    font = (ROOT / "romfs/ui/fallback.bcfnt").read_bytes()
+    assert font[:4] == b"CFNT" and struct.unpack_from('<I', font, 12)[0] == len(font)
+    tglp, cwdh, cmap = struct.unpack_from('<III', font, 36)
+    assert font[tglp - 8:tglp - 4] == b'TGLP'
+    assert font[cwdh - 8:cwdh - 4] == b'CWDH'
+    assert font[cmap - 8:cmap - 4] == b'CMAP'
+    sheet_size, sheets, pixel_format, columns, rows, width, height, pixels = struct.unpack_from('<IHHHHHHI', font, tglp + 4)
+    assert pixel_format == 11 and sheet_size == width * height // 2
+    assert pixels % 128 == 0 and pixels + sheets * sheet_size <= cwdh - 8
+    first_glyph, last_glyph, next_widths = struct.unpack_from('<HHI', font, cwdh)
+    assert first_glyph == 0 and not next_widths and last_glyph < sheets * columns * rows
+    assert cwdh + 8 + (last_glyph + 1) * 3 <= cmap - 8
+    first, last, method, reserved, next_map = struct.unpack_from('<HHHHI', font, cmap)
+    assert method == 1 and not reserved and not next_map
+    table = struct.unpack_from('<' + 'H' * (last - first + 1), font, cmap + 12)
+    assert all(index == 0xffff or index <= last_glyph for index in table)
+    names = re.findall(r'\{"[^"\n]+", "([^"\n]+)"\}', supported[1])
+    texts = [text for values in catalog.values() for text in values.values()] + names
+    required = {ord(ch) for text in texts for ch in text if ord(ch) > 127}
+    for code in sorted(required):
+        if not first <= code <= last or table[code - first] == 0xffff:
+            errors.append(f"Fallback font missing U+{code:04X}; run scripts/make-i18n-font.py")
+except (OSError, AssertionError, struct.error, TypeError) as error:
+    errors.append(f"Invalid or missing bundled fallback font: {error}")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

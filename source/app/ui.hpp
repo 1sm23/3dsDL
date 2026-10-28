@@ -1,6 +1,7 @@
 #pragma once
 
 #include "icon_atlas.hpp"
+#include "i18n.hpp"
 
 #include <3ds.h>
 #include <citro2d.h>
@@ -95,6 +96,8 @@ struct Rect {
 };
 
 bool init();
+// Call once after mounting RomFS, before drawing localized screens.
+void loadFallbackFont();
 void shutdown();
 
 // False once the system has asked 3dsDL to close. Use this instead of calling
@@ -383,7 +386,7 @@ struct MenuItem {
 };
 int menu(const std::vector<MenuItem> &items,
          const std::function<void(int)> &drawTop,
-         const std::string &back = "Back");
+         const std::string &back = i18n::c("Back"));
 
 // One choice out of several, the current one drawn as chosen. Picking one
 // returns its index at once; Back returns -1. More than four options use a
@@ -425,7 +428,7 @@ struct ListSpec {
     // -1 keeps the usual file-style rows.
     int chosenOption = -1;
     std::string emptyText;
-    std::string back = "Back";
+    std::string back = i18n::c("Back");
     std::string action;    // right tab
     std::string actionKey; // its key cap
     u32 actionKeys = 0;    // keys that press it; reported as the result key
