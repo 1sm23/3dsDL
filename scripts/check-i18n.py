@@ -41,11 +41,23 @@ for key, values in catalog.items():
         elif collections.Counter(placeholder.findall(value)) != expected:
             errors.append(f"{key!r}: inconsistent {code} placeholders")
 
-for path in (ROOT / "source").rglob("*.cpp"):
+for path in (ROOT / "source").rglob("*"):
+    if path.suffix not in {".cpp", ".hpp"}:
+        continue
     source = path.read_text(encoding="utf-8")
     for match in re.finditer(r'i18n::(?:c|t)\(\s*(' + literal + ')', source):
         used.add(json.loads(match[1]))
     if path.parent.name == "app":
+        # Defaults are evaluated at construction/call time and must translate
+        # then too. Several lists and menus intentionally omit an explicit back.
+        for match in re.finditer(
+                r'(?:std::string\s+|const\s+std::string\s*&\s*)'
+                r'(?:back|action|emptyText|heading|hint|title|label)\s*=\s*('
+                + literal + ')', source):
+            value = json.loads(match[1])
+            if re.search(r"[A-Za-z]{2}", value):
+                line = source.count("\n", 0, match.start()) + 1
+                errors.append(f"{path.relative_to(ROOT)}:{line}: untranslated UI default {value!r}")
         # These direct entry points must receive translated static messages.
         for match in re.finditer(
                 r'(?:ui::(?:message|drawTopChrome)|dialog\.(?:header|title)\s*=)'

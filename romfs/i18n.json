@@ -17918,5 +17918,19 @@
     "ru": "{0} ссылки: {1}",
     "pt-BR": "Ligações {0}: {1}",
     "zh-Hant": "{0} 個連結：{1}"
+  },
+  "Download complete. Extract the archive?": {
+    "en": "Download complete. Extract the archive?",
+    "zh": "下载完成。是否解压压缩包？",
+    "zh-Hant": "下載完成。要解壓縮封存檔嗎？",
+    "es": "Descarga completada. ¿Extraer el archivo?",
+    "fr": "Téléchargement terminé. Extraire l’archive ?",
+    "pt": "Download concluído. Extrair o arquivo?",
+    "de": "Download abgeschlossen. Archiv entpacken?",
+    "ja": "ダウンロードが完了しました。アーカイブを展開しますか？",
+    "it": "Download completato. Estrarre l’archivio?",
+    "ko": "다운로드가 완료되었습니다. 압축을 해제하시겠습니까?",
+    "ru": "Загрузка завершена. Распаковать архив?",
+    "pt-BR": "Download concluído. Extrair o arquivo compactado?"
   }
 }
