@@ -452,7 +452,6 @@ void App::dataBrowser(const savedata::Target &target)
         ui::ListSpec spec;
         spec.title = target.name + "  " + folder.substr(root.size() - 1);
         spec.heading = spec.title;
-        spec.tapToSelect = true;
         spec.back = folder == root ? i18n::c("Close") : i18n::c("Back");
         spec.emptyText = readable ? i18n::c("This folder is empty.") : i18n::c("This folder cannot be read.");
         for (const fs::Entry &entry : entries) {

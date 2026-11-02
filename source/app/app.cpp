@@ -1551,7 +1551,6 @@ bool App::browseFolders(std::string &folder)
         ui::ListSpec spec;
         spec.title = i18n::c("Choose a Folder");
         spec.heading = current;
-        spec.tapToSelect = true;
         spec.back = atRoot ? i18n::c("Cancel") : i18n::c("Back");
         spec.action = i18n::c("Use This");
         spec.actionKey = "Y";
