@@ -4,6 +4,7 @@
 #include "i18n.hpp"
 #include "remote.hpp"
 #include "timezone.hpp"
+#include "units.hpp"
 
 TEST("i18n: language lookup, fallback and placeholders")
 {
@@ -99,16 +100,14 @@ TEST("i18n: Russian count forms and Brazilian Portuguese are distinct")
 TEST("i18n: new locales reach the console catalog and Receive page")
 {
     CHECK(i18n::init("../romfs/i18n.json"));
-    const std::vector<std::pair<std::string, std::string>> web = {
-        {"zh-Hant", "傳送至 3DS"},
-        {"it", "Invia al 3DS"}, {"ko", "3DS로 보내기"},
-        {"ru", "Отправить на 3DS"}, {"pt-BR", "Enviar para o 3DS"},
-    };
-    for (const auto &locale : web) {
-        i18n::setLanguage(locale.first);
+    for (const auto &locale : i18n::languages()) {
+        i18n::setLanguage(locale.code);
         const std::string html = remote::page("", true);
-        CHECK(html.find("lang=\"" + locale.first + "\"") != std::string::npos);
-        CHECK(html.find(locale.second + "</button>") != std::string::npos);
+        CHECK(html.find("lang=\"" + std::string(locale.code) + "\"") != std::string::npos);
+        CHECK(html.find(i18n::t("Send") + "</button>") != std::string::npos);
+        CHECK(html.find("@LANG@") == std::string::npos);
+        CHECK(html.find("@L") == std::string::npos);
+        CHECK(html.find(i18n::t("Favourites")) != std::string::npos);
     }
     i18n::setLanguage("ko");
     CHECK_EQ(i18n::count(1, "file", "1"), std::string("파일 1개"));
@@ -123,6 +122,28 @@ TEST("i18n: new locales reach the console catalog and Receive page")
     i18n::setLanguage("en");
 }
 
+TEST("i18n: time estimates and device labels follow language changes")
+{
+    CHECK(i18n::init("../romfs/i18n.json"));
+    i18n::setLanguage("en");
+    CHECK_EQ(units::timeLeft(0), std::string("1 s left"));
+    CHECK_EQ(units::timeLeft(11), std::string("15 s left"));
+    CHECK_EQ(units::timeLeft(56), std::string("1 min left"));
+    CHECK_EQ(units::timeLeft(3600), std::string("1 h left"));
+    CHECK_EQ(units::timeLeft(3660), std::string("1 h 1 min left"));
+    CHECK_EQ(remote::deviceName("Windows NT 10.0"), std::string("Windows PC"));
+    for (const auto &locale : i18n::languages()) {
+        i18n::setLanguage(locale.code);
+        CHECK_EQ(remote::deviceName("Windows NT 10.0"), i18n::t("Windows PC"));
+        CHECK_EQ(remote::deviceName("Linux x86_64"), i18n::t("Linux PC"));
+        CHECK_EQ(remote::deviceName("Nintendo 3DS; like iPhone"), std::string("3DS"));
+        CHECK_EQ(units::timeLeft(3660), i18n::t("{0} h {1} min left", {"1", "1"}));
+    }
+    i18n::setLanguage("zh");
+    CHECK_EQ(units::timeLeft(11), std::string("剩余 15 秒"));
+    i18n::setLanguage("en");
+}
+
 TEST("i18n: arguments are literal, catalog pointers survive language changes")
 {
     const std::string path = "build/i18n-format-test.json";
@@ -131,6 +152,7 @@ TEST("i18n: arguments are literal, catalog pointers survive language changes")
       "{0} file": {"en":"{0} file", "fr":"{0} fichier", "zh":"{0} 个文件"},
       "{0} files": {"en":"{0} files", "fr":"{0} fichiers", "zh":"{0} 个文件"},
       "{0} entries": {"en":"{0} entries"},
+      "Send": {"en":"Send", "zh":"发送 <到> 3DS"},
       "Send to 3DS": {"en":"Send to 3DS", "zh":"发送 <到> 3DS"},
       "Cancel": {"en":"Cancel", "zh":"</script><img src=x>"}
     })JSON"));

@@ -2,7 +2,7 @@
 
 ## Downloading
 
-Pick **Scan QR Code** or **Enter URL** on the home screen, check the link and folder, and press **Download**. <kbd>B</kbd> cancels at any time. If the connection drops, **Retry** continues from where it stopped, and History can resume it later, as long as the server confirms the file hasn't changed.
+Pick **Scan QR Code** or **Enter URL** on the home screen, check the link and folder, and press **Download**. <kbd>B</kbd> cancels at any time. Closing the lid turns the screens off and the download keeps going; the console sleeps half a minute after it ends. If the connection drops, **Retry** continues from where it stopped, and History can resume it later, as long as the server confirms the file hasn't changed.
 
 If a file with the same name is already there, you choose **Keep Both**, **Replace** or **Cancel**. When a CIA finishes, you can install it, install it and delete the file, or keep it; Settings can make that choice automatic. A CIA that doesn't fit on the SD card can be installed directly: it streams into the install service without being saved, and starts over if the connection drops.
 
@@ -16,18 +16,30 @@ qrencode -t ansiutf8 "https://example.com/some-homebrew.3dsx"
 
 **Add to Queue** on the confirm screen saves a link for later. From the scanner the camera comes straight back, so a page of codes goes quickly. **Queue** on the home screen downloads them all with **Download All**, keeping both files on a name clash and asking about CIAs once.
 
-**Receive** listens for links and files while it's open. Scan its QR code with a phone on the same Wi-Fi, or type the address it shows. Most computers and iPhones can also open `http://3ds.local/` (`3ds-2.local` if another console already uses the name); some Android phones can't, which is why the QR code uses the IP address. Paste links into the page and press **Send to 3DS**. FBI's `servefiles.py`, `sendurls.py` and Boop send to port 5000 as they did with FBI.
+**Receive** listens for links and files while it's open. Scan its QR code with a phone on the same Wi-Fi, or type the address it shows into a browser. Most computers and iPhones can also open `http://3ds.local/` (`3ds-2.local` if another console already uses the name); some Android phones can't, which is why the QR code uses the address. Paste links into the page's **Send Links** and press **Send**. FBI's `servefiles.py`, `sendurls.py` and Boop take the same address, as they did with FBI. CIAs they send install without a copy being kept, or download instead if you choose.
 
-The page's **Files** tab is a file manager for the SD card, with no FTP app needed. The first time a device opens it, the console asks whether to allow that device, and the answer lasts until you leave Receive. From the page you can:
+A website can send a link as well, with `http://3ds.local/send?links=<link>` (the link URL-encoded), at most 20 links at once. Before it asks, the console checks where each link leads once its redirects are followed, and names that host. A link never leads back to the console, and one from another site never into your home network. Links from anywhere but 3dsDL's own page start on **Cancel**, since a site can send them without being asked. After you cancel a device's links, its next ones offer **Don't Allow**, which turns that device's links away until you leave Receive (its use of the files is asked about separately). Three more fields say where links go:
 
-- upload files or whole folders with the buttons or by dropping them on the page, up to the 4 GiB a FAT32 card allows, with progress, speed and cancel for each file;
-- download files, open pictures and text in the browser, and edit text files in place;
-- make folders, rename, move and delete, one entry or several at once;
+- `&folder=/3ds/<app>/` saves apps (`.3dsx`, `.cia`) and archives in `/3ds/` or `/cias/`, or one folder in them, instead of the Download Folder. Anything else the link turns out to be still goes to the Download Folder, and any other folder is refused.
+- `&replace=1`, with a folder, asks whether a `.3dsx` or `.cia` replaces an older copy of the same app: the same title ID, or the same title and publisher. A different app with the same name keeps both, without asking.
+- `&extract=1` on a link to an archive asks whether to extract it into one folder in `/3ds/`: the app in the archive's own `3ds` folder, its one top folder, or all of it in a folder of its name. A folder already there must hold the same app, and the question says what the archive adds to it. Nothing already there is overwritten, and a loose file goes into `/3ds/` itself only if it is a `.3dsx` or `.cia`; an app the archive updates is put beside the old one and gets the same question as `&replace=1`.
+
+A file that ends up coming from another site than the one its link was checked to lead to goes to the Download Folder, without any of this. **Add to Queue** keeps only the folder.
+
+Everything that comes in or goes out stays listed on the touch screen until 3dsDL closes, newest first: each file, each folder dropped on the page as one row, and each link, with how it went. Open a row to see where it was saved and who sent it, to install a CIA, or to show it in Files.
+
+The page is also a file browser for the SD card, with no FTP app needed: the SD card's usual folders and Files' favourites on the left, the folder in the middle, and what is selected on the right (on a phone the left side slides in, and a bar at the bottom holds the actions). The first time a device opens a folder, the console asks whether to allow that device, and the answer lasts until you leave Receive. From the page you can:
+
+- upload files or whole folders with **Upload** or by dropping them on the folder or on a folder in the sidebar, up to the 4 GiB a FAT32 card allows, with progress, speed and cancel for each file under **Transfers**;
+- download files, open pictures in the browser, and edit text and config files in a code editor with line numbers, colours for INI, JSON, XML, Lua and other formats, and search and replace (<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>F</kbd>, and <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>S</kbd> to save);
+- select several entries with Shift and Cmd or Ctrl clicks, a box drawn with the mouse, or a long press on a phone;
+- move or copy them with **Move To** and **Copy To**, which pick the folder in columns, by dragging them onto a folder (hold Option, or Ctrl on Windows, to copy), or with cut, copy and paste on the keyboard. When names are already taken the page asks once: **Skip**, **Keep Both**, or **Replace**, which merges a folder into one of the same name;
+- make folders, rename and delete, one entry or several at once;
 - send CIAs to the console to install. With **Offer to install CIAs** ticked, the console asks once a batch of uploads finishes.
 
-The page follows the console: a status at the top says when it is waiting for you to choose on the 3DS, installing or downloading, and how that ended. Tap a file for its details, with the real icon, title, title ID and version for CIAs and homebrew. Uploads sit at the top of the list, with each file shown as soon as it arrives. There is a filter, hidden files, select all, a picture viewer, keyboard shortcuts on a computer, and a warning before you change `boot.firm`, `luma` or `Nintendo 3DS`.
+The page follows the console: the status under 3dsDL's name says when it is waiting for you to choose on the 3DS, installing or downloading, and how that ended. A CIA or homebrew shows its real icon, title, title ID and version. There are icon and list views, sorting by name, kind, size or date, search, hidden files, a picture viewer, keyboard shortcuts on a computer, and a warning before you change `boot.firm`, `luma` or `Nintendo 3DS`.
 
-One transfer runs at a time, and the console shows it on the touch screen and stays out of Sleep Mode until it ends. Uploads go to a hidden `.3dsdl-upload.part` file and only take their real name once every byte has arrived. From a computer, `curl` works too:
+One transfer runs at a time, and the console shows it on the top screen. While the page is sending, reading or comparing files the console stays out of Sleep Mode, also with the lid closed and between the files of a batch, and sleeps half a minute after the last request. Uploads go to a hidden `.3dsdl-upload.part` file and only take their real name once every byte has arrived. From a computer, `curl` works too:
 
 ```sh
 curl -T game.cia -H 'X-Requested-With: 3dsDL' 'http://192.168.1.20/api/file?path=/cia/game.cia'
@@ -35,9 +47,9 @@ curl -T game.cia -H 'X-Requested-With: 3dsDL' 'http://192.168.1.20/api/file?path
 
 ## Files
 
-Files browses the SD card. Tap a row to select it and tap again (or press <kbd>A</kbd>) to open it. Pictures fill the top screen, text and config files open in a line editor, ZIPs show their contents, CIAs and tickets install, and anything else opens as hex.
+Files browses the SD card. Tap a row to select it and tap again (or press <kbd>A</kbd>) to open it. Pictures fill the top screen, text and config files open in a line editor, ZIPs show their contents, CIAs (Azahar's compressed `.zcia` too) and tickets install, and anything else opens as hex.
 
-<kbd>Y</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>SELECT</kbd> marks several entries, and <kbd>START</kbd> has the folder options (paste, new folder or file, hidden files). <kbd>X</kbd> (or Sort at the right of the folder's path) sorts by name, date, size or type, in either direction. Folders always come before files, and sorting by size adds up each folder in the background. Properties adds up a folder or the marked items.
+<kbd>Y</kbd> opens the options for an entry (rename, copy, cut, delete, install, properties, SHA-256), <kbd>SELECT</kbd> or a tap on an entry's icon marks several entries, and <kbd>START</kbd> has the folder options (paste, new folder or file, hidden files). Once something is cut or copied, <kbd>Y</kbd> in any folder starts with Move Here or Paste Here. When names are already taken you answer once for all of them, or for each; a folder meeting a folder of the same name merges into it. <kbd>X</kbd> (or Sort at the right of the folder's path) sorts by name, date, size or type, in either direction. Folders always come before files, and sorting by size adds up each folder in the background. Properties adds up a folder or the marked items.
 
 ## Titles
 
@@ -80,7 +92,6 @@ The language catalog is bundled in the app. English is used when a translation
 is missing, so updating the catalog never makes an older installation unusable.
 | Downloads → Resume Downloads | On | Keeps partial downloads to continue later |
 | Downloads → Max Connections | 4 | The most connections one download is split across, 1 to 4; lower it for servers that refuse several |
-| Downloads → Stay Awake | On | Pauses Sleep Mode so closing the lid doesn't stop Wi-Fi |
 | Downloads → Ask to Extract ZIPs | Off | Asks to extract a ZIP after it downloads |
 | Downloads → After a CIA Downloads | Ask Each Time | Ask, install, install and delete, or keep |
 | Updates → Check at Startup | On | Looks for a new 3dsDL when it opens |

@@ -232,6 +232,17 @@ void drawTopChrome(const std::string &title, Icon icon = Icon::None,
 // default).
 constexpr Rect TopPanel = {17, 69, 366, 156};
 void drawPanel(const Rect &rect = TopPanel);
+// What L or R does, for drawShoulderKeys: a word, an icon, or both.
+struct ShoulderKey {
+    std::string label;
+    Icon icon = Icon::None;
+    u32 iconColor = color::rgb(0xFFFFFF);
+};
+// L's and R's jobs as small grey tabs in the top screen's bottom corners,
+// nearest their buttons and under TopPanel. They name buttons and take no
+// touch, so the bottom screen keeps a way to do the same. A key with
+// neither label nor icon is left out.
+void drawShoulderKeys(const ShoulderKey &left, const ShoulderKey &right = {});
 void drawRecess(const Rect &rect);
 // Centred, wrapped text in a panel; returns the y below it.
 float drawPanelText(const std::string &value, const Rect &rect,
@@ -406,9 +417,24 @@ struct ListItem {
     u32 iconColor = color::IconGrey;
     std::string badge; // replaces detail with a coloured badge
     u32 badgeColor = color::Badge;
+    // A small icon before the detail or badge, such as a favourite's star.
+    Icon flag = Icon::None;
+    u32 flagColor = color::IconGold;
+    // From 0 to 1: a thin bar along the foot of the row, for something on
+    // its way. Below 0 draws none.
+    float progress = -1;
     // Names the row, so the highlight follows it when update reorders the
     // rows; "" for lists that never change while open.
     std::string key;
+};
+
+// An action at the right end of a list's heading, as a key cap and a word
+// like the tabs but plain, such as Files' Sort. Its keys or a tap on it
+// close the list, reporting its key.
+struct HeadingAction {
+    std::string label;
+    std::string key; // its key cap
+    u32 keys = 0;
 };
 
 struct ListSpec {
@@ -417,12 +443,8 @@ struct ListSpec {
     // A small line above the list on the bottom screen, for what the top
     // screen does not already say, such as the folder being browsed.
     std::string heading;
-    // An action at the right end of the heading, as a key cap and a word
-    // like the tabs but plain, such as Files' Sort. Its keys or a tap on it
-    // close the list, reporting its key.
-    std::string headingAction;
-    std::string headingActionKey; // its key cap
-    u32 headingActionKeys = 0;
+    // Actions at the heading's right end, left to right.
+    std::vector<HeadingAction> headingActions;
     std::vector<ListItem> items;
     // For setting choices: taller option buttons, with this index chosen.
     // -1 keeps the usual file-style rows.
@@ -436,9 +458,8 @@ struct ListSpec {
     u32 extraKeys = 0;     // keys besides A and B that close the list
     // A long press on a row reports this key with that row highlighted.
     u32 longPressKey = 0;
-    // A tap highlights a row and a tap on the highlighted row opens it,
-    // instead of every tap opening, for browsing files and folders.
-    bool tapToSelect = false;
+    // A tap on a row's icon reports this key with that row highlighted.
+    u32 iconTapKey = 0;
     // Draws the top screen for the highlighted item (index -1 when empty).
     std::function<void(int)> drawTop;
     // For lists that fill in while open: called every frame before drawing,
@@ -446,6 +467,9 @@ struct ListSpec {
     std::function<bool()> update;
     // While true, a spinner shows that more rows are on their way.
     std::function<bool()> loading;
+    // Called every frame after update: true closes the list with key 0,
+    // such as when what it shows changed underneath and must be read again.
+    std::function<bool()> close;
 };
 
 struct ListResult {
@@ -453,9 +477,13 @@ struct ListResult {
     int index = -1; // highlighted item
 };
 
-// Rows scroll smoothly: drag them, flick them, or move with the D-pad, L
-// and R. Tapping a row opens it (or highlights it, with tapToSelect).
-ListResult runList(const ListSpec &spec, int &cursor);
+// Rows scroll smoothly: drag them, flick them, or move with the D-pad, and
+// with L and R unless the list's keys give them a job. A tap highlights a
+// row and a tap on the highlighted row opens it. offset, when given, is
+// where the rows are scrolled to, below 0 for none yet: the list opens
+// there, with the highlighted row in view, and leaves it there, so a screen
+// that closes the list for a key and opens it again stays in place.
+ListResult runList(const ListSpec &spec, int &cursor, float *offset = nullptr);
 
 // Touch scrolling with momentum for anything taller than its box.
 class Scroller {
@@ -504,19 +532,25 @@ struct ProgressView {
     Icon icon = Icon::Download;
     u32 iconColor = color::IconGreen;
     std::string name;   // the file or title
+    Icon nameIcon = Icon::Package; // beside name when there is no titleIcon
+    u32 nameIconColor = color::Accent;
     std::string source; // under the name: host or version
     std::vector<uint16_t> titleIcon; // 48x48 when a title is known
     float fraction = -1.0f;
     std::string amounts; // "3.10 MiB of 4.42 MiB"
-    std::string speed;   // "1.24 MiB/s, about 1 second left"
-    std::string tag;     // "4 connections"
+    std::string speed;   // "1.24 MiB/s"
+    std::string tag;     // "4 connections", beside the speed
+    std::string left;    // "9 s left" (units::timeLeft), at the line's end
     std::string note;    // green, e.g. "Continuing from 12.0 MiB"
     std::string message; // on the bottom panel: where it goes, or a warning
+    bool cancellable = true; // a Cancel button under the panel
     bool stopping = false;
 };
 
 extern const Rect ProgressCancelButton;
 void drawProgress(const ProgressView &view);
+// Only the top screen's panel of drawProgress, under a title row drawn first.
+void drawProgressPanel(const ProgressView &view);
 
 // A "Please wait..." dialog over the current screens.
 void drawBusy(const std::string &header, const std::string &title);
@@ -527,6 +561,7 @@ struct BusyView {
     bool progress = false; // a bar, filled to fraction, with amount under it
     float fraction = 0;
     std::string amount; // "3 of 12"
+    std::string left;   // "9 s left" (units::timeLeft), across from amount
     bool cancellable = false; // a Cancel button along the bottom of the box
     bool stopping = false;    // it was pressed and the job is finishing
     bool pressed = false;     // it is held down
@@ -554,7 +589,8 @@ struct Notice {
 
 // Slides notice down from under the status bar over whatever the top screen
 // shows, keeps it there for a few seconds and slides it away, the way the
-// HOME Menu shows its notifications. A new notice replaces the current one.
+// HOME Menu shows its notifications. A new notice replaces the current one,
+// in its place when that one is down.
 void notify(const Notice &notice);
 
 // Runs at the start of every frame on the main thread, whichever screen is

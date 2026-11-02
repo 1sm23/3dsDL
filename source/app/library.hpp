@@ -1,5 +1,6 @@
 #pragma once
 
+#include "smdh.hpp"
 #include "titles.hpp"
 
 #include <3ds.h>
@@ -109,9 +110,16 @@ private:
 FS_MediaType mediaOf(const titles::Title &title);
 // The installed title 3dsDL runs as, or 0 for the .3dsx.
 uint64_t runningTitle();
+// The name and icon of installed software. False when it has none, as for
+// DSiWare.
+bool titleSmdh(uint64_t titleId, FS_MediaType media, smdh::Info &info);
 
 bool deleteTitle(const titles::Title &title, bool withTicket,
                  std::string &error);
+// Takes a deleted title out of a complete snapshot, so the lists keep their
+// place instead of reading everything again.
+void forgetTitle(Snapshot &snapshot, const titles::Title &title,
+                 bool withTicket);
 // True when AM describes titleId as installed on the SD card or in system
 // memory, asked for that one title.
 bool installedAnywhere(uint64_t titleId);
@@ -120,8 +128,22 @@ bool installedAnywhere(uint64_t titleId);
 // be read or the sources disagree, rather than guessing.
 bool checkUnusedTickets(std::vector<uint64_t> &unused, std::string &error);
 // Saves the ticket to DeletedTicketsFolder, then deletes it. Nothing is
-// deleted when it cannot be saved.
-bool deleteTicket(uint64_t titleId, std::string &error);
+// deleted when it cannot be saved, and unsaved, when given, then says that
+// was the reason. withoutBackup deletes it without saving it, for when a
+// person was shown that it cannot be and said yes; what it was goes in the
+// folder's log.
+bool deleteTicket(uint64_t titleId, std::string &error, bool *unsaved = nullptr,
+                  bool withoutBackup = false);
+
+// What the console says about a title's ticket, for the question before
+// deleting one that cannot be saved first.
+struct TicketFacts {
+    bool known = false;    // AM described it
+    uint64_t ticketId = 0;
+    uint16_t version = 0;  // the title version it was issued for
+    bool personal = false; // issued to this console: bought on its eShop
+};
+TicketFacts ticketFacts(uint64_t titleId);
 // How many deleted tickets are saved, and putting them all back; restored
 // copies are removed. Returns how many were restored.
 size_t deletedTicketCount();

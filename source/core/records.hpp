@@ -27,7 +27,6 @@ struct Settings {
     // UI language code. English is the default for existing installations.
     std::string language = "en";
     bool resumeDownloads = true;
-    bool keepAwake = true;
     bool offerZipExtraction = false;
     CiaAction afterCiaDownload = CiaAction::Ask;
     // The most connections one download opens, 1 to MaxDownloadConnections.
@@ -46,6 +45,8 @@ struct Settings {
     // UTC offset used when setting the clock from the internet.
     bool timeZoneSet = false;
     int timeZoneMinutes = 0;
+    // Files' favourites, as favorites.hpp keeps them.
+    std::vector<std::string> favorites;
 };
 
 Settings parseSettings(const std::string &contents);

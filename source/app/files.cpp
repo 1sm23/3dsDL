@@ -4,6 +4,7 @@
 #include "app_util.hpp"
 #include "audio_meta.hpp"
 #include "cia.hpp"
+#include "favorites.hpp"
 #include "file_ops.hpp"
 #include "file_types.hpp"
 #include "fs_util.hpp"
@@ -36,6 +37,8 @@ using filetype::Kind;
 using screens::basename;
 using screens::ciaName;
 using screens::drawLabelledPanel;
+using screens::KindLook;
+using screens::lookOf;
 using screens::plural;
 using screens::readArchive;
 using screens::sortDescription;
@@ -45,6 +48,15 @@ using screens::versionRow;
 constexpr uint16_t PictureBackground = 0x0883;
 // Covers sit on white, as title icons do.
 constexpr uint16_t CoverBackground = 0xffff;
+// R's shoulder tab: the star R would add, or the gold one it would take
+// away, brighter on the grey than on a row.
+ui::ShoulderKey starKey(bool starred)
+{
+    ui::ShoulderKey key;
+    key.icon = starred ? ui::Icon::Star : ui::Icon::StarOutline;
+    key.iconColor = starred ? ui::color::rgb(0xFFCC33) : ui::color::rgb(0xFFFFFF);
+    return key;
+}
 // Previews in Files sit on the panel's colour, so transparent parts show it.
 constexpr uint16_t PreviewBackground = 0xdeb3;
 // The box a picture's preview fits in, on the Files top screen.
@@ -66,6 +78,12 @@ std::string folderTitle(const std::string &folder)
 {
     return naming::parentFolder(folder) == folder ? i18n::c("SD Card")
                                                   : fileops::name(folder);
+}
+
+// How favourites name an entry: folders end in '/', as Files browses them.
+std::string favoritePath(const std::string &folder, const fs::Entry &entry)
+{
+    return folder + entry.name + (entry.folder ? "/" : "");
 }
 
 std::string sizeText(int64_t size)
@@ -201,7 +219,7 @@ Details loadDetails(const std::string &path, Kind kind,
         break;
     case Kind::Cia:
         details.ciaReadable =
-            cia::readInfo(path, details.cia, details.error);
+            cia::readInfo(path, details.cia, details.error, true);
         if (details.ciaReadable) {
             details.installed = installer::installedVersion(
                 details.cia.titleId, details.installedVersion);
@@ -227,45 +245,6 @@ Details loadDetails(const std::string &path, Kind kind,
         break;
     }
     return details;
-}
-
-struct KindLook {
-    ui::Icon icon;
-    u32 color;
-};
-
-KindLook lookOf(Kind kind)
-{
-    switch (kind) {
-    case Kind::Folder:
-        return {ui::Icon::Folder, ui::color::IconOrange};
-    case Kind::Cia:
-        return {ui::Icon::Package, ui::color::IconBlue};
-    case Kind::Ticket:
-        return {ui::Icon::Lock, ui::color::IconGrey};
-    case Kind::Homebrew:
-        return {ui::Icon::App, ui::color::IconTeal};
-    case Kind::Smdh:
-        return {ui::Icon::Picture, ui::color::IconTeal};
-    case Kind::CartridgeImage:
-    case Kind::Nds:
-        return {ui::Icon::GameCard, ui::color::IconRed};
-    case Kind::Firm:
-        return {ui::Icon::Chip, ui::color::IconGrey};
-    case Kind::Image:
-        return {ui::Icon::Picture, ui::color::IconPink};
-    case Kind::Text:
-        return {ui::Icon::Text, ui::color::IconGrey};
-    case Kind::Archive:
-        return {ui::Icon::Zip, ui::color::IconGold};
-    case Kind::Audio:
-        return {ui::Icon::Music, ui::color::IconPink};
-    case Kind::Video:
-        return {ui::Icon::Video, ui::color::IconPink};
-    case Kind::Other:
-        break;
-    }
-    return {ui::Icon::File, ui::color::IconGrey};
 }
 
 // The Files top screen: the title row, then a panel about the highlighted
@@ -394,12 +373,13 @@ void drawEntryTop(const std::string &path, const fs::Entry &entry,
         drawEntryPanel(info.smdh.icon, kind, ciaName(info),
                        info.smdh.publisher.empty() ? entry.name
                                                    : info.smdh.publisher,
-                       {{i18n::c("Type"), i18n::t("CIA, {0}", {cia::kindName(cia::kind(info.titleId))})},
+                       {{i18n::c("Type"), i18n::t(info.compressed ? "ZCIA, {0}" : "CIA, {0}",
+                                 {cia::kindName(cia::kind(info.titleId))})},
                         {i18n::c("Version"),
                          versionRow(info.titleId, info.version,
                                     details.installed,
                                     details.installedVersion)},
-                        {i18n::c("Size"), units::bytes(info.fileSize)}});
+                        {i18n::c("Size"), sizeText(entry.size)}});
         return;
     }
     if (kind == Kind::Image) {
@@ -905,14 +885,20 @@ void App::saveIndex()
     fileIndex_.markSaved();
 }
 
-void App::filesScreen()
+void App::filesScreen(const std::string &select)
 {
-    browseFiles();
+    browseFiles(select);
     saveIndex();
 }
 
-void App::browseFiles()
+void App::browseFiles(const std::string &select)
 {
+    std::string landOn; // name to put the cursor on once it has been read
+    if (!select.empty()) {
+        const size_t slash = select.rfind('/');
+        filesFolder_ = select.substr(0, slash + 1);
+        landOn = select.substr(slash + 1);
+    }
     if (filesFolder_.empty() || !fs::directoryExists(filesFolder_)) {
         filesFolder_ = fs::directoryExists(settings_.destination)
             ? naming::normaliseFolder(settings_.destination)
@@ -920,7 +906,7 @@ void App::browseFiles()
     }
     std::string &current = filesFolder_;
     int cursor = 0;
-    std::string landOn; // name to put the cursor on once it has been read
+    float scroll = -1; // where the rows were, kept while the folder stays
     std::vector<std::string> marked;
     std::map<std::string, Details> details;
 
@@ -992,7 +978,9 @@ void App::browseFiles()
         if (reload) {
             reload = false;
             if (current != "sdmc:/" && !fs::directoryExists(current)) {
-                current = "sdmc:/";
+                while (current != "sdmc:/" && !fs::directoryExists(current)) {
+                    current = naming::parentFolder(current);
+                }
                 cursor = 0;
                 marked.clear();
             }
@@ -1013,6 +1001,16 @@ void App::browseFiles()
             fs::sortEntries(entries, settings_.fileSort, settings_.fileSortReverse);
             waiting.clear();
             incoming.clear();
+            if (readFolder != current) {
+                // Another folder opens at its top, with nothing marked.
+                cursor = 0;
+                scroll = -1;
+                marked.clear();
+            }
+            if (!filesLandOn_.empty()) {
+                landOn = filesLandOn_;
+                filesLandOn_.clear();
+            }
             readFolder = current;
             complete = false;
             sizer.stop();
@@ -1050,18 +1048,19 @@ void App::browseFiles()
         ui::ListSpec spec;
         spec.title = current;
         spec.heading = current;
-        spec.tapToSelect = true;
         spec.emptyText = i18n::c("This folder is empty.");
         spec.back = atRoot ? i18n::c("Close") : i18n::c("Back");
         spec.action = i18n::c("Options");
         spec.actionKey = "Y";
         spec.actionKeys = KEY_Y;
         spec.longPressKey = KEY_Y;
-        spec.extraKeys = KEY_SELECT | KEY_START;
-        spec.headingAction = i18n::c("Sort");
+        // A tap on an entry's icon marks it, as SELECT does.
+        spec.iconTapKey = KEY_SELECT;
+        // L opens Favourites and R stars the highlighted entry, as the top
+        // screen's corners say.
+        spec.extraKeys = KEY_SELECT | KEY_START | KEY_L | KEY_R;
         // X sorts, as on the Software lists.
-        spec.headingActionKey = "X";
-        spec.headingActionKeys = KEY_X;
+        spec.headingActions = {{i18n::c("Sort"), "X", KEY_X}};
         const auto hint = [&]() {
             return !marked.empty() ? i18n::t("{0} marked", {std::to_string(marked.size())})
                  : !clipboard_.empty()
@@ -1070,6 +1069,10 @@ void App::browseFiles()
                      : "";
         };
         spec.hint = hint();
+        std::set<std::string> starred;
+        for (const std::string &favorite : settings_.favorites) {
+            starred.insert(favorites::key(favorite));
+        }
         const auto buildItems = [&]() {
             spec.items.clear();
             spec.items.reserve(entries.size());
@@ -1083,10 +1086,15 @@ void App::browseFiles()
                 item.iconColor = look.color;
                 item.labelColor = entry.name[0] == '.' ? ui::color::InkSoft
                                                        : ui::color::InkButton;
+                if (!starred.empty() &&
+                    starred.count(favorites::key(favoritePath(current, entry))) > 0) {
+                    item.flag = ui::Icon::Star;
+                }
+                // A marked entry's icon, where a tap marks it, is a check.
                 item.marked = markedSet.count(current + entry.name) > 0;
                 if (item.marked) {
-                    item.badge = i18n::c("Marked");
-                    item.badgeColor = ui::color::Tag;
+                    item.icon = ui::Icon::Check;
+                    item.iconColor = ui::color::Tag;
                 }
                 spec.items.push_back(item);
             }
@@ -1219,6 +1227,23 @@ void App::browseFiles()
             return !complete || (bySize && sizing && !sizer.finished()) ||
                    (byDate && dating && !dates.finished());
         };
+        // Opened from Receive, the folder is read again when the page
+        // changes something in it, or the folder itself. A batch of uploads
+        // changes it many times, so it waits for the last read to finish
+        // and the rows to rest for a second, leaving the card to the page.
+        bool pageChanged = false;
+        spec.close = [&]() {
+            if (!takePageChanges_) {
+                return false;
+            }
+            const std::string here = text::lower(current);
+            for (const std::string &path : takePageChanges_()) {
+                pageChanged = pageChanged ||
+                              fileops::isInside(here, text::lower(path)) ||
+                              text::lower(naming::parentFolder(path)) == here;
+            }
+            return pageChanged && complete && osGetTime() - shownAt >= 1000;
+        };
 
         spec.drawTop = [&](int index) {
             const std::string title =
@@ -1239,11 +1264,15 @@ void App::browseFiles()
                         clipboardFact(clipboard_.size(), clipboardCut_));
                 }
                 ui::drawFacts(facts);
+                ui::drawShoulderKeys({i18n::c("Favourites")});
                 preview.show("");
                 return;
             }
             const fs::Entry &entry = entries[index];
             const std::string path = current + entry.name;
+            ui::drawShoulderKeys(
+                {i18n::c("Favourites")},
+                starKey(starred.count(favorites::key(favoritePath(current, entry))) > 0));
             auto found = details.find(path);
             if (found == details.end()) {
                 const Kind kind = kindOf(entry);
@@ -1266,7 +1295,7 @@ void App::browseFiles()
                          preview.show(kindOf(entry) == Kind::Image ? path : ""));
         };
 
-        const ui::ListResult result = ui::runList(spec, cursor);
+        const ui::ListResult result = ui::runList(spec, cursor, &scroll);
         // Whatever comes next has the SD card to itself; the sizes still
         // missing are added up again on the way back. What changed on the
         // card before this point is caught now, before the next action.
@@ -1285,7 +1314,11 @@ void App::browseFiles()
             onEntry ? current + entries[position].name : "";
 
         if (result.key == 0) {
-            return;
+            if (!pageChanged) {
+                return;
+            }
+            reload = true;
+            continue;
         }
         if (result.key == KEY_B) {
             if (atRoot) {
@@ -1311,6 +1344,16 @@ void App::browseFiles()
                 cursor = std::min(cursor + 1,
                                   static_cast<int>(entries.size()) - 1);
             }
+            continue;
+        }
+        if (result.key == KEY_R) {
+            if (onEntry) {
+                toggleFavorite(favoritePath(current, entries[position]));
+            }
+            continue;
+        }
+        if (result.key == KEY_L) {
+            reload = favoritesScreen();
             continue;
         }
         // A new order is sorted in memory, keeping the highlighted entry;
@@ -1340,6 +1383,7 @@ void App::browseFiles()
         };
         // What an action changed, for the index to forget: this folder,
         // what it acted on, and where anything moved here came from.
+        const std::string folderBefore = current; // options can leave it
         const std::vector<std::string> clipboardBefore = clipboard_;
         const bool cutBefore = clipboardCut_;
         const auto noteChanges = [&](bool changed,
@@ -1355,7 +1399,7 @@ void App::browseFiles()
                     sdChanged(path);
                 }
             }
-            sdChanged(current);
+            sdChanged(folderBefore);
         };
         if (result.key == KEY_X) {
             afterOptions(sortScreen(current));
@@ -1399,6 +1443,134 @@ void App::browseFiles()
         landOn = entry.name;
         reload = true;
     }
+}
+
+void App::toggleFavorite(const std::string &path)
+{
+    const bool added = favorites::toggle(settings_.favorites, path);
+    persistSettings();
+    ui::Notice notice;
+    notice.title = added ? i18n::c("Added to Favourites") : i18n::c("Removed from Favourites");
+    notice.text = fileops::name(path);
+    notice.icon = ui::Icon::Star;
+    notice.iconColor = ui::color::IconGold;
+    ui::notify(notice);
+}
+
+bool App::favoritesScreen()
+{
+    int cursor = 0;
+    float scroll = -1;
+    PreviewLoader preview;
+    std::map<std::string, Details> details;
+    while (ui::keepRunning()) {
+        // Each is looked for once as the list opens, not every frame.
+        struct Row {
+            std::string favorite;
+            std::string path; // without the '/' a folder's favourite ends in
+            fs::Entry entry;
+            bool present = false;
+        };
+        std::vector<Row> rows;
+        for (const std::string &favorite : settings_.favorites) {
+            Row row;
+            row.favorite = favorite;
+            row.entry.folder = favorite.back() == '/';
+            row.path = row.entry.folder ? favorite.substr(0, favorite.size() - 1)
+                                        : favorite;
+            row.entry.name = fileops::name(row.path);
+            if (row.entry.folder) {
+                row.present = fs::directoryExists(row.path);
+                fileops::Totals totals;
+                if (fileIndex_.total(row.path, totals)) {
+                    row.entry.size = static_cast<int64_t>(totals.bytes);
+                }
+            } else {
+                row.entry.size = fs::fileSize(row.path);
+                row.present = row.entry.size >= 0;
+            }
+            rows.push_back(row);
+        }
+
+        ui::ListSpec spec;
+        spec.title = i18n::c("Favourites");
+        spec.emptyText = i18n::c("Press R on a folder or file to add it.");
+        for (const Row &row : rows) {
+            ui::ListItem item;
+            const KindLook look = lookOf(kindOf(row.entry));
+            item.key = row.favorite;
+            item.label = row.entry.name;
+            item.icon = look.icon;
+            item.iconColor = look.color;
+            if (row.present) {
+                item.detail = folderTitle(folderOf(row.path));
+            } else {
+                item.labelColor = ui::color::InkSoft;
+                item.badge = i18n::c("Missing");
+                item.badgeColor = ui::color::Neutral;
+            }
+            spec.items.push_back(item);
+        }
+        if (!rows.empty()) {
+            spec.action = i18n::c("Remove");
+            spec.actionKey = "R";
+            spec.actionKeys = KEY_R;
+        }
+        spec.extraKeys = KEY_L; // L closes what it opened
+        spec.drawTop = [&](int index) {
+            ui::drawTopChrome(i18n::c("Favourites"), ui::Icon::Star, ui::color::IconGold);
+            if (index < 0 || index >= static_cast<int>(rows.size())) {
+                ui::drawPanel();
+                ui::drawEmblem(ui::Icon::Star, ui::color::IconGold);
+                preview.show("");
+                return;
+            }
+            ui::drawShoulderKeys({}, starKey(true)); // R takes it off the list
+            const Row &row = rows[index];
+            const Kind kind = kindOf(row.entry);
+            if (!row.present) {
+                drawEntryPanel({}, kind, row.entry.name, row.favorite, {});
+                preview.show("");
+                return;
+            }
+            auto found = details.find(row.path);
+            if (found == details.end()) {
+                found = details.emplace(row.path, loadDetails(row.path, kind)).first;
+            }
+            drawEntryTop(row.path, row.entry, found->second,
+                         preview.show(kind == Kind::Image ? row.path : ""));
+        };
+
+        const ui::ListResult result = ui::runList(spec, cursor, &scroll);
+        preview.stop();
+        const bool onRow =
+            result.index >= 0 && result.index < static_cast<int>(rows.size());
+        if (result.key == KEY_R && onRow) {
+            toggleFavorite(rows[result.index].favorite);
+            continue;
+        }
+        if (result.key != KEY_A || !onRow) {
+            return false;
+        }
+        const Row &row = rows[result.index];
+        if (row.present) {
+            // A folder opens; a file is highlighted in its folder.
+            const bool folder = row.entry.folder;
+            filesFolder_ = folder ? row.favorite : folderOf(row.favorite);
+            filesLandOn_ = folder ? "" : row.entry.name;
+            return true;
+        }
+        ui::Dialog dialog;
+        dialog.header = i18n::c("Favourites");
+        dialog.title = i18n::t("{0} is no longer on the SD card.", {row.entry.name});
+        dialog.body.push_back({row.favorite, ui::color::Muted, 0.46f, 2});
+        dialog.buttons = {i18n::c("Remove"), i18n::c("Keep")};
+        dialog.cancelButton = 1;
+        if (ui::choose(dialog) == 0) {
+            toggleFavorite(row.favorite);
+        }
+    }
+    return false;
 }
 
 void App::openFile(const std::string &path,
@@ -1469,7 +1641,10 @@ void App::ciaOptions(const std::string &path)
 {
     cia::Info info;
     std::string error;
-    if (!cia::readInfo(path, info, error)) {
+    if (!readCia(path, info, error)) {
+        if (error.empty()) {
+            return;
+        }
         ui::Dialog dialog;
         dialog.header = i18n::c("CIA Installer");
         dialog.title = i18n::c("This CIA cannot be installed.");
@@ -1590,6 +1765,7 @@ bool App::entryOptions(const std::string &folder,
         return folderOptions(folder, entries, complete, marked);
     }
     enum class Action {
+        Paste,
         Open,
         Install,
         InstallDelete,
@@ -1608,6 +1784,7 @@ bool App::entryOptions(const std::string &folder,
         Checksum,
         Mark,
         ClearMarks,
+        Favorite,
         Folder
     };
     std::vector<ui::MenuItem> items;
@@ -1643,7 +1820,12 @@ bool App::entryOptions(const std::string &folder,
     }
     const bool isMarked =
         single && std::find(marked.begin(), marked.end(), path) != marked.end();
+    const std::string favorite = path + (isFolder ? "/" : "");
 
+    // What was cut or copied goes into this folder in one step from here.
+    if (!clipboard_.empty()) {
+        add(clipboardCut_ ? i18n::c("Move Here") : i18n::c("Paste Here"), Action::Paste);
+    }
     if (single && kind == Kind::Cia) {
         add(i18n::c("Install"), Action::Install);
         add(i18n::c("Install and Delete"), Action::InstallDelete);
@@ -1679,6 +1861,9 @@ bool App::entryOptions(const std::string &folder,
     }
     if (single) {
         add(isMarked ? i18n::c("Unmark") : i18n::c("Mark"), Action::Mark);
+        add(favorites::contains(settings_.favorites, favorite) ? i18n::c("Unfavourite")
+                                                               : i18n::c("Favourite"),
+            Action::Favorite);
     } else {
         add(i18n::c("Clear Marks"), Action::ClearMarks);
     }
@@ -1736,6 +1921,8 @@ bool App::entryOptions(const std::string &folder,
     }
 
     switch (actions[choice]) {
+    case Action::Paste:
+        return pasteInto(folder);
     case Action::Open:
         if (isFolder) {
             filesFolder_ = path + "/";
@@ -1793,6 +1980,9 @@ bool App::entryOptions(const std::string &folder,
     case Action::ClearMarks:
         marked.clear();
         return false;
+    case Action::Favorite:
+        toggleFavorite(favorite);
+        return false;
     case Action::Folder:
         return folderOptions(folder, entries, complete, marked);
     }
@@ -1813,6 +2003,8 @@ bool App::folderOptions(const std::string &folder,
         MarkAll,
         ClearMarks,
         InstallAll,
+        Favorite,
+        Favorites,
         Properties
     };
     std::vector<ui::MenuItem> items;
@@ -1849,6 +2041,13 @@ bool App::folderOptions(const std::string &folder,
     if (cias > 0) {
         add(i18n::c("Install All CIAs"), Action::InstallAll, complete);
     }
+    const bool atRoot = naming::parentFolder(folder) == folder;
+    if (!atRoot) {
+        add(favorites::contains(settings_.favorites, folder) ? i18n::c("Unfavourite")
+                                                             : i18n::c("Favourite"),
+            Action::Favorite);
+    }
+    add(i18n::c("Favourites..."), Action::Favorites);
     add(i18n::c("Properties"), Action::Properties);
 
     const std::string name = folderTitle(folder);
@@ -1920,6 +2119,15 @@ bool App::folderOptions(const std::string &folder,
         }
         return false;
     }
+    case Action::Favorite:
+        toggleFavorite(folder);
+        return false;
+    case Action::Favorites:
+        if (favoritesScreen()) {
+            marked.clear();
+            return true;
+        }
+        return false;
     case Action::Properties: {
         std::string path = folder;
         if (path.size() > 6 && path.back() == '/') {
@@ -2003,9 +2211,11 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
     if (paths.size() == 1) {
         cia::Info info;
         std::string error;
-        if (!cia::readInfo(paths.front(), info, error)) {
-            ui::message(i18n::c("Cannot install"), error, ui::Tone::Error,
-                        basename(paths.front()));
+        if (!readCia(paths.front(), info, error)) {
+            if (!error.empty()) {
+                ui::message(i18n::c("Cannot install"), error, ui::Tone::Error,
+                            basename(paths.front()));
+            }
             return;
         }
         installCia(paths.front(), info, deleteAfter, "");
@@ -2022,7 +2232,7 @@ void App::installCias(const std::vector<std::string> &paths, bool deleteAfter)
         cia::Info info;
         std::string error;
         bool already = false;
-        if (cia::readInfo(path, info, error) &&
+        if (readCia(path, info, error) &&
             installCia(path, info, deleteAfter, "", true, &already)) {
             ++(already ? kept : installed);
         } else {
@@ -2057,21 +2267,13 @@ bool App::renameEntry(const std::string &path)
         ui::message(i18n::c("Cannot use that name"), error, ui::Tone::Error, newName);
         return false;
     }
-    const std::string folder = folderOf(path);
-    const std::string target = folder + newName;
-    // FAT ignores case, so "a.txt" to "A.txt" goes through a spare name.
-    if (text::lower(newName) == text::lower(oldName)) {
-        const std::string spare = folder + ".3dsdl-rename-" + oldName;
-        if (!fileops::move(path, spare, error) ||
-            !fileops::move(spare, target, error)) {
-            ui::message(i18n::c("Could not rename"), error, ui::Tone::Error);
-            return true;
-        }
-        return true;
-    }
+    const std::string target = folderOf(path) + newName;
     if (!fileops::move(path, target, error)) {
         ui::message(i18n::c("Could not rename"), error, ui::Tone::Error);
-        return false;
+        return !fileops::exists(path);
+    }
+    if (favorites::moved(settings_.favorites, path, target)) {
+        persistSettings();
     }
     return true;
 }
@@ -2106,7 +2308,7 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
     }
 
     const fileops::Result result = tasks::fileOperation(
-        i18n::c("deleting"), what, folderOf(paths.front()), totals.files, true,
+        "deleting", what, folderOf(paths.front()), totals.files, true,
         [&](fileops::Observer &observer) {
             fileops::Result all;
             uint64_t done = 0;
@@ -2121,16 +2323,25 @@ bool App::deleteEntries(const std::vector<std::string> &paths)
                 }
             }
             return all;
-        },
-        settings_.keepAwake);
+        });
 
-    // Copied entries that no longer exist cannot be pasted.
+    // Copied entries that no longer exist cannot be pasted, and they are
+    // no longer favourites.
     fileops::Lookup lookup;
     clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
                                     [&](const std::string &path) {
                                         return !lookup.exists(path);
                                     }),
                      clipboard_.end());
+    bool unstarred = false;
+    for (const std::string &path : paths) {
+        if (!lookup.exists(path)) {
+            unstarred |= favorites::removed(settings_.favorites, path);
+        }
+    }
+    if (unstarred) {
+        persistSettings();
+    }
     if (result.status == fileops::Status::Failed) {
         ui::message(i18n::c("Delete stopped"), result.message, ui::Tone::Error,
                     i18n::t("{0} deleted before that.", {plural(result.files, "file")}));
@@ -2148,9 +2359,12 @@ bool App::pasteInto(const std::string &folder)
     struct Step {
         std::string source;
         std::string destination;
-        bool replace = false;
+        bool folder = false;
+        bool clash = false;   // something here has its name
+        bool replace = false; // what is here goes, or a folder here is merged
+        bool merge = false;
     };
-    std::vector<Step> steps;
+    std::vector<Step> planned;
     std::vector<std::string> problems;
     // From the folders' listings, with each destination claimed as it is
     // chosen, so two items never pick the same free name.
@@ -2159,15 +2373,19 @@ bool App::pasteInto(const std::string &folder)
         return lookup.exists(path);
     };
 
+    // Everything is planned before anything is asked, so the clashes can
+    // be asked about together.
     for (const std::string &source : clipboard_) {
         if (!lookup.exists(source)) {
             problems.push_back(i18n::t("{0} no longer exists.", {fileops::name(source)}));
             continue;
         }
         const std::string name = fileops::name(source);
-        Step step {source, folder + name, false};
-        const bool folderSource = lookup.isFolder(source);
-        if (folderSource && fileops::isInside(step.destination, source)) {
+        Step step;
+        step.source = source;
+        step.destination = folder + name;
+        step.folder = lookup.isFolder(source);
+        if (step.folder && fileops::isInside(step.destination, source)) {
             problems.push_back(i18n::t("{0} cannot go inside itself.", {name}));
             continue;
         }
@@ -2179,28 +2397,110 @@ bool App::pasteInto(const std::string &folder)
                 // Copying into its own folder makes "name (1)".
                 step.destination = naming::unusedPath(folder, name, exists);
             } else {
-                ui::Dialog dialog;
-                dialog.header = i18n::c("paste");
-                dialog.title = i18n::t("{0} is already here.", {name});
-                dialog.tone = ui::Tone::Warning;
-                dialog.buttons = {i18n::c("Keep Both"), i18n::c("Replace"), i18n::c("Skip")};
-                dialog.dangerous = 1;
-                dialog.cancelButton = 2;
-                const int answer = ui::choose(dialog);
-                if (answer == 0) {
-                    step.destination = naming::unusedPath(folder, name, exists);
-                } else if (answer == 1) {
-                    step.replace = true;
-                } else {
-                    continue;
-                }
+                step.clash = true;
+                step.merge = step.folder && lookup.isFolder(step.destination);
             }
         }
         if (step.destination.empty()) {
             problems.push_back(i18n::t("No free name was found for {0}.", {name}));
             continue;
         }
-        lookup.claim(step.destination, folderSource);
+        if (!step.clash) {
+            lookup.claim(step.destination, step.folder);
+        }
+        planned.push_back(step);
+    }
+
+    enum class Answer { KeepBoth, Replace, Skip };
+    const auto askOne = [&](const Step &step) {
+        ui::Dialog dialog;
+        dialog.header = i18n::c("paste");
+        dialog.title = i18n::t("{0} is already here.", {fileops::name(step.source)});
+        dialog.tone = ui::Tone::Warning;
+        dialog.buttons = {i18n::c("Keep Both"), step.merge ? i18n::c("Merge") : i18n::c("Replace"), i18n::c("Skip")};
+        dialog.dangerous = 1;
+        dialog.cancelButton = 2;
+        const int answer = ui::choose(dialog);
+        return answer == 0 ? Answer::KeepBoth
+             : answer == 1 ? Answer::Replace
+                           : Answer::Skip;
+    };
+    std::vector<size_t> clashes;
+    size_t merges = 0;
+    for (size_t index = 0; index < planned.size(); ++index) {
+        if (planned[index].clash) {
+            clashes.push_back(index);
+            merges += planned[index].merge ? 1 : 0;
+        }
+    }
+    // One answer for all of them, or one each.
+    std::vector<Answer> answers(planned.size(), Answer::Replace);
+    if (clashes.size() == 1) {
+        answers[clashes[0]] = askOne(planned[clashes[0]]);
+    } else if (clashes.size() > 1) {
+        const std::vector<ui::MenuItem> items = {
+            {merges == 0               ? i18n::c("Replace All")
+             : merges == clashes.size() ? i18n::c("Merge All")
+                                        : i18n::c("Replace and Merge"),
+             true, true},
+            {i18n::c("Keep Both"), false, true},
+            {i18n::c("Skip These"), false, true},
+            {i18n::c("Ask for Each"), false, true}};
+        const int choice = ui::menu(
+            items,
+            [&](int) {
+                ui::drawTopChrome(folderTitle(folder), ui::Icon::Folder,
+                                  ui::color::IconOrange);
+                ui::drawPanel();
+                std::vector<ui::Fact> facts = {
+                    {i18n::c("Already here"), plural(clashes.size(), "item"),
+                     ui::color::Badge}};
+                for (size_t shown = 0; shown < clashes.size() && shown < 5;
+                     ++shown) {
+                    const Step &step = planned[clashes[shown]];
+                    facts.push_back({step.folder ? i18n::c("Folder") : i18n::c("File"),
+                                     fileops::name(step.source)});
+                }
+                if (clashes.size() > 5) {
+                    facts.push_back({i18n::c("And"), i18n::t("{0} more", {std::to_string(clashes.size() - 5)}),
+                                     ui::color::Neutral});
+                }
+                ui::drawFacts(facts);
+            },
+            i18n::c("Cancel"));
+        if (choice < 0) {
+            return false;
+        }
+        for (const size_t index : clashes) {
+            answers[index] = choice == 0   ? Answer::Replace
+                           : choice == 1   ? Answer::KeepBoth
+                           : choice == 2   ? Answer::Skip
+                                           : askOne(planned[index]);
+            if (!ui::keepRunning()) {
+                return false;
+            }
+        }
+    }
+    std::vector<Step> steps;
+    for (size_t index = 0; index < planned.size(); ++index) {
+        Step step = planned[index];
+        if (step.clash) {
+            if (answers[index] == Answer::Skip) {
+                continue;
+            }
+            if (answers[index] == Answer::KeepBoth) {
+                step.destination = naming::unusedPath(
+                    folder, fileops::name(step.source), exists);
+                step.merge = false;
+                if (step.destination.empty()) {
+                    problems.push_back(i18n::t("No free name was found for {0}.", {fileops::name(step.source)}));
+                    continue;
+                }
+            } else {
+                step.replace = true;
+            }
+            lookup.claim(step.destination, step.folder);
+        }
         steps.push_back(step);
     }
 
@@ -2231,7 +2531,7 @@ bool App::pasteInto(const std::string &folder)
     if (!steps.empty()) {
         const bool cut = clipboardCut_;
         result = tasks::fileOperation(
-            cut ? i18n::c("moving") : i18n::c("copying"), plural(steps.size(), "item"), folder,
+            cut ? "moving" : "copying", plural(steps.size(), "item"), folder,
             bytes, false,
             [&](fileops::Observer &observer) {
                 fileops::Result all;
@@ -2240,6 +2540,18 @@ bool App::pasteInto(const std::string &folder)
                     if (observer.cancelRequested()) {
                         all.status = fileops::Status::Cancelled;
                         break;
+                    }
+                    if (step.replace && step.merge) {
+                        const fileops::Result part =
+                            fileops::merge(step.source, step.destination, cut,
+                                           observer, done, bytes);
+                        all.files += part.files;
+                        if (part.status != fileops::Status::Ok) {
+                            all.status = part.status;
+                            all.message = part.message;
+                            break;
+                        }
+                        continue;
                     }
                     if (step.replace) {
                         uint64_t removed = 0;
@@ -2271,12 +2583,17 @@ bool App::pasteInto(const std::string &folder)
                     }
                 }
                 return all;
-            },
-            settings_.keepAwake);
+            });
     }
 
+    // Files a merge replaced may have kept their sizes, so their dates go.
+    for (const Step &step : steps) {
+        if (step.replace && step.merge) {
+            fileIndex_.rewritten(step.destination);
+        }
+    }
     // Moved items are no longer where the clipboard points; anything that
-    // did not move stays ready to try again.
+    // did not move stays ready to try again. Favourites follow what moved.
     if (clipboardCut_) {
         fileops::Lookup moved;
         clipboard_.erase(std::remove_if(clipboard_.begin(), clipboard_.end(),
@@ -2284,6 +2601,22 @@ bool App::pasteInto(const std::string &folder)
                                             return !moved.exists(path);
                                         }),
                          clipboard_.end());
+        bool followed = false;
+        for (const Step &step : steps) {
+            if (!moved.exists(step.source)) {
+                // What it replaced was deleted; a folder it merged into
+                // is still there.
+                if (step.replace && !step.merge) {
+                    followed |= favorites::removed(settings_.favorites,
+                                                   step.destination);
+                }
+                followed |= favorites::moved(settings_.favorites, step.source,
+                                             step.destination);
+            }
+        }
+        if (followed) {
+            persistSettings();
+        }
     }
     if (result.status == fileops::Status::Failed) {
         problems.insert(problems.begin(), result.message);
@@ -3144,6 +3477,14 @@ void App::textEditor(const std::string &path)
 
     constexpr float LinePitch = 16;
     constexpr float EditorScale = 0.38f;
+    // Lines are drawn up to this many bytes, so a huge one does not slow
+    // every frame; the keyboard takes 1900 at most anyway.
+    constexpr size_t ShownBytes = 2048;
+    const auto shown = [](const std::string &line) {
+        return line.size() <= ShownBytes
+                   ? line
+                   : text::truncateUtf8(line, ShownBytes) + "...";
+    };
     const ui::Rect paper = {10, 50, 380, 184};
     const float viewport = paper.h - 4;
     int cursor = 0;
@@ -3326,7 +3667,7 @@ void App::textEditor(const std::string &path)
                           0, ui::color::rgb(0xE8E1BE));
             ui::drawText(std::to_string(index + 1), paper.x + 26, y + 2,
                          0.3f, ui::color::rgb(0xA79D70), C2D_AlignRight);
-            const std::string &line = document.lines[index];
+            const std::string line = shown(document.lines[index]);
             // The current line scrolls to show all of it; the rest are cut.
             if (index == cursor && !scroller.dragging()) {
                 ui::drawMarquee(line, paper.x + 36, y, EditorScale,
@@ -3358,7 +3699,7 @@ void App::textEditor(const std::string &path)
         ui::drawText(i18n::t("Line {0} of {1}", {std::to_string(cursor + 1), std::to_string(count)}),
                      recess.x + 10, recess.y + 5, ui::type::Tiny,
                      ui::color::InkSoft);
-        const std::string &current = document.lines[cursor];
+        const std::string current = shown(document.lines[cursor]);
         ui::drawWrapped(current.empty() ? i18n::c("(empty line)") : current,
                         recess.x + 10, recess.y + 24, ui::type::Small,
                         current.empty() ? ui::color::InkSoft

@@ -1,6 +1,8 @@
 #include "records.hpp"
 
 #include "i18n.hpp"
+#include "favorites.hpp"
+#include "naming.hpp"
 #include "text.hpp"
 #include "timezone.hpp"
 
@@ -175,8 +177,6 @@ Settings parseSettings(const std::string &contents)
         } else if (key == "resume_downloads") {
             settings.resumeDownloads =
                 parseBool(value, settings.resumeDownloads);
-        } else if (key == "keep_awake") {
-            settings.keepAwake = parseBool(value, settings.keepAwake);
         } else if (key == "offer_zip_extraction") {
             settings.offerZipExtraction =
                 parseBool(value, settings.offerZipExtraction);
@@ -232,6 +232,9 @@ Settings parseSettings(const std::string &contents)
                 settings.timeZoneSet = true;
                 settings.timeZoneMinutes = static_cast<int>(minutes);
             }
+        } else if (key == "favorite" && naming::isSdPath(value) &&
+                   !favorites::contains(settings.favorites, value)) {
+            settings.favorites.push_back(value);
         }
     });
     return settings;
@@ -248,8 +251,6 @@ std::string serializeSettings(const Settings &settings)
               "\n";
     output += std::string("resume_downloads=") +
               (settings.resumeDownloads ? "1" : "0") + "\n";
-    output += std::string("keep_awake=") + (settings.keepAwake ? "1" : "0") +
-              "\n";
     output += std::string("offer_zip_extraction=") +
               (settings.offerZipExtraction ? "1" : "0") + "\n";
     output += std::string("after_cia_download=") +
@@ -270,6 +271,9 @@ std::string serializeSettings(const Settings &settings)
     if (settings.timeZoneSet) {
         output += "time_zone_minutes=" +
                   std::to_string(settings.timeZoneMinutes) + "\n";
+    }
+    for (const std::string &favorite : settings.favorites) {
+        output += "favorite=" + text::singleLine(favorite) + "\n";
     }
     return output;
 }

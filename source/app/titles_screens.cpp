@@ -5,6 +5,8 @@
 #include "fs_util.hpp"
 #include "installer.hpp"
 #include "library.hpp"
+#include "saves.hpp"
+#include "storage.hpp"
 #include "tasks.hpp"
 #include "ui.hpp"
 #include "text.hpp"
@@ -12,6 +14,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <map>
 #include <set>
 
 // Titles: installed software, updates and DLC, extra data, tickets, seeds
@@ -132,6 +135,12 @@ void App::pollLibrary()
 {
     if (libraryLoader_.take(library_)) {
         ++libraryGeneration_;
+        // Kept for when the software is gone and only a ticket or extra
+        // data is left to name.
+        if (library_.complete && titles::rememberNames(knownNames_, library_.titles) &&
+            storage::saveNames(knownNames_)) {
+            sdChanged(storage::DataFolder);
+        }
     }
 }
 
@@ -621,7 +630,12 @@ void App::titleOptions(titles::Title title)
         if (!deleted) {
             ui::message(i18n::c("Not Deleted"), error, ui::Tone::Error);
         }
-        startLibrary();
+        if (deleted && library_.complete) {
+            library::forgetTitle(library_, title, withTicket);
+            ++libraryGeneration_;
+        } else {
+            startLibrary();
+        }
         return;
     }
     }
@@ -752,18 +766,179 @@ void App::extraDataScreen()
     }
 }
 
+namespace {
+
+// Checkpoint's backup folder names, which name a title by its unique ID.
+std::vector<std::string> checkpointFolders()
+{
+    std::vector<std::string> folders;
+    for (const char *root : {saves::SavesRoot, saves::ExtDataRoot}) {
+        for (const fs::Entry &entry : fs::listEntries(root, nullptr, true, false)) {
+            if (entry.folder) {
+                folders.push_back(entry.name);
+            }
+        }
+    }
+    return folders;
+}
+
+// A CIA on the SD card that would bring a title's ticket back, where its
+// files are usually kept: its path and the name inside it.
+struct FoundCia {
+    std::string path;
+    std::string name;
+};
+
+std::map<uint64_t, FoundCia> ciasOnCard(const std::string &downloadFolder)
+{
+    std::map<uint64_t, FoundCia> found;
+    std::set<std::string> seen;
+    for (const std::string &folder : {std::string("sdmc:/cias/"), downloadFolder}) {
+        if (!seen.insert(text::lower(folder)).second) {
+            continue;
+        }
+        for (const fs::Entry &entry : fs::listEntries(folder, nullptr, false, false)) {
+            if (entry.folder || !text::endsWithNoCase(entry.name, ".cia")) {
+                continue;
+            }
+            cia::Info info;
+            std::string error;
+            const std::string path = folder + entry.name;
+            if (cia::readInfo(path, info, error, true) && found.count(info.titleId) == 0) {
+                found[info.titleId] = {path, info.smdh.shortName};
+            }
+        }
+    }
+    return found;
+}
+
+} // namespace
+
+std::string App::softwareName(uint64_t titleId, const titles::Index &index,
+                              const std::vector<std::string> &folders) const
+{
+    const std::string shown = titles::displayName(titleId, index);
+    if (shown != cia::titleIdText(titleId)) {
+        return shown;
+    }
+    const std::string remembered = titles::rememberedName(titleId, knownNames_);
+    if (!remembered.empty()) {
+        return remembered;
+    }
+    for (const std::string &folder : folders) {
+        const std::string name = saves::nameFromFolder(cia::baseTitle(titleId), folder);
+        if (!name.empty()) {
+            return name;
+        }
+    }
+    return "";
+}
+
+bool App::confirmUnsavedTickets(const std::vector<uint64_t> &tickets,
+                                const std::string &why)
+{
+    struct Known {
+        uint64_t id = 0;
+        std::string name;
+        library::TicketFacts facts;
+        std::string cia; // a CIA that brings it back, or ""
+    };
+    std::vector<Known> known;
+    tasks::busy(i18n::c("Tickets"), i18n::c("Looking at the tickets..."), [&]() {
+        const titles::Index index = titles::indexOf(library_.titles);
+        const std::vector<std::string> folders = checkpointFolders();
+        const std::map<uint64_t, FoundCia> cias = ciasOnCard(settings_.destination);
+        for (const uint64_t id : tickets) {
+            Known ticket;
+            ticket.id = id;
+            ticket.name = softwareName(id, index, folders);
+            ticket.facts = library::ticketFacts(id);
+            const auto cia = cias.find(id);
+            if (cia != cias.end()) {
+                ticket.cia = cia->second.path;
+                if (ticket.name.empty()) {
+                    ticket.name = cia->second.name;
+                }
+            }
+            known.push_back(ticket);
+        }
+    });
+    size_t bought = 0;
+    for (const Known &ticket : known) {
+        bought += ticket.facts.personal ? 1 : 0;
+    }
+    const auto nameOf = [](const Known &ticket) {
+        return ticket.name.empty() ? cia::titleIdText(ticket.id) : ticket.name;
+    };
+    // Keep the console's complete reason in the selected language.
+    const std::string &reason = why;
+
+    ui::Dialog dialog;
+    dialog.header = i18n::c("Tickets");
+    dialog.title =
+        known.size() == 1
+            ? i18n::t("Delete the ticket for {0} without a backup?", {nameOf(known[0])})
+            : i18n::t("Delete {0} without a backup?{1}", {plural(known.size(), "ticket"), (bought > 0 ? i18n::t(" Bought on this 3DS: {0}.", {std::to_string(bought)})
+                              : "")});
+    dialog.tone = ui::Tone::Warning;
+    dialog.buttons = {i18n::c("Delete Anyway"), i18n::c("Keep")};
+    dialog.dangerous = 0;
+    dialog.initial = 1;
+    dialog.cancelButton = 1;
+    dialog.drawTop = [&]() {
+        ui::drawTopChrome(i18n::c("Tickets"), ui::Icon::Lock, ui::color::IconGrey);
+        ui::drawPanel();
+        std::vector<ui::Fact> facts;
+        if (known.size() == 1) {
+            const Known &ticket = known[0];
+            facts.push_back({i18n::c("Software"), ticket.name.empty() ? i18n::c("Unknown") : ticket.name});
+            facts.push_back({i18n::c("Title ID"), cia::titleIdText(ticket.id)});
+            facts.push_back({i18n::c("Bought here"), ticket.facts.personal ? i18n::c("Yes") : i18n::c("No"),
+                             ticket.facts.personal ? ui::color::Bad : ui::color::Tag});
+            if (ticket.facts.known) {
+                facts.push_back({i18n::c("Issued for"), screens::titleVersion(ticket.id,
+                                                                     ticket.facts.version)});
+            }
+            facts.push_back({i18n::c("Restore"), ticket.cia.empty() ? i18n::c("No CIA for it found")
+                                                           : i18n::t("Install {0}", {ticket.cia})});
+            facts.push_back({i18n::c("Backup"), i18n::t("Not possible: {0}", {reason}), ui::color::Neutral});
+        } else {
+            for (size_t index = 0; index < known.size() && index < 5; ++index) {
+                const Known &ticket = known[index];
+                facts.push_back({ticket.facts.personal ? i18n::c("Bought here")
+                                 : ticket.cia.empty()  ? i18n::c("No CIA")
+                                                       : i18n::c("CIA found"),
+                                 nameOf(ticket),
+                                 ticket.facts.personal ? ui::color::Bad : ui::color::Tag});
+            }
+            if (known.size() > 5) {
+                facts.push_back({i18n::c("And"), i18n::t("{0} more", {std::to_string(known.size() - 5)}),
+                                 ui::color::Neutral});
+            }
+        }
+        ui::drawFacts(facts);
+    };
+    return ui::choose(dialog) == 0;
+}
+
 void App::ticketsScreen()
 {
     int cursor = 0;
+    const std::vector<std::string> folders = checkpointFolders();
     while (ui::keepRunning() && !quit_) {
         const titles::Index index = titles::indexOf(library_.titles);
+        // The name of software that is gone, when 3dsDL can tell.
+        const auto nameFor = [&](uint64_t ticket) {
+            const std::string name = softwareName(ticket, index, folders);
+            return name.empty() ? cia::titleIdText(ticket) : name;
+        };
         const std::vector<uint64_t> unusedList =
             library::unusedTickets(library_);
         const std::set<uint64_t> unused(unusedList.begin(), unusedList.end());
         std::vector<uint64_t> shown = library_.tickets;
         std::stable_sort(shown.begin(), shown.end(), [&](uint64_t a, uint64_t b) {
-            const std::string left = text::lower(titles::displayName(a, index));
-            const std::string right = text::lower(titles::displayName(b, index));
+            const std::string left = text::lower(nameFor(a));
+            const std::string right = text::lower(nameFor(b));
             return left != right ? left < right : a < b;
         });
 
@@ -772,7 +947,7 @@ void App::ticketsScreen()
         spec.emptyText = i18n::c("No tickets.");
         for (const uint64_t ticket : shown) {
             ui::ListItem item;
-            item.label = titles::displayName(ticket, index);
+            item.label = nameFor(ticket);
             item.icon = ui::Icon::Lock;
             item.iconColor = ui::color::IconGrey;
             if (unused.count(ticket) != 0) {
@@ -799,7 +974,7 @@ void App::ticketsScreen()
             ui::drawTitleIcon(icon, left, top, ui::Icon::Lock);
             // The name alone, level with the icon's middle; the list says
             // the kind.
-            ui::drawMarquee(titles::displayName(ticket, index), left + 60,
+            ui::drawMarquee(nameFor(ticket), left + 60,
                             top + (48 - ui::lineHeight(0.62f)) / 2, 0.62f,
                             ui::color::InkStrong, 280);
             const float y = ui::drawTagRow(left, top + 60, 96, i18n::c("Title ID"),
@@ -836,7 +1011,7 @@ void App::ticketsScreen()
             return;
         }
         const uint64_t ticket = shown[result.index];
-        const std::string name = titles::displayName(ticket, index);
+        const std::string name = nameFor(ticket);
         const int choice = ui::menu(
             {{i18n::c("Export to SD Card"), false, true}, {i18n::c("Delete"), true, true}},
             [&](int) { drawDetails(ticket); });
@@ -871,8 +1046,16 @@ void App::ticketsScreen()
             continue;
         }
         std::string error;
-        if (!library::deleteTicket(ticket, error)) {
-            ui::message(i18n::c("Not Deleted"), error, ui::Tone::Error);
+        bool unsaved = false;
+        if (!library::deleteTicket(ticket, error, &unsaved)) {
+            // One the console will not export can still go, once the
+            // person has seen what it is.
+            if (!unsaved) {
+                ui::message(i18n::c("Not Deleted"), error, ui::Tone::Error);
+            } else if (confirmUnsavedTickets({ticket}, error) &&
+                       !library::deleteTicket(ticket, error, nullptr, true)) {
+                ui::message(i18n::c("Not Deleted"), error, ui::Tone::Error);
+            }
         }
         reloadLibrary();
     }
@@ -904,6 +1087,9 @@ void App::deleteUnusedTickets()
         return;
     }
     size_t deleted = 0;
+    // Those kept only because they could not be saved first, and why.
+    std::vector<uint64_t> unsaved;
+    std::string unsavedWhy;
     tasks::busy(
         i18n::c("Delete"), i18n::c("Deleting unused tickets..."),
         [&](tasks::Busy &busy) {
@@ -911,14 +1097,34 @@ void App::deleteUnusedTickets()
             for (const uint64_t ticket : unused) {
                 // Once more just before it goes, in case something was
                 // installed meanwhile.
+                bool couldNotSave = false;
                 if (!library::installedAnywhere(ticket) &&
-                    library::deleteTicket(ticket, error)) {
+                    library::deleteTicket(ticket, error, &couldNotSave)) {
                     ++deleted;
+                } else if (couldNotSave) {
+                    unsaved.push_back(ticket);
+                    unsavedWhy = error;
                 }
                 busy.done.fetch_add(1);
             }
         },
         false);
+    // Asked once for all of them, with what each was.
+    if (!unsaved.empty() && confirmUnsavedTickets(unsaved, unsavedWhy)) {
+        tasks::busy(
+            i18n::c("Delete"), i18n::c("Deleting tickets without a backup..."),
+            [&](tasks::Busy &busy) {
+                busy.total = unsaved.size();
+                for (const uint64_t ticket : unsaved) {
+                    if (!library::installedAnywhere(ticket) &&
+                        library::deleteTicket(ticket, error, nullptr, true)) {
+                        ++deleted;
+                    }
+                    busy.done.fetch_add(1);
+                }
+            },
+            false);
+    }
     if (deleted == unused.size()) {
         ui::message(i18n::c("Tickets Deleted"), i18n::t("{0} deleted.", {plural(deleted, "unused ticket")}),
                     ui::Tone::Success);

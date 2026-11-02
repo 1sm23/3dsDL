@@ -1,15 +1,18 @@
 #include "app.hpp"
 
 #include "app_util.hpp"
+#include "awake.hpp"
 #include "cia.hpp"
 #include "finalize.hpp"
 #include "fs_util.hpp"
 #include "installer.hpp"
 #include "i18n.hpp"
+#include "library.hpp"
 #include "logging.hpp"
 #include "naming.hpp"
 #include "ntp.hpp"
 #include "platform.hpp"
+#include "remote.hpp"
 #include "savedata.hpp"
 #include "saves.hpp"
 #include "scanner.hpp"
@@ -27,6 +30,7 @@
 #include <cstdlib>
 #include <iterator>
 #include <map>
+#include <set>
 
 namespace {
 
@@ -92,9 +96,11 @@ std::string entryName(const HistoryEntry &entry)
 // Before a title is removed to put another copy in its place, its save goes
 // to Checkpoint's folder, the way Restore keeps what was there: removing a
 // title can take its save with it. False when the person would rather stop.
-// note says where the backup went, for the end of the install.
-bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
-                        uint16_t installedVersion, std::string &note)
+// note says where the backup went, for the end of the install. installed
+// is the icon of the software there now, which names the backup.
+bool saveBeforeRemoving(const cia::Info &info, const smdh::Info &installed,
+                        const std::string &name, uint16_t installedVersion,
+                        std::string &note)
 {
     titles::Title title;
     title.id = info.titleId;
@@ -103,9 +109,9 @@ bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
                       : titles::Place::SdCard;
     title.version = installedVersion;
     title.name = name;
-    title.englishShortName = !info.smdh.englishShortName.empty()
-                                 ? info.smdh.englishShortName
-                                 : info.smdh.shortName;
+    title.englishShortName = !installed.englishShortName.empty()
+                                 ? installed.englishShortName
+                                 : installed.shortName;
     if (!savedata::unsupportedReason(title).empty()) {
         return true; // nothing 3dsDL can keep, such as DSiWare
     }
@@ -130,7 +136,7 @@ bool saveBeforeRemoving(const cia::Info &info, const std::string &name,
     dialog.header = i18n::c("install");
     dialog.title = i18n::t("The save of {0} could not be backed up. Replacing may lose it.", {name});
     dialog.tone = ui::Tone::Warning;
-    dialog.icon = ui::showIcon(info.smdh.icon);
+    dialog.icon = ui::showIcon(installed.icon);
     dialog.body.push_back({saved.message, ui::color::Text, 0.48f, 3});
     dialog.buttons = {i18n::c("Continue Anyway"), i18n::c("Cancel")};
     dialog.dangerous = 0;
@@ -152,7 +158,8 @@ HistoryEntry newEntry(const std::string &address, const std::string &folder,
 } // namespace
 
 App::App()
-    : settings_(storage::loadSettings()), history_(storage::loadHistory())
+    : settings_(storage::loadSettings()), history_(storage::loadHistory()),
+      knownNames_(storage::loadNames())
 {
     i18n::setLanguage(settings_.language);
     sound::setEnabled(settings_.sounds);
@@ -171,6 +178,7 @@ App::App()
     }
     startIndexLoad();
     ui::setFrameHook([this]() {
+        awake::update();
         pollUpdate();
         pollLibrary();
         pollIndex();
@@ -390,8 +398,7 @@ App::Start App::startDownload(const std::string &address, std::string folder)
             return platform::sdFreeBytes();
         };
 
-        const net::Result result = tasks::download(request,
-                                                   settings_.keepAwake);
+        const net::Result result = tasks::download(request);
         if (!ui::keepRunning()) {
             if (result.resumable) {
                 HistoryEntry entry =
@@ -443,12 +450,12 @@ App::Start App::startDownload(const std::string &address, std::string folder)
             dialog.body.push_back({result.detail, ui::color::Muted, 0.4f, 2});
         }
         // A CIA too big for the SD card can still go straight into the
-        // install service, as FBI did.
+        // install service, as FBI did, and a .zcia decompressed on the way.
         const std::string fileName = result.filename.empty()
                                          ? naming::chooseFilename("", link)
                                          : result.filename;
         if (result.noSpace && installer::available() &&
-            text::endsWithNoCase(fileName, ".cia")) {
+            filetype::fromName(fileName) == filetype::Kind::Cia) {
             dialog.buttons = {i18n::c("Install Directly"), i18n::c("Close")};
             dialog.cancelButton = 1;
             if (ui::choose(dialog) == 0) {
@@ -653,7 +660,8 @@ void App::finishDownload(const std::string &address, const std::string &folder,
 
 void App::offerExtraction(const std::string &path, const std::string &folder,
                           const std::string &summary, const std::string &title,
-                          const archives::Listing *known)
+                          const archives::Listing *known,
+                          const SentExtraction *sent)
 {
     archives::Listing read;
     std::string error;
@@ -687,8 +695,9 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         holds += ", " + units::bytes(listing.archiveSize);
     }
     const std::string places =
-        single ? i18n::t("Into: {0}{1}{2}", {folder, listing.top, (listing.topIsFolder ? "/" : "")})
-               : i18n::t("Here: {0}\nNew Folder: {1}", {folder, ownFolder});
+        single          ? i18n::t("Into: {0}{1}{2}", {folder, listing.top, (listing.topIsFolder ? "/" : "")})
+        : sent != nullptr ? i18n::t("Into: {0}", {folder})
+                          : i18n::t("Here: {0}\nNew Folder: {1}", {folder, ownFolder});
 
     ui::Dialog dialog;
     dialog.header = i18n::c("extract");
@@ -696,12 +705,15 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
     dialog.tone = ui::Tone::Success;
     dialog.body.push_back({summary, ui::color::Muted, 0.44f, 3});
     dialog.body.push_back({holds + "\n" + places, ui::color::Text, 0.46f, 5});
-    if (single) {
+    if (single || sent != nullptr) {
         dialog.buttons = {i18n::c("Extract"), i18n::c("Not Now")};
         dialog.cancelButton = 1;
     } else {
         dialog.buttons = {i18n::c("Here"), i18n::c("New Folder"), i18n::c("Not Now")};
         dialog.cancelButton = 2;
+    }
+    if (sent != nullptr && !sent->agreed) {
+        dialog.initial = dialog.cancelButton;
     }
     const int choice = ui::choose(dialog);
     if (choice < 0 || choice == dialog.cancelButton) {
@@ -713,7 +725,39 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
                                    ? folder + listing.top + "/"
                                    : target;
 
-    archives::Options options;
+    if (sent != nullptr) {
+        if (sent->extracting) {
+            sent->extracting(true);
+        }
+        const SameApp same = sentFolderHoldsSameApp(path, *sent, listing);
+        if (sent->extracting) {
+            sent->extracting(false);
+        }
+        if (same != SameApp::Yes) {
+            logging::warn("extract.refused",
+                          {{"file", basename(path)},
+                           {"why", same == SameApp::No       ? "folder"
+                                   : same == SameApp::NoRoom ? "space"
+                                                             : "stopped"}});
+        }
+        if (same == SameApp::No) {
+            ui::message(i18n::c("Not Extracted"),
+                        i18n::c("A sent archive only adds to a folder in /3ds/ that holds the same app."),
+                        ui::Tone::Warning, summary);
+            return;
+        }
+        if (same == SameApp::NoRoom) {
+            ui::message(i18n::c("Not enough free space"),
+                        i18n::c("The SD card is too full to check the archive."),
+                        ui::Tone::Error, summary);
+            return;
+        }
+        if (same == SameApp::Stopped) {
+            return;
+        }
+    }
+    archives::Options options =
+        sent != nullptr ? sent->options : archives::Options();
     // Without a full listing the archive's own size is the least it needs.
     const uint64_t needed =
         listing.complete
@@ -726,6 +770,9 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
                     ui::Tone::Error);
         return;
     }
+    // For a sender's archive: an app already where an entry lands, to the
+    // name the archive's copy goes in under beside it.
+    std::map<std::string, std::string> beside;
     if (listing.complete) {
         std::vector<std::string> clashes;
         if (fs::directoryExists(target)) {
@@ -753,7 +800,44 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
                 return;
             }
         }
-        if (!clashes.empty()) {
+        if (sent != nullptr) {
+            // A sender never overwrites: an app it updates goes in beside
+            // the one there, to be asked about once extracted, and anything
+            // else already there is kept.
+            options.existing = archives::Existing::Skip;
+            std::set<std::string> taken;
+            for (const archives::Entry &entry : listing.entries) {
+                taken.insert(text::lower(entry.path));
+            }
+            for (const std::string &clash : clashes) {
+                if (!remote::sentMayReplace(basename(clash))) {
+                    continue;
+                }
+                const std::string within =
+                    clash.substr(0, clash.find_last_of('/') + 1);
+                const std::string free = naming::unusedPath(
+                    target + within, basename(clash),
+                    [&](const std::string &candidate) {
+                        return fs::fileExists(candidate) ||
+                               taken.count(text::lower(
+                                   candidate.substr(target.size()))) > 0;
+                    });
+                if (!free.empty()) {
+                    beside[clash] = free.substr(target.size());
+                    taken.insert(text::lower(beside[clash]));
+                }
+            }
+            if (!beside.empty()) {
+                const auto place = options.place;
+                options.place = [place, beside](const std::string &path,
+                                                bool directory) {
+                    const std::string placed = place(path, directory);
+                    const auto found =
+                        directory ? beside.end() : beside.find(placed);
+                    return found != beside.end() ? found->second : placed;
+                };
+            }
+        } else if (!clashes.empty()) {
             ui::Dialog question;
             question.header = i18n::c("extract");
             question.title = clashes.size() == 1
@@ -775,10 +859,18 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
         }
     }
 
+    if (sent != nullptr && sent->extracting) {
+        sent->extracting(true);
+    }
     const uint64_t started = osGetTime();
-    const archives::Result result = tasks::extract(path, listing, target,
-                                                   options,
-                                                   settings_.keepAwake);
+    // A sender's archive is extracted from its own listing; listing here is
+    // where its entries go.
+    const archives::Listing &source = sent != nullptr ? sent->listing : listing;
+    const archives::Result result = tasks::extract(path, source, target,
+                                                   options);
+    if (sent != nullptr && sent->extracting) {
+        sent->extracting(false);
+    }
     const uint64_t seconds = (osGetTime() - started) / 1000;
     if (options.existing == archives::Existing::Overwrite) {
         // Files replaced at the same size would keep their old dates.
@@ -810,11 +902,25 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
     if (result.skippedUnsupported > 0) {
         notes += i18n::t("{0} skipped (encrypted, a link or unknown compression). ", {plural(result.skippedUnsupported, "entry")});
     }
+    if (result.skippedPlaced > 0) {
+        notes += i18n::t("{0} left out of a sent archive. ", {plural(result.skippedPlaced, "file")});
+    }
+    for (const auto &app : beside) {
+        const std::string newer = target + app.second;
+        if (!fs::fileExists(newer)) {
+            continue;
+        }
+        notes += replaceSent(newer, target + app.first, sent->host, sent->sender)
+                     ? i18n::t("{0} updated. ", {basename(app.first)})
+                     : i18n::t("{0} kept beside {1}. ", {basename(app.second), basename(app.first)});
+    }
 
     // Without a full listing nothing could be asked before, so what was
-    // already there can be replaced now.
-    const bool offerReplace =
-        !listing.complete && !result.skippedExisting.empty();
+    // already there can be replaced now. Never for a sender's archive: its
+    // listing is always full, and the paths skipped here are where place
+    // put them, which only would not match.
+    const bool offerReplace = sent == nullptr && !listing.complete &&
+                              !result.skippedExisting.empty();
     ui::Dialog done;
     done.header = i18n::c("done");
     done.title = i18n::c("The archive has been extracted.");
@@ -843,9 +949,8 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
     }
     options.existing = archives::Existing::Overwrite;
     options.only = result.skippedExisting;
-    const archives::Result replaced = tasks::extract(path, listing, target,
-                                                     options,
-                                                     settings_.keepAwake);
+    const archives::Result replaced = tasks::extract(path, source, target,
+                                                     options);
     fileIndex_.rewritten(landed);
     sdChanged(target);
     if (!ui::keepRunning()) {
@@ -865,14 +970,37 @@ void App::offerExtraction(const std::string &path, const std::string &folder,
 
 // --- Installing --------------------------------------------------------------
 
+bool App::readCia(const std::string &path, cia::Info &info, std::string &error)
+{
+    const bool quick = cia::readInfo(path, info, error, true);
+    if (!quick || !info.smdhLeft) {
+        return quick;
+    }
+    bool ok = false;
+    if (!tasks::busy(i18n::c("CIA Installer"), i18n::t("Reading {0}...", {basename(path)}),
+                     [&](tasks::Busy &busy) {
+                         ok = cia::readInfo(path, info, error, false,
+                                            &busy.cancel);
+                     },
+                     true)) {
+        error.clear();
+        return false;
+    }
+    return ok;
+}
+
 void App::offerInstall(const std::string &path, const std::string &address,
                        const std::string &summary)
 {
     cia::Info info;
     std::string error;
-    if (!cia::readInfo(path, info, error)) {
-        ui::message(i18n::c("Download complete"), summary, ui::Tone::Success,
-                    i18n::t("It looks like a CIA but cannot be installed: {0}", {error}));
+    if (!readCia(path, info, error)) {
+        if (error.empty()) {
+            ui::message(i18n::c("Download complete"), summary, ui::Tone::Success);
+        } else {
+            ui::message(i18n::c("Download complete"), summary, ui::Tone::Success,
+                        i18n::t("It looks like a CIA but cannot be installed: {0}", {error}));
+        }
         return;
     }
     if (!installer::available()) {
@@ -916,24 +1044,125 @@ void App::offerInstall(const std::string &path, const std::string &address,
     installCia(path, info, action == CiaAction::InstallAndDelete, address);
 }
 
+bool App::replaceRunning(const std::string &path, const cia::Info &info,
+                         uint16_t installed, bool deleteAfter, std::string *why,
+                         bool *kept)
+{
+    const auto stopped = [why](const std::string &reason) {
+        if (why != nullptr) {
+            *why = reason;
+        }
+        return false;
+    };
+    const std::string name = ciaName(info);
+    const std::string installedText = screens::titleVersion(info.titleId, installed);
+    const std::string fileText = screens::titleVersion(info.titleId, info.version);
+    const bool same = installed == info.version;
+
+    ui::Dialog dialog;
+    dialog.header = i18n::c("install");
+    dialog.title = same ? i18n::t("Install {0} {1} again?", {name, fileText})
+                        : i18n::t("Replace the running {0} {1} with the older {2}?", {name, installedText, fileText});
+    dialog.tone = ui::Tone::Warning;
+    dialog.icon = ui::showIcon(info.smdh.icon);
+    dialog.body.push_back({i18n::t("{0} starts again once it is in.", {name}), ui::color::Text,
+                           0.48f, 2});
+    dialog.buttons = {same ? i18n::c("Reinstall") : i18n::c("Replace"), i18n::c("Cancel")};
+    dialog.initial = 1;
+    dialog.cancelButton = 1;
+    if (ui::choose(dialog) != 0) {
+        if (same && kept != nullptr) {
+            *kept = true;
+            if (why != nullptr) {
+                *why = i18n::t("{0} {1} is already installed, and it was kept.", {name, installedText});
+            }
+            return false;
+        }
+        return stopped(i18n::c("Cancel was chosen on the 3DS."));
+    }
+    const int64_t needed = installer::requiredSpace(path, info);
+    const int64_t free = platform::sdFreeBytes();
+    if (needed > 0 && free >= 0 && needed > free) {
+        ui::message(i18n::c("Not enough space"),
+                    i18n::t("{0} needs {1} on the SD card and {2} is free.", {name, units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}),
+                    ui::Tone::Error);
+        return stopped(i18n::t("It needs {0} on the SD card and {1} is free.", {units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}));
+    }
+
+    // AM refuses an older version, or the same one, over the installed one,
+    // and the running one is not removed until this one is in whole: taken
+    // in without being committed, it is checked as it goes.
+    const installer::Result result =
+        tasks::install(path, info.titleId, name, info.smdh.icon, false);
+    sdChanged("sdmc:/Nintendo 3DS/");
+    if (result.outcome != installer::Outcome::Installed) {
+        installer::forgetImport(info.titleId);
+        const std::string reason =
+            result.versionRefused
+                ? i18n::t("The console will not take this version while {0} is installed. Start {1} from the Homebrew Launcher and install it from there.", {installedText, name})
+                : result.message;
+        ui::message(i18n::c("Install failed"), reason, ui::Tone::Error, name);
+        return stopped(reason);
+    }
+    std::string error;
+    if (!installer::removeTitle(info.titleId, error)) {
+        installer::forgetImport(info.titleId);
+        logging::warn("install.replace", {{"title", cia::titleIdText(info.titleId)},
+                                          {"step", "remove"}, {"message", error}});
+        const std::string reason = i18n::t("The running {0} could not be removed. {1} Nothing was changed.", {name, error});
+        ui::message(i18n::c("Not Installed"), reason, ui::Tone::Error);
+        return stopped(reason);
+    }
+    if (!installer::commitImport(info.titleId, error)) {
+        logging::error("install.replace", {{"title", cia::titleIdText(info.titleId)},
+                                           {"step", "commit"}, {"message", error}});
+        const std::string reason = i18n::t("{0} was removed, and {1} did not go in. {2} Install a {3} CIA again with FBI or from the Homebrew Launcher.", {name, fileText, error, name});
+        ui::message(i18n::c("Not Installed"), reason, ui::Tone::Error);
+        return stopped(reason);
+    }
+    logging::info("install.replace", {{"title", cia::titleIdText(info.titleId)},
+                                      {"from", installedText}, {"to", fileText}});
+    if (deleteAfter && fs::removeFile(path)) {
+        sdChanged(path);
+    }
+    ui::Dialog done;
+    done.header = i18n::c("install");
+    done.title = i18n::t("{0} {1} is installed.", {name, fileText});
+    done.tone = ui::Tone::Success;
+    done.icon = ui::showIcon(info.smdh.icon);
+    done.buttons = {i18n::c("Restart")};
+    ui::choose(done);
+    // Closing with the chainloader set starts the version just put in.
+    aptSetChainloaderToSelf();
+    quit_ = true;
+    return true;
+}
+
 bool App::installCia(const std::string &path, const cia::Info &info,
                      bool deleteAfter, const std::string &address, bool quiet,
-                     bool *alreadyInstalled)
+                     bool *alreadyInstalled, std::string *why)
 {
     if (alreadyInstalled != nullptr) {
         *alreadyInstalled = false;
     }
+    // Why it stopped, for whoever asked from elsewhere.
+    const auto stopped = [why](const std::string &reason) {
+        if (why != nullptr) {
+            *why = reason;
+        }
+        return false;
+    };
     const std::string name = ciaName(info);
     if (!installer::available()) {
         ui::message(i18n::c("Cannot install"), installer::unavailableReason(),
                     ui::Tone::Error);
-        return false;
+        return stopped(installer::unavailableReason());
     }
     if (cia::isSystemTitle(info.titleId)) {
         ui::message(i18n::c("Not installed"),
                     i18n::c("3dsDL does not install system titles. A broken one can stop the console from starting."),
                     ui::Tone::Error, cia::titleIdText(info.titleId));
-        return false;
+        return stopped(i18n::c("3dsDL does not install system titles."));
     }
 
     bool isNew3ds = false;
@@ -948,7 +1177,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         dialog.initial = 1;
         dialog.cancelButton = 1;
         if (ui::choose(dialog) != 0) {
-            return false;
+            return stopped(i18n::c("It only starts on New Nintendo 3DS systems, and Cancel was chosen on the 3DS."));
         }
     }
 
@@ -958,17 +1187,37 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     uint16_t installed = 0;
     const bool isInstalled = installer::installedVersion(info.titleId,
                                                          installed);
+    // Whatever shares the file's title ID gets replaced, and ROM hacks often
+    // share their game's, so the installed software is named by its own
+    // icon when it has one.
+    smdh::Info current = info.smdh;
+    smdh::Info found;
+    if (isInstalled &&
+        library::titleSmdh(info.titleId, installer::destination(info.titleId),
+                           found) &&
+        !found.shortName.empty()) {
+        current = std::move(found);
+    }
+    const bool otherSoftware = !info.smdh.shortName.empty() &&
+                               current.shortName != info.smdh.shortName;
+    const std::string currentName =
+        current.shortName.empty() ? name : current.shortName;
     // sameVersion asks gently and starts on Reinstall: installing that
     // version again was asked for. Going back a version is the risky one.
     const auto confirmReplace = [&](const std::string &title,
                                     bool sameVersion = false) {
+        const auto named = [&](const std::string &software, uint16_t version) {
+            const std::string number = screens::titleVersion(info.titleId, version);
+            return otherSoftware ? software + ", " + number : number;
+        };
         ui::Dialog dialog;
         dialog.header = i18n::c("install");
         dialog.title = title;
         dialog.tone = sameVersion ? ui::Tone::Info : ui::Tone::Warning;
-        dialog.icon = ui::showIcon(info.smdh.icon);
-        dialog.body.push_back({i18n::t("Installed: {0}\nThis file: {1}", {screens::titleVersion(info.titleId, installed), screens::titleVersion(info.titleId, info.version)}),
-                               ui::color::Text, 0.48f, 2});
+        dialog.icon = ui::showIcon(current.icon);
+        dialog.body.push_back({i18n::t("Installed: {0}\nThis file: {1}", {named(currentName, installed), named(name, info.version)}),
+                               ui::color::Text, 0.48f,
+                               static_cast<size_t>(otherSoftware ? 4 : 2)});
         if (sameVersion) {
             dialog.buttons = {i18n::c("Reinstall"), i18n::c("Keep Installed")};
             dialog.initial = 0;
@@ -986,13 +1235,26 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     const bool isRunning = R_SUCCEEDED(APT_GetProgramID(&running)) &&
                            running == info.titleId;
     bool removeFirst = false;
-    if (isInstalled && installed == info.version) {
+    const std::string installedText = screens::titleVersion(info.titleId, installed);
+    const std::string fileText = screens::titleVersion(info.titleId, info.version);
+    if (otherSoftware && !isRunning) {
+        if (!confirmReplace(i18n::t("Replace {0}?", {currentName}))) {
+            return stopped(i18n::t("It would replace {0}, and Cancel was chosen on the 3DS.", {currentName}));
+        }
+        // AM takes a newer version in its place. The same or an older one
+        // has to be removed first.
+        removeFirst = installed >= info.version;
+    } else if (isInstalled && installed == info.version) {
         // AM answers 0xC8E083FC to the same version, after the whole file.
         bool reinstall = false;
         if (isRunning) {
-            ui::message(i18n::c("Already Installed"),
-                        i18n::t("{0} {1} is running now, so it cannot be installed again.", {name, screens::titleVersion(info.titleId, installed)}),
-                        ui::Tone::Info);
+            bool kept = false;
+            const bool replaced =
+                replaceRunning(path, info, installed, deleteAfter, why, &kept);
+            if (alreadyInstalled != nullptr) {
+                *alreadyInstalled = kept;
+            }
+            return replaced || kept;
         } else {
             reinstall = confirmReplace(i18n::t("This version of {0} is already installed", {name}),
                                        true);
@@ -1005,30 +1267,32 @@ bool App::installCia(const std::string &path, const cia::Info &info,
             if (alreadyInstalled != nullptr) {
                 *alreadyInstalled = true;
             }
+            if (why != nullptr) {
+                *why = i18n::t(isRunning ? "{0} {1} is already installed and running."
+                                      : "{0} {1} is already installed, and it was kept.",
+                               {name, installedText});
+            }
             return true;
         }
         removeFirst = true;
     } else if (isInstalled && installed > info.version) {
         if (isRunning) {
-            ui::message(i18n::c("Newer Version Running"),
-                        i18n::t("{0} {1} is installed and running now, so it cannot be replaced by this older {2}.", {name, screens::titleVersion(info.titleId, installed), screens::titleVersion(info.titleId, info.version)}),
-                        ui::Tone::Info);
-            return false;
+            return replaceRunning(path, info, installed, deleteAfter, why);
         }
         if (!confirmReplace(i18n::t("A newer version of {0} is installed", {name}))) {
-            return false;
+            return stopped(i18n::t("A newer {0} {1} is installed, and Cancel was chosen on the 3DS.", {name, installedText}));
         }
         removeFirst = true;
     }
 
     if (installer::destination(info.titleId) == MEDIATYPE_SD) {
-        const int64_t needed = installer::requiredSpace(path, info.titleId);
+        const int64_t needed = installer::requiredSpace(path, info);
         const int64_t free = platform::sdFreeBytes();
         if (needed > 0 && free >= 0 && needed > free) {
             ui::message(i18n::c("Not enough space"),
                         i18n::t("{0} needs {1} on the SD card and {2} is free.", {name, units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}),
                         ui::Tone::Error);
-            return false;
+            return stopped(i18n::t("It needs {0} on the SD card and {1} is free.", {units::bytes(static_cast<uint64_t>(needed)), units::bytes(static_cast<uint64_t>(free))}));
         }
     }
 
@@ -1037,26 +1301,26 @@ bool App::installCia(const std::string &path, const cia::Info &info,
     bool saveKept = false;
     while (ui::keepRunning()) {
         if (removeFirst && !saveKept) {
-            if (!saveBeforeRemoving(info, name, installed, saveNote)) {
-                return false;
+            if (!saveBeforeRemoving(info, current, currentName, installed,
+                                    saveNote)) {
+                return stopped(i18n::t("The installed {0} was kept, as its save data was not backed up.", {currentName}));
             }
             saveKept = true;
         }
         if (removeFirst) {
             std::string error;
             if (!installer::removeTitle(info.titleId, error)) {
-                ui::message(i18n::t("Could not replace {0}", {name}), error,
+                ui::message(i18n::t("Could not replace {0}", {currentName}), error,
                             ui::Tone::Error);
-                return false;
+                return stopped(i18n::t("Could not remove the installed {0}: {1}", {currentName, error}));
             }
         }
-        result = tasks::install(path, info.titleId, name,
-                                settings_.keepAwake, info.smdh.icon);
+        result = tasks::install(path, info.titleId, name, info.smdh.icon);
         if (result.outcome == installer::Outcome::Failed &&
             result.versionRefused && isInstalled && !removeFirst &&
             !isRunning &&
             ui::keepRunning() &&
-            confirmReplace(i18n::t("{0} is already installed", {name}))) {
+            confirmReplace(i18n::t("{0} is already installed", {currentName}))) {
             removeFirst = true;
             continue;
         }
@@ -1070,7 +1334,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         if (ui::keepRunning()) {
             ui::message(i18n::c("Install cancelled"), result.message);
         }
-        return false;
+        return stopped(i18n::c("The install was stopped on the 3DS."));
     }
     if (result.outcome != installer::Outcome::Installed) {
         if (!address.empty()) {
@@ -1078,7 +1342,7 @@ bool App::installCia(const std::string &path, const cia::Info &info,
         }
         ui::message(i18n::c("Install failed"), result.message, ui::Tone::Error,
                     name);
-        return false;
+        return stopped(result.message);
     }
 
     std::vector<ui::Paragraph> notes;
@@ -1287,7 +1551,6 @@ bool App::browseFolders(std::string &folder)
         ui::ListSpec spec;
         spec.title = i18n::c("Choose a Folder");
         spec.heading = current;
-        spec.tapToSelect = true;
         spec.back = atRoot ? i18n::c("Cancel") : i18n::c("Back");
         spec.action = i18n::c("Use This");
         spec.actionKey = "Y";
@@ -1530,7 +1793,7 @@ void App::historyScreen()
         std::string error;
         const bool installable = !entry.path.empty() &&
                                  cia::isCiaFile(entry.path) &&
-                                 cia::readInfo(entry.path, info, error);
+                                 cia::readInfo(entry.path, info, error, true);
         enum class Action { Install, Download, Remove };
         std::vector<ui::MenuItem> items;
         std::vector<Action> actions;
@@ -1551,7 +1814,12 @@ void App::historyScreen()
         }
         switch (actions[choice]) {
         case Action::Install:
-            installCia(entry.path, info, false, entry.url);
+            if (readCia(entry.path, info, error)) {
+                installCia(entry.path, info, false, entry.url);
+            } else if (!error.empty()) {
+                ui::message(i18n::c("Cannot install"), error, ui::Tone::Error,
+                            basename(entry.path));
+            }
             break;
         case Action::Download:
             startDownload(entry.url, fs::directoryExists(entry.folder)
@@ -1681,8 +1949,6 @@ void App::settingsScreen()
                      onOff(settings_.resumeDownloads)},
                     {i18n::t("settings.downloads.connections"),
                      std::to_string(settings_.maxConnections)},
-                    {i18n::t("settings.downloads.awake"),
-                     onOff(settings_.keepAwake)},
                     // It only ever asks, so the name says so.
                     {i18n::t("settings.downloads.zip"),
                      onOff(settings_.offerZipExtraction)},
@@ -1710,12 +1976,9 @@ void App::settingsScreen()
                         persistSettings();
                     }
                 } else if (index == 2) {
-                    onOffChoice(i18n::t("settings.downloads.awake"),
-                                settings_.keepAwake);
-                } else if (index == 3) {
-                    onOffChoice(i18n::t("settings.downloads.zip"),
+                    onOffChoice(i18n::c("Ask to Extract"),
                                 settings_.offerZipExtraction);
-                } else if (index == 4) {
+                } else if (index == 3) {
                     const int picked = ui::chooseOption(
                         i18n::t("settings.downloads.cia"),
                         {i18n::t("settings.downloads.cia.ask_each"),
@@ -1855,9 +2118,7 @@ void App::settingsScreen()
                           onOff(settings_.resumeDownloads)},
                          {i18n::t("settings.downloads.connections"),
                           std::to_string(settings_.maxConnections)},
-                         {i18n::t("settings.downloads.awake"),
-                          onOff(settings_.keepAwake)},
-                         {i18n::t("settings.facts.extract"),
+                         {i18n::c("Ask to Extract"),
                           onOff(settings_.offerZipExtraction)},
                          {i18n::t("settings.facts.cia"),
                           ciaActionLabel(settings_.afterCiaDownload)}};

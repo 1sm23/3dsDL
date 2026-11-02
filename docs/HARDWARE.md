@@ -61,8 +61,11 @@ and (on New 3DS) CPU speed.
     end.
 13. Cancelling asks first; "KEEP GOING" continues, "STOP" removes the partial
     file.
-14. Close the lid during a download with "Stay awake" on: the download keeps
-    going. With it off: the download fails and offers RETRY.
+14. Close the lid during a download: the screens go dark within a quarter
+    second and the download keeps going. Open it: the screens light again.
+    Close it once more and wait past the end: the console sleeps about 30 s
+    after the download ends (log.txt: lid.closed, lid.opened, lid.sleep).
+    Run a queue of three with the lid closed: all three finish.
 15. Use `drop_at` on the fixture server with a file under 1 MiB, which uses
     one connection: the failure says the connection dropped and RETRY
     continues from the partial size ("Continuing from…"). With a larger file
@@ -133,13 +136,27 @@ installed, and a game older than the installed version.
     `sdmc:/3ds/3dsDL/seeds/<title id>.dat` and once from Nintendo's server.
 32. Installing the same version again works, or asks to replace it. Note
     which one, and whether the save survives REPLACE. An older version asks
-    first and warns about save data.
+    first and warns about save data. A CIA that shares an installed
+    title's ID under another name, like a ROM hack, asks to replace the
+    installed one by name, showing both names.
+32a. With the 3dsDL CIA running, installing an older 3dsDL CIA asks to
+    replace the running one, starting on Cancel; Replace installs it,
+    restarts into it, and log.txt has install.replace from and to. The same
+    version asks Reinstall. If the console refuses, 3dsDL stays as it was
+    and says why. An older version of another app asks first, keeps its save
+    as a "Before Reinstall" backup, and installs.
 33. An update and a DLC install over their game, and LAUNCH opens the game.
-34. Cancelling halfway leaves nothing behind: the title is not on the HOME
-    Menu and installing it again works.
+34. An install has no Cancel, B does nothing and HOME is held back until it
+    ends. Stopping one used to leave the SD card unreadable until a restart
+    (issue #15). A direct install keeps Cancel until the CIA's header has
+    arrived, then loses it.
 35. A CIA bigger than the free space is refused before anything is written.
 36. LAUNCH after installing starts the title, from both the `.3dsx` and the
     CIA build. Installing 3dsDL's own CIA over itself from the CIA build works.
+36a. A `.zcia` made by Azahar (`azahar -c game.cia`, or its Compress menu)
+    shows "ZCIA" with its icon and name in Files and installs from there,
+    from the Receive page and after downloading it, and the game starts.
+    Note how long a game of 1 GiB or more takes next to its `.cia`.
 
 ### Files
 
@@ -160,11 +177,23 @@ with a few hundred files.
     original. Paste into the same folder makes "name (1)".
 41. Cut and paste moves instantly, also between folders, and never into
     itself. Something that could not move stays ready to paste.
+41a. Tapping a row's icon marks it (its icon turns to a check), and again
+    unmarks it. With something cut or copied, Y on any entry starts with
+    Move Here or Paste Here. Pasting three items where two names are
+    taken asks once; Ask for Each asks per item. Merging a folder into one
+    of the same name replaces the files with the same names, keeps the
+    rest, and after a cut leaves no source folder behind.
 42. Delete a folder with files inside: it says how much is inside first, then
     removes everything.
 43. Rename, including changing only the case of a name (a.txt to A.txt).
 44. Mark several CIAs and install them: each installs, and the summary counts
     them.
+44a. R stars a folder and a `.3dsx`, with the notice on the top screen, and
+    again takes the star away; the top screen's bottom corners name L and
+    R, legible and clear of the panel. L opens Favourites from any folder:
+    A opens the folder, and lands on the `.3dsx` in its folder. Stars
+    survive a restart, follow a rename and a cut and paste, and go with a
+    delete.
 
 ### Software updates and Titles
 
@@ -183,7 +212,10 @@ with a few hundred files.
     games that are no longer installed; Delete removes one and the game
     recreates it on its next start.
 50. Tickets marks tickets of uninstalled software as Unused, and Delete Unused
-    removes only those.
+    removes only those. A homebrew CIA's leftover ticket, which the console
+    will not export, is named (installed once, a Checkpoint folder or its
+    CIA on the card) and asked about with Delete Anyway / Keep; Keep leaves
+    it, Delete Anyway logs it in tickets/deleted/log.txt.
 51. Interrupt a CIA install (cancel it, or pull the power in a test), then
     Clean Up shows an unfinished install; Remove Unfinished Installs clears
     it and the CIA installs again.
@@ -195,9 +227,12 @@ with a few hundred files.
 53. Scan three QR codes with Add to Queue: the camera comes back after each,
     Home shows 3 on Queue, and Download All fetches them in order.
 54. Receive shows the console's address and a QR code. A phone that scans it
-    gets the page; links pasted there arrive and download.
-55. servefiles.py from a computer sends a CIA to port 5000: it downloads and
-    installs, and servefiles.py exits by itself afterwards.
+    gets the page; links pasted there arrive and download, and stay listed
+    on the touch screen with how they went after Receive goes back to
+    waiting, and after leaving Receive and coming back.
+55. servefiles.py from a computer sends two CIAs to the address Receive
+    shows: Install puts both on without keeping a copy, the list shows them
+    Installed, and servefiles.py exits by itself afterwards.
 56. Fill the SD card until a CIA does not fit: the error offers Install
     Directly, the CIA installs, and nothing is left on the card.
 57. Install Directly of an older version than the installed one is refused
@@ -206,8 +241,14 @@ with a few hundred files.
 58a. Files on the Receive page: the console asks Allow or Don't Allow for
     the phone; Don't Allow keeps the page waiting until Receive reopens.
 58b. Upload a CIA of 1 GiB or more from a phone and from a computer: the
-    touch screen shows progress, the console does not sleep with the lid
+    top screen and its row show progress, the console does not sleep with the lid
     closed, and the file's SHA-256 matches. Note the speed.
+58b2. Upload a folder of a few thousand small files from a computer and close
+    the lid partway (issue #13): every file arrives, as one row for the
+    folder, the screens light when
+    the lid opens, and with the lid left closed the console sleeps about
+    30 s after the last file. Leave the page open and idle with the lid
+    closed: the console still sleeps (the status poll does not count).
 58c. With Offer to Install ticked, uploading two CIAs asks once on the
     console and installs both.
 58d. Download, rename, move, delete and edit a text file from the page, and
@@ -216,8 +257,48 @@ with a few hundred files.
     the next upload works.
 58f. http://3ds.local/ opens on a Mac or iPhone and on Windows; with two
     consoles on Receive the second answers to 3ds-2.local. Record whether
-    the console joined the multicast group at all (the line about .local
-    is missing from the top screen if it did not).
+    the console joined the multicast group at all (http://3ds.local is
+    missing under the address if it did not).
+58g. A page's /send with folder=/3ds/<app>/: a .3dsx lands there, a .ini
+    sent the same way lands in the Download Folder, and
+    folder=/3ds/<app>/data/ is refused. With replace=1, an update of the
+    same app asks Keep Both / Replace and Replace leaves one file; a
+    different app with the same file name keeps both without asking.
+58h. extract=1 on a ZIP of an app already in /3ds/<app>/: the question
+    lists the new files it adds, its settings file in that folder is
+    unchanged afterwards, and the new .3dsx is asked about, also when the
+    ZIP renamed it. A ZIP whose top folder is another app's folder is not
+    extracted, and a ZIP holding only 3ds/shortcut.xml is not either.
+58i. A link sent by another site (a page with an image tag pointing at
+    /send) asks on the console starting on Cancel; one from 3dsDL's own page
+    starts on Download. Cancel, then send again from the same phone: the
+    question offers Don't Allow, after which the page and its links are
+    refused until Receive closes, while the page's files still ask
+    separately. Twenty-one links are refused at once. A link from another
+    site to http://192.168.x.x/ or the console's own address is dropped
+    before the question.
+58j. A link that redirects (a GitHub release asset) shows the host it ends
+    on before Download, after a short Checking wait that B stops.
+58k. Clear on Receive (X) empties the list of what is done while an upload
+    still on its way keeps its row, and the files stay on the card.
+58l. The page as a file browser, on a computer and a phone: the sidebar
+    lists the Download Folder, 3ds, cias, Checkpoint and Files' favourites.
+    Select three files with Shift and Cmd clicks and with a box, Move To a
+    folder picked in the columns, and drag one onto a folder. Copy a folder
+    of a few hundred MiB onto one of the same name with Replace: it merges,
+    files only the old one had stay, and the console's Files shows the new
+    dates. Copy a file into its own folder (Cmd+C, Cmd+V): "name (1)". On a
+    phone a long press starts picking, and the drawer opens the places.
+58m. On the page, rename a file changing only its case: the card and the
+    console's Files show the new case. Open an `.ini`, a `.json` and a long
+    one-line `.txt` on a computer and a phone: the editor shows line
+    numbers and colours, Cmd+F finds, Cmd+S saves (check the file on the
+    console), and closing with changes asks. On a phone, typing gets no
+    autocorrect or curly quotes.
+58n. Open Files from a Receive row (Show in Files) and, from the page,
+    rename, upload and delete in that folder: the console's list follows
+    within a second or two. Moving the folder itself away lands Files on
+    the nearest folder still there.
 
 ### Saves, tickets and sounds
 
@@ -240,6 +321,17 @@ with a few hundred files.
     unavailable and nothing else changes.
 
 ## Results so far
+
+On 2026-10-29 test builds 0.8.3-beta.1 and beta.2 ran on a New 3DS
+(11.17.0-50U) for issue #13.
+
+- 14 in part: with beta.1 the lid closed during a 100 MiB download from
+  proof.ovh.net with 4 connections, the screens went dark and the console
+  stayed awake, but the download failed two seconds later with curl error
+  7: refusing sleep does not stop NDM dropping Wi-Fi for StreetPass. With
+  beta.2, which also holds NDM's infrastructure state, the download kept
+  going with the lid closed. The sleep after 30 s and a queue were not
+  tried.
 
 On 2026-10-12 the 0.3.0 build was confirmed on a console for downloads over
 the internet (items 11 and 12), installing the CIA with FBI, and ZIP

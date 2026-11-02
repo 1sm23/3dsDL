@@ -9,12 +9,15 @@
 #include "library.hpp"
 #include "savedata.hpp"
 #include "platform.hpp"
+#include "receive_log.hpp"
 #include "records.hpp"
 #include "update.hpp"
 
 #include <3ds.h>
 
 #include <atomic>
+#include <deque>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,18 +51,46 @@ private:
     Start startDownload(const std::string &address, std::string folder);
     enum class Confirm { Cancel, Download, Queue };
     Confirm confirmDownload(const std::string &address, std::string &folder);
-    // Installs a CIA from the internet without saving it, for a full SD card.
-    void installDirectly(const std::string &address);
+    // Installs a CIA from the internet without saving it, for a full SD card
+    // and for FBI's tools. quiet leaves out the screens that say how it
+    // went, for a caller that shows that itself; message then says why it
+    // failed. Returns Installed, Failed or Cancelled.
+    HistoryStatus installDirectly(const std::string &address,
+                                  bool quiet = false,
+                                  std::string *message = nullptr);
     void finishDownload(const std::string &address, const std::string &folder,
                         const net::Result &result);
+    // How offerExtraction takes an archive a sender asked to extract
+    // (remote::sentExtraction): known is the listing as options will place
+    // it, which is shown and checked for clashes, and listing is the
+    // archive's own, which the extractors read. It goes into folder only,
+    // with no New Folder; the question starts on Not Now unless the console
+    // said yes before the download, and extracting runs once it is chosen.
+    // A sender never overwrites: what is already there is kept, and an app
+    // the archive updates goes in beside the old one, then replaceSent asks
+    // about it.
+    struct SentExtraction {
+        archives::Options options;
+        archives::Listing listing;
+        bool agreed = false;
+        // Called with true as extracting starts and false once it ends.
+        std::function<void(bool)> extracting;
+        std::string host;   // where the archive came from
+        std::string sender; // who sent it, as Receive names them
+    };
     // Asks where to extract an archive, then extracts it. known is a
     // listing already read, such as the archive viewer's.
     void offerExtraction(const std::string &path, const std::string &folder,
                          const std::string &summary,
                          const std::string &title =
                              i18n::c("Download complete. Extract the archive?"),
-                         const archives::Listing *known = nullptr);
+                         const archives::Listing *known = nullptr,
+                         const SentExtraction *sent = nullptr);
 
+    // cia::readInfo, with a busy screen while a .zcia without Azahar's copy
+    // of its name and icon decompresses its end for them. False with error
+    // empty when stopped there.
+    bool readCia(const std::string &path, cia::Info &info, std::string &error);
     // Asks what to do with a CIA that just finished downloading.
     void offerInstall(const std::string &path, const std::string &address,
                       const std::string &summary);
@@ -69,18 +100,35 @@ private:
     // quiet skips the success screen, for installing several in a row.
     // True once the CIA's title is installed, including when the same
     // version already was and the person chose to keep it; alreadyInstalled
-    // then says so.
+    // then says so. why, when given, is set to the reason it was not
+    // installed, or to why nothing went in when it was already, for
+    // whoever asked from elsewhere (the Receive page).
     bool installCia(const std::string &path, const cia::Info &info,
                     bool deleteAfter, const std::string &address,
-                    bool quiet = false, bool *alreadyInstalled = nullptr);
+                    bool quiet = false, bool *alreadyInstalled = nullptr,
+                    std::string *why = nullptr);
+    // Puts an older version of the running app (3dsDL itself), or the same
+    // one again, in its place: the CIA goes in whole but uncommitted, then
+    // the running one is removed and the new one committed, so only that
+    // last step can leave it uninstalled. It starts again afterwards. kept,
+    // when given, is set when the same version was asked about and kept.
+    bool replaceRunning(const std::string &path, const cia::Info &info,
+                        uint16_t installed, bool deleteAfter, std::string *why,
+                        bool *kept = nullptr);
     void markInstalled(const std::string &address, const std::string &path,
                        const std::string &message, bool installed = true);
 
     // Files, in files.cpp. Paths of entries never end with '/'; folders
     // being browsed always do.
-    // Files, then saves the index if it changed.
-    void filesScreen();
-    void browseFiles();
+    // Files, then saves the index if it changed. select, when given, is the
+    // entry to open Files on, highlighted in its folder.
+    void filesScreen(const std::string &select = "");
+    void browseFiles(const std::string &select = "");
+    // Stars path (see favorites.hpp) or takes its star away, and says so.
+    void toggleFavorite(const std::string &path);
+    // The starred folders and files. True when one was chosen: Files is
+    // to open it (filesFolder_, with filesLandOn_ for a file).
+    bool favoritesScreen();
     // folder, when given, is the whole folder path is in, already read and
     // sorted, for the picture viewer's previous and next.
     void openFile(const std::string &path,
@@ -161,6 +209,16 @@ private:
     void extraDataScreen();
     void ticketsScreen();
     void deleteUnusedTickets();
+    // A name for software that may be gone: installed, remembered from when
+    // it was (knownNames_), or from a Checkpoint backup folder in folders;
+    // "" when none is known.
+    std::string softwareName(uint64_t titleId, const titles::Index &index,
+                             const std::vector<std::string> &folders) const;
+    // Asks whether to delete tickets that cannot be saved first, showing
+    // what each belonged to, whether it was bought on this console and a CIA
+    // that would bring it back. True for yes.
+    bool confirmUnsavedTickets(const std::vector<uint64_t> &tickets,
+                               const std::string &why);
     void cleanUpScreen();
     void importSeeds();
 
@@ -177,16 +235,63 @@ private:
         uint64_t id = 0;
         std::string url;
         std::string folder;
+        // The folder came from the link's sender (remote::SendOptions), so
+        // only what remote::sentFileAllowed allows is saved there, and only
+        // from host.
+        bool sent = false;
+        // Where the link led when Receive checked it before asking
+        // (net::whereTo); "" when it was not checked or could not be.
+        std::string host;
+        // Sent by a site other than 3dsDL's own page, so its download may
+        // not reach this network (remote::addressRefused).
+        bool foreign = false;
         State state = State::Waiting;
         std::string message; // why it failed
     };
     void addToQueue(const std::vector<std::string> &links,
-                    const std::string &folder, bool announce);
+                    const std::string &folder, bool announce,
+                    bool sent = false);
+    // Whether a sender's archive may go into its folder in /3ds/ (shown is
+    // the archive as placed): yes when that folder is not there yet or is
+    // empty, or when a 3dsx in the archive is the same app (remote::sameApp)
+    // as one in the folder or a folder in it. Each is taken out to a scratch
+    // file to compare, once the person chose Extract. Otherwise a sender
+    // could add files to another app's folder. NoRoom when the card cannot
+    // hold that scratch file; Stopped when the person stopped it.
+    enum class SameApp { Yes, No, Stopped, NoRoom };
+    SameApp sentFolderHoldsSameApp(const std::string &archive,
+                                   const SentExtraction &sent,
+                                   const archives::Listing &shown);
+    // Whether newer, which a sender's link or archive put beside older,
+    // takes its place: asked only for an update to the same app
+    // (remote::sameApp), starting on Keep Both; any other file keeps both
+    // without a question. True when newer replaced older.
+    bool replaceSent(const std::string &newer, const std::string &older,
+                     const std::string &host, const std::string &sender);
     void queueScreen();
+    // How one link of a queue run went: Saved, Installed, Failed or
+    // Cancelled.
+    struct QueueResult {
+        std::string url;
+        HistoryStatus status = HistoryStatus::Failed;
+        std::string name;    // the file's name, once known
+        std::string path;    // where it was saved, when it was
+        uint64_t bytes = 0;
+        std::string message; // why it failed
+        // The name the server gave it (name is what it was saved as, which
+        // differs after a clash), and its host after redirects.
+        std::string filename;
+        std::string host;
+    };
     // Downloads the queued links in order, or only those in ids when given,
-    // without stopping to ask. Finished ones leave the queue.
-    void runQueue(const std::vector<uint64_t> *ids = nullptr);
+    // without stopping to ask. Finished ones leave the queue. With results,
+    // how each went goes there instead of into a summary at the end.
+    void runQueue(const std::vector<uint64_t> *ids = nullptr,
+                  std::vector<QueueResult> *results = nullptr);
     void receiveScreen();
+    // A row of Receive's list, opened: its facts, and what can be done with
+    // it. address is the console's, for the top screen.
+    void receivedOptions(net::ReceiveLog::Row row, const std::string &address);
 
     // Software updates, in software_update.cpp.
     void softwareUpdateScreen();
@@ -207,8 +312,13 @@ private:
 
     Settings settings_;
     std::vector<HistoryEntry> history_;
+    // Names of software once seen installed, so what is left behind can
+    // still be named.
+    titles::Names knownNames_;
     int homeSelection_ = 2; // Scan QR Code
     std::string filesFolder_;
+    // An entry for Files to highlight in filesFolder_ once it is read.
+    std::string filesLandOn_;
     // Copied or cut entries waiting to be pasted.
     std::vector<std::string> clipboard_;
     bool clipboardCut_ = false;
@@ -220,6 +330,10 @@ private:
     fileindex::Index fileIndex_;
     int64_t sdFreeSeen_ = -1; // free space when the index was last checked
     std::atomic<bool> sdMayHaveChanged_ {false};
+    // Set while Receive is open: hands over what the page changed on the
+    // SD card since the last call, already given to sdChanged, so Files
+    // opened from Receive can read its folder again.
+    std::function<std::deque<std::string>()> takePageChanges_;
     aptHookCookie aptCookie_ {};
     uint64_t indexCard_ = 0; // platform::sdCardId when it was loaded
     Thread indexLoader_ = nullptr;
@@ -229,6 +343,8 @@ private:
     titles::Show addOnShow_ = titles::Show::All;
     std::vector<QueuedLink> queue_;
     uint64_t nextQueueId_ = 1;
+    // What Receive has taken in and sent out since 3dsDL started.
+    net::ReceiveLog receiveLog_;
     bool updateAvailable_ = false;
     bool updateNoticeShown_ = false;
     uint32_t updateGeneration_ = 0;

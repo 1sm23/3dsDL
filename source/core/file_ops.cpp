@@ -292,6 +292,38 @@ Result remove(const std::string &path, Observer &observer, uint64_t &done,
 bool move(const std::string &source, const std::string &destination,
           std::string &error)
 {
+    // FAT ignores case, so a name that changes only in case is the entry
+    // itself: it goes through a spare name, and back if the second step
+    // fails.
+    std::string from = source;
+    std::string to = destination;
+    while (from.size() > 1 && from.back() == '/') {
+        from.pop_back();
+    }
+    while (to.size() > 1 && to.back() == '/') {
+        to.pop_back();
+    }
+    if (text::lower(from) == text::lower(to)) {
+        const std::string folder = from.substr(0, from.find_last_of('/') + 1);
+        const std::string target = folder + name(to);
+        if (target == from) {
+            return true;
+        }
+        std::string spare = folder + ".3dsdl-rename";
+        for (int count = 1; exists(spare); ++count) {
+            spare = folder + ".3dsdl-rename-" + std::to_string(count);
+        }
+        if (std::rename(from.c_str(), spare.c_str()) != 0) {
+            error = failure(i18n::c("Could not rename"), source);
+            return false;
+        }
+        if (std::rename(spare.c_str(), target.c_str()) != 0) {
+            error = failure(i18n::c("Could not rename"), source);
+            std::rename(spare.c_str(), from.c_str());
+            return false;
+        }
+        return true;
+    }
     if (exists(destination)) {
         error = i18n::t("{0} already exists.", {name(destination)});
         return false;
@@ -305,6 +337,63 @@ bool move(const std::string &source, const std::string &destination,
         return false;
     }
     return true;
+}
+
+Result merge(const std::string &source, const std::string &destination,
+             bool moving, Observer &observer, uint64_t &done, uint64_t total)
+{
+    Result result;
+    if (isInside(destination, source)) {
+        result.status = Status::Failed;
+        result.message = i18n::c("A folder cannot be merged into itself.");
+        return result;
+    }
+    std::vector<std::string> names;
+    if (!children(source, names)) {
+        result.status = Status::Failed;
+        result.message = failure(i18n::c("Could not open the folder"), source);
+        return result;
+    }
+    for (const std::string &entry : names) {
+        if (observer.cancelRequested()) {
+            result.status = Status::Cancelled;
+            return result;
+        }
+        const std::string from = join(source, entry);
+        const std::string to = join(destination, entry);
+        Result part;
+        if (exists(to) && isFolder(from) && isFolder(to)) {
+            part = merge(from, to, moving, observer, done, total);
+        } else {
+            if (exists(to)) {
+                uint64_t removed = 0;
+                const Result cleared = remove(to, observer, removed, 0);
+                if (cleared.status != Status::Ok) {
+                    return cleared;
+                }
+            }
+            if (moving) {
+                if (!move(from, to, part.message)) {
+                    part.status = Status::Failed;
+                } else {
+                    part.files = 1;
+                }
+            } else {
+                part = copy(from, to, observer, done, total);
+            }
+        }
+        result.files += part.files;
+        if (part.status != Status::Ok) {
+            result.status = part.status;
+            result.message = part.message;
+            return result;
+        }
+    }
+    if (moving && rmdir(source.c_str()) != 0) {
+        result.status = Status::Failed;
+        result.message = failure(i18n::c("Could not delete the folder"), source);
+    }
+    return result;
 }
 
 bool isFolder(const std::string &path)

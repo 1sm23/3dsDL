@@ -11,6 +11,10 @@
   <a href="https://github.com/ankushKun/3dsDL/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/ankushKun/3dsDL/total?color=3fa65a"></a>
   <a href="https://github.com/ankushKun/3dsDL/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/ankushKun/3dsDL/ci.yml?branch=main&label=CI"></a>
   <a href="LICENSE"><img alt="License: GPLv3" src="https://img.shields.io/badge/license-GPLv3-8c8466"></a>
+  <br>
+  <a href="https://github.com/sponsors/ankushKun"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white"></a>
+  <a href="https://ko-fi.com/ankushkun"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-FF5E5B?logo=kofi&logoColor=white"></a>
+  <a href="https://buymeacoffee.com/ankushkun"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?logo=buymeacoffee&logoColor=black"></a>
 </p>
 
 <p align="center">
@@ -35,11 +39,11 @@
 ## Features
 
 - Downloads over verified HTTPS, split across up to four connections when the server allows it (fewer if you set a lower limit in Settings), with resume after a dropped connection.
-- Installs CIAs with their seeds, or streams them straight into the install service when the SD card is too full.
-- Receives links from a phone on the same Wi-Fi, and from FBI's `servefiles.py`, `sendurls.py` and Boop.
-- Manages the SD card from a phone or computer's browser: upload, download, edit, move and delete files, and install uploaded CIAs, with no FTP app. Also answers at `http://3ds.local/`.
+- Installs CIAs and Azahar's compressed `.zcia` files with their seeds, or streams them straight into the install service when the SD card is too full.
+- Receives links from a phone on the same Wi-Fi, from websites (straight into `/3ds/`, after asking), and from FBI's `servefiles.py`, `sendurls.py` and Boop.
+- Manages the SD card from a phone or computer's browser: upload, download, edit, move, copy and delete files, and install uploaded CIAs, with no FTP app. Also answers at `http://3ds.local/`.
 - A queue for scanning many QR codes in a row and downloading them together.
-- Files: a file manager with a picture viewer, a text editor, ZIP extraction, a hex view and SHA-256 checks.
+- Files: a file manager with favourites, a picture viewer, a text editor, ZIP extraction, a hex view and SHA-256 checks.
 - Titles: launch and delete installed software, manage tickets and seeds, and clear stuck installs.
 - Save data and extra data backup, restore and browsing, compatible with Checkpoint's backups.
 - Updates itself from GitHub releases, checking each download against its SHA-256 checksum.
@@ -63,7 +67,7 @@ You need a 3DS with custom firmware ([3ds.hacks.guide](https://3ds.hacks.guide/)
 You only install 3dsDL once. It checks GitHub for a new version when it opens and shows a notification when there is one. **Settings → Updates** downloads the right build, checks it against the release's SHA-256 checksum and installs it, without FBI or a computer. The one exception is the 0.7.0 CIA, which crashes at start-up: install the latest release with FBI once.
 
 > [!NOTE]
-> 3dsDL is in development. Version 0.8.2 runs on real consoles, and its Files over Wi-Fi page was tested on one from a Mac: uploads, downloads, installs and `3ds.local`. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
+> 3dsDL is in development. Version 0.9.0 runs on real consoles, and its Files over Wi-Fi page was tested on one from a Mac: uploads, downloads, installs and `3ds.local`. Save and extra data restore and ticket export are the least tested parts, so keep a Checkpoint backup of anything important for now. The full console test plan is in [docs/HARDWARE.md](docs/HARDWARE.md).
 
 ## Building
 
@@ -82,7 +86,7 @@ Build options, building without Docker and the project layout are in the [guide]
 - [FBI](https://github.com/Steveice10/FBI) by Steveice10, whose install sequence, seed handling and remote install protocol 3dsDL follows.
 - [Checkpoint](https://github.com/BernardoGiordano/Checkpoint) by Bernardo Giordano, whose backup format and restore steps 3dsDL matches.
 - [Colby Shores](https://github.com/colbyshores), for the socket buffer and TLS randomness findings.
-- [libcurl](https://curl.se/), [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), the [Mozilla CA bundle](https://curl.se/docs/caextract.html), [quirc](https://github.com/dlbeer/quirc) ([license](LICENSE-quirc.md)), [QR Code generator](https://www.nayuki.io/page/qr-code-generator-library), [stb_image](https://github.com/nothings/stb), [libjpeg-turbo](https://libjpeg-turbo.org/), and [devkitPro](https://devkitpro.org/) with libctru and Citro2D.
+- [libcurl](https://curl.se/), [Mbed TLS](https://github.com/Mbed-TLS/mbedtls), the [Mozilla CA bundle](https://curl.se/docs/caextract.html), [quirc](https://github.com/dlbeer/quirc) ([license](LICENSE-quirc.md)), [QR Code generator](https://www.nayuki.io/page/qr-code-generator-library), [stb_image](https://github.com/nothings/stb), [libjpeg-turbo](https://libjpeg-turbo.org/), [CodeMirror](https://codemirror.net/) for the page's editor, and [devkitPro](https://devkitpro.org/) with libctru and Citro2D.
 
 ## License
 

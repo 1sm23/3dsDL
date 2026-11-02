@@ -452,7 +452,6 @@ void App::dataBrowser(const savedata::Target &target)
         ui::ListSpec spec;
         spec.title = target.name + "  " + folder.substr(root.size() - 1);
         spec.heading = spec.title;
-        spec.tapToSelect = true;
         spec.back = folder == root ? i18n::c("Close") : i18n::c("Back");
         spec.emptyText = readable ? i18n::c("This folder is empty.") : i18n::c("This folder cannot be read.");
         for (const fs::Entry &entry : entries) {
@@ -566,7 +565,7 @@ void App::dataBrowser(const savedata::Target &target)
         }
         std::string last;
         const fileops::Result copied = tasks::fileOperation(
-            i18n::c("Copy"), i18n::c("Copying to the SD card"), destination, total, false,
+            "Copy", i18n::c("Copying to the SD card"), destination, total, false,
             [&](fileops::Observer &observer) {
                 uint64_t done = 0;
                 fileops::Result outcome;
@@ -579,8 +578,7 @@ void App::dataBrowser(const savedata::Target &target)
                     }
                 }
                 return outcome;
-            },
-            settings_.keepAwake);
+            });
         if (copied.status == fileops::Status::Ok) {
             ui::message(i18n::c("Copied"),
                         i18n::t("Copied to {0}.", {(into.empty() ? last : destination)}),
