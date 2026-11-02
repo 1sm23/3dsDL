@@ -1,5 +1,7 @@
 #include "units.hpp"
+#include "i18n.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 
@@ -120,6 +122,27 @@ void RateMeter::sample(uint64_t milliseconds, uint64_t totalBytes)
     hasRate_ = true;
     lastTime_ = milliseconds;
     lastBytes_ = totalBytes;
+}
+
+std::string timeLeft(uint64_t seconds)
+{
+    // Keep the upstream rounding rules; translate the complete time phrase.
+    const uint64_t fives = (seconds + 4) / 5 * 5;
+    if (seconds < 10) {
+        return i18n::t("{0} s left", {std::to_string(std::max<uint64_t>(1, seconds))});
+    }
+    if (fives < 60) {
+        return i18n::t("{0} s left", {std::to_string(fives)});
+    }
+    const uint64_t minutes = std::max<uint64_t>(1, (seconds + 30) / 60);
+    if (minutes < 60) {
+        return i18n::t("{0} min left", {std::to_string(minutes)});
+    }
+    if (minutes % 60 == 0) {
+        return i18n::t("{0} h left", {std::to_string(minutes / 60)});
+    }
+    return i18n::t("{0} h {1} min left",
+                   {std::to_string(minutes / 60), std::to_string(minutes % 60)});
 }
 
 int64_t RateMeter::secondsLeft(uint64_t remainingBytes) const

@@ -1,4 +1,5 @@
 #include "app.hpp"
+#include "awake.hpp"
 #include "crash.hpp"
 #include "installer.hpp"
 #include "i18n.hpp"
@@ -83,6 +84,8 @@ struct Services {
         // Without the DSP firmware dump there are no sounds, which is fine.
         sound::init();
 
+        awake::init();
+
         const CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
         if (code != CURLE_OK) {
             error = i18n::t("Starting libcurl failed: {0}", {curl_easy_strerror(code)});
@@ -94,6 +97,7 @@ struct Services {
 
     ~Services()
     {
+        awake::exit();
         sound::exit();
         installer::exit();
         if (curl) {

@@ -116,6 +116,14 @@ first guess is cap 15 at scale 0.72.
   soft ink.
 - Info panel at x 17 to 383, y 69 to 225. Content screens (text editor, hex
   view, pictures) use the whole area below the title row instead.
+- Shoulder keys, y 225 to 240: when L or R has a job, a small grey tab
+  in the corner nearest its button names it, built as the nav tabs are:
+  flush with the screen's edges, its inner top corner rounded, the key's
+  white cap on the outside. A key that goes somewhere takes a word (Files:
+  L Favourites); one that toggles shows the state it changes instead, so
+  the two never read alike (Files: R as a star, outlined when R would add
+  the entry, gold when it would take it away). They name buttons and take
+  no touch, so the bottom screen keeps a way to do the same.
 
 ### Bottom screen
 
@@ -127,14 +135,18 @@ first guess is cap 15 at scale 0.72.
 ### Lists
 
 A recessed panel holds rows 27 px tall on a 31 px pitch: white pills with a
-17 px icon, the name and a right-aligned size or badge. Six rows fit; L/R and
-the counter page through the rest. Marked rows turn light blue with a Marked
-badge. The scrollbar's column takes a drag: the thumb follows the stylus, and
+17 px icon, the name and a right-aligned size or badge, with a small gold
+star before it on Files' favourites. Six rows fit; the D-pad's left and
+right, L/R and the counter page through the rest. A list that gives L or R
+a job of its own, as Files does, pages with the D-pad only. In every list a tap highlights a row and
+a tap on the highlighted row opens it. Marked rows turn light blue and their
+icon becomes a blue check; in Files a tap on a row's icon marks it. The scrollbar's column takes a drag: the thumb follows the stylus, and
 a touch on the track brings the thumb's middle there. A list that fills in
 while open keeps the row at the top of the view in place as rows arrive above
-it; only a list nobody has touched stays at its first row. A list can put an
-action at the right end of its heading for what changes the whole list, as a
-key cap and a word in the heading's ink (Files' X Sort, matching the Software lists' X Sort tab), never a pill.
+it; only a list nobody has touched stays at its first row. A list can put
+actions at the right end of its heading for what changes the whole list,
+each a key cap and a word in the heading's ink (Files' X Sort, matching the
+Software lists' X Sort tab), never a pill. A row on its way carries a thin progress bar along its foot.
 
 ### Dialogs
 
@@ -150,12 +162,14 @@ strip for a red button and a 30 px dark Cancel strip.
 | Home | app icon, name, download folder and version | Settings and Queue bars, six tiles (Scan QR Code, Enter URL, Receive; History, Files, Titles), Close bar |
 | Scan QR code | camera with corner brackets, status strip at the bottom | title, Type a URL Instead, Back |
 | Confirm download | file, host, URL, Save to and HTTPS tags | Download, Add to Queue, Change Folder, Cancel |
-| Downloading | file, progress, amounts, speed, connections tag | saving to, Cancel |
+| Downloading | file, progress, amounts, speed and its connections tag, the time left across from them (units::timeLeft, as every progress screen and the page say it) | saving to, Cancel |
 | File exists | which file and what each choice does | dialog: Keep Both / Replace / Cancel |
 | Install prompt | icon, name, publisher, Title ID, Version, Size | Install, Install and Delete File, Keep File |
-| Installing | icon, name, progress | do not turn off, Cancel |
+| Installing | icon, name, progress | do not turn off |
 | Installed | icon, name, time taken | dialog: Close / Launch |
-| Files | details of the highlighted entry; a picture's preview, a song's cover | path, six rows, Back, page counter, Options |
+| Files | details of the highlighted entry; a picture's preview, a song's cover; L Favourites and R's star in the corner tabs | path, X Sort, six rows, Back, page counter, Options |
+| Already here | the folder, how many clash and their names, files and folders tagged | Replace All (Merge All for folders, Replace and Merge for both), Keep Both, Skip These, Ask for Each, Cancel; one clash asks Keep Both / Replace (Merge) / Skip |
+| Favourites | details of the highlighted favourite, as Files shows it; R's gold star in the corner tab | starred folders and files in the order they were starred, each with its folder, or Missing; Back, R Remove; A opens a folder, or a file's folder with it highlighted |
 | File options | the file the choices act on | eight small buttons in two columns |
 | Picture viewer | the picture, nothing else | name, size, position, Previous / Next |
 | Song viewer | title, cover, artist, album, length, track | name, format, position, Previous / Next |
@@ -165,6 +179,12 @@ strip for a red button and a 30 px dark Cancel strip.
 | CIA details | icon, name, Title ID, Version, Size | Install, Install and Delete File, Delete File |
 | Delete | what goes and how big it is | destructive dialog |
 | History | the highlighted download in full | rows with Installed, Resume, Saved, Failed badges |
+| Receive | QR code for the page, the address in large type and http://3ds.local under it; while a file is on its way, its progress as Downloading shows it, with the address at the end of the dotted line | what came in and went out since 3dsDL started, newest first: a bar on what is on its way, the size of what arrived, Installed, Failed, Sent, Queued and Stopped badges, Back, X Clear once something is done (it drops what is done, keeps what is on its way, and leaves the files) |
+| Tickets without a backup | for one: its software (installed, remembered from when it was, from a Checkpoint folder or a CIA on the card), Title ID, bought here, issued for, a CIA that restores it, why no backup; for several: each one's name and whether it was bought here or has a CIA | destructive dialog: Delete Anyway / Keep, starting on Keep |
+| Received row | the row's name and facts | Install, Install and Delete File, Show in Files |
+| Sent links | names and the host each link leads to after its redirects, who sent them, where they go | dialog: Download / Add to Queue / Cancel, starting on Cancel unless 3dsDL's own page sent them; Don't Allow in place of Add to Queue once a device's links were cancelled |
+| Sent replace | the file, its host, the sender, the app, its folder and the name the new one was kept as | dialog: Keep Both / Replace, starting on Keep Both; only for the same app |
+| Sent extract | what the archive holds, the one folder in /3ds/ it goes into, and the new files it adds to a folder already there | dialog: Extract / Not Now, starting on Not Now unless the console said yes before the download |
 | Settings | the highlighted section's current values | About and Updates bars, four tiles, Back / Report Issue |
 | Report an Issue | QR code, name and address of the highlighted place | Report a Bug, Discord Server, Developer on X; the Details row to mention, and the Crash Log row when there is one; Back |
 | Setting choice | the setting's icon | recessed options, the current one chosen |
@@ -175,12 +195,13 @@ strip for a red button and a 30 px dark Cancel strip.
 
 ### Notifications
 
-News that is not a question, such as a new version of 3dsDL, slides down
-from under the status bar over whatever the top screen shows, like the HOME
-Menu's notifications. A card 336 by 50 at y 22: white to cream, radius 12, a
+News that is not a question, such as a new version of 3dsDL or a star
+added in Files, slides down from under the status bar over whatever the top
+screen shows, like the HOME Menu's notifications. A card 336 by 50 at y 22: white to cream, radius 12, a
 48 px app-coloured square with a white icon, a title in small type and one
 line under it. A thin line under the text runs out over the six seconds it
-stays, then the card slides back up. It waits while a dialog is open. The
+stays, then the card slides back up. A notice that arrives while one is
+down takes its place without sliding in again. It waits while a dialog is open. The
 control it points to (Settings, then Updates) carries an orange "New" badge
 on its top right corner, drawn over the focus ring.
 

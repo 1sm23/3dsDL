@@ -1,9 +1,11 @@
 #include "../check.hpp"
 #include "../support.hpp"
+#include "../z3ds_support.hpp"
 
 #include "cia.hpp"
 #include "fs_util.hpp"
 #include "image.hpp"
+#include "remote.hpp"
 #include "smdh.hpp"
 
 #include <algorithm>
@@ -48,6 +50,7 @@ struct Options {
     bool withMeta = true;
     bool encrypted = false;
     uint8_t ncchFlags = 0x20; // uses a seed
+    uint64_t titleId = TestTitleId;
 };
 
 // A CIA with the sections 3dsDL reads: an RSA-2048 signed TMD with one
@@ -72,7 +75,7 @@ std::string makeCia(const Options &options = Options())
 
     putBe(data, tmd, 0x10004, 4);
     const size_t header = tmd + 0x140;
-    putBe(data, header + 0x4c, TestTitleId, 8);
+    putBe(data, header + 0x4c, options.titleId, 8);
     putBe(data, header + 0x9c, TestVersion, 2);
     putBe(data, header + 0x9e, 1, 2);
     putBe(data, header + 0xc4 + 0x900 + 6, options.encrypted ? 1 : 0, 2);
@@ -212,6 +215,91 @@ TEST("cia: rejects files that are not complete CIAs")
     CHECK(!cia::readInfo(temp.path() + "missing.cia", info, error));
 }
 
+TEST("cia: reads a CIA compressed as a .zcia")
+{
+    TempDir temp;
+    const std::string data = makeCia();
+    // The SMDH Azahar copies into the metadata, here with another name, to
+    // tell which copy was read.
+    std::string smdhCopy = data.substr(data.size() - smdh::Size);
+    putUtf16(smdhCopy, 0x8 + 0x200, "Up Front!");
+    Z3dsOptions options;
+    options.frameSize = 0x1000;
+    options.metadata = z3dsMetadata({{"titleinfo", std::string(24, '\0')},
+                                     {"smdh", smdhCopy}});
+    const std::string path = temp.path() + "game.zcia";
+    CHECK(writeText(path, makeZ3ds(data, options)));
+    CHECK(cia::isCiaFile(path));
+
+    for (const bool quick : {false, true}) {
+        cia::Info info;
+        std::string error;
+        CHECK(cia::readInfo(path, info, error, quick));
+        CHECK(info.compressed);
+        CHECK_EQ(info.titleId, TestTitleId);
+        CHECK_EQ(info.version, TestVersion);
+        CHECK(info.seed == cia::Seed::Needed);
+        CHECK_EQ(info.fileSize, static_cast<uint64_t>(data.size()));
+        CHECK_EQ(info.contentSize, static_cast<uint64_t>(0x200));
+        CHECK(info.hasSmdh);
+        CHECK(!info.smdhLeft);
+        CHECK_EQ(info.smdh.shortName, std::string("Up Front!"));
+        CHECK_EQ(info.smdh.publisher, std::string("3dsDL Tests"));
+    }
+
+    // Without the copy, the name and icon come from the CIA's end, which a
+    // quick read leaves for later.
+    options.metadata = z3dsMetadata({{"compressor", "something else"}});
+    const std::string other = temp.path() + "other.zcia";
+    CHECK(writeText(other, makeZ3ds(data, options)));
+    cia::Info info;
+    std::string error;
+    CHECK(cia::readInfo(other, info, error, true));
+    CHECK(info.compressed);
+    CHECK_EQ(info.titleId, TestTitleId);
+    CHECK(!info.hasSmdh);
+    CHECK(info.smdhLeft);
+    CHECK(cia::readInfo(other, info, error));
+    CHECK(info.hasSmdh);
+    CHECK(!info.smdhLeft);
+    CHECK_EQ(info.smdh.shortName, std::string("Test Game"));
+
+    std::atomic<bool> stop {true};
+    CHECK(!cia::readInfo(other, info, error, false, &stop));
+    CHECK_EQ(error, std::string("Stopped."));
+}
+
+TEST("cia: a .zcia must hold a whole CIA")
+{
+    TempDir temp;
+    cia::Info info;
+    std::string error;
+
+    Z3dsOptions rom;
+    rom.underlying = "NCSD";
+    CHECK(writeText(temp.path() + "game.zcci", makeZ3ds(makeCia(), rom)));
+    CHECK(!cia::isCiaFile(temp.path() + "game.zcci"));
+    CHECK(!cia::readInfo(temp.path() + "game.zcci", info, error));
+    CHECK_EQ(error, std::string("This compressed file does not hold a CIA."));
+
+    const std::string whole = makeZ3ds(makeCia());
+    CHECK(writeText(temp.path() + "cut.zcia", whole.substr(0, whole.size() / 2)));
+    CHECK(cia::isCiaFile(temp.path() + "cut.zcia"));
+    CHECK(!cia::readInfo(temp.path() + "cut.zcia", info, error));
+    CHECK(error.find("incomplete") != std::string::npos);
+
+    // A CIA that was cut short before it was compressed.
+    CHECK(writeText(temp.path() + "short.zcia",
+                    makeZ3ds(makeCia().substr(0, 0x3000))));
+    CHECK(!cia::readInfo(temp.path() + "short.zcia", info, error));
+
+    // Plain CIAs say nothing about compression.
+    CHECK(writeText(temp.path() + "plain.cia", makeCia()));
+    CHECK(cia::readInfo(temp.path() + "plain.cia", info, error, true));
+    CHECK(!info.compressed);
+    CHECK(info.hasSmdh);
+}
+
 TEST("cia: title ID helpers")
 {
     CHECK_EQ(cia::titleIdText(TestTitleId), std::string("0004000000164800"));
@@ -304,4 +392,22 @@ TEST("fs: entries list folders first, then files with sizes")
     }
     fs::listEntries(temp.path() + "missing/", &ok);
     CHECK(!ok);
+}
+
+TEST("remote: a sender's CIA replaces only one with its title ID")
+{
+    TempDir temp;
+    Options other;
+    other.titleId = 0x0004000000ABCD00ULL;
+    CHECK(writeText(temp.path() + "old.cia", makeCia()));
+    CHECK(writeText(temp.path() + "new.cia", makeCia()));
+    CHECK(writeText(temp.path() + "other.cia", makeCia(other)));
+    CHECK(writeText(temp.path() + "junk.cia", "not a CIA"));
+    std::string name;
+    CHECK(remote::sameApp(temp.path() + "old.cia", temp.path() + "new.cia", &name));
+    CHECK(!name.empty());
+    CHECK(!remote::sameApp(temp.path() + "old.cia", temp.path() + "other.cia"));
+    CHECK(!remote::sameApp(temp.path() + "old.cia", temp.path() + "junk.cia"));
+    CHECK(!remote::sameApp(temp.path() + "junk.cia", temp.path() + "junk.cia"));
+    CHECK(!remote::sameApp(temp.path() + "old.cia", temp.path() + "gone.cia"));
 }

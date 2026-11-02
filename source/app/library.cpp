@@ -37,6 +37,8 @@ bool readSmdh(Handle file, smdh::Info &info)
     return ok;
 }
 
+} // namespace
+
 // The icon in a title's ExeFS, the way FBI reads it.
 bool titleSmdh(uint64_t titleId, FS_MediaType media, smdh::Info &info)
 {
@@ -54,6 +56,8 @@ bool titleSmdh(uint64_t titleId, FS_MediaType media, smdh::Info &info)
     }
     return readSmdh(file, info);
 }
+
+namespace {
 
 FS_ExtSaveDataInfo extDataInfo(uint64_t id)
 {
@@ -352,6 +356,11 @@ void loadExtData(Snapshot &out)
             reinterpret_cast<u8 *>(ids.data())))) {
         return;
     }
+    // Never read past the buffer that was handed to the service, whatever
+    // count it reports; entries beyond the cap are left for the next load.
+    if (count > MaxExtData) {
+        count = MaxExtData;
+    }
     std::unique_ptr<uint8_t[]> data(new uint8_t[SmdhSize]);
     for (u32 index = 0; index < count; ++index) {
         if (ids[index] == 0) {
@@ -384,6 +393,12 @@ void loadPending(FS_MediaType media, Snapshot &out)
     u32 read = 0;
     if (R_FAILED(AM_GetPendingTitleList(&read, ids.data(), count, media))) {
         return;
+    }
+    // The list can grow between the count and the list calls, so never
+    // read past the buffer that was sized from the count; the rest are
+    // picked up by the next load.
+    if (read > count) {
+        read = count;
     }
     for (u32 index = 0; index < read; ++index) {
         if (titles::isShown(ids[index])) {
@@ -619,6 +634,27 @@ bool deleteTitle(const titles::Title &title, bool withTicket, std::string &error
     return true;
 }
 
+void forgetTitle(Snapshot &snapshot, const titles::Title &title,
+                 bool withTicket)
+{
+    snapshot.titles.erase(
+        std::remove_if(snapshot.titles.begin(), snapshot.titles.end(),
+                       [&](const titles::Title &each) {
+                           return each.id == title.id &&
+                                  each.place == title.place;
+                       }),
+        snapshot.titles.end());
+    if (withTicket) {
+        snapshot.tickets.erase(std::remove(snapshot.tickets.begin(),
+                                           snapshot.tickets.end(), title.id),
+                               snapshot.tickets.end());
+    }
+    // AM removes its folder along with it.
+    if (title.place == titles::Place::SdCard) {
+        snapshot.onSdCard.erase(title.id);
+    }
+}
+
 std::vector<uint64_t> unusedTickets(const Snapshot &snapshot)
 {
     if (!snapshot.complete || !snapshot.sdListed) {
@@ -730,8 +766,34 @@ bool installTicketData(const std::string &data, std::string &error)
 
 } // namespace
 
-bool deleteTicket(uint64_t titleId, std::string &error)
+TicketFacts ticketFacts(uint64_t titleId)
 {
+    TicketFacts facts;
+    AM_TicketInfo info {};
+    u32 count = 0;
+    if (R_SUCCEEDED(AMNET_GetTicketInfos(&count, &info, 0, 1, titleId)) &&
+        count > 0) {
+        facts.known = true;
+        facts.ticketId = info.ticketId;
+        facts.version = info.titleVersion;
+    }
+    std::vector<AM_TicketInfo> personal(512);
+    count = 0;
+    if (R_SUCCEEDED(AM_GetPersonalizedTicketInfos(
+            &count, personal.data(), static_cast<u32>(personal.size())))) {
+        for (u32 index = 0; index < count && index < personal.size(); ++index) {
+            facts.personal = facts.personal || personal[index].titleId == titleId;
+        }
+    }
+    return facts;
+}
+
+bool deleteTicket(uint64_t titleId, std::string &error, bool *unsaved,
+                  bool withoutBackup)
+{
+    if (unsaved != nullptr) {
+        *unsaved = false;
+    }
     if (!titles::isShown(titleId)) {
         error = i18n::c("System tickets are never removed.");
         return false;
@@ -742,11 +804,20 @@ bool deleteTicket(uint64_t titleId, std::string &error)
     }
     // Saved first, so a deleted ticket can always be put back. No copy, no
     // delete.
-    std::string backup = i18n::c("nothing (test fault)");
-    if (!fault("skip-backup") &&
-        !exportTicket(titleId, DeletedTicketsFolder, backup, error)) {
+    std::string backup = "nothing (test fault)";
+    if (withoutBackup) {
+        const TicketFacts facts = ticketFacts(titleId);
+        backup = std::string("ticket ") +
+                 (facts.known ? std::to_string(facts.ticketId) : "unknown") +
+                 ", version " + std::to_string(facts.version) +
+                 (facts.personal ? ", bought on this console" : ", not bought here");
+    } else if (!fault("skip-backup") &&
+               !exportTicket(titleId, DeletedTicketsFolder, backup, error)) {
         error = i18n::t("The ticket was kept, as it could not be saved first. {0}", {error});
         logTickets("kept " + cia::titleIdText(titleId) + ": no backup");
+        if (unsaved != nullptr) {
+            *unsaved = true;
+        }
         return false;
     }
     const ::Result code = AM_DeleteTicket(titleId);
@@ -754,7 +825,8 @@ bool deleteTicket(uint64_t titleId, std::string &error)
         error = i18n::t("The ticket could not be deleted. {0}", {installer::describe(code)});
         return false;
     }
-    logTickets("deleted " + cia::titleIdText(titleId) + ", saved as " + backup);
+    logTickets("deleted " + cia::titleIdText(titleId) +
+               (withoutBackup ? " without a backup: " : ", saved as ") + backup);
     return true;
 }
 

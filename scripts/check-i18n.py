@@ -60,7 +60,7 @@ for path in (ROOT / "source").rglob("*"):
                 errors.append(f"{path.relative_to(ROOT)}:{line}: untranslated UI default {value!r}")
         # These direct entry points must receive translated static messages.
         for match in re.finditer(
-                r'(?:ui::(?:message|drawTopChrome)|dialog\.(?:header|title)\s*=)'
+                r'(?:ui::(?:message|drawTopChrome)|(?:dialog|done)\.(?:header|title)\s*=)'
                 r'\s*\(?\s*(' + literal + ')', source):
             value = json.loads(match[1])
             if re.search(r"[A-Za-z]{2}", value) and value != "SHA-256":
@@ -81,6 +81,9 @@ else:
     for match in re.finditer(r'\bcounted\(\s*(' + js_literal + r')\s*,\s*(' + js_literal + ')', script):
         one, other = (ast.literal_eval(value) for value in match.groups())
         called.update((one, other, other + '.few'))
+    # The Finder-style browser looks up these count templates through plural().
+    for word in ("item", "link", "CIA", "line"):
+        called.update(("{0} " + word, "{0} " + word + "s", "{0} " + word + "s.few"))
     # Restrict conditional keys to the first argument of tr(). A later
     # conditional may choose HTML attributes or other non-message values.
     for call in re.finditer(r'\btr\(', script):

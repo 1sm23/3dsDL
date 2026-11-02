@@ -5,6 +5,7 @@
 #include "naming.hpp"
 #include "records.hpp"
 #include "text.hpp"
+#include "tls_clock.hpp"
 #include "units.hpp"
 #include "url.hpp"
 
@@ -28,7 +29,6 @@ namespace {
 
 constexpr size_t FileBufferSize = 256 * 1024;
 constexpr long CurlBufferSize = 128 * 1024;
-constexpr long MaxRedirects = 10;
 // A download starts over at most twice: once when the file changed since the
 // partial download, and once more on one connection when the server
 // mishandles ranges.
@@ -464,6 +464,19 @@ bool isTransient(CURLcode code, long httpStatus)
     }
 }
 
+// Turns away a connection Request::refuse names, before it is asked anything.
+int prerequestCallback(void *user, char *to, char *from, int, int)
+{
+    Connection &connection = *static_cast<Connection *>(user);
+    Transfer &transfer = *connection.transfer;
+    if (transfer.request->refuse(to != nullptr ? to : "",
+                                 from != nullptr ? from : "")) {
+        transfer.failure = i18n::c("The link leads to an address on this network.");
+        return CURL_PREREQFUNC_ABORT;
+    }
+    return CURL_PREREQFUNC_OK;
+}
+
 void configure(Transfer &transfer, Connection &connection)
 {
     const Request &request = *transfer.request;
@@ -491,6 +504,7 @@ void configure(Transfer &transfer, Connection &connection)
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    useLocalClock(curl);
     if (!request.caFile.empty()) {
         curl_easy_setopt(curl, CURLOPT_CAINFO, request.caFile.c_str());
     }
@@ -507,6 +521,10 @@ void configure(Transfer &transfer, Connection &connection)
     if (request.socketBufferSize > 0) {
         curl_easy_setopt(curl, CURLOPT_SOCKOPTFUNCTION, sockoptCallback);
         curl_easy_setopt(curl, CURLOPT_SOCKOPTDATA, &transfer);
+    }
+    if (request.refuse) {
+        curl_easy_setopt(curl, CURLOPT_PREREQFUNCTION, prerequestCallback);
+        curl_easy_setopt(curl, CURLOPT_PREREQDATA, &connection);
     }
 
     if (request.maxFileSize > piece.next) {

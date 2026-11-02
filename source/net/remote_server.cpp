@@ -4,9 +4,12 @@
 #include "file_ops.hpp"
 #include "file_types.hpp"
 #include "fs_util.hpp"
+#include "naming.hpp"
 #include "remote.hpp"
 #include "socket_wait.hpp"
+#include "text.hpp"
 #include "title_meta.hpp"
+#include "units.hpp"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -249,17 +252,45 @@ void sendJson(int client, const std::string &json)
     sendAll(client, remote::httpResponse(200, "application/json", json));
 }
 
-// Reports a transfer to FileSharing::progress a few times a second.
+// The code editor, which the page loads the first time a file opens. The
+// browser keeps it and asks again with its tag, so it comes over once for
+// each version of 3dsDL.
+void sendEditor(int client, const FileSharing &sharing,
+                const remote::HttpRequest &request)
+{
+    std::string script;
+    if (sharing.editorScript.empty() || !fs::readFile(sharing.editorScript, script)) {
+        sendAll(client, remote::httpResponse(404, "text/plain", "Not found\n"));
+        return;
+    }
+    char tag[16];
+    std::snprintf(tag, sizeof(tag), "\"%08lx\"",
+                  static_cast<unsigned long>(
+                      crc32(0L, reinterpret_cast<const Bytef *>(script.data()),
+                            static_cast<uInt>(script.size())) &
+                      0xffffffffUL));
+    const std::string head = std::string("Cache-Control: no-cache\r\nETag: ") + tag +
+                             "\r\nConnection: close\r\n\r\n";
+    const auto seen = request.headers.find("if-none-match");
+    if (seen != request.headers.end() && seen->second == tag) {
+        sendAll(client, "HTTP/1.1 304 Not Modified\r\n" + head);
+        return;
+    }
+    sendAll(client, "HTTP/1.1 200 OK\r\nContent-Type: text/javascript; charset=utf-8\r\n"
+                    "Content-Encoding: gzip\r\nContent-Length: " +
+                        std::to_string(script.size()) +
+                        "\r\nX-Content-Type-Options: nosniff\r\n" + head + script);
+}
+
+// Reports a transfer to FileSharing::progress a few times a second. start
+// says which file it is; quiet reports nothing, for files the page only
+// shows.
 class Reporter {
 public:
-    Reporter(const FileSharing &sharing, const std::string &name,
-             const std::string &from, bool upload, uint64_t total)
-        : sharing_(sharing)
+    Reporter(const FileSharing &sharing, const Transfer &start,
+             bool quiet = false)
+        : sharing_(sharing), transfer_(start), quiet_(quiet)
     {
-        transfer_.name = name;
-        transfer_.from = from;
-        transfer_.upload = upload;
-        transfer_.total = total;
         report();
     }
 
@@ -272,10 +303,11 @@ public:
         }
     }
 
-    void finish(bool ok)
+    void finish(bool ok, const std::string &message = "")
     {
         transfer_.finished = true;
         transfer_.ok = ok;
+        transfer_.message = ok ? "" : message;
         report();
     }
 
@@ -283,15 +315,30 @@ private:
     void report()
     {
         last_ = Clock::now();
-        if (sharing_.progress) {
+        if (!quiet_ && sharing_.progress) {
             sharing_.progress(transfer_);
         }
     }
 
     const FileSharing &sharing_;
     Transfer transfer_;
+    bool quiet_;
     Clock::time_point last_;
 };
+
+void changed(const FileSharing &sharing, const std::string &path)
+{
+    if (sharing.changed) {
+        sharing.changed(path);
+    }
+}
+
+std::string deviceOf(const remote::HttpRequest &request)
+{
+    const auto agent = request.headers.find("user-agent");
+    return agent == request.headers.end() ? ""
+                                          : remote::deviceName(agent->second);
+}
 
 bool stopping(const FileSharing &sharing)
 {
@@ -320,6 +367,135 @@ std::string folderOf(const std::string &path)
 bool isRoot(const FileSharing &sharing, const std::string &path)
 {
     return path == sharing.root + "/";
+}
+
+// The page's path for one on the card: "sdmc:/a/b" -> "/a/b".
+std::string webPathOf(const FileSharing &sharing, const std::string &local)
+{
+    std::string web = local.substr(sharing.root.size());
+    while (web.size() > 1 && web.back() == '/') {
+        web.pop_back();
+    }
+    return web.empty() ? "/" : web;
+}
+
+// The sidebar's folders and the favourites that are there now.
+void sendPlaces(int client, const FileSharing &sharing)
+{
+    const auto list = [&](const std::vector<Place> &places) {
+        std::string json;
+        for (const Place &place : places) {
+            if (place.path.compare(0, sharing.root.size(), sharing.root) != 0 ||
+                !fileops::exists(place.path)) {
+                continue;
+            }
+            json += std::string(json.empty() ? "" : ",") +
+                    "{\"name\":" + remote::jsonString(place.name) +
+                    ",\"path\":" + remote::jsonString(webPathOf(sharing, place.path)) +
+                    ",\"dir\":" + (fileops::isFolder(place.path) ? "true" : "false") +
+                    "}";
+        }
+        return "[" + json + "]";
+    };
+    sendJson(client, "{\"places\":" + list(sharing.places) +
+                         ",\"favorites\":" + list(sharing.favorites) + "}");
+}
+
+// Moves or copies the entry at local to destination. A name already taken
+// there is refused, unless clash is "keep" (it takes the next free name)
+// or "replace" (what is there goes, and a folder meeting a folder is
+// merged into it). Answers with where it ended up.
+void transferEntry(int client, const FileSharing &sharing, const std::string &local,
+                   std::string destination, const std::string &clash, bool moving)
+{
+    const std::string name = fileops::name(local);
+    if (isRoot(sharing, local) || isRoot(sharing, destination)) {
+        sendAll(client, remote::jsonError(400, moving ? i18n::c("The SD card itself cannot move.")
+                                                      : i18n::c("The SD card itself cannot be copied.")));
+        return;
+    }
+    if (!fileops::exists(local)) {
+        sendAll(client, remote::jsonError(404, i18n::t("{0} is not there any more.", {name})));
+        return;
+    }
+    const std::string folder = folderOf(destination);
+    if (!fs::directoryExists(folder)) {
+        sendAll(client, remote::jsonError(404, i18n::c("That folder does not exist.")));
+        return;
+    }
+    const bool isFolder = fileops::isFolder(local);
+    if (isFolder && fileops::isInside(destination, local)) {
+        sendAll(client, remote::jsonError(409, i18n::t("{0} cannot go inside itself.", {name})));
+        return;
+    }
+    // FAT ignores case, so the same entry may be named either way.
+    const bool itself = text::lower(destination) == text::lower(local);
+    if (moving && itself && clash != "") {
+        sendJson(client, "{\"path\":" + remote::jsonString(webPathOf(sharing, local)) + "}");
+        return;
+    }
+    StopWith observer(sharing);
+    bool merge = false;
+    // A rename that only changes case is no clash; fileops::move does it.
+    if (!(moving && itself) && fileops::exists(destination)) {
+        if (clash == "keep") {
+            destination = naming::unusedPath(folder.back() == '/' ? folder : folder + "/",
+                                             fileops::name(destination),
+                                             [](const std::string &path) {
+                                                 return fileops::exists(path);
+                                             });
+            if (destination.empty()) {
+                sendAll(client, remote::jsonError(409, i18n::t("No free name was found for {0}.", {name})));
+                return;
+            }
+        } else if (clash == "replace" && !itself) {
+            merge = isFolder && fileops::isFolder(destination);
+            uint64_t removed = 0;
+            const fileops::Result cleared =
+                merge ? fileops::Result()
+                      : fileops::remove(destination, observer, removed, 0);
+            if (cleared.status != fileops::Status::Ok) {
+                changed(sharing, destination);
+                sendAll(client, remote::jsonError(500, cleared.message));
+                return;
+            }
+        } else {
+            sendAll(client, remote::jsonError(409, i18n::t("{0} is already there.", {fileops::name(destination)})));
+            return;
+        }
+    }
+    uint64_t bytes = 0;
+    if (!moving) {
+        bytes = fileops::measure(local).bytes;
+        const int64_t free = sharing.freeSpace ? sharing.freeSpace() : -1;
+        if (free >= 0 && bytes > static_cast<uint64_t>(free)) {
+            sendAll(client, remote::jsonError(507, i18n::t("Copying needs {0} and {1} is free.", {units::bytes(bytes), units::bytes(static_cast<uint64_t>(free))})));
+            return;
+        }
+    }
+    fileops::Result result;
+    uint64_t done = 0;
+    if (merge) {
+        result = fileops::merge(local, destination, moving, observer, done, bytes);
+    } else if (moving) {
+        if (!fileops::move(local, destination, result.message)) {
+            result.status = fileops::Status::Failed;
+        }
+    } else {
+        result = fileops::copy(local, destination, observer, done, bytes);
+    }
+    if (moving) {
+        changed(sharing, local);
+    }
+    changed(sharing, destination);
+    if (result.status != fileops::Status::Ok) {
+        sendAll(client, remote::jsonError(result.status == fileops::Status::Cancelled ? 503 : 409,
+                                          result.status == fileops::Status::Cancelled
+                                              ? i18n::c("Stopped on the 3DS.")
+                                              : result.message));
+        return;
+    }
+    sendJson(client, "{\"path\":" + remote::jsonString(webPathOf(sharing, destination)) + "}");
 }
 
 // Reads the rest of a small body into request.body.
@@ -476,8 +652,9 @@ bool readTitle(const std::string &local, Title &title, std::string &error)
 {
     const filetype::Kind kind = filetype::fromName(local);
     if (kind == filetype::Kind::Cia) {
+        // Quick, as a .zcia's end could keep the server busy for seconds.
         cia::Info info;
-        if (!cia::readInfo(local, info, error)) {
+        if (!cia::readInfo(local, info, error, true)) {
             return false;
         }
         title.name = !info.smdh.englishShortName.empty()
@@ -574,7 +751,7 @@ const char *accessName(Access access)
 void sendStatus(int client, const FileSharing &sharing, const std::string &from)
 {
     const Access access = sharing.root.empty() ? Access::Unknown
-                          : sharing.access     ? sharing.access(from, false)
+                          : sharing.access     ? sharing.access(from, "", false)
                                                : Access::Allowed;
     const ConsoleStatus status = sharing.status ? sharing.status() : ConsoleStatus();
     const bool allowed = access == Access::Allowed || status.open;
@@ -589,7 +766,8 @@ void sendStatus(int client, const FileSharing &sharing, const std::string &from)
 }
 
 void sendFile(int client, const FileSharing &sharing, const std::string &from,
-              const std::string &local, bool asAttachment)
+              const std::string &device, const std::string &local,
+              bool asAttachment)
 {
     const int64_t size = fs::fileSize(local);
     FILE *file = size < 0 || fileops::isFolder(local)
@@ -610,7 +788,16 @@ void sendFile(int client, const FileSharing &sharing, const std::string &from,
         "\r\nX-Content-Type-Options: nosniff"
         "\r\nContent-Security-Policy: sandbox"
         "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
-    Reporter reporter(sharing, name, from, false, static_cast<uint64_t>(size));
+    Transfer start;
+    start.name = name;
+    start.path = local;
+    start.from = from;
+    start.device = device;
+    start.upload = false;
+    start.total = static_cast<uint64_t>(size);
+    // Only a file saved from the page is worth telling the console about;
+    // the pictures and text it shows come and go as the page is browsed.
+    Reporter reporter(sharing, start, !asAttachment);
     bool ok = sendBytes(client, head.data(), head.size(), IdleTimeoutMs);
     std::vector<char> buffer(ReadChunk);
     uint64_t done = 0;
@@ -726,7 +913,25 @@ void receiveFile(int client, const FileSharing &sharing,
         return;
     }
 
-    Reporter reporter(sharing, name, from, true, total);
+    Transfer start;
+    start.name = name;
+    start.path = local;
+    start.from = from;
+    start.device = deviceOf(request);
+    start.total = total;
+    if (remote::uploadBatch(request, start.batch)) {
+        // Only a folder the file is really in, so a row on the console
+        // never claims files that went elsewhere.
+        std::string dropped;
+        if (start.batch.folder.empty() ||
+            !remote::localPath(sharing.root, start.batch.folder, dropped) ||
+            local.compare(0, dropped.size() + 1, dropped + "/") != 0) {
+            dropped.clear();
+            start.batch.folderFiles = 0;
+        }
+        start.batch.folder = dropped;
+    }
+    Reporter reporter(sharing, start);
     std::vector<char> buffer(WriteChunk);
     // Whatever of the body came in with the head goes first.
     size_t used = std::min<size_t>(data.size() - bodyStart,
@@ -796,8 +1001,9 @@ void receiveFile(int client, const FileSharing &sharing,
     if (!ok || placed) {
         fs::removeFile(part);
     }
-    reporter.finish(ok);
+    reporter.finish(ok, connected ? problem : "");
     if (ok) {
+        changed(sharing, local);
         sendJson(client, "{\"name\":" + remote::jsonString(name) +
                              ",\"size\":" + std::to_string(total) + "}");
     } else if (connected) {
@@ -823,8 +1029,9 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         sendAll(client, remote::jsonError(404, i18n::c("Files are not shared.")));
         return false;
     }
+    const std::string device = deviceOf(request);
     const Access access =
-        sharing.access ? sharing.access(from, true) : Access::Allowed;
+        sharing.access ? sharing.access(from, device, true) : Access::Allowed;
     if (access != Access::Allowed) {
         const bool pending = access == Access::Pending;
         sendAll(client,
@@ -860,6 +1067,10 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         }
         return false;
     }
+    if (route == "/api/places" && method == "GET") {
+        sendPlaces(client, sharing);
+        return false;
+    }
     if ((route == "/api/meta" || route == "/api/icon") && method == "GET") {
         if (mapped(remote::formValue(request.query, "path"), local)) {
             sendTitle(client, sharing, local, route == "/api/icon");
@@ -871,7 +1082,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             return false;
         }
         if (method == "GET") {
-            sendFile(client, sharing, from, local,
+            sendFile(client, sharing, from, device, local,
                      remote::formValue(request.query, "download") == "1");
         } else if (isRoot(sharing, local)) {
             sendAll(client, remote::jsonError(400, i18n::c("Name the file to upload.")));
@@ -893,11 +1104,15 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         if (!mapped(remote::formValue(form, "path"), local)) {
             return false;
         }
-        if (fileops::exists(local) && !fileops::isFolder(local)) {
+        const bool existed = fileops::exists(local);
+        if (existed && !fileops::isFolder(local)) {
             sendAll(client, remote::jsonError(409, i18n::t("A file is already called {0}.", {fileops::name(local)})));
         } else if (!fs::makeDirectories(local)) {
             sendAll(client, remote::jsonError(500, i18n::c("Could not create the folder.")));
         } else {
+            if (!existed) {
+                changed(sharing, local);
+            }
             sendJson(client, "{}");
         }
         return false;
@@ -914,23 +1129,12 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         }
         return false;
     }
-    if (route == "/api/move") {
+    if (route == "/api/move" || route == "/api/copy") {
         std::string destination;
-        if (!mapped(remote::formValue(form, "from"), local) ||
-            !mapped(remote::formValue(form, "to"), destination)) {
-            return false;
-        }
-        std::string error;
-        if (isRoot(sharing, local) || isRoot(sharing, destination)) {
-            sendAll(client, remote::jsonError(400, i18n::c("The SD card itself cannot move.")));
-        } else if (!fileops::exists(local)) {
-            sendAll(client, remote::jsonError(404, i18n::t("{0} is not there any more.", {fileops::name(local)})));
-        } else if (!fs::directoryExists(folderOf(destination))) {
-            sendAll(client, remote::jsonError(404, i18n::c("That folder does not exist.")));
-        } else if (!fileops::move(local, destination, error)) {
-            sendAll(client, remote::jsonError(409, error));
-        } else {
-            sendJson(client, "{}");
+        if (mapped(remote::formValue(form, "from"), local) &&
+            mapped(remote::formValue(form, "to"), destination)) {
+            transferEntry(client, sharing, local, destination,
+                          remote::formValue(form, "clash"), route == "/api/move");
         }
         return false;
     }
@@ -950,12 +1154,15 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
         // than by searching its folder for every entry; the page shows no
         // progress, so nothing is counted first.
         if (fileops::isFolder(local) && fs::removeFolderTree(local)) {
+            changed(sharing, local);
             sendJson(client, "{}");
             return false;
         }
         StopWith observer(sharing);
         uint64_t done = 0;
         const fileops::Result result = fileops::remove(local, observer, done, 0);
+        // Part of a folder may be gone even when the rest could not go.
+        changed(sharing, local);
         if (result.status == fileops::Status::Ok) {
             sendJson(client, "{}");
         } else {
@@ -985,6 +1192,7 @@ bool serveApi(int client, const FileSharing &sharing, const std::string &from,
             return false;
         }
         out.from = from;
+        out.device = device;
         sendJson(client, "{\"count\":" + std::to_string(out.install.size()) + "}");
         return true;
     }
@@ -1078,6 +1286,9 @@ bool Receiver::wait(int timeoutMs, Received &out)
             setsockopt(client, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
         }
         const std::string from = inet_ntoa(peer.sin_addr);
+        // Fresh for each connection, so nothing a page sent without links
+        // rides along on an FBI send served in the same wait.
+        out = Received();
         const bool got = index == 0 ? serveWeb(client, from, out)
                                     : serveFbi(client, from, out);
         if (got) {
@@ -1148,6 +1359,21 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
         return false;
     }
 
+    // Everything but the page's status poll is someone using the console.
+    const bool counts = sharing_.working && request.path != "/api/status";
+    if (counts) {
+        sharing_.working(true);
+    }
+    struct Done {
+        const std::function<void(bool)> *report;
+        ~Done()
+        {
+            if (report != nullptr) {
+                (*report)(false);
+            }
+        }
+    } done {counts ? &sharing_.working : nullptr};
+
     const std::string html = "text/html; charset=utf-8";
     bool got = false;
     if (request.path.compare(0, 5, "/api/") == 0) {
@@ -1162,6 +1388,8 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
                           : i18n::t("Sent {0} links. They are downloading on the 3DS.", {sent});
         sendAll(client, remote::httpResponse(200, html,
                                              remote::page(message, sent != "0")));
+    } else if (request.path == "/editor.js" && request.method == "GET") {
+        sendEditor(client, sharing_, request);
     } else if (request.path == "/send" &&
                (request.method == "POST" || request.method == "GET")) {
         if (request.method == "POST" &&
@@ -1171,8 +1399,26 @@ bool Receiver::serveWeb(int client, const std::string &from, Received &out)
         }
         const std::string &form =
             request.method == "POST" ? request.body : request.query;
+        // A device the console turned down sends nothing more until
+        // Receive closes.
+        if (sharing_.refuseLinks && sharing_.refuseLinks(from)) {
+            sendAll(client, remote::jsonError(403, i18n::c("The 3DS did not allow this device.")));
+            closeClient(client);
+            return false;
+        }
+        std::string why;
+        if (!remote::sendOptions(form, out.options, why)) {
+            // The page reads JSON; a plain form or another site, text.
+            sendAll(client, remote::fromOwnPage(request)
+                                ? remote::jsonError(400, why)
+                                : remote::httpResponse(400, "text/plain", why + "\n"));
+            closeClient(client);
+            return false;
+        }
         out.links = remote::extractLinks(remote::formValue(form, "links"));
         out.from = from;
+        out.device = deviceOf(request);
+        out.ownPage = remote::fromOwnPage(request);
         got = !out.links.empty();
         const auto marker = request.headers.find("x-requested-with");
         if (marker != request.headers.end() && marker->second == "3dsDL") {

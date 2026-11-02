@@ -334,6 +334,7 @@ TEST("remote server: files go up, come back, move and go away")
     TempRoot root;
     std::mutex lock;
     std::vector<net::Transfer> finished;
+    std::vector<std::string> changed;
     net::FileSharing sharing;
     sharing.root = root.path;
     sharing.freeSpace = []() { return static_cast<int64_t>(1) << 30; };
@@ -342,6 +343,10 @@ TEST("remote server: files go up, come back, move and go away")
             std::lock_guard<std::mutex> hold(lock);
             finished.push_back(transfer);
         }
+    };
+    sharing.changed = [&](const std::string &path) {
+        std::lock_guard<std::mutex> hold(lock);
+        changed.push_back(path);
     };
     net::Receiver receiver;
     std::string error;
@@ -386,6 +391,13 @@ TEST("remote server: files go up, come back, move and go away")
         CHECK_EQ(finished.size(), static_cast<size_t>(1));
         CHECK(finished.back().ok && finished.back().upload);
         CHECK_EQ(finished.back().done, static_cast<uint64_t>(contents.size()));
+        CHECK_EQ(finished.back().path, root.path + "/cia/a b.bin");
+        CHECK(finished.back().batch.id.empty());
+        CHECK_EQ(changed.size(), static_cast<size_t>(2));
+        CHECK_EQ(changed[0], root.path + "/cia");
+        CHECK_EQ(changed[1], root.path + "/cia/a b.bin");
+        finished.clear();
+        changed.clear();
     }
 
     // Replacing has to be asked for.
@@ -400,6 +412,17 @@ TEST("remote server: files go up, come back, move and go away")
     CHECK(bodyOf(response) == "new");
     CHECK(response.find("Content-Security-Policy: sandbox") != std::string::npos);
     CHECK(response.find("attachment; filename=\"a b.bin\"") != std::string::npos);
+    // Only a file saved from the page is reported, not one it shows.
+    CHECK(bodyOf(get(port, "/api/file?path=%2Fcia%2Fa%20b.bin")) == "new");
+    {
+        std::lock_guard<std::mutex> hold(lock);
+        // The refused upload, the replacing one and the download.
+        CHECK_EQ(finished.size(), static_cast<size_t>(3));
+        CHECK(!finished[0].ok && finished[0].message == "a b.bin already exists.");
+        CHECK(finished[1].ok);
+        CHECK(!finished[2].upload && finished[2].ok);
+        CHECK_EQ(finished[2].done, static_cast<uint64_t>(3));
+    }
 
     response = get(port, "/api/list?path=%2Fcia");
     CHECK(bodyOf(response).find("{\"name\":\"a b.bin\",\"dir\":false,\"size\":3,") !=
@@ -410,6 +433,13 @@ TEST("remote server: files go up, come back, move and go away")
     CHECK(fs::fileExists(root.path + "/game.cia"));
     CHECK(startsWith(post(port, "/api/move", "from=%2Fcia&to=%2Fcia%2Finside"),
                      "HTTP/1.1 409"));
+    // A rename that only changes case is no clash.
+    CHECK(bodyOf(post(port, "/api/move", "from=%2Fgame.cia&to=%2FGame.CIA")) ==
+          "{\"path\":\"/Game.CIA\"}");
+    CHECK(bodyOf(get(port, "/api/list?path=%2F")).find("\"name\":\"Game.CIA\"") !=
+          std::string::npos);
+    CHECK(startsWith(post(port, "/api/move", "from=%2FGame.CIA&to=%2Fgame.cia"),
+                     "HTTP/1.1 200"));
 
     // The page asks the console to install; only real CIAs go through.
     response = post(port, "/api/install", "paths=%2Fgame.cia%0A%2Fmissing.cia%0A%2Fcia");
@@ -420,6 +450,16 @@ TEST("remote server: files go up, come back, move and go away")
     CHECK(startsWith(post(port, "/api/delete", "path=%2Fcia"), "HTTP/1.1 200"));
     CHECK(!fs::directoryExists(root.path + "/cia"));
     CHECK(startsWith(post(port, "/api/delete", "path=%2F"), "HTTP/1.1 400"));
+    {
+        std::lock_guard<std::mutex> hold(lock);
+        // The replaced file, both ends of each move, then the deleted folder.
+        const std::vector<std::string> expected = {
+            root.path + "/cia/a b.bin", root.path + "/cia/a b.bin",
+            root.path + "/game.cia",    root.path + "/game.cia",
+            root.path + "/Game.CIA",    root.path + "/Game.CIA",
+            root.path + "/game.cia",    root.path + "/cia"};
+        CHECK(changed == expected);
+    }
 
     const std::vector<net::Received> arrived = serving.arrived();
     CHECK_EQ(arrived.size(), static_cast<size_t>(1));
@@ -428,6 +468,67 @@ TEST("remote server: files go up, come back, move and go away")
         CHECK_EQ(arrived[0].install[0], root.path + "/game.cia");
         CHECK(arrived[0].links.empty());
     }
+}
+
+TEST("remote server: copies and moves ask before taking a name, and folders merge")
+{
+    TempRoot root;
+    CHECK(fs::makeDirectories(root.path + "/a/app/"));
+    CHECK(fs::makeDirectories(root.path + "/b/app/"));
+    CHECK(fs::writeFile(root.path + "/a/x.txt", "new x"));
+    CHECK(fs::writeFile(root.path + "/a/app/app.3dsx", "new app"));
+    CHECK(fs::writeFile(root.path + "/b/x.txt", "old x"));
+    CHECK(fs::writeFile(root.path + "/b/app/app.3dsx", "old app"));
+    CHECK(fs::writeFile(root.path + "/b/app/config.ini", "kept"));
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.places = {{"Downloads", root.path + "/a"}, {"gone", root.path + "/gone"}};
+    sharing.favorites = {{"x.txt", root.path + "/b/x.txt"}};
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    // Only what is there is offered.
+    CHECK(bodyOf(get(port, "/api/places")) ==
+          "{\"places\":[{\"name\":\"Downloads\",\"path\":\"/a\",\"dir\":true}],"
+          "\"favorites\":[{\"name\":\"x.txt\",\"path\":\"/b/x.txt\",\"dir\":false}]}");
+
+    // A taken name is refused unless the page says what to do.
+    CHECK(startsWith(post(port, "/api/copy", "from=%2Fa%2Fx.txt&to=%2Fb%2Fx.txt"),
+                     "HTTP/1.1 409"));
+    std::string response =
+        post(port, "/api/copy", "from=%2Fa%2Fx.txt&to=%2Fb%2Fx.txt&clash=keep");
+    CHECK(bodyOf(response) == "{\"path\":\"/b/x (1).txt\"}");
+    std::string stored;
+    CHECK(fs::readFile(root.path + "/b/x (1).txt", stored) && stored == "new x");
+    // Copied into its own folder, it keeps both too.
+    CHECK(bodyOf(post(port, "/api/copy", "from=%2Fa%2Fx.txt&to=%2Fa%2Fx.txt&clash=keep")) ==
+          "{\"path\":\"/a/x (1).txt\"}");
+    CHECK(startsWith(post(port, "/api/copy", "from=%2Fa%2Fx.txt&to=%2Fa%2Fx.txt&clash=replace"),
+                     "HTTP/1.1 409"));
+    CHECK(fs::readFile(root.path + "/a/x.txt", stored) && stored == "new x");
+
+    // Replacing a folder merges into it.
+    CHECK(bodyOf(post(port, "/api/copy", "from=%2Fa%2Fapp&to=%2Fb%2Fapp&clash=replace")) ==
+          "{\"path\":\"/b/app\"}");
+    CHECK(fs::readFile(root.path + "/b/app/app.3dsx", stored) && stored == "new app");
+    CHECK(fs::readFile(root.path + "/b/app/config.ini", stored) && stored == "kept");
+    CHECK(fs::fileExists(root.path + "/a/app/app.3dsx"));
+
+    // Moved over a file, it replaces it and is gone from where it was.
+    CHECK(bodyOf(post(port, "/api/move", "from=%2Fa%2Fx.txt&to=%2Fb%2Fx.txt&clash=replace")) ==
+          "{\"path\":\"/b/x.txt\"}");
+    CHECK(fs::readFile(root.path + "/b/x.txt", stored) && stored == "new x");
+    CHECK(!fs::fileExists(root.path + "/a/x.txt"));
+    // Moving onto itself changes nothing; into itself is refused.
+    CHECK(bodyOf(post(port, "/api/move", "from=%2Fb%2Fx.txt&to=%2Fb%2Fx.txt&clash=replace")) ==
+          "{\"path\":\"/b/x.txt\"}");
+    CHECK(fs::fileExists(root.path + "/b/x.txt"));
+    CHECK(startsWith(post(port, "/api/move", "from=%2Fb&to=%2Fb%2Fapp%2Fb&clash=keep"),
+                     "HTTP/1.1 409"));
 }
 
 TEST("remote server: uploads wait in the staging folder, then take their place")
@@ -502,6 +603,39 @@ TEST("remote server: a stopping listener gives up an upload part way")
     CHECK(!fs::fileExists(root.path + "/.3dsdl-upload.part"));
 }
 
+TEST("remote server: every request but the status poll counts as working")
+{
+    TempRoot root;
+    std::atomic<int> started {0};
+    std::atomic<int> ended {0};
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.working = [&](bool on) { ++(on ? started : ended); };
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+    // The end is reported once the answer has gone, so it can trail it.
+    const auto settled = [&](int count) {
+        for (int wait = 0; wait < 100 && ended.load() != count; ++wait) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return started.load() == count && ended.load() == count;
+    };
+
+    // An open page polls its status for as long as it is open.
+    CHECK(startsWith(get(port, "/api/status"), "HTTP/1.1 200"));
+    CHECK(settled(0));
+    CHECK(startsWith(get(port, "/api/list?path=%2F"), "HTTP/1.1 200"));
+    CHECK(settled(1));
+    CHECK(startsWith(put(port, "/api/file?path=%2Fa.bin", "x"), "HTTP/1.1 200"));
+    CHECK(settled(2));
+    CHECK(startsWith(get(port, "/"), "HTTP/1.1 200"));
+    CHECK(settled(3));
+}
+
 TEST("remote server: the file API turns away what it should")
 {
     TempRoot root;
@@ -509,8 +643,9 @@ TEST("remote server: the file API turns away what it should")
     net::FileSharing sharing;
     sharing.root = root.path;
     bool asked = false;
-    sharing.access = [&](const std::string &from, bool ask) {
+    sharing.access = [&](const std::string &from, const std::string &device, bool ask) {
         CHECK_EQ(from, std::string("127.0.0.1"));
+        CHECK(device.empty());
         asked = asked || ask;
         return access;
     };
@@ -616,6 +751,49 @@ TEST("remote server: answers end cleanly, and a client that stays does not hold 
     ::close(stays);
 }
 
+TEST("remote server: the code editor comes once for each version, to anyone")
+{
+    TempRoot root;
+    const std::string script = root.path + "/editor.js.gz";
+    CHECK(fs::writeFile(script, "not really gzip"));
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.access = [](const std::string &, const std::string &, bool) {
+        return net::Access::Unknown;
+    };
+    sharing.editorScript = script;
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+
+    std::string response = get(port, "/editor.js");
+    CHECK(startsWith(response, "HTTP/1.1 200"));
+    CHECK(response.find("Content-Encoding: gzip\r\n") != std::string::npos);
+    CHECK(bodyOf(response) == "not really gzip");
+    const size_t at = response.find("ETag: ");
+    CHECK(at != std::string::npos);
+    const std::string tag = response.substr(at + 6, response.find("\r\n", at) - at - 6);
+    CHECK_EQ(tag.size(), static_cast<size_t>(10));
+
+    response = roundTrip(port, "GET /editor.js HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                               "If-None-Match: " + tag + "\r\n\r\n");
+    CHECK(startsWith(response, "HTTP/1.1 304"));
+    CHECK(bodyOf(response).empty());
+
+    // A new version answers in full.
+    CHECK(fs::writeFile(script, "a new version"));
+    response = roundTrip(port, "GET /editor.js HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                               "If-None-Match: " + tag + "\r\n\r\n");
+    CHECK(startsWith(response, "HTTP/1.1 200"));
+    CHECK(bodyOf(response) == "a new version");
+
+    CHECK(fs::removeFile(script));
+    CHECK(startsWith(get(port, "/editor.js"), "HTTP/1.1 404"));
+}
+
 TEST("remote server: status, links for the page, hidden files and titles")
 {
     TempRoot root;
@@ -629,7 +807,7 @@ TEST("remote server: status, links for the page, hidden files and titles")
     net::FileSharing sharing;
     sharing.root = root.path;
     bool allowed = false;
-    sharing.access = [&](const std::string &from, bool ask) {
+    sharing.access = [&](const std::string &from, const std::string &, bool ask) {
         std::lock_guard<std::mutex> hold(lock);
         if (allowed) {
             return net::Access::Allowed;
@@ -693,4 +871,214 @@ TEST("remote server: status, links for the page, hidden files and titles")
     response = get(port, "/api/icon?path=%2Fbroken.cia");
     CHECK(startsWith(response, "HTTP/1.1 404"));
     CHECK(bodyOf(response).find("error") != std::string::npos);
+}
+
+TEST("remote server: uploads say who sent them and where they stand in the batch")
+{
+    TempRoot root;
+    std::mutex lock;
+    std::vector<net::Transfer> finished;
+    std::string asking;
+    net::FileSharing sharing;
+    sharing.root = root.path;
+    sharing.access = [&](const std::string &, const std::string &device, bool ask) {
+        std::lock_guard<std::mutex> hold(lock);
+        if (ask) {
+            asking = device;
+        }
+        return net::Access::Allowed;
+    };
+    sharing.progress = [&](const net::Transfer &transfer) {
+        if (transfer.finished) {
+            std::lock_guard<std::mutex> hold(lock);
+            finished.push_back(transfer);
+        }
+    };
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    Serving serving(receiver);
+    const unsigned short port = receiver.webPort();
+    CHECK(fs::makeDirectories(root.path + "/3ds/Check point/saves"));
+
+    const auto send = [&](const std::string &target, const std::string &batch) {
+        return roundTrip(port, "PUT " + target +
+                                   " HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                                   "X-Requested-With: 3dsDL\r\n"
+                                   "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)\r\n"
+                                   "X-3dsDL-Batch: " + batch + "\r\n"
+                                   "Content-Length: 2\r\n\r\nok");
+    };
+    CHECK(startsWith(send("/api/file?path=%2F3ds%2FCheck%20point%2Fsaves%2Fa",
+                          "q7 2 3 2 6 2 %2F3ds%2FCheck%20point"),
+                     "HTTP/1.1 200"));
+    // A folder the file is not in is not taken for its own.
+    CHECK(startsWith(send("/api/file?path=%2Fb", "q7 3 3 4 6 2 %2F3ds%2FCheck%20point"),
+                     "HTTP/1.1 200"));
+    std::lock_guard<std::mutex> hold(lock);
+    CHECK_EQ(asking, std::string("iPhone"));
+    CHECK_EQ(finished.size(), static_cast<size_t>(2));
+    if (finished.size() == 2) {
+        const remote::UploadBatch &first = finished[0].batch;
+        CHECK_EQ(finished[0].device, std::string("iPhone"));
+        CHECK_EQ(first.id, std::string("q7"));
+        CHECK_EQ(first.position, static_cast<uint32_t>(2));
+        CHECK_EQ(first.count, static_cast<uint32_t>(3));
+        CHECK_EQ(first.before, static_cast<uint64_t>(2));
+        CHECK_EQ(first.bytes, static_cast<uint64_t>(6));
+        CHECK_EQ(first.folder, root.path + "/3ds/Check point");
+        CHECK_EQ(first.folderFiles, static_cast<uint32_t>(2));
+        CHECK_EQ(finished[1].batch.position, static_cast<uint32_t>(3));
+        CHECK(finished[1].batch.folder.empty());
+        CHECK_EQ(finished[1].batch.folderFiles, static_cast<uint32_t>(0));
+    }
+}
+
+TEST("remote server: what a sender asks for comes with its links")
+{
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+
+    std::future<net::Received> sent = receiveOne(receiver);
+    int client = connectTo(receiver.webPort());
+    sendText(client, "GET /send?links=https%3A%2F%2Fexample.com%2Fa.3dsx"
+                     "&folder=%2F3ds%2Fa&replace=1 HTTP/1.1\r\n"
+                     "Host: 3ds\r\n\r\n");
+    std::string response = readAll(client);
+    ::close(client);
+    CHECK(response.rfind("HTTP/1.1 303 See Other", 0) == 0);
+    net::Received received = sent.get();
+    CHECK_EQ(received.links.size(), static_cast<size_t>(1));
+    CHECK_EQ(received.options.folder, std::string("sdmc:/3ds/a/"));
+    CHECK(received.options.replace);
+
+    // The page's form posts the same fields.
+    sent = receiveOne(receiver);
+    client = connectTo(receiver.webPort());
+    const std::string body = "links=https%3A%2F%2Fexample.com%2Fb.cia&folder=%2Fcias";
+    sendText(client, "POST /send HTTP/1.1\r\nHost: 3ds\r\nContent-Length: " +
+                         std::to_string(body.size()) + "\r\n\r\n" + body);
+    response = readAll(client);
+    ::close(client);
+    CHECK(response.rfind("HTTP/1.1 303 See Other", 0) == 0);
+    received = sent.get();
+    CHECK_EQ(received.links.size(), static_cast<size_t>(1));
+    CHECK_EQ(received.options.folder, std::string("sdmc:/cias/"));
+    CHECK(!received.options.replace);
+
+    // A folder a sender may not name turns the whole send away.
+    client = connectTo(receiver.webPort());
+    sendText(client, "GET /send?links=https%3A%2F%2Fexample.com%2Fboot.firm"
+                     "&folder=%2F&replace=1 HTTP/1.1\r\nHost: 3ds\r\n\r\n");
+    net::Received refused;
+    CHECK(!receiver.wait(2000, refused));
+    CHECK(refused.links.empty());
+    response = readAll(client);
+    ::close(client);
+    CHECK(response.rfind("HTTP/1.1 400", 0) == 0);
+    CHECK(response.find("/3ds/ or /cias/") != std::string::npos);
+
+    // A page that sent options and no links, then an FBI send, both waiting
+    // when the receiver looks: one wait serves both, and the FBI links come
+    // without the page's options.
+    const int page = connectTo(receiver.webPort());
+    sendText(page, "GET /send?folder=%2F3ds%2F&replace=1 HTTP/1.1\r\n"
+                   "Host: 3ds\r\n\r\n");
+    const int fbi = connectTo(receiver.fbiPort());
+    const std::string payload = "http://192.168.1.2:8080/a.cia";
+    std::string message(4, '\0');
+    const uint32_t length = htonl(static_cast<uint32_t>(payload.size()));
+    std::memcpy(&message[0], &length, 4);
+    sendText(fbi, message + payload);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    net::Received both;
+    CHECK(receiver.wait(2000, both));
+    CHECK_EQ(both.links.size(), static_cast<size_t>(1));
+    CHECK(both.replySocket >= 0);
+    CHECK(both.options.folder.empty());
+    CHECK(!both.options.replace);
+    CHECK(readAll(page, 2000).find("Location: /?sent=0") != std::string::npos);
+    ::close(page);
+    net::finishReceived(both);
+    CHECK_EQ(readAll(fbi, 2000).size(), static_cast<size_t>(1));
+    ::close(fbi);
+}
+
+TEST("remote server: a send says if 3dsDL's page made it, holds 20 links, and a turned-down device is refused")
+{
+    bool turnedAway = false;
+    net::FileSharing sharing;
+    // Turning down file access is a list of its own.
+    sharing.access = [&](const std::string &, const std::string &, bool) {
+        return net::Access::Denied;
+    };
+    sharing.refuseLinks = [&](const std::string &from) {
+        CHECK_EQ(from, std::string("127.0.0.1"));
+        return turnedAway;
+    };
+    net::Receiver receiver;
+    std::string error;
+    CHECK(receiver.open(0, 0, 0, error));
+    receiver.shareFiles(sharing);
+    const auto post = [&](const std::string &headers, const std::string &body) {
+        const int client = connectTo(receiver.webPort());
+        sendText(client, "POST /send HTTP/1.1\r\n" + headers + "Content-Length: " +
+                             std::to_string(body.size()) + "\r\n\r\n" + body);
+        return client;
+    };
+    const std::string one = "links=https%3A%2F%2Fexample.com%2Fa.3dsx";
+
+    // The page adds its header, by the console's address.
+    std::future<net::Received> sent = receiveOne(receiver);
+    int client = post("Host: 127.0.0.1\r\nX-Requested-With: 3dsDL\r\n", one);
+    CHECK(sent.get().ownPage);
+    readAll(client);
+    ::close(client);
+    // A form on another site cannot add it, and a name another site
+    // controls is not the console's page even with it.
+    for (const char *headers : {"Host: 127.0.0.1\r\n",
+                                "Host: attacker.example\r\nX-Requested-With: 3dsDL\r\n"}) {
+        sent = receiveOne(receiver);
+        client = post(headers, one);
+        CHECK(!sent.get().ownPage);
+        readAll(client);
+        ::close(client);
+    }
+
+    // Twenty links go through; twenty-one are turned away before the console.
+    std::string links = "links=";
+    for (int index = 0; index < 20; ++index) {
+        links += "https%3A%2F%2Fexample.com%2F" + std::to_string(index) + ".3dsx+";
+    }
+    sent = receiveOne(receiver);
+    client = post("Host: 127.0.0.1\r\n", links);
+    CHECK_EQ(sent.get().links.size(), static_cast<size_t>(20));
+    readAll(client);
+    ::close(client);
+    client = post("Host: 127.0.0.1\r\n", links + "https%3A%2F%2Fexample.com%2F20.3dsx");
+    net::Received refused;
+    CHECK(!receiver.wait(1000, refused));
+    std::string response = readAll(client);
+    ::close(client);
+    CHECK(response.rfind("HTTP/1.1 400", 0) == 0);
+    CHECK(response.find("at most 20") != std::string::npos);
+
+    // The page is told why, as JSON.
+    client = post("Host: 127.0.0.1\r\nX-Requested-With: 3dsDL\r\n",
+                  links + "https%3A%2F%2Fexample.com%2F20.3dsx");
+    CHECK(!receiver.wait(1000, refused));
+    response = readAll(client);
+    ::close(client);
+    CHECK(response.find("{\"error\":\"Send at most 20") != std::string::npos);
+
+    // A device the console turned down sends nothing more.
+    turnedAway = true;
+    client = post("Host: 127.0.0.1\r\nX-Requested-With: 3dsDL\r\n", one);
+    CHECK(!receiver.wait(1000, refused));
+    CHECK(refused.links.empty());
+    response = readAll(client);
+    ::close(client);
+    CHECK(response.rfind("HTTP/1.1 403", 0) == 0);
 }

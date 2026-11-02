@@ -7,6 +7,7 @@
 #include "image.hpp"
 #include "picture.hpp"
 #include "records.hpp"
+#include "remote.hpp"
 #include "sha256.hpp"
 #include "smdh.hpp"
 #include "text_doc.hpp"
@@ -66,6 +67,7 @@ TEST("filetype: classifies by extension")
 {
     using filetype::Kind;
     CHECK(filetype::fromName("Game.CIA") == Kind::Cia);
+    CHECK(filetype::fromName("Game.zcia") == Kind::Cia);
     CHECK(filetype::fromName("app.3dsx") == Kind::Homebrew);
     CHECK(filetype::fromName("rom.3ds") == Kind::CartridgeImage);
     CHECK(filetype::fromName("rom.nds") == Kind::Nds);
@@ -140,11 +142,73 @@ TEST("fileops: copy, move and delete files and folders")
     CHECK(!fileops::move(root + "src/a.txt", root + "moved.txt", error));
     CHECK(!fileops::move(root + "src", root + "src/inner/x", error));
 
+    // A name that changes only in case is the entry itself, not a clash.
+    CHECK(fileops::move(root + "moved.txt", root + "Moved.TXT", error));
+    CHECK(fileops::move(root + "src/", root + "SRC", error));
+    CHECK(fileops::move(root + "SRC", root + "SRC", error));
+    std::string names;
+    for (const fs::Entry &entry : fs::listEntries(root, nullptr, true, false)) {
+        names += entry.name + ";";
+    }
+    CHECK(names.find("Moved.TXT;") != std::string::npos);
+    CHECK(names.find("SRC;") != std::string::npos);
+    CHECK(names.find("moved.txt;") == std::string::npos);
+    CHECK(names.find("src;") == std::string::npos);
+    CHECK(names.find(".3dsdl-rename") == std::string::npos);
+    CHECK_EQ(readText(root + "SRC/a.txt"), std::string("hello"));
+
     uint64_t deleted = 0;
     result = fileops::remove(root + "copy", observer, deleted, 1);
     CHECK(result.status == fileops::Status::Ok);
     CHECK_EQ(deleted, static_cast<uint64_t>(1));
     CHECK(!fileops::exists(root + "copy"));
+}
+
+TEST("fileops: a folder merges into one of the same name")
+{
+    TempDir temp;
+    const std::string root = temp.path();
+    CHECK(fs::makeDirectories(root + "new/data/deep/"));
+    CHECK(writeText(root + "new/app.3dsx", "new app"));
+    CHECK(writeText(root + "new/data/deep/level.bin", "new level"));
+    CHECK(writeText(root + "new/swap", "a file now"));
+    CHECK(fs::makeDirectories(root + "old/DATA/"));
+    CHECK(fs::makeDirectories(root + "old/swap/"));
+    CHECK(writeText(root + "old/APP.3dsx", "old app"));
+    CHECK(writeText(root + "old/config.ini", "kept"));
+    CHECK(writeText(root + "old/DATA/save.bin", "kept too"));
+    CHECK(writeText(root + "old/swap/inside", "a folder before"));
+
+    // Copied: same names are replaced whatever their case, folders meet,
+    // and what only the destination had stays.
+    Quiet observer;
+    uint64_t done = 0;
+    fileops::Result result = fileops::merge(root + "new", root + "old", false,
+                                            observer, done, 0);
+    CHECK(result.status == fileops::Status::Ok);
+    CHECK_EQ(result.files, static_cast<uint64_t>(3));
+    CHECK_EQ(readText(root + "old/app.3dsx"), std::string("new app"));
+    CHECK_EQ(readText(root + "old/data/deep/level.bin"), std::string("new level"));
+    CHECK_EQ(readText(root + "old/DATA/save.bin"), std::string("kept too"));
+    CHECK_EQ(readText(root + "old/config.ini"), std::string("kept"));
+    CHECK(!fileops::isFolder(root + "old/swap"));
+    CHECK_EQ(readText(root + "old/swap"), std::string("a file now"));
+    CHECK(fileops::exists(root + "new/app.3dsx"));
+
+    // Moved: the same, and the source is gone after.
+    CHECK(writeText(root + "new/app.3dsx", "newer app"));
+    result = fileops::merge(root + "new", root + "old", true, observer, done, 0);
+    CHECK(result.status == fileops::Status::Ok);
+    CHECK(!fileops::exists(root + "new"));
+    CHECK_EQ(readText(root + "old/app.3dsx"), std::string("newer app"));
+    CHECK_EQ(readText(root + "old/data/deep/level.bin"), std::string("new level"));
+    CHECK_EQ(readText(root + "old/config.ini"), std::string("kept"));
+
+    // Never into itself.
+    CHECK(fs::makeDirectories(root + "old/sub/"));
+    result = fileops::merge(root + "old", root + "old/sub", true, observer, done, 0);
+    CHECK(result.status == fileops::Status::Failed);
+    CHECK(fileops::exists(root + "old/config.ini"));
 }
 
 TEST("fileops: a cancelled copy removes the unfinished file")
@@ -607,4 +671,32 @@ TEST("picture: decodes from memory and fills a box by cutting the edges")
 
     CHECK(!picture::decode({1, 2, 3}, 48, 48, 0, result, error, true));
     CHECK(!error.empty());
+}
+
+TEST("remote: a sender's 3dsx replaces only the same app")
+{
+    TempDir temp;
+    const auto homebrew = [](const std::string &name, const std::string &publisher) {
+        std::string data(0x40, '\0');
+        std::memcpy(&data[0], "3DSX", 4);
+        data[4] = 0x2c;
+        putLe32(data, 0x20, 0x40);
+        putLe32(data, 0x24, smdh::Size);
+        return data + makeSmdh(name, publisher);
+    };
+    CHECK(writeText(temp.path() + "old.3dsx", homebrew("Checkpoint", "Bernardo")));
+    CHECK(writeText(temp.path() + "new.3dsx", homebrew("CHECKPOINT", "bernardo")));
+    CHECK(writeText(temp.path() + "other.3dsx", homebrew("Checkpoint", "Someone")));
+    CHECK(writeText(temp.path() + "renamed.3dsx", homebrew("Evil", "Bernardo")));
+    CHECK(writeText(temp.path() + "bare.3dsx", std::string(0x40, '\0')));
+    CHECK(writeText(temp.path() + "same.cia", homebrew("Checkpoint", "Bernardo")));
+    std::string name;
+    CHECK(remote::sameApp(temp.path() + "old.3dsx", temp.path() + "new.3dsx", &name));
+    CHECK_EQ(name, std::string("CHECKPOINT"));
+    CHECK(!remote::sameApp(temp.path() + "old.3dsx", temp.path() + "other.3dsx"));
+    CHECK(!remote::sameApp(temp.path() + "old.3dsx", temp.path() + "renamed.3dsx"));
+    // Files that say nothing about themselves match nothing, not even each
+    // other, and a CIA is never a 3dsx's update.
+    CHECK(!remote::sameApp(temp.path() + "bare.3dsx", temp.path() + "bare.3dsx"));
+    CHECK(!remote::sameApp(temp.path() + "old.3dsx", temp.path() + "same.cia"));
 }

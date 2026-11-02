@@ -2,6 +2,7 @@
 #include "i18n.hpp"
 
 #include "app_util.hpp"
+#include "awake.hpp"
 #include "cia.hpp"
 #include "crash.hpp"
 #include "logging.hpp"
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <atomic>
 #include <unordered_set>
+#include <utility>
 
 namespace tasks {
 namespace {
@@ -31,27 +33,6 @@ public:
 
 private:
     LightLock &lock_;
-};
-
-// Keeps the console out of sleep mode for as long as it exists. Sleep turns
-// Wi-Fi off, which would break the transfer.
-class StayAwake {
-public:
-    explicit StayAwake(bool active) : active_(active)
-    {
-        if (active_) {
-            aptSetSleepAllowed(false);
-        }
-    }
-    ~StayAwake()
-    {
-        if (active_) {
-            aptSetSleepAllowed(true);
-        }
-    }
-
-private:
-    bool active_;
 };
 
 // The worker runs one step below the main thread's priority so drawing and
@@ -148,10 +129,17 @@ struct DownloadJob : net::Observer {
     uint64_t total = 0;
     uint64_t resumedFrom = 0;
     int connections = 0;
+    // Set for a direct install: true once AM has the data.
+    std::function<bool()> installStarted;
 
     DownloadJob() { LightLock_Init(&lock); }
 
-    bool cancelRequested() override { return cancel.load(); }
+    bool stoppable() const { return !installStarted || !installStarted(); }
+    // A Stop pressed just before the install started is not carried out.
+    bool cancelRequested() override
+    {
+        return cancel.load() && (closing.load() || stoppable());
+    }
     bool keepPartialOnCancel() override { return closing.load(); }
     void onPhase(net::Phase value) override
     {
@@ -208,6 +196,7 @@ struct ExtractJob : archives::Observer {
 
     ExtractJob() { LightLock_Init(&lock); }
 
+    bool stoppable() const { return true; }
     bool cancelRequested() override { return cancel.load(); }
     void onProgress(const archives::Progress &now) override
     {
@@ -227,6 +216,7 @@ void runExtract(void *argument)
 struct InstallJob : installer::Observer {
     std::string path;
     uint64_t titleId = 0;
+    bool commit = true;
     installer::Result result;
     std::atomic<bool> cancel {false};
     std::atomic<bool> closing {false};
@@ -238,6 +228,8 @@ struct InstallJob : installer::Observer {
 
     InstallJob() { LightLock_Init(&lock); }
 
+    // Only closing 3dsDL cancels an install.
+    bool stoppable() const { return false; }
     bool cancelRequested() override { return cancel.load(); }
     void onProgress(uint64_t now, uint64_t expected) override
     {
@@ -250,7 +242,7 @@ struct InstallJob : installer::Observer {
 void runInstall(void *argument)
 {
     InstallJob &job = *static_cast<InstallJob *>(argument);
-    job.result = installer::installCia(job.path, job.titleId, job);
+    job.result = installer::installCia(job.path, job.titleId, job, job.commit);
     job.finished = true;
 }
 
@@ -268,6 +260,7 @@ struct FileJob : fileops::Observer {
 
     FileJob() { LightLock_Init(&lock); }
 
+    bool stoppable() const { return true; }
     bool cancelRequested() override { return cancel.load(); }
     void onProgress(uint64_t now, uint64_t expected,
                     const std::string &name) override
@@ -287,7 +280,9 @@ void runFileJob(void *argument)
 }
 
 // Waits for the worker while drawing frames with draw(). Returns once the
-// worker has finished, having asked it to stop if the user cancelled.
+// worker has finished, having asked it to stop if the user cancelled. While
+// the job is not stoppable, HOME is held back too, as closing 3dsDL from the
+// HOME Menu would stop it.
 template <typename Job, typename Draw>
 void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
 {
@@ -297,13 +292,15 @@ void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
     unsigned frame = 0;
     ui::enterScreen("progress|" + what);
     while (!job.finished) {
+        aptSetHomeAllowed(job.stoppable());
         if (!ui::keepRunning()) {
             job.closing = true;
             job.cancel = true;
             break;
         }
         const ui::Input input = ui::readInput();
-        if (!job.cancel && wantsCancel(input) && confirmStop(what)) {
+        if (job.stoppable() && !job.cancel && wantsCancel(input) &&
+            confirmStop(what)) {
             job.cancel = true;
         }
         if (frame++ % FramesPerDraw == 0) {
@@ -311,6 +308,7 @@ void supervise(Job &job, Thread thread, const std::string &what, Draw draw)
         }
         gspWaitForVBlank();
     }
+    aptSetHomeAllowed(true);
     threadJoin(thread, U64_MAX);
     threadFree(thread);
 }
@@ -347,6 +345,7 @@ bool busy(const std::string &header, const std::string &title,
     BusyJob job;
     job.work = &work;
     const uint64_t started = osGetTime();
+    units::RateMeter meter;
     const auto logged = [&]() {
         const bool stopped = job.busy.cancel.load();
         logOutcome("task", !stopped, stopped,
@@ -399,6 +398,11 @@ bool busy(const std::string &header, const std::string &title,
             view.amount = job.busy.bytes.load()
                               ? i18n::t("{0} of {1}", {units::bytes(done), units::bytes(total)})
                               : i18n::t("{0} of {1}", {std::to_string(done), std::to_string(total)});
+            meter.sample(osGetTime(), done);
+            const int64_t left = meter.secondsLeft(total - done);
+            if (left >= 0 && done < total) {
+                view.left = units::timeLeft(static_cast<uint64_t>(left));
+            }
         } else if (job.busy.done.load() > 0) {
             // A running count, when the end is not known.
             const uint64_t done = job.busy.done.load();
@@ -413,13 +417,15 @@ bool busy(const std::string &header, const std::string &title,
     return logged();
 }
 
-net::Result download(const net::Request &request, bool keepAwake,
-                     const std::string &step, bool direct)
+net::Result download(const net::Request &request,
+                     const std::string &step, bool direct,
+                     std::function<bool()> installStarted)
 {
     DownloadJob job;
     job.request = &request;
+    job.installStarted = std::move(installStarted);
 
-    StayAwake awake(keepAwake);
+    awake::Hold hold;
     Thread thread = startWorkerThread(runDownload, &job, "download");
     if (thread == nullptr) {
         job.result.message = i18n::c("Could not start the download thread.");
@@ -433,6 +439,12 @@ net::Result download(const net::Request &request, bool keepAwake,
         {
             Guard guard(job.lock);
             view.name = job.filename.empty() ? host : job.filename;
+            if (!job.filename.empty() && !direct) {
+                const screens::KindLook look =
+                    screens::lookOf(filetype::fromName(job.filename));
+                view.nameIcon = look.icon;
+                view.nameIconColor = look.color;
+            }
             view.title = job.phase == net::Phase::Connecting ? i18n::c("Connecting")
                        : job.phase == net::Phase::Restarting
                            ? i18n::c("Starting Over")
@@ -462,7 +474,7 @@ net::Result download(const net::Request &request, bool keepAwake,
                     ? meter.secondsLeft(job.total - job.received)
                     : -1;
                 if (left >= 0) {
-                    view.speed += i18n::t(", {0} left", {units::duration(left)});
+                    view.left = units::timeLeft(static_cast<uint64_t>(left));
                 }
             } else if (job.phase == net::Phase::Downloading) {
                 view.speed = i18n::c("Measuring speed...");
@@ -473,6 +485,7 @@ net::Result download(const net::Request &request, bool keepAwake,
         view.source = i18n::t("from {0}", {host});
         view.message = direct ? i18n::c("Installing as it downloads")
                               : i18n::t("Saving to {0}", {request.folder});
+        view.cancellable = job.stoppable();
         view.stopping = job.cancel;
         ui::drawProgress(view);
     });
@@ -496,7 +509,7 @@ net::Result download(const net::Request &request, bool keepAwake,
 archives::Result extract(const std::string &path,
                          const archives::Listing &listing,
                          const std::string &folder,
-                         const archives::Options &options, bool keepAwake)
+                         const archives::Options &options)
 {
     ExtractJob job;
     job.path = path;
@@ -515,7 +528,8 @@ archives::Result extract(const std::string &path,
         for (const archives::Entry &entry : listing.entries) {
             // What the extractors count: every file with a safe path.
             if (!entry.directory && !entry.path.empty() &&
-                (only.empty() || only.count(entry.path) > 0)) {
+                (only.empty() || only.count(entry.path) > 0) &&
+                (!options.place || !options.place(entry.path, false).empty())) {
                 totalBytes += entry.size;
                 ++totalFiles;
             }
@@ -523,7 +537,7 @@ archives::Result extract(const std::string &path,
     }
     const uint64_t totalWork = totalBytes + totalFiles * FileWeight;
 
-    StayAwake awake(keepAwake);
+    awake::Hold hold;
     Thread thread = startWorkerThread(runExtract, &job, "extract");
     if (thread == nullptr) {
         job.result.message = i18n::c("Could not start the extraction thread.");
@@ -562,11 +576,11 @@ archives::Result extract(const std::string &path,
                 const int64_t left = work.secondsLeft(
                     totalWork > done ? totalWork - done : 0);
                 if (left >= 0) {
-                    view.speed = i18n::t("{0} left", {units::duration(left)});
+                    view.left = units::timeLeft(static_cast<uint64_t>(left));
                 }
             }
             if (speed.hasRate()) {
-                view.tag = units::rate(speed.bytesPerSecond());
+                view.speed = units::rate(speed.bytesPerSecond());
             }
         } else {
             work.sample(now, progress.archiveBytes);
@@ -583,8 +597,11 @@ archives::Result extract(const std::string &path,
                         ? listing.archiveSize - progress.archiveBytes
                         : 0);
                 if (left >= 0) {
-                    view.speed = i18n::t("{0} left", {units::duration(left)});
+                    view.left = units::timeLeft(static_cast<uint64_t>(left));
                 }
+            }
+            if (speed.hasRate()) {
+                view.speed = units::rate(speed.bytesPerSecond());
             }
         }
         view.message = i18n::t("Extracting into {0}", {folder});
@@ -600,19 +617,23 @@ archives::Result extract(const std::string &path,
                 {"existing", result.skippedExisting.size()},
                 {"unsafe", result.skippedUnsafe},
                 {"unsupported", result.skippedUnsupported},
+                {"placed", result.skippedPlaced > 0
+                               ? std::to_string(result.skippedPlaced)
+                               : std::string()},
                 {"message", result.message}});
     return job.result;
 }
 
 installer::Result install(const std::string &path, uint64_t titleId,
-                          const std::string &name, bool keepAwake,
-                          const std::vector<uint16_t> &icon)
+                          const std::string &name,
+                          const std::vector<uint16_t> &icon, bool commit)
 {
     InstallJob job;
     job.path = path;
     job.titleId = titleId;
+    job.commit = commit;
 
-    StayAwake awake(keepAwake);
+    awake::Hold hold;
     Thread thread = startWorkerThread(runInstall, &job, "install");
     if (thread == nullptr) {
         job.result.message = i18n::c("Could not start the install thread.");
@@ -636,7 +657,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
                     ? meter.secondsLeft(job.total - job.done)
                     : -1;
                 if (left >= 0) {
-                    view.speed += i18n::t(", {0} left", {units::duration(left)});
+                    view.left = units::timeLeft(static_cast<uint64_t>(left));
                 }
             }
         }
@@ -647,7 +668,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
         view.source = path.substr(path.find_last_of('/') + 1);
         view.titleIcon = icon;
         view.message = i18n::c("Do not turn off the power or remove the SD card.");
-        view.stopping = job.cancel;
+        view.cancellable = false;
         ui::drawProgress(view);
     });
     if (job.closing && job.result.outcome == installer::Outcome::Cancelled) {
@@ -661,6 +682,7 @@ installer::Result install(const std::string &path, uint64_t titleId,
                 {"ms", static_cast<uint64_t>(result.seconds * 1000)},
                 {"code", eventlog::hex(static_cast<uint32_t>(result.code))},
                 {"olderOrSame", result.versionRefused},
+                {"compressed", result.compressed},
                 {"message", result.message}});
     return job.result;
 }
@@ -668,14 +690,13 @@ installer::Result install(const std::string &path, uint64_t titleId,
 fileops::Result fileOperation(
     const std::string &header, const std::string &title,
     const std::string &folder, uint64_t total, bool countsFiles,
-    const std::function<fileops::Result(fileops::Observer &)> &work,
-    bool keepAwake)
+    const std::function<fileops::Result(fileops::Observer &)> &work)
 {
     FileJob job;
     job.work = &work;
     job.total = total;
 
-    StayAwake awake(keepAwake);
+    awake::Hold hold;
     Thread thread = startWorkerThread(runFileJob, &job, "files");
     if (thread == nullptr) {
         job.result.status = fileops::Status::Failed;
@@ -685,7 +706,7 @@ fileops::Result fileOperation(
 
     const uint64_t started = osGetTime();
     units::RateMeter meter;
-    supervise(job, thread, header, [&]() {
+    supervise(job, thread, i18n::t(header), [&]() {
         ui::ProgressView view;
         {
             Guard guard(job.lock);
@@ -694,20 +715,26 @@ fileops::Result fileOperation(
                 ? static_cast<float>(static_cast<double>(job.done) /
                                      static_cast<double>(expected))
                 : -1.0f;
+            meter.sample(osGetTime(), job.done);
             if (countsFiles) {
                 view.amounts = i18n::t("{0} of {1} files", {std::to_string(job.done), std::to_string(expected)});
             } else {
                 view.amounts = i18n::t("{0} of {1}", {units::bytes(job.done), units::bytes(expected)});
-                meter.sample(osGetTime(), job.done);
                 if (meter.hasRate()) {
                     view.speed = units::rate(meter.bytesPerSecond());
                 }
             }
+            const int64_t left = expected > job.done
+                ? meter.secondsLeft(expected - job.done)
+                : -1;
+            if (left >= 0) {
+                view.left = units::timeLeft(static_cast<uint64_t>(left));
+            }
             view.source = job.current;
         }
-        view.title = i18n::language() == "en" ? capitalised(header) : header;
-        view.icon = header == i18n::c("deleting") ? ui::Icon::Trash : ui::Icon::Folder;
-        view.iconColor = header == i18n::c("deleting") ? ui::color::Bad
+        view.title = i18n::language() == "en" ? capitalised(header) : i18n::t(header);
+        view.icon = header == "deleting" ? ui::Icon::Trash : ui::Icon::Folder;
+        view.iconColor = header == "deleting" ? ui::color::Bad
                                               : ui::color::IconOrange;
         view.name = title;
         view.message = i18n::t("In {0}", {folder});
